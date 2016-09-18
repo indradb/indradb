@@ -1,0 +1,42 @@
+[package]
+name = "rust-nutrino-bin"
+version = "0.1.0"
+authors = ["Yusuf Simonson <simonson@gmail.com>"]
+
+[[bin]]
+name = "nutrino-server"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "nutrino-user"
+path = "src/user/main.rs"
+
+[lib]
+name = "common"
+path = "src/common/lib.rs"
+
+[dependencies]
+iron = "0.3.0"
+hyper = "0.8.1"
+chrono = "0.2.20"
+serde = "0.8.8"
+serde_macros = "0.8.8"
+urlencoded = "0.3.0"
+libc = "0.2.11"
+regex = "0.1.73"
+clap = "2.11.3"
+rand = "0.3.14"
+
+[dependencies.serde_json]
+git = "https://github.com/serde-rs/json"
+
+[dependencies.rust-nutrino-lib]
+path = "../lib"
+
+[dependencies.router]
+git = "https://github.com/iron/router.git"
+rev = "63ff7c1"
+
+[dependencies.lua]
+git = "https://github.com/ysimonson/rust-lua"
+branch = "develop"
