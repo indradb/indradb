@@ -4,11 +4,11 @@ use super::requests::Request;
 use std::vec::Vec;
 
 pub trait Datastore<T: Transaction> {
-	fn get_account_id(&self, email: String) -> Result<Option<i32>, SimpleError>;
-	fn create_account(&self, email: String, secret: String) -> Result<i32, SimpleError>;
-	fn delete_account(&self, account_id: i32) -> Result<(), SimpleError>;
-	fn auth(&self, email: String, secret: String) -> Result<Option<i32>, SimpleError>;
-	fn transaction(&self, account_id: i32) -> T;
+	fn has_account(&self, email: String) -> Result<bool, SimpleError>;
+	fn create_account(&self, email: String) -> Result<String, SimpleError>;
+	fn delete_account(&self, email: String) -> Result<(), SimpleError>;
+	fn auth(&self, email: String, secret: String) -> Result<bool, SimpleError>;
+	fn transaction(&self, email: String) -> Result<T, SimpleError>;
 }
 
 pub trait Transaction {

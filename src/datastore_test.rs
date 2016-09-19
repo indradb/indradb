@@ -27,20 +27,19 @@ fn new_follows_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
 }
 
 pub struct DatastoreTestSandbox<D: Datastore<T>, T: Transaction> {
-	pub account_id: i32,
-	pub isolated_account_id: i32,
 	pub datastore: D,
 	pub vertices: Vec<models::Vertex>,
+	pub accounts: Vec<String>,
 	phantom: PhantomData<T>
 }
 
 impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 	pub fn transaction(&self) -> T {
-		self.datastore.transaction(self.account_id)
+		self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction")
 	}
 
 	pub fn isolated_transaction(&self) -> T {
-		self.datastore.transaction(self.isolated_account_id)
+		self.datastore.transaction("isolated@nutrino.com".to_string()).expect("Expected to be able to create a transaction")
 	}
 
 	fn search_id(&self, t: &str, name: &str) -> i64 {
@@ -98,7 +97,7 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 	}
 
 	pub fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> i64 {
-		let mut trans = self.datastore.transaction(self.account_id);
+		let mut trans = self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction");
 
 		let props = match name {
 			Some(name) => create_test_properties(name),
@@ -120,24 +119,24 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 		id
 	}
 
-	fn lookup_or_create_account(&self, email: String) -> i32 {
-		match self.datastore.get_account_id(email.clone()).expect("Could not lookup the account") {
-			Some(id) => id,
-			None => self.datastore.create_account(email, "foobar".to_string()).expect("Could not create the account")
-		}
+	fn register_account(&mut self, email: String) -> String {
+		let secret = self.datastore.create_account(email.clone()).expect("Expected to be able to create an account");
+		self.accounts.push(email);
+		secret
 	}
 
-	fn delete_account_safe(&self, email: String) {
-		match self.datastore.get_account_id(email.clone()).expect("Could not lookup the account") {
-			Some(id) => self.datastore.delete_account(id).expect("Could not delete the account"),
-			None => ()
+	fn ensure_account(&mut self, email: String) {
+		if self.datastore.has_account(email.clone()).expect("Expected to check if there is an account") {
+			self.accounts.push(email);
+		} else {
+			self.register_account(email);
 		}
 	}
 
 	pub fn setup(&mut self) {
 		// First create a couple of accounts
-		self.account_id = self.lookup_or_create_account("primary@nutrino.com".to_string());
-		self.isolated_account_id = self.lookup_or_create_account("isolated@nutrino.com".to_string());
+		self.ensure_account("primary@nutrino.com".to_string());
+		self.ensure_account("isolated@nutrino.com".to_string());
 
 		// Insert some users
 		let jill_id = self.create_test_vertex("user", Some("Jill"));
@@ -157,7 +156,7 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.datastore.transaction(self.account_id);
+		let mut trans = self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction");
 
 		// Jill isn't a fan
 		trans.request(new_review_edge(jill_id, inception_id, -0.8));
@@ -202,8 +201,9 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 	}
 
 	pub fn teardown(&self) {
-		self.delete_account_safe("primary@nutrino.com".to_string());
-		self.delete_account_safe("isolated@nutrino.com".to_string());
+		for email in self.accounts.iter() {
+			self.datastore.delete_account(email.clone()).expect("Expected to be able to delete the account");
+		}
 	}
 }
 
@@ -213,10 +213,9 @@ pub fn run<D, T, C>(datastore: D, test: C) where
 	C: FnOnce(&mut DatastoreTestSandbox<D, T>) -> ()
 {
 	let mut sandbox: DatastoreTestSandbox<D, T> = DatastoreTestSandbox{
-		account_id: -1,
-		isolated_account_id: -1,
 		datastore: datastore,
 		vertices: Vec::new(),
+		accounts: Vec::new(),
 		phantom: PhantomData
 	};
 
@@ -241,48 +240,36 @@ fn single_response_from_transaction<T: Transaction>(trans: &mut T) -> Result<Res
 pub fn auth_bad_username<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
 	let auth = sandbox.datastore.auth("wrong@nutrino.com".to_string(), "foobar".to_string());
 	assert!(auth.is_ok());
-	assert!(auth.unwrap().is_none());
+	assert!(!auth.unwrap());
 }
 
 pub fn auth_bad_password<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
 	let auth = sandbox.datastore.auth("isolated@nutrino.com".to_string(), "bad_token".to_string());
 	assert!(auth.is_ok());
-	assert!(auth.unwrap().is_none());
+	assert!(!auth.unwrap());
 }
 
 pub fn auth_good<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let auth = sandbox.datastore.auth("isolated@nutrino.com".to_string(), "foobar".to_string());
+	let secret = sandbox.register_account("new-auth@nutrino.com".to_string());
+	let auth = sandbox.datastore.auth("new-auth@nutrino.com".to_string(), secret);
 	assert!(auth.is_ok());
-	assert!(auth.unwrap().is_some());
+	assert!(auth.unwrap());
 }
 
-pub fn create_account<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let result = sandbox.datastore.create_account("isolated2@nutrino.com".to_string(), "foobar".to_string());
-	assert!(result.is_ok());
-	sandbox.datastore.delete_account(result.unwrap()).unwrap();
+pub fn has_account_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	let results = sandbox.datastore.has_account("primary@nutrino.com".to_string());
+	assert!(results.is_ok());
+	assert!(results.unwrap());
 }
 
-pub fn get_account_id_nonexistent<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let result = sandbox.datastore.get_account_id("isolated-nonexistent@nutrino.com".to_string());
-	assert!(result.is_ok());
-	assert!(result.unwrap().is_none());
-}
-
-pub fn get_account_id_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let result = sandbox.datastore.get_account_id("isolated@nutrino.com".to_string());
-	assert!(result.is_ok());
-	assert!(result.unwrap().is_some());
-}
-
-pub fn delete_account_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let result = sandbox.datastore.delete_account(sandbox.isolated_account_id);
-	assert!(result.is_ok());
+pub fn has_account_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	let results = sandbox.datastore.has_account("fake@nutrino.com".to_string());
+	assert!(results.is_ok());
+	assert!(!results.unwrap());
 }
 
 pub fn delete_account_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	// TODO: currently tests assume that there's no account with ID = -1, which may not be valid
-	// for all implementations
-	let result = sandbox.datastore.delete_account(-1);
+	let result = sandbox.datastore.delete_account("fake@nutrino.com".to_string());
 	assert!(result.is_err());
 }
 

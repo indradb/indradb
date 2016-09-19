@@ -32,30 +32,16 @@ fn auth_good() {
 }
 
 #[test]
-fn create_account() {
+fn has_account_existing() {
 	datastore_test::run(datastore(), |sandbox| {
-		datastore_test::create_account(sandbox)
+		datastore_test::has_account_existing(sandbox)
 	});
 }
 
 #[test]
-fn get_account_id_nonexistent() {
+fn has_account_nonexisting() {
 	datastore_test::run(datastore(), |sandbox| {
-		datastore_test::get_account_id_nonexistent(sandbox)
-	});
-}
-
-#[test]
-fn get_account_id_existing() {
-	datastore_test::run(datastore(), |sandbox| {
-		datastore_test::get_account_id_existing(sandbox)
-	});
-}
-
-#[test]
-fn delete_account_existing() {
-	datastore_test::run(datastore(), |sandbox| {
-		datastore_test::delete_account_existing(sandbox)
+		datastore_test::has_account_nonexisting(sandbox)
 	});
 }
 

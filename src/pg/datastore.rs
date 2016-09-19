@@ -4,7 +4,7 @@ use datastore::{Datastore, Transaction};
 use requests::Request;
 use responses::{Response, ErrorResponse};
 use models;
-use util::{SimpleError, parse_json_object};
+use util::{SimpleError, parse_json_object, generate_random_secret};
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
 use pg::postgres;
@@ -55,32 +55,28 @@ impl PostgresDatastore {
 }
 
 impl Datastore<PostgresTransaction> for PostgresDatastore {
-	fn get_account_id(&self, email: String) -> Result<Option<i32>, SimpleError> {
+	fn has_account(&self, email: String) -> Result<bool, SimpleError> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT id FROM accounts WHERE email=$1", &[&email]));
+		let results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1", &[&email]));
 
-		for row in &results {
-			return Result::Ok(Some(row.get(0)));
+		for _ in &results {
+			return Result::Ok(true);
 		}
 
-		Result::Ok(None)
+		Result::Ok(false)
 	}
 
-	fn create_account(&self, email: String, secret: String) -> Result<i32, SimpleError> {
-		let hash = self.get_salted_hash(secret);
+	fn create_account(&self, email: String) -> Result<String, SimpleError> {
+		let secret = generate_random_secret();
+		let hash = self.get_salted_hash(secret.clone());
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("INSERT INTO accounts(email, api_secret) VALUES ($1, $2) RETURNING id", &[&email, &hash]));
-
-		for row in &results {
-			return Result::Ok(row.get(0));
-		}
-
-		Result::Err(SimpleError::new("Hit unreachable code"))
+		try!(conn.query("INSERT INTO accounts(email, api_secret) VALUES ($1, $2)", &[&email, &hash]));
+		Result::Ok(secret)
 	}
 
-	fn delete_account(&self, account_id: i32) -> Result<(), SimpleError> {
+	fn delete_account(&self, email: String) -> Result<(), SimpleError> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING id", &[&account_id]));
+		let results = try!(conn.query("DELETE FROM accounts WHERE email=$1 RETURNING 1", &[&email]));
 
 		for _ in &results {
 			return Result::Ok(());
@@ -89,25 +85,32 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 		Result::Err(SimpleError::new("Account not found"))
 	}
 
-	fn auth(&self, email: String, secret: String) -> Result<Option<i32>, SimpleError> {
+	fn auth(&self, email: String, secret: String) -> Result<bool, SimpleError> {
 		// Calculate SHA first to prevent timing attacks
 		let expected_hash = self.get_salted_hash(secret);
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT id FROM accounts WHERE email=$1 AND api_secret=$2", &[&email, &expected_hash]));
+		let results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1 AND api_secret=$2", &[&email, &expected_hash]));
 
-		for row in &results {
-			return Result::Ok(Some(row.get(0)))
+		for _ in &results {
+			return Result::Ok(true)
 		}
 
-		Result::Ok(None)
+		Result::Ok(false)
 	}
 
-	fn transaction(&self, account_id: i32) -> PostgresTransaction {
-		PostgresTransaction {
-			pool: self.pool.clone(),
-			account_id: account_id,
-			requests: Vec::new()
+	fn transaction(&self, email: String) -> Result<PostgresTransaction, SimpleError> {
+		let conn = try!(self.pool.get());
+		let results = try!(conn.query("SELECT id FROM accounts WHERE email=$1", &[&email]));
+
+		for row in &results {
+			return Ok(PostgresTransaction {
+				pool: self.pool.clone(),
+				account_id: row.get(0),
+				requests: Vec::new()
+			});
 		}
+
+		Err(SimpleError::new("Unknown account"))
 	}
 }
 

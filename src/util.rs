@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use serde_json::Value as JsonValue;
 use serde_json;
 use super::responses::ErrorResponse;
+use rand::{Rng, OsRng};
 
 #[derive(Debug)]
 pub struct SimpleError {
@@ -53,4 +54,17 @@ pub fn parse_json_object(s: String) -> Result<BTreeMap<String, JsonValue>, Error
 	}
 
 	Err(ErrorResponse::Unexpected("Did not get a JSON object back".to_string()))
+}
+
+pub fn generate_random_secret() -> String {
+    let mut chars = vec![];
+	let options = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".as_bytes();
+    let mut rng = OsRng::new().unwrap();
+
+    for _ in 0..32 {
+		let c: u8 = *rng.choose(options).unwrap();
+        chars.push(c);
+    }
+
+    String::from_utf8(chars).unwrap()
 }

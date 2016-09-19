@@ -7,7 +7,7 @@ extern crate core;
 extern crate serde;
 extern crate serde_json;
 extern crate libc;
-#[cfg(test)] extern crate rand;
+extern crate rand;
 
 mod datastore;
 mod models;
