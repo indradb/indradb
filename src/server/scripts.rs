@@ -76,13 +76,13 @@ macro_rules! lua_fn {
     )
 }
 
-pub fn run(transaction: PostgresTransaction, account_id: i32, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+pub fn run(transaction: PostgresTransaction, email: String, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     TRANSACTION.with(|t| {
         *t.borrow_mut() = Some(transaction);
     });
 
     let result = panic::catch_unwind(|| {
-		run_in_thread(account_id, source, arg)
+		run_in_thread(email, source, arg)
 	});
 
 	match result {
@@ -91,7 +91,7 @@ pub fn run(transaction: PostgresTransaction, account_id: i32, source: &str, arg:
 	}
 }
 
-fn run_in_thread(account_id: i32, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+fn run_in_thread(email: String, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 

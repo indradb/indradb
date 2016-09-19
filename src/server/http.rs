@@ -73,56 +73,56 @@ impl BasicAuthMiddleware {
 
 impl BeforeMiddleware for BasicAuthMiddleware {
 	fn before(&self, req: &mut Request) -> IronResult<()> {
-		let (username, password) = match req.headers.get::<Authorization<Basic>>() {
+		let (email, secret) = match req.headers.get::<Authorization<Basic>>() {
 			Some(ref auth) => {
-				let username = auth.username.to_string();
-
 				match auth.password {
-					Some(ref password) => (username, password.to_string()),
-					None => (username, "".to_string())
+					Some(ref secret) => (auth.username.to_string(), secret.to_string()),
+					None => (auth.username.to_string(), "".to_string())
 				}
 			},
 			None => ("".to_string(), "".to_string())
 		};
 
-		let auth_result = self.datastore.auth(username, password);
+		let auth_result = self.datastore.auth(email.clone(), secret);
+		let mut error_message = "Authentication failed".to_string();
 
-		match auth_result {
-			Ok(Some(account_id)) => {
-				req.extensions.insert::<AccountKey>(AccountKey {
-					id: account_id
-				});
+		if auth_result.is_err() {
+			error_message = auth_result.unwrap_err().description().to_string();
+		} else if auth_result.unwrap() {
+			match self.datastore.transaction(email.clone()) {
+				Ok(transaction) => {
+					req.extensions.insert::<AccountKey>(AccountKey {
+						email: email
+					});
 
-				req.extensions.insert::<PostgresTransactionKey>(PostgresTransactionKey {
-					transaction: self.datastore.transaction(account_id)
-				});
+					req.extensions.insert::<PostgresTransactionKey>(PostgresTransactionKey {
+						transaction: transaction
+					});
 
-				Ok(())
-			},
-			_ => {
-				let msg = match auth_result {
-					Ok(_) => "Authentication failed".to_string(),
-					Err(err) => err.description().to_string()
-				};
-
-				let mut d: BTreeMap<String, String> = BTreeMap::new();
-				d.insert("error".to_string(), msg.to_string());
-				let body = serde_json::to_string(&d).unwrap();
-
-				let www_authenticate_header = WWWAuthenticate("Basic realm=\"main\"".to_owned());
-				let www_authenticate_modifier = HeaderModifier(www_authenticate_header);
-				let json_content_type_modifier = HeaderModifier(get_json_content_type());
-
-				let modifiers = (status::Unauthorized, json_content_type_modifier, www_authenticate_modifier, body);
-				Err(IronError::new(SimpleError::new_from_string(msg), modifiers))
+					return Ok(())
+				},
+				Err(err) => {
+					error_message = err.description().to_string();
+				}
 			}
 		}
+
+		let mut d: BTreeMap<String, String> = BTreeMap::new();
+		d.insert("error".to_string(), error_message.to_string());
+		let body = serde_json::to_string(&d).unwrap();
+
+		let www_authenticate_header = WWWAuthenticate("Basic realm=\"main\"".to_owned());
+		let www_authenticate_modifier = HeaderModifier(www_authenticate_header);
+		let json_content_type_modifier = HeaderModifier(get_json_content_type());
+
+		let modifiers = (status::Unauthorized, json_content_type_modifier, www_authenticate_modifier, body);
+		Err(IronError::new(SimpleError::new_from_string(error_message), modifiers))
 	}
 }
 
 // Need this to avoid orphan rules
 struct AccountKey {
-	id: i32
+	email: String
 }
 
 impl Key for AccountKey {
@@ -420,12 +420,12 @@ fn on_input_script(req: &mut Request) -> IronResult<Response> {
 
 	let trans = get_transaction(req);
 
-	let account_id = {
+	let email = {
 		let ref ext = *req.extensions.get::<AccountKey>().unwrap();
-		ext.id
+		ext.email.clone()
 	};
 
-	execute_script(trans, account_id, &payload[..], JsonValue::Null)
+	execute_script(trans, email, &payload[..], JsonValue::Null)
 }
 
 fn on_named_script(req: &mut Request) -> IronResult<Response> {
@@ -456,13 +456,13 @@ fn on_named_script(req: &mut Request) -> IronResult<Response> {
 		return Err(create_iron_error(status::InternalServerError, SimpleError::new("Could not read script contents")));
 	}
 
-	let account_id = req.extensions.get::<AccountKey>().unwrap().id;
+	let email = req.extensions.get::<AccountKey>().unwrap().email.clone();
 	let trans = get_transaction(req);
-	execute_script(trans, account_id, &payload[..], arg)
+	execute_script(trans, email, &payload[..], arg)
 }
 
-fn execute_script(trans: PostgresTransaction, account_id: i32, payload: &str, arg: JsonValue) -> IronResult<Response> {
-	match scripts::run(trans, account_id, &payload[..], arg) {
+fn execute_script(trans: PostgresTransaction, email: String, payload: &str, arg: JsonValue) -> IronResult<Response> {
+	match scripts::run(trans, email, &payload[..], arg) {
 		Ok(val) => Ok(to_response(status::Ok, &val)),
 		Err(err) => Err(create_iron_error(status::InternalServerError, SimpleError::new_from_string(format!("Script failed: {:?}", err))))
 	}
