@@ -32,7 +32,6 @@ pub fn datastore() -> PostgresDatastore {
         Err(_) => "postgresql://localhost:5432/nutrino".to_string()
     };
 
-    let secret = env::var("SECRET").expect("No `SECRET` environment variable defined");
-
+    let secret = env::var("SECRET").unwrap_or("".to_string());
     PostgresDatastore::new(pool_size, connection_string, secret)
 }
