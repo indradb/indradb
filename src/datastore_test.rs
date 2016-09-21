@@ -250,8 +250,8 @@ pub fn auth_bad_password<D: Datastore<T>, T: Transaction>(sandbox: &mut Datastor
 }
 
 pub fn auth_good<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let secret = sandbox.register_account("new-auth@nutrino.com".to_string());
-	let auth = sandbox.datastore.auth("new-auth@nutrino.com".to_string(), secret);
+	let secret = sandbox.register_account("auth-good@nutrino.com".to_string());
+	let auth = sandbox.datastore.auth("auth-good@nutrino.com".to_string(), secret);
 	assert!(auth.is_ok());
 	assert!(auth.unwrap());
 }

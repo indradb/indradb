@@ -46,8 +46,9 @@ impl PostgresDatastore {
 		}
 	}
 
-	fn get_salted_hash(&self, secret: String) -> String {
+	fn get_salted_hash(&self, salt: String, secret: String) -> String {
 		let mut sha = Sha256::new();
+		sha.input(salt.as_bytes());
 		sha.input(self.secret.as_bytes());
 		sha.input(secret.as_bytes());
 		return format!("1:{}", sha.result_str());
@@ -67,10 +68,11 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 	}
 
 	fn create_account(&self, email: String) -> Result<String, SimpleError> {
+		let salt = generate_random_secret();
 		let secret = generate_random_secret();
-		let hash = self.get_salted_hash(secret.clone());
+		let hash = self.get_salted_hash(salt.clone(), secret.clone());
 		let conn = try!(self.pool.get());
-		try!(conn.query("INSERT INTO accounts(email, api_secret) VALUES ($1, $2)", &[&email, &hash]));
+		try!(conn.query("INSERT INTO accounts(email, salt, api_secret_hash) VALUES ($1, $2, $3)", &[&email, &salt, &hash]));
 		Result::Ok(secret)
 	}
 
@@ -86,13 +88,19 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 	}
 
 	fn auth(&self, email: String, secret: String) -> Result<bool, SimpleError> {
-		// Calculate SHA first to prevent timing attacks
-		let expected_hash = self.get_salted_hash(secret);
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1 AND api_secret=$2", &[&email, &expected_hash]));
+		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE email=$1", &[&email]));
 
-		for _ in &results {
-			return Result::Ok(true)
+		for row in &get_salt_results {
+			let salt = row.get(0);
+			let expected_hash = self.get_salted_hash(salt, secret);
+			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1 AND api_secret_hash=$2", &[&email, &expected_hash]));
+
+			for _ in &auth_results {
+				return Result::Ok(true);
+			}
+
+			return Result::Ok(false);
 		}
 
 		Result::Ok(false)
