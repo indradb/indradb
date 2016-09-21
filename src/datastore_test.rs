@@ -27,6 +27,9 @@ fn new_follows_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
 }
 
 pub struct DatastoreTestSandbox<D: Datastore<T>, T: Transaction> {
+	name: String,
+	primary_email: String,
+	isolated_email: String,
 	pub datastore: D,
 	pub vertices: Vec<models::Vertex>,
 	pub accounts: Vec<String>,
@@ -34,12 +37,24 @@ pub struct DatastoreTestSandbox<D: Datastore<T>, T: Transaction> {
 }
 
 impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
-	pub fn transaction(&self) -> T {
-		self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction")
+	pub fn new(name: String, datastore: D) -> DatastoreTestSandbox<D, T> {
+		return DatastoreTestSandbox{
+			name: name.clone(),
+			primary_email: format!("primary-{}@nutrino.com", name.clone()),
+			isolated_email: format!("isolated-{}@nutrino.com", name.clone()),
+			datastore: datastore,
+			vertices: Vec::new(),
+			accounts: Vec::new(),
+			phantom: PhantomData
+		};
 	}
 
-	pub fn isolated_transaction(&self) -> T {
-		self.datastore.transaction("isolated@nutrino.com".to_string()).expect("Expected to be able to create a transaction")
+	fn transaction(&self) -> T {
+		self.datastore.transaction(self.primary_email.clone()).expect("Expected to be able to create a transaction")
+	}
+
+	fn isolated_transaction(&self) -> T {
+		self.datastore.transaction(self.isolated_email.clone()).expect("Expected to be able to create a transaction")
 	}
 
 	fn search_id(&self, t: &str, name: &str) -> i64 {
@@ -58,7 +73,7 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 		panic!("Could not find vertex with type=\"{}\" and name=\"{}\"", t, name);
 	}
 
-	pub fn fake_id(&self) -> i64 {
+	fn fake_id(&self) -> i64 {
 		let mut actual_ids: HashSet<i64> = HashSet::new();
 
 		for vertex in self.vertices.iter() {
@@ -76,28 +91,28 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 		}
 	}
 
-	pub fn jill_id(&self) -> i64 {
+	fn jill_id(&self) -> i64 {
 		self.search_id("user", "Jill")
 	}
 
-	pub fn bob_id(&self) -> i64 {
+	fn bob_id(&self) -> i64 {
 		self.search_id("user", "Bob")
 	}
 
-	pub fn christopher_id(&self) -> i64 {
+	fn christopher_id(&self) -> i64 {
 		self.search_id("user", "Christopher")
 	}
 
-	pub fn memento_id(&self) -> i64 {
+	fn memento_id(&self) -> i64 {
 		self.search_id("movie", "Memento")
 	}
 
-	pub fn inception_id(&self) -> i64 {
+	fn inception_id(&self) -> i64 {
 		self.search_id("movie", "Inception")
 	}
 
-	pub fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> i64 {
-		let mut trans = self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction");
+	fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> i64 {
+		let mut trans = self.datastore.transaction(self.primary_email.clone()).expect("Expected to be able to create a transaction");
 
 		let props = match name {
 			Some(name) => create_test_properties(name),
@@ -135,8 +150,10 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 
 	pub fn setup(&mut self) {
 		// First create a couple of accounts
-		self.ensure_account("primary@nutrino.com".to_string());
-		self.ensure_account("isolated@nutrino.com".to_string());
+		let primary_email = self.primary_email.clone();
+		self.ensure_account(primary_email);
+		let isolated_email = self.isolated_email.clone();
+		self.ensure_account(isolated_email);
 
 		// Insert some users
 		let jill_id = self.create_test_vertex("user", Some("Jill"));
@@ -156,7 +173,7 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.datastore.transaction("primary@nutrino.com".to_string()).expect("Expected to be able to create a transaction");
+		let mut trans = self.datastore.transaction(self.primary_email.clone()).expect("Expected to be able to create a transaction");
 
 		// Jill isn't a fan
 		trans.request(new_review_edge(jill_id, inception_id, -0.8));
@@ -214,249 +231,243 @@ macro_rules! test_datastore_impl {
 
 		#[test]
 		fn auth_bad_username() {
-			datastore_test::run(datastore(), |sandbox| {
+			datastore_test::run(datastore(), "auth_bad_username", |sandbox| {
 				::datastore_test::auth_bad_username(sandbox)
 			});
 		}
 
 		#[test]
 		fn auth_bad_password() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "auth_bad_password", |sandbox| {
 				::datastore_test::auth_bad_password(sandbox)
 			});
 		}
 
 		#[test]
 		fn auth_good() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "auth_good", |sandbox| {
 				::datastore_test::auth_good(sandbox)
 			});
 		}
 
 		#[test]
 		fn has_account_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "has_account_existing", |sandbox| {
 				::datastore_test::has_account_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn has_account_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "has_account_nonexisting", |sandbox| {
 				::datastore_test::has_account_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_account_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_account_nonexisting", |sandbox| {
 				::datastore_test::delete_account_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_vertex_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_vertex_existing", |sandbox| {
 				::datastore_test::get_vertex_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_vertex_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_vertex_nonexisting", |sandbox| {
 				::datastore_test::get_vertex_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn create_vertex() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "create_vertex", |sandbox| {
 				::datastore_test::create_vertex(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_vertex_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_vertex_existing", |sandbox| {
 				::datastore_test::set_vertex_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_vertex_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_vertex_nonexisting", |sandbox| {
 				::datastore_test::set_vertex_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_vertex_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_vertex_existing", |sandbox| {
 				::datastore_test::delete_vertex_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_vertex_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_vertex_nonexisting", |sandbox| {
 				::datastore_test::delete_vertex_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_vertex_bad_permissions() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_vertex_bad_permissions", |sandbox| {
 				::datastore_test::delete_vertex_bad_permissions(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_existing", |sandbox| {
 				::datastore_test::get_edge_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_nonexisting", |sandbox| {
 				::datastore_test::get_edge_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_edge_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_edge_existing", |sandbox| {
 				::datastore_test::set_edge_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_edge_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_edge_nonexisting", |sandbox| {
 				::datastore_test::set_edge_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_edge_bad_weight() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_edge_bad_weight", |sandbox| {
 				::datastore_test::set_edge_bad_weight(sandbox)
 			});
 		}
 
 		#[test]
 		fn set_edge_bad_permissions() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "set_edge_bad_permissions", |sandbox| {
 				::datastore_test::set_edge_bad_permissions(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_edge_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_edge_existing", |sandbox| {
 				::datastore_test::delete_edge_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_edge_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_edge_nonexisting", |sandbox| {
 				::datastore_test::delete_edge_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn delete_edge_bad_permissions() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "delete_edge_bad_permissions", |sandbox| {
 				::datastore_test::delete_edge_bad_permissions(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_count_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_count_existing", |sandbox| {
 				::datastore_test::get_edge_count_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_count_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_count_nonexisting", |sandbox| {
 				::datastore_test::get_edge_count_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_range_existing() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_range_existing", |sandbox| {
 				::datastore_test::get_edge_range_existing(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_range_nonexisting() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_range_nonexisting", |sandbox| {
 				::datastore_test::get_edge_range_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_full() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_full", |sandbox| {
 				::datastore_test::get_edge_time_range_full(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_empty() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_empty", |sandbox| {
 				::datastore_test::get_edge_time_range_empty(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_no_high() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_no_high", |sandbox| {
 				::datastore_test::get_edge_time_range_no_high(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_no_low() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_no_low", |sandbox| {
 				::datastore_test::get_edge_time_range_no_low(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_no_time() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_no_time", |sandbox| {
 				::datastore_test::get_edge_time_range_no_time(sandbox)
 			});
 		}
 
 		#[test]
 		fn get_edge_time_range_reversed_time() {
-			::datastore_test::run(datastore(), |sandbox| {
+			::datastore_test::run(datastore(), "get_edge_time_range_reversed_time", |sandbox| {
 				::datastore_test::get_edge_time_range_reversed_time(sandbox)
 			});
 		}
 	)
 }
 
-pub fn run<D, T, C>(datastore: D, test: C) where
+pub fn run<D, T, C>(datastore: D, name: &str, test: C) where
 	D: Datastore<T>,
 	T: Transaction,
 	C: FnOnce(&mut DatastoreTestSandbox<D, T>) -> ()
 {
-	let mut sandbox: DatastoreTestSandbox<D, T> = DatastoreTestSandbox{
-		datastore: datastore,
-		vertices: Vec::new(),
-		accounts: Vec::new(),
-		phantom: PhantomData
-	};
-
+	let mut sandbox = DatastoreTestSandbox::new(name.to_string(), datastore);
 	sandbox.setup();
     test(&mut sandbox);
 	sandbox.teardown();
@@ -482,7 +493,7 @@ pub fn auth_bad_username<D: Datastore<T>, T: Transaction>(sandbox: &mut Datastor
 }
 
 pub fn auth_bad_password<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let auth = sandbox.datastore.auth("isolated@nutrino.com".to_string(), "bad_token".to_string());
+	let auth = sandbox.datastore.auth(sandbox.isolated_email.clone(), "bad_token".to_string());
 	assert!(auth.is_ok());
 	assert!(!auth.unwrap());
 }
@@ -495,7 +506,7 @@ pub fn auth_good<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSan
 }
 
 pub fn has_account_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
-	let results = sandbox.datastore.has_account("primary@nutrino.com".to_string());
+	let results = sandbox.datastore.has_account(sandbox.primary_email.clone());
 	assert!(results.is_ok());
 	assert!(results.unwrap());
 }
