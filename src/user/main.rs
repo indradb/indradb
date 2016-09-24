@@ -1,4 +1,4 @@
-extern crate clap;
+#[macro_use] extern crate clap;
 extern crate nutrino;
 #[macro_use] extern crate common;
 
@@ -9,13 +9,11 @@ use nutrino::Datastore;
 
 fn main() {
     // Parse command line arguments
-    let email_arg = Arg::with_name("EMAIL").help("Email of account to manage").required(true).index(1);
-
     let matches = App::new("nutrino-user")
         .version("0.1")
         .about("User management for Nutrino")
-        .subcommand(SubCommand::with_name("add").arg(email_arg.clone()))
-        .subcommand(SubCommand::with_name("remove").arg(email_arg.clone()))
+        .subcommand(SubCommand::with_name("add").arg(Arg::with_name("EMAIL").help("Email address").required(true).index(1)))
+        .subcommand(SubCommand::with_name("remove").arg(Arg::with_name("ID").help("ID of account").required(true).index(1)))
         .get_matches();
 
     let datastore = datastore();
@@ -24,13 +22,16 @@ fn main() {
         let email = matches.value_of("EMAIL").unwrap().to_string();
 
         match datastore.create_account(email) {
-            Ok(secret) => println!("Account secret: {}", secret),
+            Ok((id, secret)) => {
+                println!("Account ID: {}", id);
+                println!("Account secret: {}", secret);
+            }
             Err(err) => exit_with_err!("Could not create account: {}", err.description())
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {
-        let email = matches.value_of("EMAIL").unwrap().to_string();
+        let id = value_t!(matches, "ID", i64).unwrap();
 
-        if let Err(err) = datastore.delete_account(email) {
+        if let Err(err) = datastore.delete_account(id) {
             exit_with_err!("Could not delete account: {}", err.description());
         }
     } else {
