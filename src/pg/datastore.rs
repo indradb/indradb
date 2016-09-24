@@ -1,6 +1,6 @@
 use pg::r2d2_postgres::{SslMode, PostgresConnectionManager};
 use pg::r2d2::{Config, Pool, GetTimeout};
-use datastore::{Datastore, Transaction};
+use datastore::{Id, Datastore, Transaction};
 use requests::Request;
 use responses::{Response, ErrorResponse};
 use models;
@@ -15,6 +15,8 @@ use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use serde_json;
 use pg::num_cpus;
+
+impl Id for i64 {}
 
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
@@ -55,10 +57,10 @@ impl PostgresDatastore {
 	}
 }
 
-impl Datastore<PostgresTransaction> for PostgresDatastore {
-	fn has_account(&self, email: String) -> Result<bool, SimpleError> {
+impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
+	fn has_account(&self, user_id: i64) -> Result<bool, SimpleError> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1", &[&email]));
+		let results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&(user_id as i32)]));
 
 		for _ in &results {
 			return Result::Ok(true);
@@ -67,18 +69,24 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 		Result::Ok(false)
 	}
 
-	fn create_account(&self, email: String) -> Result<String, SimpleError> {
+	fn create_account(&self, email: String) -> Result<(i64, String), SimpleError> {
 		let salt = generate_random_secret();
 		let secret = generate_random_secret();
 		let hash = self.get_salted_hash(salt.clone(), secret.clone());
 		let conn = try!(self.pool.get());
-		try!(conn.query("INSERT INTO accounts(email, salt, api_secret_hash) VALUES ($1, $2, $3)", &[&email, &salt, &hash]));
-		Result::Ok(secret)
+		let results = try!(conn.query("INSERT INTO accounts(email, salt, api_secret_hash) VALUES ($1, $2, $3) RETURNING id", &[&email, &salt, &hash]));
+
+		for row in &results {
+			let id: i32 = row.get(0);
+			return Result::Ok((id as i64, secret));
+		}
+
+		Result::Err(SimpleError::new("Hit unreachable code"))
 	}
 
-	fn delete_account(&self, email: String) -> Result<(), SimpleError> {
+	fn delete_account(&self, user_id: i64) -> Result<(), SimpleError> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("DELETE FROM accounts WHERE email=$1 RETURNING 1", &[&email]));
+		let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&(user_id as i32)]));
 
 		for _ in &results {
 			return Result::Ok(());
@@ -87,14 +95,14 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 		Result::Err(SimpleError::new("Account not found"))
 	}
 
-	fn auth(&self, email: String, secret: String) -> Result<bool, SimpleError> {
+	fn auth(&self, user_id: i64, secret: String) -> Result<bool, SimpleError> {
 		let conn = try!(self.pool.get());
-		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE email=$1", &[&email]));
+		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&(user_id as i32)]));
 
 		for row in &get_salt_results {
 			let salt = row.get(0);
 			let expected_hash = self.get_salted_hash(salt, secret);
-			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE email=$1 AND api_secret_hash=$2", &[&email, &expected_hash]));
+			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&(user_id as i32), &expected_hash]));
 
 			for _ in &auth_results {
 				return Result::Ok(true);
@@ -106,9 +114,9 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 		Result::Ok(false)
 	}
 
-	fn transaction(&self, email: String) -> Result<PostgresTransaction, SimpleError> {
+	fn transaction(&self, user_id: i64) -> Result<PostgresTransaction, SimpleError> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT id FROM accounts WHERE email=$1", &[&email]));
+		let results = try!(conn.query("SELECT id FROM accounts WHERE id=$1", &[&(user_id as i32)]));
 
 		for row in &results {
 			return Ok(PostgresTransaction {
