@@ -14,32 +14,20 @@ fn create_test_properties(name: &str) -> BTreeMap<String, JsonValue> {
 	props
 }
 
-fn new_review_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
-	Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
-}
-
-fn new_purchased_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
-	Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
-}
-
-fn new_follows_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
-	Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
-}
-
-pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction, I: Id> {
+pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
 	name: String,
 
 	owner_id: I,
 	owner_secret: String,
 
 	pub datastore: D,
-	pub vertices: Vec<models::Vertex>,
+	pub vertices: Vec<models::Vertex<I>>,
 	pub accounts: Vec<I>,
 
 	phantom_transaction: PhantomData<T>
 }
 
-impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
+impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I> {
 	pub fn new(name: String, datastore: D) -> DatastoreTestSandbox<D, T, I> {
 		return DatastoreTestSandbox{
 			name: name.clone(),
@@ -52,15 +40,27 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		};
 	}
 
+	fn new_review_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+		Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
+	}
+
+	fn new_purchased_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+		Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
+	}
+
+	fn new_follows_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+		Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
+	}
+
 	fn generate_email(&self, prefix: &str) -> String {
 		format!("{}-{}@nutrino.com", prefix, self.name.clone())
 	}
 
 	fn transaction(&self) -> T {
-		self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction")
+		self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction")
 	}
 
-	fn search_id(&self, t: &str, name: &str) -> i64 {
+	fn search_id(&self, t: &str, name: &str) -> I {
 		for vertex in self.vertices.iter() {
 			if vertex.t != t {
 				continue;
@@ -76,46 +76,28 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		panic!("Could not find vertex with type=\"{}\" and name=\"{}\"", t, name);
 	}
 
-	fn fake_id(&self) -> i64 {
-		let mut actual_ids: HashSet<i64> = HashSet::new();
-
-		for vertex in self.vertices.iter() {
-			actual_ids.insert(vertex.id);
-		}
-
-		let mut rng = thread_rng();
-
-		loop {
-			let candidate_id = rng.gen::<i64>();
-
-			if !actual_ids.contains(&candidate_id.clone()) {
-				return candidate_id;
-			}
-		}
-	}
-
-	fn jill_id(&self) -> i64 {
+	fn jill_id(&self) -> I {
 		self.search_id("user", "Jill")
 	}
 
-	fn bob_id(&self) -> i64 {
+	fn bob_id(&self) -> I {
 		self.search_id("user", "Bob")
 	}
 
-	fn christopher_id(&self) -> i64 {
+	fn christopher_id(&self) -> I {
 		self.search_id("user", "Christopher")
 	}
 
-	fn memento_id(&self) -> i64 {
+	fn memento_id(&self) -> I {
 		self.search_id("movie", "Memento")
 	}
 
-	fn inception_id(&self) -> i64 {
+	fn inception_id(&self) -> I {
 		self.search_id("movie", "Inception")
 	}
 
-	fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> i64 {
-		let mut trans = self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction");
+	fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> I {
+		let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
 
 		let props = match name {
 			Some(name) => create_test_properties(name),
@@ -129,7 +111,7 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 			Ok(Response::VertexId(id)) => id,
 			_ => {
 				assert!(false, format!("Unexpected response: {:?}", item));
-				-1
+				I::default()
 			}
 		};
 
@@ -139,7 +121,7 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 
 	fn register_account(&mut self, email: &str) -> (I, String) {
 		let (id, secret) = self.datastore.create_account(email.to_string()).expect("Expected to be able to create an account");
-		self.accounts.push(id.clone());
+		self.accounts.push(id);
 		(id, secret)
 	}
 
@@ -168,46 +150,46 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction");
+		let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
 
 		// Jill isn't a fan
-		trans.request(new_review_edge(jill_id, inception_id, -0.8));
-		trans.request(new_review_edge(jill_id, dark_knight_rises_id, -0.9));
-		trans.request(new_review_edge(jill_id, interstellar_id, -0.8));
+		trans.request(self.new_review_edge(jill_id, inception_id, -0.8));
+		trans.request(self.new_review_edge(jill_id, dark_knight_rises_id, -0.9));
+		trans.request(self.new_review_edge(jill_id, interstellar_id, -0.8));
 
 		// Bob likes some stuff
-		trans.request(new_purchased_edge(bob_id, inception_id, 1.0));
-		trans.request(new_purchased_edge(bob_id, interstellar_id, 1.0));
-		trans.request(new_review_edge(bob_id, memento_id, 0.2));
-		trans.request(new_review_edge(bob_id, insomnia_id, -1.0));
-		trans.request(new_review_edge(bob_id, batman_begins_id, 0.7));
-		trans.request(new_review_edge(bob_id, prestige_id, 0.8));
-		trans.request(new_review_edge(bob_id, dark_knight_id, 0.9));
-		trans.request(new_review_edge(bob_id, inception_id, 1.0));
-		trans.request(new_review_edge(bob_id, dark_knight_rises_id, 0.8));
-		trans.request(new_review_edge(bob_id, interstellar_id, 1.0));
+		trans.request(self.new_purchased_edge(bob_id, inception_id, 1.0));
+		trans.request(self.new_purchased_edge(bob_id, interstellar_id, 1.0));
+		trans.request(self.new_review_edge(bob_id, memento_id, 0.2));
+		trans.request(self.new_review_edge(bob_id, insomnia_id, -1.0));
+		trans.request(self.new_review_edge(bob_id, batman_begins_id, 0.7));
+		trans.request(self.new_review_edge(bob_id, prestige_id, 0.8));
+		trans.request(self.new_review_edge(bob_id, dark_knight_id, 0.9));
+		trans.request(self.new_review_edge(bob_id, inception_id, 1.0));
+		trans.request(self.new_review_edge(bob_id, dark_knight_rises_id, 0.8));
+		trans.request(self.new_review_edge(bob_id, interstellar_id, 1.0));
 
 		// Christopher really likes these movies
-		trans.request(new_purchased_edge(christopher_id, doodlebug_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, following_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, memento_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, insomnia_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, prestige_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, inception_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, interstellar_id, 1.0));
-		trans.request(new_review_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(new_review_edge(christopher_id, prestige_id, 1.0));
-		trans.request(new_review_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(new_review_edge(christopher_id, inception_id, 1.0));
-		trans.request(new_review_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(new_review_edge(christopher_id, interstellar_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, doodlebug_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, following_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, memento_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, insomnia_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, batman_begins_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, prestige_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, dark_knight_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, inception_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, dark_knight_rises_id, 1.0));
+		trans.request(self.new_purchased_edge(christopher_id, interstellar_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, batman_begins_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, prestige_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, dark_knight_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, inception_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, dark_knight_rises_id, 1.0));
+		trans.request(self.new_review_edge(christopher_id, interstellar_id, 1.0));
 
 		// Jill and Bob follow each other; Christopher is anti-social
-		trans.request(new_follows_edge(jill_id, bob_id, 1.0));
-		trans.request(new_follows_edge(bob_id, jill_id, 1.0));
+		trans.request(self.new_follows_edge(jill_id, bob_id, 1.0));
+		trans.request(self.new_follows_edge(bob_id, jill_id, 1.0));
 
 		assert!(trans.commit().is_ok());
 	}
@@ -459,7 +441,7 @@ macro_rules! test_datastore_impl {
 
 pub fn run<D, T, I, C>(datastore: D, name: &str, test: C) where
 	D: Datastore<T, I>,
-	T: Transaction,
+	T: Transaction<I>,
 	I: Id,
 	C: FnOnce(&mut DatastoreTestSandbox<D, T, I>) -> ()
 {
@@ -469,7 +451,7 @@ pub fn run<D, T, I, C>(datastore: D, name: &str, test: C) where
 	sandbox.teardown();
 }
 
-fn response_from_transaction<T: Transaction>(trans: &mut T, len: usize) -> Vec<Result<Response, ErrorResponse>> {
+fn response_from_transaction<T: Transaction<I>, I: Id>(trans: &mut T, len: usize) -> Vec<Result<Response<I>, ErrorResponse<I>>> {
 	let result = trans.commit();
 	assert!(result.is_ok());
 	let payload = result.unwrap();
@@ -477,47 +459,47 @@ fn response_from_transaction<T: Transaction>(trans: &mut T, len: usize) -> Vec<R
 	payload
 }
 
-fn single_response_from_transaction<T: Transaction>(trans: &mut T) -> Result<Response, ErrorResponse> {
+fn single_response_from_transaction<T: Transaction<I>, I: Id>(trans: &mut T) -> Result<Response<I>, ErrorResponse<I>> {
 	let payload = response_from_transaction(trans, 1);
 	payload.get(0).unwrap().clone()
 }
 
-pub fn auth_bad_username<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn auth_bad_username<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let auth = sandbox.datastore.auth(I::default(), "foobar".to_string());
 	assert!(auth.is_ok());
 	assert!(!auth.unwrap());
 }
 
-pub fn auth_bad_password<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let auth = sandbox.datastore.auth(sandbox.owner_id.clone(), "bad_token".to_string());
+pub fn auth_bad_password<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let auth = sandbox.datastore.auth(sandbox.owner_id, "bad_token".to_string());
 	assert!(auth.is_ok());
 	assert!(!auth.unwrap());
 }
 
-pub fn auth_good<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let auth = sandbox.datastore.auth(sandbox.owner_id.clone(), sandbox.owner_secret.clone());
+pub fn auth_good<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let auth = sandbox.datastore.auth(sandbox.owner_id, sandbox.owner_secret.clone());
 	assert!(auth.is_ok());
 	assert!(auth.unwrap());
 }
 
-pub fn has_account_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let results = sandbox.datastore.has_account(sandbox.owner_id.clone());
+pub fn has_account_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let results = sandbox.datastore.has_account(sandbox.owner_id);
 	assert!(results.is_ok());
 	assert!(results.unwrap());
 }
 
-pub fn has_account_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn has_account_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let results = sandbox.datastore.has_account(I::default());
 	assert!(results.is_ok());
 	assert!(!results.unwrap());
 }
 
-pub fn delete_account_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn delete_account_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let result = sandbox.datastore.delete_account(I::default());
 	assert!(result.is_err());
 }
 
-pub fn get_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_vertex_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::GetVertex(sandbox.jill_id()));
 	let item = single_response_from_transaction(&mut trans);
@@ -533,19 +515,18 @@ pub fn get_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &
 	};
 }
 
-pub fn get_vertex_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
+pub fn get_vertex_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::GetVertex(fake_id));
+	trans.request(Request::GetVertex(I::default()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, fake_id),
+		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, I::default()),
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	};
 }
 
-pub fn create_vertex<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn create_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let props = create_test_properties("Jill 2.0");
 
 	let mut trans = sandbox.transaction();
@@ -553,12 +534,12 @@ pub fn create_vertex<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut Da
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Ok(Response::VertexId(id)) => assert!(id > 0),
+		Ok(Response::VertexId(id)) => (),
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn set_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn set_vertex_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	// First create a vertex
 	let created_id = sandbox.create_test_vertex("movie", None);
 
@@ -588,9 +569,8 @@ pub fn set_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &
 	};
 }
 
-pub fn set_vertex_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
-	let v = models::Vertex::new(fake_id, "movie".to_string());
+pub fn set_vertex_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let v = models::Vertex::new(I::default(), "movie".to_string());
 
 	let mut trans = sandbox.transaction();
 	trans.request(Request::SetVertex(v.clone()));
@@ -598,12 +578,12 @@ pub fn set_vertex_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, fake_id),
+		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, I::default()),
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn delete_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn delete_vertex_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	// First create a vertex
 	let id = sandbox.create_test_vertex("movie", None);
 
@@ -652,19 +632,18 @@ pub fn delete_vertex_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox
 	check_zero_count_item(get_inbound_follows_item);
 }
 
-pub fn delete_vertex_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
+pub fn delete_vertex_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::DeleteVertex(fake_id));
+	trans.request(Request::DeleteVertex(I::default()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, fake_id),
+		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, I::default()),
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn delete_vertex_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn delete_vertex_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let (id, secret) = sandbox.register_account("isolated");
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::DeleteVertex(sandbox.jill_id()));
@@ -676,7 +655,7 @@ pub fn delete_vertex_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(
 	}
 }
 
-pub fn get_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::GetEdge(sandbox.jill_id(), "review".to_string(), sandbox.inception_id()));
 	let item = single_response_from_transaction(&mut trans);
@@ -691,9 +670,9 @@ pub fn get_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mu
 	}
 }
 
-pub fn get_edge_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::GetEdge(sandbox.jill_id(), "review".to_string(), sandbox.fake_id()));
+	trans.request(Request::GetEdge(sandbox.jill_id(), "review".to_string(), I::default()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
@@ -702,7 +681,7 @@ pub fn get_edge_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: 
 	}
 }
 
-pub fn set_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn set_edge_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	// This also tests adding a new type that didn't previously exist
 	let e1 = models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5);
 	let e2 = models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), -0.5);
@@ -751,19 +730,18 @@ pub fn set_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mu
 	check_set_edge(get_edge_existing_item, e2);
 }
 
-pub fn set_edge_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
+pub fn set_edge_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), fake_id, 0.5)));
+	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), I::default(), 0.5)));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, fake_id),
+		Err(ErrorResponse::VertexDoesNotExist(id)) => assert_eq!(id, I::default()),
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn set_edge_bad_weight<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn set_edge_bad_weight<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.bob_id(), 1.01)));
 	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.bob_id(), -1.01)));
@@ -781,7 +759,7 @@ pub fn set_edge_bad_weight<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &
 	check_item(payload.get(1).unwrap().clone());
 }
 
-pub fn set_edge_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn set_edge_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let (id, secret) = sandbox.register_account("isolated");
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5)));
@@ -793,7 +771,7 @@ pub fn set_edge_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandb
 	}
 }
 
-pub fn delete_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn delete_edge_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let bob_id = sandbox.bob_id();
 	let christopher_id = sandbox.christopher_id();
 
@@ -835,40 +813,38 @@ pub fn delete_edge_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: 
 	};
 }
 
-pub fn delete_edge_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
+pub fn delete_edge_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), fake_id));
+	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), I::default()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
 		Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id)) => {
 			assert_eq!(outbound_id, sandbox.jill_id());
 			assert_eq!(t, "blocks".to_string());
-			assert_eq!(inbound_id, fake_id);
+			assert_eq!(inbound_id, I::default());
 		},
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn delete_edge_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let fake_id = sandbox.fake_id();
+pub fn delete_edge_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let (id, secret) = sandbox.register_account("isolated");
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
-	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), fake_id));
+	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), I::default()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
 		Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id)) => {
 			assert_eq!(outbound_id, sandbox.jill_id());
 			assert_eq!(t, "blocks".to_string());
-			assert_eq!(inbound_id, fake_id);
+			assert_eq!(inbound_id, I::default());
 		},
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
-pub fn get_edge_count_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_count_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::GetEdgeCount(sandbox.christopher_id(), "purchased".to_string()));
 	let item = single_response_from_transaction(&mut trans);
@@ -879,9 +855,9 @@ pub fn get_edge_count_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbo
 	}
 }
 
-pub fn get_edge_count_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_count_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::GetEdgeCount(sandbox.fake_id(), "purchased".to_string()));
+	trans.request(Request::GetEdgeCount(I::default(), "purchased".to_string()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
@@ -890,7 +866,7 @@ pub fn get_edge_count_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(san
 	}
 }
 
-pub fn get_edge_range_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_range_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::GetEdgeRange(sandbox.christopher_id(), "purchased".to_string(), 0, 5));
 	trans.request(Request::GetEdgeRange(sandbox.christopher_id(), "purchased".to_string(), 5, 0));
@@ -902,7 +878,7 @@ pub fn get_edge_range_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbo
 		match item {
 			Ok(Response::Edges(edges)) => {
 				assert_eq!(edges.len(), count);
-				let mut covered_ids: HashSet<i64> = HashSet::new();
+				let mut covered_ids: HashSet<I> = HashSet::new();
 
 				for edge in edges.iter() {
 					assert_eq!(edge.outbound_id, sandbox.christopher_id());
@@ -922,7 +898,7 @@ pub fn get_edge_range_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbo
 	check_item(payload.get(2).unwrap().clone(), 5);
 }
 
-pub fn get_edge_range_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_range_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
 	trans.request(Request::GetEdgeRange(sandbox.christopher_id(), "foo".to_string(), 0, 10));
 	let item = single_response_from_transaction(&mut trans);
@@ -933,37 +909,37 @@ pub fn get_edge_range_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(san
 	}
 }
 
-pub fn get_edge_time_range_full<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_full<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "review".to_string(), get_after(), get_before(), 10);
 	check_edge_time_range(sandbox, request, 6);
 }
 
-pub fn get_edge_time_range_empty<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_empty<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "foo".to_string(), get_after(), get_before(), 10);
 	check_edge_time_range(sandbox, request, 0);
 }
 
-pub fn get_edge_time_range_no_high<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_no_high<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "review".to_string(), Option::None, get_before(), 10);
 	check_edge_time_range(sandbox, request, 6);
 }
 
-pub fn get_edge_time_range_no_low<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_no_low<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "review".to_string(), get_after(), Option::None, 10);
 	check_edge_time_range(sandbox, request, 6);
 }
 
-pub fn get_edge_time_range_no_time<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_no_time<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "review".to_string(), Option::None, Option::None, 10);
 	check_edge_time_range(sandbox, request, 6);
 }
 
-pub fn get_edge_time_range_reversed_time<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn get_edge_time_range_reversed_time<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let request = Request::GetEdgeTimeRange(sandbox.christopher_id(), "review".to_string(), get_after(), get_after(), 10);
 	check_edge_time_range(sandbox, request, 0);
 }
 
-pub fn check_edge_time_range<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>, request: Request, expected_length: usize) {
+pub fn check_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>, request: Request<I>, expected_length: usize) {
 	let mut trans = sandbox.transaction();
 	trans.request(request);
 	let item = single_response_from_transaction(&mut trans);
@@ -971,7 +947,7 @@ pub fn check_edge_time_range<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox:
 	match item {
 		Ok(Response::Edges(edges)) => {
 			assert_eq!(edges.len(), expected_length);
-			let mut covered_ids: HashSet<i64> = HashSet::new();
+			let mut covered_ids: HashSet<I> = HashSet::new();
 
 			for edge in edges.iter() {
 				assert_eq!(edge.outbound_id, sandbox.christopher_id());
