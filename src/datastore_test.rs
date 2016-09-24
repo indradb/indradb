@@ -1080,50 +1080,50 @@ pub fn get_after() -> Option<NaiveDateTime> {
 	Option::Some(NaiveDateTime::from_timestamp(time.timestamp(), 0))
 }
 
-pub fn get_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn get_local_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn get_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn set_local_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn set_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn delete_local_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn delete_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn get_global_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn get_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn set_global_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn set_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn delete_global_metadata_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+pub fn delete_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
