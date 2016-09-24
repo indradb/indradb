@@ -377,6 +377,61 @@ impl PostgresTransaction {
 
 		Ok(Response::Edges(edges))
 	}
+
+	fn get_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response, ErrorResponse> {
+		let results = try!(match owner_id {
+			Some(owner_id) => {
+				trans.query("SELECT value FROM metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key])
+			},
+			None => {
+				trans.query("SELECT value FROM metadata WHERE owner_id=NULL AND key=$2", &[&key])
+			}
+		});
+
+		for row in &results {
+			let value_str: String = row.get(0);
+			let value_obj = serde_json::from_str(&value_str[..]).unwrap();
+			return Ok(Response::Metadata(value_obj))
+		}
+
+		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+	}
+
+	fn set_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<Response, ErrorResponse> {
+		let value_str = serde_json::to_string(&value).unwrap();
+
+		let results = try!(match owner_id {
+			Some(owner_id) => {
+				trans.query("UPDATE metadata SET value=$1 WHERE owner_id=$2 AND key=$3 RETURNING 1", &[&value_str, &owner_id, &key])
+			},
+			None => {
+				trans.query("UPDATE metadata SET value=$1 WHERE owner_id=NULL AND key=$2 RETURNING 1", &[&value_str, &key])
+			}
+		});
+
+		for _ in &results {
+			return Ok(Response::Ok)
+		}
+
+		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+	}
+
+	fn delete_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response, ErrorResponse> {
+		let results = try!(match owner_id {
+			Some(owner_id) => {
+				trans.query("DELETE FROM metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key])
+			},
+			None => {
+				trans.query("DELETE FROM metadata WHERE owner_id=NULL AND key=$1 RETURNING 1", &[&key])
+			}
+		});
+
+		for _ in &results {
+			return Ok(Response::Ok)
+		}
+
+		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+	}
 }
 
 impl Transaction for PostgresTransaction {
@@ -401,6 +456,9 @@ impl Transaction for PostgresTransaction {
 					Request::GetEdgeCount(ref outbound_id, ref t) => self.get_edge_count(&trans, *outbound_id, t.clone()),
 					Request::GetEdgeRange(ref outbound_id, ref t, ref offset, ref limit) => self.get_edge_range(&trans, *outbound_id, t.clone(), *offset, *limit),
 					Request::GetEdgeTimeRange(ref outbound_id, ref t, ref high, ref low, ref limit) => self.get_edge_time_range(&trans, *outbound_id, t.clone(), *high, *low, *limit),
+					Request::GetMetadata(ref owner_id, ref key) => self.get_metadata(&trans, *owner_id, key.clone()),
+					Request::SetMetadata(ref owner_id, ref key, ref value) => self.set_metadata(&trans, *owner_id, key.clone(), value.clone()),
+					Request::DeleteMetadata(ref owner_id, ref key) => self.delete_metadata(&trans, *owner_id, key.clone())
 				}
 			}).collect();
 

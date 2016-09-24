@@ -15,5 +15,9 @@ pub enum Request {
 	DeleteEdge(i64, String, i64),
 	GetEdgeCount(i64, String),
 	GetEdgeRange(i64, String, i64, i64),
-	GetEdgeTimeRange(i64, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i64)
+	GetEdgeTimeRange(i64, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i64),
+
+	GetMetadata(Option<i64>, String),
+	SetMetadata(Option<i64>, String, JsonValue),
+	DeleteMetadata(Option<i64>, String)
 }

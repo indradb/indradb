@@ -459,6 +459,90 @@ macro_rules! test_datastore_impl {
 				::datastore_test::get_edge_time_range_reversed_time(sandbox)
 			});
 		}
+
+		#[test]
+		fn get_local_metadata_existing() {
+			::datastore_test::run(datastore(), "get_local_metadata_existing", |sandbox| {
+				::datastore_test::get_local_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn get_local_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "get_local_metadata_nonexisting", |sandbox| {
+				::datastore_test::get_local_metadata_nonexisting(sandbox)
+			});
+		}
+
+		#[test]
+		fn set_local_metadata_existing() {
+			::datastore_test::run(datastore(), "set_local_metadata_existing", |sandbox| {
+				::datastore_test::set_local_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn set_local_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "set_local_metadata_nonexisting", |sandbox| {
+				::datastore_test::set_local_metadata_nonexisting(sandbox)
+			});
+		}
+
+		#[test]
+		fn delete_local_metadata_existing() {
+			::datastore_test::run(datastore(), "delete_local_metadata_existing", |sandbox| {
+				::datastore_test::delete_local_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn delete_local_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "delete_local_metadata_nonexisting", |sandbox| {
+				::datastore_test::delete_local_metadata_nonexisting(sandbox)
+			});
+		}
+
+		#[test]
+		fn get_global_metadata_existing() {
+			::datastore_test::run(datastore(), "get_global_metadata_existing", |sandbox| {
+				::datastore_test::get_global_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn get_global_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "get_global_metadata_nonexisting", |sandbox| {
+				::datastore_test::get_global_metadata_nonexisting(sandbox)
+			});
+		}
+
+		#[test]
+		fn set_global_metadata_existing() {
+			::datastore_test::run(datastore(), "set_global_metadata_existing", |sandbox| {
+				::datastore_test::set_global_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn set_global_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "set_global_metadata_nonexisting", |sandbox| {
+				::datastore_test::set_global_metadata_nonexisting(sandbox)
+			});
+		}
+
+		#[test]
+		fn delete_global_metadata_existing() {
+			::datastore_test::run(datastore(), "delete_global_metadata_existing", |sandbox| {
+				::datastore_test::delete_global_metadata_existing(sandbox)
+			});
+		}
+
+		#[test]
+		fn delete_global_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "delete_global_metadata_nonexisting", |sandbox| {
+				::datastore_test::delete_global_metadata_nonexisting(sandbox)
+			});
+		}
 	)
 }
 
@@ -996,4 +1080,52 @@ pub fn get_before() -> Option<NaiveDateTime> {
 pub fn get_after() -> Option<NaiveDateTime> {
 	let time = UTC::now().add(Duration::days(1));
 	Option::Some(NaiveDateTime::from_timestamp(time.timestamp(), 0))
+}
+
+pub fn get_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn get_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn set_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn set_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn delete_local_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn delete_local_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn get_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn get_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn set_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn set_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn delete_global_metadata_existing<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
+}
+
+pub fn delete_global_metadata_nonexisting<D: Datastore<T>, T: Transaction>(sandbox: &mut DatastoreTestSandbox<D, T>) {
+	assert!(false, "Not implemented");
 }
