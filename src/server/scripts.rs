@@ -106,6 +106,9 @@ fn run_in_thread(email: String, source: &str, arg: JsonValue) -> Result<JsonValu
     l.register("get_edge_range", get_edge_range);
     l.register("get_edge_time_range", get_edge_time_range);
     l.register("transaction", transaction);
+    l.register("get_metadata", get_metadata);
+    l.register("set_metadata", set_metadata);
+    l.register("delete_metadata", delete_metadata);
 
     match l.loadstring(source) {
         Err(err) => return Err(ScriptError::new_from_loaderror(&mut l, err)),
@@ -198,7 +201,7 @@ unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) 
     l.setfield(-2, k);
 }
 
-unsafe fn add_obj_field_to_table(l: &mut lua::ExternState, k: &str, v: &BTreeMap<String, JsonValue>) {
+unsafe fn add_json_field_to_table(l: &mut lua::ExternState, k: &str, v: JsonValue) {
     let s = serde_json::to_string(&v).unwrap();
     l.pushstring(&s[..]);
     l.setfield(-2, k);
@@ -239,6 +242,19 @@ unsafe fn get_i64_field_from_table(l: &mut lua::ExternState, narg: i32, name: &s
     }
 }
 
+unsafe fn get_optional_i64_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> Result<Option<i64>, LuaError> {
+    let s = get_string_field_from_table(l, narg, name);
+
+    if s == "" {
+        Ok(None)
+    } else {
+        match i64::from_str_radix(&s[..], 10) {
+            Ok(i) => Ok(Some(i)),
+            Err(_) => Err(LuaError::Generic("Expected i64 as string".to_string()))
+        }
+    }
+}
+
 unsafe fn get_datetime_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> Result<Option<NaiveDateTime>, LuaError> {
     let s = get_string_field_from_table(l, narg, name);
 
@@ -252,6 +268,13 @@ unsafe fn get_datetime_field_from_table(l: &mut lua::ExternState, narg: i32, nam
     }
 }
 
+unsafe fn get_json_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> Result<JsonValue, LuaError> {
+    match serde_json::from_str(&get_string_field_from_table(l, narg, name)[..]) {
+        Ok(val) => Ok(val),
+        _ => Err(LuaError::Generic("Expected JSON value as string".to_string()))
+    }
+}
+
 unsafe fn get_obj_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> Result<BTreeMap<String, JsonValue>, LuaError> {
     match serde_json::from_str(&get_string_field_from_table(l, narg, name)[..]) {
         Ok(JsonValue::Object(obj)) => Ok(obj),
@@ -259,7 +282,7 @@ unsafe fn get_obj_field_from_table(l: &mut lua::ExternState, narg: i32, name: &s
     }
 }
 
-unsafe fn get_obj_param(l: &mut lua::ExternState, narg: i32) -> Result<BTreeMap<String, JsonValue>, LuaError> {
+unsafe fn get_obj_param(l: &mut lua::ExternState, narg: i32) -> Result<JsonValue, LuaError> {
     let s = match l.checkstring(narg) {
         Some(s) => &s[..],
         None => {
@@ -267,9 +290,25 @@ unsafe fn get_obj_param(l: &mut lua::ExternState, narg: i32) -> Result<BTreeMap<
         }
     };
 
+    let json = serde_json::from_str(s);
+
+    match json {
+        Ok(JsonValue::Object(_)) => Ok(json.unwrap()),
+        _ => Err(LuaError::Arg(narg, "Expected JSON object as string".to_string()))
+    }
+}
+
+unsafe fn get_json_param(l: &mut lua::ExternState, narg: i32) -> Result<JsonValue, LuaError> {
+    let s = match l.checkstring(narg) {
+        Some(s) => &s[..],
+        None => {
+            return Err(LuaError::Arg(narg, "Expected JSON value as string".to_string()))
+        }
+    };
+
     match serde_json::from_str(s) {
-        Ok(JsonValue::Object(obj)) => Ok(obj),
-        _ => Err(LuaError::Arg(2, "Expected JSON object as string".to_string()))
+        Ok(val) => Ok(val),
+        _ => Err(LuaError::Arg(narg, "Expected JSON value as string".to_string()))
     }
 }
 
@@ -293,7 +332,7 @@ lua_fn! {
         let properties = try!(get_obj_param(l, 2));
         init_request_table(l, "create_vertex");
         add_string_field_to_table(l, "type", &t[..]);
-        add_obj_field_to_table(l, "properties", &properties);
+        add_json_field_to_table(l, "properties", properties);
         Ok(1)
     }
 
@@ -304,7 +343,7 @@ lua_fn! {
         init_request_table(l, "set_vertex");
         add_string_field_to_table(l, "id", &id[..]);
         add_string_field_to_table(l, "type", &t[..]);
-        add_obj_field_to_table(l, "properties", &properties);
+        add_json_field_to_table(l, "properties", properties);
         Ok(1)
     }
 
@@ -337,7 +376,7 @@ lua_fn! {
         add_string_field_to_table(l, "type", &t[..]);
         add_string_field_to_table(l, "inbound_id", &inbound_id[..]);
         add_number_field_to_table(l, "weight", weight);
-        add_obj_field_to_table(l, "properties", &properties);
+        add_json_field_to_table(l, "properties", properties);
         Ok(1)
     }
 
@@ -386,6 +425,35 @@ lua_fn! {
         add_string_field_to_table(l, "high", &high[..]);
         add_string_field_to_table(l, "low", &low[..]);
         add_int_field_to_table(l, "limit", limit);
+        Ok(1)
+    }
+
+    unsafe fn get_metadata(l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_string_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        init_request_table(l, "get_metadata");
+        add_string_field_to_table(l, "owner_id", &owner_id[..]);
+        add_string_field_to_table(l, "key", &key[..]);
+        Ok(1)
+    }
+
+    unsafe fn set_metadata(l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_string_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let value = try!(get_json_param(l, 3));
+        init_request_table(l, "set_metadata");
+        add_string_field_to_table(l, "owner_id", &owner_id[..]);
+        add_string_field_to_table(l, "key", &key[..]);
+        add_json_field_to_table(l, "value", value);
+        Ok(1)
+    }
+
+    unsafe fn delete_metadata(l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_string_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        init_request_table(l, "delete_metadata");
+        add_string_field_to_table(l, "owner_id", &owner_id[..]);
+        add_string_field_to_table(l, "key", &key[..]);
         Ok(1)
     }
 
@@ -487,6 +555,10 @@ unsafe fn serialize_ok_res(l: &mut lua::ExternState, res: DatastoreResponse) {
         },
         DatastoreResponse::Ok => {
             init_request_table(l, "ok");
+        },
+        DatastoreResponse::Metadata(value) => {
+            init_request_table(l, "metadata");
+            add_string_field_to_table(l, "value", &serde_json::to_string(&value).unwrap()[..]);
         }
     }
 }
@@ -515,6 +587,16 @@ unsafe fn serialize_err_res(l: &mut lua::ExternState, res: DatastoreErrorRespons
         },
     	DatastoreErrorResponse::LimitOutOfRange => {
             init_request_table(l, "limit_out_of_range");
+        },
+        DatastoreErrorResponse::MetadataDoesNotExist(owner_id, key) => {
+            init_request_table(l, "metadata_does_not_exist");
+
+            let owner_id_str = match owner_id {
+                Some(owner_id) => owner_id.to_string(),
+                None => "".to_string()
+            };
+
+            add_string_field_to_table(l, "owner_id", &owner_id_str[..]);
         }
     };
 }
@@ -579,6 +661,22 @@ unsafe fn deserialize_request(l: &mut lua::ExternState, i: i32) -> Result<Datast
             let low = try!(get_datetime_field_from_table(l, -1, "low"));
             let limit = try!(get_i64_field_from_table(l, -1, "limit"));
             Ok(DatastoreRequest::GetEdgeTimeRange(outbound_id, t, high, low, limit))
+        },
+        "get_metadata" => {
+            let owner_id = try!(get_optional_i64_field_from_table(l, -1, "owner_id"));
+            let key = get_string_field_from_table(l, -1, "key");
+            Ok(DatastoreRequest::GetMetadata(owner_id, key))
+        },
+        "set_metadata" => {
+            let owner_id = try!(get_optional_i64_field_from_table(l, -1, "owner_id"));
+            let key = get_string_field_from_table(l, -1, "key");
+            let value = try!(get_json_field_from_table(l, -1, "value"));
+            Ok(DatastoreRequest::SetMetadata(owner_id, key, value))
+        },
+        "delete_metadata" => {
+            let owner_id = try!(get_optional_i64_field_from_table(l, -1, "owner_id"));
+            let key = get_string_field_from_table(l, -1, "key");
+            Ok(DatastoreRequest::DeleteMetadata(owner_id, key))
         },
         _ => {
             Err(LuaError::Generic(format!("Unknown transaction type at index #{}", i)))
