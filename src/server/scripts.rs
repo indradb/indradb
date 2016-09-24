@@ -198,6 +198,11 @@ unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) 
     l.setfield(-2, k);
 }
 
+unsafe fn add_isize_field_to_table(l: &mut lua::ExternState, k: &str, v: isize) {
+    l.pushinteger(v);
+    l.setfield(-2, k);
+}
+
 unsafe fn add_obj_field_to_table(l: &mut lua::ExternState, k: &str, v: &BTreeMap<String, JsonValue>) {
     let s = serde_json::to_string(&v).unwrap();
     l.pushstring(&s[..]);
@@ -230,6 +235,13 @@ unsafe fn get_number_field_from_table(l: &mut lua::ExternState, narg: i32, name:
     let f = l.checknumber(-1);
     l.pop(1);
     f
+}
+
+unsafe fn get_isize_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> isize {
+    l.getfield(narg, name);
+    let i = l.checkinteger(-1);
+    l.pop(1);
+    i
 }
 
 unsafe fn get_i64_field_from_table(l: &mut lua::ExternState, narg: i32, name: &str) -> Result<i64, LuaError> {
@@ -365,12 +377,12 @@ lua_fn! {
         let outbound_id = try!(get_string_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let offset = try!(get_string_param(l, 3));
-        let limit = try!(get_string_param(l, 4));
+        let limit = l.checkinteger(4);
         init_request_table(l, "get_edge_range");
         add_string_field_to_table(l, "outbound_id", &outbound_id[..]);
         add_string_field_to_table(l, "type", &t[..]);
         add_string_field_to_table(l, "offset", &offset[..]);
-        add_string_field_to_table(l, "limit", &limit[..]);
+        add_isize_field_to_table(l, "limit", limit);
         Ok(1)
     }
 
@@ -385,7 +397,7 @@ lua_fn! {
         add_string_field_to_table(l, "type", &t[..]);
         add_string_field_to_table(l, "high", &high[..]);
         add_string_field_to_table(l, "low", &low[..]);
-        add_int_field_to_table(l, "limit", limit);
+        add_isize_field_to_table(l, "limit", limit);
         Ok(1)
     }
 
@@ -443,7 +455,7 @@ lua_fn! {
     }
 }
 
-unsafe fn serialize_ok_res(l: &mut lua::ExternState, res: DatastoreResponse) {
+unsafe fn serialize_ok_res(l: &mut lua::ExternState, res: DatastoreResponse<i64>) {
     match res {
         DatastoreResponse::VertexId(id) => {
             init_request_table(l, "vertex_id");
@@ -491,7 +503,7 @@ unsafe fn serialize_ok_res(l: &mut lua::ExternState, res: DatastoreResponse) {
     }
 }
 
-unsafe fn serialize_err_res(l: &mut lua::ExternState, res: DatastoreErrorResponse) {
+unsafe fn serialize_err_res(l: &mut lua::ExternState, res: DatastoreErrorResponse<i64>) {
 	match res {
         DatastoreErrorResponse::Unexpected(err) => {
             init_request_table(l, "unexpected");
@@ -519,7 +531,7 @@ unsafe fn serialize_err_res(l: &mut lua::ExternState, res: DatastoreErrorRespons
     };
 }
 
-unsafe fn deserialize_request(l: &mut lua::ExternState, i: i32) -> Result<DatastoreRequest, LuaError> {
+unsafe fn deserialize_request(l: &mut lua::ExternState, i: i32) -> Result<DatastoreRequest<i64>, LuaError> {
     match &get_string_field_from_table(l, -1, "_type")[..] {
         "get_vertex" => {
             let id = try!(get_i64_field_from_table(l, -1, "id"));
@@ -569,7 +581,7 @@ unsafe fn deserialize_request(l: &mut lua::ExternState, i: i32) -> Result<Datast
             let outbound_id = try!(get_i64_field_from_table(l, -1, "outbound_id"));
             let t = get_string_field_from_table(l, -1, "type");
             let offset = try!(get_i64_field_from_table(l, -1, "offset"));
-            let limit = try!(get_i64_field_from_table(l, -1, "limit"));
+            let limit = get_isize_field_from_table(l, -1, "limit") as i32;
             Ok(DatastoreRequest::GetEdgeRange(outbound_id, t, offset, limit))
         },
         "get_edge_time_range" => {
@@ -577,7 +589,7 @@ unsafe fn deserialize_request(l: &mut lua::ExternState, i: i32) -> Result<Datast
             let t = get_string_field_from_table(l, -1, "type");
             let high = try!(get_datetime_field_from_table(l, -1, "high"));
             let low = try!(get_datetime_field_from_table(l, -1, "low"));
-            let limit = try!(get_i64_field_from_table(l, -1, "limit"));
+            let limit = get_isize_field_from_table(l, -1, "limit") as i32;
             Ok(DatastoreRequest::GetEdgeTimeRange(outbound_id, t, high, low, limit))
         },
         _ => {

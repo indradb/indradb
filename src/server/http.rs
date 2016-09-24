@@ -1,4 +1,5 @@
 use iron::prelude::*;
+use std::i32;
 use iron::status;
 use iron::headers::{Headers, ContentType, Authorization, Basic};
 use iron::typemap::{Key, TypeMap};
@@ -29,7 +30,7 @@ use std::fs::File;
 
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
 
-const MAX_RETURNABLE_EDGES: i64 = 1000;
+const MAX_RETURNABLE_EDGES: i32 = 1000;
 
 // -- Public function for starting the server
 pub fn start(port: u16, datastore: PostgresDatastore) {
@@ -377,7 +378,7 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 
 	match action {
 		"time" => {
-			let mut limit = try!(get_query_param::<i64>(query_params, "limit".to_string(), false)).unwrap_or(0);
+			let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
 
 			if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
 				limit = MAX_RETURNABLE_EDGES;
@@ -396,7 +397,7 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 			trans.request(DatastoreRequest::GetEdgeTimeRange(outbound_id, t, high, low, limit));
 		},
 		"position" => {
-			let mut limit = try!(get_query_param::<i64>(query_params, "limit".to_string(), false)).unwrap_or(0);
+			let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
 
 			if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
 				limit = MAX_RETURNABLE_EDGES;
@@ -554,12 +555,12 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 	}
 }
 
-fn get_vertex_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn get_vertex_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let id = try!(get_json_u64_param(item, "id", false));
 	Ok(DatastoreRequest::GetVertex(id.unwrap() as i64))
 }
 
-fn set_vertex_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn set_vertex_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let id = try!(get_json_u64_param(item, "id", true));
 	let t = try!(get_json_string_param(item, "type", false));
 	let properties = try!(get_json_object_param(item, "properties", true));
@@ -572,19 +573,19 @@ fn set_vertex_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreReques
 	})
 }
 
-fn delete_vertex(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn delete_vertex(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let id = try!(get_json_u64_param(item, "id", false));
 	Ok(DatastoreRequest::DeleteVertex(id.unwrap() as i64))
 }
 
-fn get_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn get_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
 	Ok(DatastoreRequest::GetEdge(outbound_id.unwrap() as i64, t.unwrap(), inbound_id.unwrap() as i64))
 }
 
-fn set_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn set_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
@@ -600,23 +601,29 @@ fn set_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest,
 	Ok(DatastoreRequest::SetEdge(edge))
 }
 
-fn delete_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn delete_edge_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
 	Ok(DatastoreRequest::DeleteEdge(outbound_id.unwrap() as i64, t.unwrap(), inbound_id.unwrap() as i64))
 }
 
-fn get_edge_count_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn get_edge_count_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	Ok(DatastoreRequest::GetEdgeCount(outbound_id.unwrap() as i64, t.unwrap()))
 }
 
-fn get_json_limit_param(item: &BTreeMap<String, JsonValue>) -> Result<i64, IronError> {
+fn get_json_limit_param(item: &BTreeMap<String, JsonValue>) -> Result<i32, IronError> {
 	let limit = match try!(get_json_u64_param(item, "limit", true)) {
-		Some(val) => val as i64,
-		None => MAX_RETURNABLE_EDGES
+		Some(val) => {
+			if val <= i32::MAX as u64 {
+				val as i32
+			} else {
+				MAX_RETURNABLE_EDGES
+			}
+		},
+	 	_ => MAX_RETURNABLE_EDGES
 	};
 
 	if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
@@ -633,7 +640,7 @@ fn get_json_timestamp_param(item: &BTreeMap<String, JsonValue>, name: &str) -> R
 	}
 }
 
-fn get_edge_range_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn get_edge_range_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let limit = try!(get_json_limit_param(item));
@@ -645,7 +652,7 @@ fn get_edge_range_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRe
 	Ok(DatastoreRequest::GetEdgeRange(outbound_id.unwrap() as i64, t.unwrap(), offset, limit))
 }
 
-fn get_edge_time_range_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest, IronError> {
+fn get_edge_time_range_item(item: &BTreeMap<String, JsonValue>) -> Result<DatastoreRequest<i64>, IronError> {
 	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let limit = try!(get_json_limit_param(item));
