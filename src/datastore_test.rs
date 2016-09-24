@@ -29,10 +29,8 @@ fn new_follows_edge(outbound_id: i64, inbound_id: i64, weight: f32) -> Request {
 pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction, I: Id> {
 	name: String,
 
-	primary_id: I,
-	primary_secret: String,
-	isolated_id: I,
-	isolated_secret: String,
+	owner_id: I,
+	owner_secret: String,
 
 	pub datastore: D,
 	pub vertices: Vec<models::Vertex>,
@@ -45,10 +43,8 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 	pub fn new(name: String, datastore: D) -> DatastoreTestSandbox<D, T, I> {
 		return DatastoreTestSandbox{
 			name: name.clone(),
-			primary_id: I::default(),
-			primary_secret: "".to_string(),
-			isolated_id: I::default(),
-			isolated_secret: "".to_string(),
+			owner_id: I::default(),
+			owner_secret: "".to_string(),
 			datastore: datastore,
 			vertices: Vec::new(),
 			accounts: Vec::new(),
@@ -56,12 +52,12 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		};
 	}
 
-	fn transaction(&self) -> T {
-		self.datastore.transaction(self.primary_id.clone()).expect("Expected to be able to create a transaction")
+	fn generate_email(&self, prefix: &str) -> String {
+		format!("{}-{}@nutrino.com", prefix, self.name.clone())
 	}
 
-	fn isolated_transaction(&self) -> T {
-		self.datastore.transaction(self.isolated_id.clone()).expect("Expected to be able to create a transaction")
+	fn transaction(&self) -> T {
+		self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction")
 	}
 
 	fn search_id(&self, t: &str, name: &str) -> i64 {
@@ -119,7 +115,7 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 	}
 
 	fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> i64 {
-		let mut trans = self.datastore.transaction(self.primary_id.clone()).expect("Expected to be able to create a transaction");
+		let mut trans = self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction");
 
 		let props = match name {
 			Some(name) => create_test_properties(name),
@@ -141,22 +137,18 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		id
 	}
 
-	fn register_account(&mut self, email: String) -> (I, String) {
-		let (id, secret) = self.datastore.create_account(email).expect("Expected to be able to create an account");
+	fn register_account(&mut self, email: &str) -> (I, String) {
+		let (id, secret) = self.datastore.create_account(email.to_string()).expect("Expected to be able to create an account");
 		self.accounts.push(id.clone());
 		(id, secret)
 	}
 
 	pub fn setup(&mut self) {
 		// First create a couple of accounts
-		let primary_email = format!("primary-{}@nutrino.com", self.name.clone());
-		let (primary_id, primary_secret) = self.register_account(primary_email);
-		let isolated_email = format!("isolated-{}@nutrino.com", self.name.clone());
-		let (isolated_id, isolated_secret) = self.register_account(isolated_email);
-		self.primary_id = primary_id;
-		self.primary_secret = primary_secret;
-		self.isolated_id = isolated_id;
-		self.isolated_secret = isolated_secret;
+		let owner_email = self.generate_email("owner");
+		let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
+		self.owner_id = owner_id;
+		self.owner_secret = owner_secret;
 
 		// Insert some users
 		let jill_id = self.create_test_vertex("user", Some("Jill"));
@@ -176,7 +168,7 @@ impl<D: Datastore<T, I>, T: Transaction, I: Id> DatastoreTestSandbox<D, T, I> {
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.datastore.transaction(self.primary_id.clone()).expect("Expected to be able to create a transaction");
+		let mut trans = self.datastore.transaction(self.owner_id.clone()).expect("Expected to be able to create a transaction");
 
 		// Jill isn't a fan
 		trans.request(new_review_edge(jill_id, inception_id, -0.8));
@@ -497,20 +489,19 @@ pub fn auth_bad_username<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mu
 }
 
 pub fn auth_bad_password<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let auth = sandbox.datastore.auth(sandbox.isolated_id.clone(), "bad_token".to_string());
+	let auth = sandbox.datastore.auth(sandbox.owner_id.clone(), "bad_token".to_string());
 	assert!(auth.is_ok());
 	assert!(!auth.unwrap());
 }
 
 pub fn auth_good<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (id, secret) = sandbox.register_account("auth-good@nutrino.com".to_string());
-	let auth = sandbox.datastore.auth(id, secret);
+	let auth = sandbox.datastore.auth(sandbox.owner_id.clone(), sandbox.owner_secret.clone());
 	assert!(auth.is_ok());
 	assert!(auth.unwrap());
 }
 
 pub fn has_account_existing<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let results = sandbox.datastore.has_account(sandbox.primary_id.clone());
+	let results = sandbox.datastore.has_account(sandbox.owner_id.clone());
 	assert!(results.is_ok());
 	assert!(results.unwrap());
 }
@@ -674,7 +665,8 @@ pub fn delete_vertex_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sand
 }
 
 pub fn delete_vertex_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let mut trans = sandbox.isolated_transaction();
+	let (id, secret) = sandbox.register_account("isolated");
+	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::DeleteVertex(sandbox.jill_id()));
 	let item = single_response_from_transaction(&mut trans);
 
@@ -790,7 +782,8 @@ pub fn set_edge_bad_weight<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &
 }
 
 pub fn set_edge_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let mut trans = sandbox.isolated_transaction();
+	let (id, secret) = sandbox.register_account("isolated");
+	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5)));
 	let item = single_response_from_transaction(&mut trans);
 
@@ -860,7 +853,8 @@ pub fn delete_edge_nonexisting<D: Datastore<T, I>, T: Transaction, I: Id>(sandbo
 
 pub fn delete_edge_bad_permissions<D: Datastore<T, I>, T: Transaction, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let fake_id = sandbox.fake_id();
-	let mut trans = sandbox.isolated_transaction();
+	let (id, secret) = sandbox.register_account("isolated");
+	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), fake_id));
 	let item = single_response_from_transaction(&mut trans);
 
