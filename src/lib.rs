@@ -17,7 +17,7 @@ mod util;
 #[cfg(test)] #[macro_use] mod datastore_test;
 
 pub use datastore::{Id, Datastore, Transaction};
-pub use models::{Vertex, Type, Edge};
+pub use models::{Vertex, Edge};
 pub use requests::Request;
 pub use responses::{Response, ErrorResponse};
 pub use util::SimpleError;

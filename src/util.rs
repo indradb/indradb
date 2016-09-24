@@ -1,3 +1,4 @@
+use super::datastore::Id;
 use std::error::Error;
 use std::fmt;
 use std::collections::BTreeMap;
@@ -41,7 +42,7 @@ impl fmt::Display for SimpleError {
 	}
 }
 
-pub fn parse_json_object(s: String) -> Result<BTreeMap<String, JsonValue>, ErrorResponse> {
+pub fn parse_json_object<I: Id>(s: String) -> Result<BTreeMap<String, JsonValue>, ErrorResponse<I>> {
 	let serialized = serde_json::from_str(&s[..]);
 
 	if serialized.is_ok() {

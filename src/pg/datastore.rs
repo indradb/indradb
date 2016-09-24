@@ -143,8 +143,8 @@ fn pg_error_to_description(err: pg_error::Error) -> String {
 	}
 }
 
-impl From<pg_error::Error> for ErrorResponse {
-	fn from(err: pg_error::Error) -> ErrorResponse {
+impl<I: Id> From<pg_error::Error> for ErrorResponse<I> {
+	fn from(err: pg_error::Error) -> ErrorResponse<I> {
 		ErrorResponse::Unexpected(pg_error_to_description(err))
 	}
 }
@@ -165,11 +165,11 @@ impl From<GetTimeout> for SimpleError {
 pub struct PostgresTransaction {
 	pool: Pool<PostgresConnectionManager>,
 	account_id: i32,
-	requests: Vec<Request>
+	requests: Vec<Request<i64>>
 }
 
 impl PostgresTransaction {
-	fn get_vertex(&self, trans: &postgres::Transaction, id: i64) -> Result<Response, ErrorResponse> {
+	fn get_vertex(&self, trans: &postgres::Transaction, id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("SELECT properties, type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
 
 		for row in &results {
@@ -183,7 +183,7 @@ impl PostgresTransaction {
 		Err(ErrorResponse::VertexDoesNotExist(id))
 	}
 
-	fn create_vertex(&self, trans: &postgres::Transaction, t: String, properties: BTreeMap<String, JsonValue>) -> Result<Response, ErrorResponse> {
+	fn create_vertex(&self, trans: &postgres::Transaction, t: String, properties: BTreeMap<String, JsonValue>) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("
 			INSERT INTO vertices (type, owner_id, properties) VALUES ($1, $2, $3) RETURNING id
 		", &[&t, &self.account_id, &serde_json::to_string(&properties).unwrap()]));
@@ -196,7 +196,7 @@ impl PostgresTransaction {
 		panic!("Unreachable point hit")
 	}
 
-	fn set_vertex(&self, trans: &postgres::Transaction, v: models::Vertex) -> Result<Response, ErrorResponse> {
+	fn set_vertex(&self, trans: &postgres::Transaction, v: models::Vertex<i64>) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("
 			UPDATE vertices
 			SET type=$1, properties=$2
@@ -211,7 +211,7 @@ impl PostgresTransaction {
 		return Err(ErrorResponse::VertexDoesNotExist(v.id))
 	}
 
-	fn delete_vertex(&self, trans: &postgres::Transaction, id: i64) -> Result<Response, ErrorResponse> {
+	fn delete_vertex(&self, trans: &postgres::Transaction, id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1", &[&id, &self.account_id]));
 
 		for _ in &results {
@@ -221,7 +221,7 @@ impl PostgresTransaction {
 		Err(ErrorResponse::VertexDoesNotExist(id))
 	}
 
-	fn get_edge(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, inbound_id: i64) -> Result<Response, ErrorResponse> {
+	fn get_edge(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, inbound_id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("
 			SELECT properties, weight FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3 LIMIT 1
 		", &[&outbound_id, &t, &inbound_id]));
@@ -237,7 +237,7 @@ impl PostgresTransaction {
 		Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id))
 	}
 
-	fn set_edge(&self, trans: &postgres::Transaction, e: models::Edge) -> Result<Response, ErrorResponse> {
+	fn set_edge(&self, trans: &postgres::Transaction, e: models::Edge<i64>) -> Result<Response<i64>, ErrorResponse<i64>> {
 		if e.weight < -1.0 || e.weight > 1.0 {
 			return Err(ErrorResponse::WeightOutOfRange)
 		}
@@ -277,7 +277,7 @@ impl PostgresTransaction {
 		return Err(ErrorResponse::VertexDoesNotExist(e.outbound_id))
 	}
 
-	fn delete_edge(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, inbound_id: i64) -> Result<Response, ErrorResponse> {
+	fn delete_edge(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, inbound_id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("
 			DELETE FROM EDGES
 			WHERE outbound_id=(SELECT id FROM vertices WHERE id=$1 AND owner_id=$2) AND type=$3 AND inbound_id=$4
@@ -291,7 +291,7 @@ impl PostgresTransaction {
 		return Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id))
 	}
 
-	fn get_edge_count(&self, trans: &postgres::Transaction, outbound_id: i64, t: String) -> Result<Response, ErrorResponse> {
+	fn get_edge_count(&self, trans: &postgres::Transaction, outbound_id: i64, t: String) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(trans.query("
 			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
 		", &[&outbound_id, &t]));
@@ -304,7 +304,7 @@ impl PostgresTransaction {
 		panic!("Unreachable point hit")
 	}
 
-	fn get_edge_range(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, offset: i64, limit: i64) -> Result<Response, ErrorResponse> {
+	fn get_edge_range(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Response<i64>, ErrorResponse<i64>> {
 		if offset < 0 {
 			return Err(ErrorResponse::OffsetOutOfRange);
 		}
@@ -320,12 +320,12 @@ impl PostgresTransaction {
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&outbound_id, &t, &offset, &limit]));
+		", &[&outbound_id, &t, &offset, &(limit as i64)]));
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_edge_time_range(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i64) -> Result<Response, ErrorResponse> {
+	fn get_edge_time_range(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Response<i64>, ErrorResponse<i64>> {
 		if limit < 0 {
 			return Err(ErrorResponse::LimitOutOfRange);
 		}
@@ -338,7 +338,7 @@ impl PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
 					LIMIT $5
-				", &[&outbound_id, &t, &high_unboxed, &low_unboxed, &limit])
+				", &[&outbound_id, &t, &high_unboxed, &low_unboxed, &(limit as i64)])
 			},
 			(Option::Some(high_unboxed), Option::None) => {
 				trans.query("
@@ -347,7 +347,7 @@ impl PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&outbound_id, &t, &high_unboxed, &limit])
+				", &[&outbound_id, &t, &high_unboxed, &(limit as i64)])
 			},
 			(Option::None, Option::Some(low_unboxed)) => {
 				trans.query("
@@ -356,7 +356,7 @@ impl PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&outbound_id, &t, &low_unboxed, &limit])
+				", &[&outbound_id, &t, &low_unboxed, &(limit as i64)])
 			},
 			_ => {
 				trans.query("
@@ -365,15 +365,15 @@ impl PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
 					LIMIT $3
-				", &[&outbound_id, &t, &limit])
+				", &[&outbound_id, &t, &(limit as i64)])
 			}
 		});
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn fill_edges(&self, results: Rows, outbound_id: i64, t: String) -> Result<Response, ErrorResponse> {
-		let mut edges: Vec<models::Edge> = Vec::new();
+	fn fill_edges(&self, results: Rows, outbound_id: i64, t: String) -> Result<Response<i64>, ErrorResponse<i64>> {
+		let mut edges: Vec<models::Edge<i64>> = Vec::new();
 
 		for row in &results {
 			let inbound_id: i64 = row.get(0);
@@ -386,7 +386,7 @@ impl PostgresTransaction {
 		Ok(Response::Edges(edges))
 	}
 
-	fn get_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response, ErrorResponse> {
+	fn get_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(match owner_id {
 			Some(owner_id) => {
 				trans.query("SELECT value FROM metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key])
@@ -405,7 +405,7 @@ impl PostgresTransaction {
 		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
 	}
 
-	fn set_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<Response, ErrorResponse> {
+	fn set_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let value_str = serde_json::to_string(&value).unwrap();
 
 		let results = try!(match owner_id {
@@ -424,7 +424,7 @@ impl PostgresTransaction {
 		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
 	}
 
-	fn delete_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response, ErrorResponse> {
+	fn delete_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(match owner_id {
 			Some(owner_id) => {
 				trans.query("DELETE FROM metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key])
@@ -442,17 +442,17 @@ impl PostgresTransaction {
 	}
 }
 
-impl Transaction for PostgresTransaction {
-	fn request(&mut self, req: Request) {
+impl Transaction<i64> for PostgresTransaction {
+	fn request(&mut self, req: Request<i64>) {
 		self.requests.push(req)
 	}
 
-	fn commit(&self) -> Result<Vec<Result<Response, ErrorResponse>>, SimpleError> {
+	fn commit(&self) -> Result<Vec<Result<Response<i64>, ErrorResponse<i64>>>, SimpleError> {
 		let conn = try!(self.pool.get());
 		let trans = try!(conn.transaction());
 
 		let results = {
-			let results: Vec<Result<Response, ErrorResponse>> = self.requests.iter().map(|request| {
+			let results: Vec<Result<Response<i64>, ErrorResponse<i64>>> = self.requests.iter().map(|request| {
 				match *request {
 					Request::GetVertex(ref id) => self.get_vertex(&trans, *id),
 					Request::CreateVertex(ref t, ref properties) => self.create_vertex(&trans, t.clone(), properties.clone()),

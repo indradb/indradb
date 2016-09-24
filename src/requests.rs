@@ -1,23 +1,24 @@
 use super::models;
+use super::datastore::Id;
 use std::option::Option;
 use chrono::naive::datetime::NaiveDateTime;
 use std::collections::BTreeMap;
 use serde_json::value::Value as JsonValue;
 
 #[derive(Clone, Debug)]
-pub enum Request {
-	GetVertex(i64),
+pub enum Request<I: Id> {
+	GetVertex(I),
 	CreateVertex(String, BTreeMap<String, JsonValue>),
-	SetVertex(models::Vertex),
-	DeleteVertex(i64),
-	GetEdge(i64, String, i64),
-	SetEdge(models::Edge),
-	DeleteEdge(i64, String, i64),
-	GetEdgeCount(i64, String),
-	GetEdgeRange(i64, String, i64, i64),
-	GetEdgeTimeRange(i64, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i64),
+	SetVertex(models::Vertex<I>),
+	DeleteVertex(I),
+	GetEdge(I, String, I),
+	SetEdge(models::Edge<I>),
+	DeleteEdge(I, String, I),
+	GetEdgeCount(I, String),
+	GetEdgeRange(I, String, i64, i32),
+	GetEdgeTimeRange(I, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i32),
 
-	GetMetadata(Option<i64>, String),
-	SetMetadata(Option<i64>, String, JsonValue),
-	DeleteMetadata(Option<i64>, String)
+	GetMetadata(Option<I>, String),
+	SetMetadata(Option<I>, String, JsonValue),
+	DeleteMetadata(Option<I>, String)
 }
