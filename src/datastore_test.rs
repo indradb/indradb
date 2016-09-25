@@ -6,6 +6,7 @@ use chrono::UTC;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use std::marker::PhantomData;
+use std::{thread, time};
 use rand::{thread_rng, Rng};
 
 fn create_test_properties(name: &str) -> BTreeMap<String, JsonValue> {
@@ -52,8 +53,8 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
 	}
 
-	fn generate_email(&self, prefix: &str) -> String {
-		format!("{}-{}@nutrino.com", prefix, self.name.clone())
+	fn generate_unique_string(&self, prefix: &str) -> String {
+		format!("{}-{}", prefix, self.name.clone())
 	}
 
 	fn transaction(&self) -> T {
@@ -127,7 +128,7 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 
 	pub fn setup(&mut self) {
 		// First create a couple of accounts
-		let owner_email = self.generate_email("owner");
+		let owner_email = self.generate_unique_string("owner");
 		let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
 		self.owner_id = owner_id;
 		self.owner_secret = owner_secret;
@@ -150,7 +151,7 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
+		let mut trans = self.transaction();
 
 		// Jill isn't a fan
 		trans.request(self.new_review_edge(jill_id, inception_id, -0.8));
@@ -191,10 +192,31 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		trans.request(self.new_follows_edge(jill_id, bob_id, 1.0));
 		trans.request(self.new_follows_edge(bob_id, jill_id, 1.0));
 
-		assert!(trans.commit().is_ok());
+		// Insert some metadata
+		trans.request(Request::SetMetadata(None, self.generate_unique_string("global-metadata"), JsonValue::Bool(true)));
+		trans.request(Request::SetMetadata(Some(owner_id), "local-metadata".to_string(), JsonValue::Bool(true)));
+
+		for item in trans.commit().expect("Expected to be able to commit transaction").iter() {
+			item.clone().expect("No item should have errored out");
+		}
 	}
 
 	pub fn teardown(&self) {
+		// Delete global metadata
+		let mut trans = self.transaction();
+		trans.request(Request::GetMetadata(None, self.generate_unique_string("global-metadata")));
+
+		match single_response_from_transaction(&mut trans) {
+			Ok(Response::Metadata(_)) => {
+				let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
+				trans.request(Request::DeleteMetadata(None, self.generate_unique_string("global-metadata")));
+				let result = trans.commit().expect("Expected to be able to commit transaction");
+				result.get(0).expect("Delete request should not have errored out");
+			},
+			_ => ()
+		}
+
+		// Delete account data
 		for id in self.accounts.iter() {
 			self.datastore.delete_account(id.clone()).expect("Expected to be able to delete the account");
 		}
@@ -438,86 +460,86 @@ macro_rules! test_datastore_impl {
 		}
 
 		#[test]
-		fn get_local_metadata_existing() {
-			::datastore_test::run(datastore(), "get_local_metadata_existing", |sandbox| {
-				::datastore_test::get_local_metadata_existing(sandbox)
+		fn local_get_metadata_existing() {
+			::datastore_test::run(datastore(), "local_get_metadata_existing", |sandbox| {
+				::datastore_test::local_get_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn get_local_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "get_local_metadata_nonexisting", |sandbox| {
-				::datastore_test::get_local_metadata_nonexisting(sandbox)
+		fn local_get_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "local_get_metadata_nonexisting", |sandbox| {
+				::datastore_test::local_get_metadata_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
-		fn set_local_metadata_existing() {
-			::datastore_test::run(datastore(), "set_local_metadata_existing", |sandbox| {
-				::datastore_test::set_local_metadata_existing(sandbox)
+		fn local_set_metadata_existing() {
+			::datastore_test::run(datastore(), "local_set_metadata_existing", |sandbox| {
+				::datastore_test::local_set_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn set_local_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "set_local_metadata_nonexisting", |sandbox| {
-				::datastore_test::set_local_metadata_nonexisting(sandbox)
+		fn local_set_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "local_set_metadata_nonexisting", |sandbox| {
+				::datastore_test::local_set_metadata_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
-		fn delete_local_metadata_existing() {
-			::datastore_test::run(datastore(), "delete_local_metadata_existing", |sandbox| {
-				::datastore_test::delete_local_metadata_existing(sandbox)
+		fn local_delete_metadata_existing() {
+			::datastore_test::run(datastore(), "local_delete_metadata_existing", |sandbox| {
+				::datastore_test::local_delete_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn delete_local_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "delete_local_metadata_nonexisting", |sandbox| {
-				::datastore_test::delete_local_metadata_nonexisting(sandbox)
+		fn local_delete_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "local_delete_metadata_nonexisting", |sandbox| {
+				::datastore_test::local_delete_metadata_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
-		fn get_global_metadata_existing() {
-			::datastore_test::run(datastore(), "get_global_metadata_existing", |sandbox| {
-				::datastore_test::get_global_metadata_existing(sandbox)
+		fn global_get_metadata_existing() {
+			::datastore_test::run(datastore(), "global_get_metadata_existing", |sandbox| {
+				::datastore_test::global_get_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn get_global_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "get_global_metadata_nonexisting", |sandbox| {
-				::datastore_test::get_global_metadata_nonexisting(sandbox)
+		fn global_get_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "global_get_metadata_nonexisting", |sandbox| {
+				::datastore_test::global_get_metadata_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
-		fn set_global_metadata_existing() {
-			::datastore_test::run(datastore(), "set_global_metadata_existing", |sandbox| {
-				::datastore_test::set_global_metadata_existing(sandbox)
+		fn global_set_metadata_existing() {
+			::datastore_test::run(datastore(), "global_set_metadata_existing", |sandbox| {
+				::datastore_test::global_set_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn set_global_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "set_global_metadata_nonexisting", |sandbox| {
-				::datastore_test::set_global_metadata_nonexisting(sandbox)
+		fn global_set_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "global_set_metadata_nonexisting", |sandbox| {
+				::datastore_test::global_set_metadata_nonexisting(sandbox)
 			});
 		}
 
 		#[test]
-		fn delete_global_metadata_existing() {
-			::datastore_test::run(datastore(), "delete_global_metadata_existing", |sandbox| {
-				::datastore_test::delete_global_metadata_existing(sandbox)
+		fn global_delete_metadata_existing() {
+			::datastore_test::run(datastore(), "global_delete_metadata_existing", |sandbox| {
+				::datastore_test::global_delete_metadata_existing(sandbox)
 			});
 		}
 
 		#[test]
-		fn delete_global_metadata_nonexisting() {
-			::datastore_test::run(datastore(), "delete_global_metadata_nonexisting", |sandbox| {
-				::datastore_test::delete_global_metadata_nonexisting(sandbox)
+		fn global_delete_metadata_nonexisting() {
+			::datastore_test::run(datastore(), "global_delete_metadata_nonexisting", |sandbox| {
+				::datastore_test::global_delete_metadata_nonexisting(sandbox)
 			});
 		}
 	)
@@ -1056,50 +1078,78 @@ pub fn get_after() -> Option<NaiveDateTime> {
 	Option::Some(NaiveDateTime::from_timestamp(time.timestamp(), 0))
 }
 
-pub fn get_local_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn local_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), "local-metadata".to_string()));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Ok(Response::Metadata(JsonValue::Bool(is_director))) => assert!(is_director),
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
+}
+
+pub fn local_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn local_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_local_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn local_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn set_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn local_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(Some(sandbox.owner_id), "local-metadata".to_string()));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
+}
+
+pub fn local_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_local_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn global_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global-metadata")));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Ok(Response::Metadata(JsonValue::Bool(value))) => assert!(value),
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
+}
+
+pub fn global_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn delete_local_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn global_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_global_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn global_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }
 
-pub fn get_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
+pub fn global_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(None, sandbox.generate_unique_string("global-metadata")));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
 }
 
-pub fn set_global_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn set_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn delete_global_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn delete_global_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn global_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	assert!(false, "Not implemented");
 }

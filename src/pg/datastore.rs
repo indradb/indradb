@@ -389,10 +389,10 @@ impl PostgresTransaction {
 	fn get_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let results = try!(match owner_id {
 			Some(owner_id) => {
-				trans.query("SELECT value FROM metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key])
+				trans.query("SELECT value FROM metadata WHERE owner_id=$1 AND key=$2", &[&(owner_id as i32), &key])
 			},
 			None => {
-				trans.query("SELECT value FROM metadata WHERE owner_id=NULL AND key=$2", &[&key])
+				trans.query("SELECT value FROM metadata WHERE owner_id IS NULL AND key=$1", &[&key])
 			}
 		});
 
@@ -408,14 +408,26 @@ impl PostgresTransaction {
 	fn set_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<Response<i64>, ErrorResponse<i64>> {
 		let value_str = serde_json::to_string(&value).unwrap();
 
-		let results = try!(match owner_id {
+		let results = match owner_id {
 			Some(owner_id) => {
-				trans.query("UPDATE metadata SET value=$1 WHERE owner_id=$2 AND key=$3 RETURNING 1", &[&value_str, &owner_id, &key])
+				try!(trans.query("
+					INSERT INTO metadata (owner_id, key, value)
+					VALUES ($1, $2, $3)
+					ON CONFLICT ON CONSTRAINT metadata_owner_id_key_ukey
+					DO UPDATE SET value=$3
+					RETURNING 1
+				", &[&(owner_id as i32), &key, &value_str]))
 			},
 			None => {
-				trans.query("UPDATE metadata SET value=$1 WHERE owner_id=NULL AND key=$2 RETURNING 1", &[&value_str, &key])
+				try!(trans.query("
+					INSERT INTO metadata (owner_id, key, value)
+					VALUES (NULL, $1, $2)
+					ON CONFLICT ON CONSTRAINT metadata_owner_id_key_ukey
+					DO UPDATE SET value=$2
+					RETURNING 1
+				", &[&key, &value_str]))
 			}
-		});
+		};
 
 		for _ in &results {
 			return Ok(Response::Ok)
@@ -425,14 +437,14 @@ impl PostgresTransaction {
 	}
 
 	fn delete_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response<i64>, ErrorResponse<i64>> {
-		let results = try!(match owner_id {
+		let results = match owner_id {
 			Some(owner_id) => {
-				trans.query("DELETE FROM metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key])
+				try!(trans.query("DELETE FROM metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&(owner_id as i32), &key]))
 			},
 			None => {
-				trans.query("DELETE FROM metadata WHERE owner_id=NULL AND key=$1 RETURNING 1", &[&key])
+				try!(trans.query("DELETE FROM metadata WHERE owner_id IS NULL AND key=$1 RETURNING 1", &[&key]))
 			}
-		});
+		};
 
 		for _ in &results {
 			return Ok(Response::Ok)
