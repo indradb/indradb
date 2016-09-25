@@ -1,7 +1,7 @@
 extern crate nutrino;
 
 use std::env;
-use nutrino::{Datastore, PostgresDatastore};
+use nutrino::PostgresDatastore;
 
 // Based off of https://github.com/rust-lang/rfcs/issues/1078
 #[macro_export]
