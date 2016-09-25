@@ -1,6 +1,7 @@
 use pg::r2d2_postgres::{SslMode, PostgresConnectionManager};
 use pg::r2d2::{Config, Pool, GetTimeout};
-use datastore::{Id, Datastore, Transaction};
+use datastore::{Datastore, Transaction};
+use traits::Id;
 use requests::Request;
 use responses::{Response, ErrorResponse};
 use models;

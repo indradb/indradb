@@ -1,9 +1,9 @@
 use super::models;
-use super::datastore::Id;
 use std::option::Option;
 use chrono::naive::datetime::NaiveDateTime;
 use std::collections::BTreeMap;
 use serde_json::value::Value as JsonValue;
+use traits::Id;
 
 #[derive(Clone, Debug)]
 pub enum Request<I: Id> {

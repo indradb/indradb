@@ -1,7 +1,6 @@
 #![cfg(test)]
 
 use super::datastore::PostgresDatastore;
-use datastore_test;
 use std::env;
 
 test_datastore_impl! {

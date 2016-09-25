@@ -9,18 +9,19 @@ extern crate serde_json;
 extern crate libc;
 extern crate rand;
 
-mod datastore;
+#[macro_use] mod datastore;
 mod models;
 mod requests;
 mod responses;
 mod util;
-#[cfg(test)] #[macro_use] mod datastore_test;
+mod traits;
 
-pub use datastore::{Id, Datastore, Transaction};
+pub use datastore::{Datastore, Transaction};
 pub use models::{Vertex, Edge};
 pub use requests::Request;
 pub use responses::{Response, ErrorResponse};
 pub use util::SimpleError;
+pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")] mod pg;
 #[cfg(feature="postgres-datastore")] pub use pg::{PostgresDatastore, PostgresTransaction};

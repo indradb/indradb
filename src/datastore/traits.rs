@@ -1,15 +1,8 @@
-use super::util::SimpleError;
-use super::responses::{Response, ErrorResponse};
-use super::requests::Request;
+use util::SimpleError;
+use responses::{Response, ErrorResponse};
+use requests::Request;
+use traits::Id;
 use std::vec::Vec;
-use std::fmt::Debug;
-use serde::ser::Serialize;
-use serde::de::Deserialize;
-use std::default::Default;
-use core::hash::Hash;
-use std::marker::Copy;
-
-pub trait Id: Clone + Debug + Serialize + Deserialize + Eq + Default + Hash + Copy {}
 
 pub trait Datastore<T: Transaction<I>, I: Id> {
 	fn has_account(&self, user_id: I) -> Result<bool, SimpleError>;

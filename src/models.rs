@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use serde_json::value::Value as JsonValue;
-use super::datastore::Id;
+use traits::Id;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex<I: Id> {

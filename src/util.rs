@@ -1,4 +1,3 @@
-use super::datastore::Id;
 use std::error::Error;
 use std::fmt;
 use std::collections::BTreeMap;
@@ -6,6 +5,7 @@ use serde_json::Value as JsonValue;
 use serde_json;
 use super::responses::ErrorResponse;
 use rand::{Rng, OsRng};
+use traits::Id;
 
 #[derive(Debug)]
 pub struct SimpleError {

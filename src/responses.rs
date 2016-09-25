@@ -1,6 +1,6 @@
 use super::models;
-use super::datastore::Id;
 use serde_json::value::Value as JsonValue;
+use traits::Id;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum Response<I: Id> {
