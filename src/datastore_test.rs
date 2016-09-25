@@ -193,8 +193,8 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		trans.request(self.new_follows_edge(bob_id, jill_id, 1.0));
 
 		// Insert some metadata
-		trans.request(Request::SetMetadata(None, self.generate_unique_string("global-metadata"), JsonValue::Bool(true)));
-		trans.request(Request::SetMetadata(Some(owner_id), "local-metadata".to_string(), JsonValue::Bool(true)));
+		trans.request(Request::SetMetadata(None, self.generate_unique_string("global"), JsonValue::Bool(true)));
+		trans.request(Request::SetMetadata(Some(owner_id), self.generate_unique_string("local"), JsonValue::Bool(true)));
 
 		for item in trans.commit().expect("Expected to be able to commit transaction").iter() {
 			item.clone().expect("No item should have errored out");
@@ -204,12 +204,12 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 	pub fn teardown(&self) {
 		// Delete global metadata
 		let mut trans = self.transaction();
-		trans.request(Request::GetMetadata(None, self.generate_unique_string("global-metadata")));
+		trans.request(Request::GetMetadata(None, self.generate_unique_string("global")));
 
 		match single_response_from_transaction(&mut trans) {
 			Ok(Response::Metadata(_)) => {
 				let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
-				trans.request(Request::DeleteMetadata(None, self.generate_unique_string("global-metadata")));
+				trans.request(Request::DeleteMetadata(None, self.generate_unique_string("global")));
 				let result = trans.commit().expect("Expected to be able to commit transaction");
 				result.get(0).expect("Delete request should not have errored out");
 			},
@@ -1080,7 +1080,7 @@ pub fn get_after() -> Option<NaiveDateTime> {
 
 pub fn local_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::GetMetadata(Some(sandbox.owner_id), "local-metadata".to_string()));
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
@@ -1090,35 +1090,103 @@ pub fn local_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>
 }
 
 pub fn local_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn local_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn local_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn local_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::DeleteMetadata(Some(sandbox.owner_id), "local-metadata".to_string()));
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), "".to_string()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Ok(Response::Ok) => (),
+		Err(ErrorResponse::MetadataDoesNotExist(Some(owner_id), key)) => {
+			assert_eq!(owner_id, sandbox.owner_id);
+			assert_eq!("".to_string(), key);
+		},
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
+pub fn local_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::SetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local"), JsonValue::String("test".to_string())));
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let set_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match set_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", set_item))
+	};
+
+	match get_item {
+		Ok(Response::Metadata(JsonValue::String(val))) => {
+			assert_eq!(val, "test".to_string());
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
+pub fn local_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::SetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-2"), JsonValue::String("test".to_string())));
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-2")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let set_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match set_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", set_item))
+	};
+
+	match get_item {
+		Ok(Response::Metadata(JsonValue::String(val))) => {
+			assert_eq!(val, "test".to_string());
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
+pub fn local_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")));
+	trans.request(Request::GetMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let delete_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match delete_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", delete_item))
+	};
+
+	match get_item {
+		Err(ErrorResponse::MetadataDoesNotExist(Some(owner_id), key)) => {
+			assert_eq!(owner_id, sandbox.owner_id);
+			assert_eq!(key, sandbox.generate_unique_string("local"));
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
 pub fn local_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-2")));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Err(ErrorResponse::MetadataDoesNotExist(Some(owner_id), key)) => {
+			assert_eq!(owner_id, sandbox.owner_id);
+			assert_eq!(key, sandbox.generate_unique_string("local-2"));
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
 }
 
 pub fn global_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global-metadata")));
+	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global")));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
@@ -1128,28 +1196,93 @@ pub fn global_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id
 }
 
 pub fn global_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn global_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn global_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
-}
-
-pub fn global_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let mut trans = sandbox.transaction();
-	trans.request(Request::DeleteMetadata(None, sandbox.generate_unique_string("global-metadata")));
+	trans.request(Request::GetMetadata(None, "".to_string()));
 	let item = single_response_from_transaction(&mut trans);
 
 	match item {
-		Ok(Response::Ok) => (),
+		Err(ErrorResponse::MetadataDoesNotExist(None, key)) => {
+			assert_eq!("".to_string(), key);
+		},
 		_ => assert!(false, format!("Unexpected response: {:?}", item))
 	}
 }
 
+pub fn global_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::SetMetadata(None, sandbox.generate_unique_string("global"), JsonValue::String("test".to_string())));
+	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let set_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match set_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", set_item))
+	};
+
+	match get_item {
+		Ok(Response::Metadata(JsonValue::String(val))) => {
+			assert_eq!(val, "test".to_string());
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
+pub fn global_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::SetMetadata(None, sandbox.generate_unique_string("global-2"), JsonValue::String("test".to_string())));
+	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global-2")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let set_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match set_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", set_item))
+	};
+
+	match get_item {
+		Ok(Response::Metadata(JsonValue::String(val))) => {
+			assert_eq!(val, "test".to_string());
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
+pub fn global_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(None, sandbox.generate_unique_string("global")));
+	trans.request(Request::GetMetadata(None, sandbox.generate_unique_string("global")));
+
+	let payload = response_from_transaction(&mut trans, 2);
+	let delete_item = payload.get(0).unwrap().clone();
+	let get_item = payload.get(1).unwrap().clone();
+
+	match delete_item {
+		Ok(Response::Ok) => (),
+		_ => assert!(false, format!("Unexpected response: {:?}", delete_item))
+	};
+
+	match get_item {
+		Err(ErrorResponse::MetadataDoesNotExist(None, key)) => {
+			assert_eq!(key, sandbox.generate_unique_string("global"));
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", get_item))
+	};
+}
+
 pub fn global_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	assert!(false, "Not implemented");
+	let mut trans = sandbox.transaction();
+	trans.request(Request::DeleteMetadata(None, sandbox.generate_unique_string("global-2")));
+	let item = single_response_from_transaction(&mut trans);
+
+	match item {
+		Err(ErrorResponse::MetadataDoesNotExist(None, key)) => {
+			assert_eq!(key, sandbox.generate_unique_string("global-2"));
+		},
+		_ => assert!(false, format!("Unexpected response: {:?}", item))
+	}
 }
