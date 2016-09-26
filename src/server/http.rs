@@ -228,7 +228,7 @@ create_json_param_fn!(get_json_f64_param, JsonValue::F64, f64);
 create_json_param_fn!(get_json_object_param, JsonValue::Object, BTreeMap<String, JsonValue>);
 
 fn get_transaction(req: &mut Request) -> PostgresTransaction {
-	let ref transaction = *req.extensions.get::<PostgresTransactionKey>().unwrap().clone();
+	let transaction = &(*req.extensions.get::<PostgresTransactionKey>().unwrap());
 	transaction.transaction.clone()
 }
 
@@ -255,7 +255,7 @@ fn read_json_object(body: &mut Body) -> Result<BTreeMap<String, JsonValue>, Iron
 
 fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, Vec<String>>, IronError> {
 	match req.get_ref::<UrlEncodedQuery>() {
-        Ok(ref map) => Ok(map),
+        Ok(map) => Ok(map),
         Err(_) => Err(create_iron_error(status::BadRequest, SimpleError::new("Could not parse query parameters")))
     }
 }
@@ -423,7 +423,7 @@ fn on_input_script(req: &mut Request) -> IronResult<Response> {
 	let trans = get_transaction(req);
 
 	let user_id = {
-		let ref ext = *req.extensions.get::<AccountKey>().unwrap();
+		let ext = &(*req.extensions.get::<AccountKey>().unwrap());
 		ext.user_id
 	};
 
