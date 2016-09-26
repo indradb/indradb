@@ -110,10 +110,9 @@ fn run_in_thread(user_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue
     l.register("set_metadata", set_metadata);
     l.register("delete_metadata", delete_metadata);
 
-    match l.loadstring(source) {
-        Err(err) => return Err(ScriptError::new_from_loaderror(&mut l, err)),
-        _ => ()
-    };
+    if let Err(err) = l.loadstring(source) {
+        return Err(ScriptError::new_from_loaderror(&mut l, err));
+    }
 
     unsafe {
         serialize_json(&mut l, arg);
@@ -121,10 +120,9 @@ fn run_in_thread(user_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue
 
     l.setglobal("arg");
 
-    match l.pcall(0, lua::MULTRET, 0) {
-        Err(err) => return Err(ScriptError::new_from_pcallerror(&mut l, err)),
-        _ => ()
-    };
+    if let Err(err) = l.pcall(0, lua::MULTRET, 0) {
+        return Err(ScriptError::new_from_pcallerror(&mut l, err));
+    }
 
     if l.gettop() == 0 {
         Ok(JsonValue::Null)
@@ -135,8 +133,7 @@ fn run_in_thread(user_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue
 
 fn deserialize_json(l: &mut lua::State, offset: i32) -> Result<JsonValue, ScriptError> {
     Ok(match l.type_(-1) {
-        Some(lua::Type::Nil) => JsonValue::Null,
-        None => JsonValue::Null,
+        Some(lua::Type::Nil) | None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
         Some(lua::Type::Number) => JsonValue::F64(l.tonumber(-1)),
         Some(lua::Type::String) => JsonValue::String(l.tostring(-1).unwrap().to_string().clone()),
@@ -181,7 +178,7 @@ unsafe fn serialize_json(l: &mut lua::State, json: JsonValue) {
         JsonValue::Object(v) => {
             l.newtable();
 
-            for (k, iv) in v.iter() {
+            for (k, iv) in &v {
                 serialize_json(l, iv.clone());
                 l.setfield(-2, k);
             }

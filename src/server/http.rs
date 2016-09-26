@@ -78,7 +78,7 @@ impl BasicAuthMiddleware {
 			}
 		}
 
-		return None;
+		None
 	}
 
 	fn get_secret(&self, auth: Option<&Authorization<Basic>>) -> Option<String> {
@@ -86,7 +86,7 @@ impl BasicAuthMiddleware {
 			return auth.password.clone();
 		}
 
-		return None;
+		None
 	}
 }
 
@@ -107,13 +107,13 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 					req.extensions.insert::<PostgresTransactionKey>(PostgresTransactionKey {
 						transaction: transaction
 					});
+
+					return Ok(());
 				},
 				Err(err) => {
 					error_message = err.description().to_string();
 				}
 			}
-
-			return Ok(());
 		}
 
 		let mut d: BTreeMap<String, String> = BTreeMap::new();
@@ -179,8 +179,7 @@ fn single_transaction_to_result(trans: &mut PostgresTransaction) -> IronResult<R
 
 			let status = match *item {
 				Err(DatastoreErrorResponse::Unexpected(_)) => status::InternalServerError,
-				Err(DatastoreErrorResponse::VertexDoesNotExist(_)) => status::NotFound,
-				Err(DatastoreErrorResponse::EdgeDoesNotExist(_, _, _)) => status::NotFound,
+				Err(DatastoreErrorResponse::VertexDoesNotExist(_)) | Err(DatastoreErrorResponse::EdgeDoesNotExist(_, _, _)) => status::NotFound,
 				Err(DatastoreErrorResponse::WeightOutOfRange) => status::BadRequest,
 				_ => status::Ok
 			};
@@ -262,20 +261,14 @@ fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, Vec<
 }
 
 fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: String, required: bool) -> Result<Option<T>, IronError> {
-	match params.get(&key) {
-		Some(values) => {
-			match values.get(0) {
-				Some(first_value) => {
-					match first_value.parse::<T>() {
-						Ok(value) => return Ok(Some(value)),
-						Err(_) => return Err(create_iron_error(status::BadRequest, SimpleError::new_from_string(format!("Could not parse query parameter `{}`", key))))
-					}
-				},
-				None => ()
+	if let Some(values) = params.get(&key) {
+		if let Some(first_value) = values.get(0) {
+			match first_value.parse::<T>() {
+				Ok(value) => return Ok(Some(value)),
+				Err(_) => return Err(create_iron_error(status::BadRequest, SimpleError::new_from_string(format!("Could not parse query parameter `{}`", key))))
 			}
 		}
-		None => ()
-	};
+	}
 
 	if required {
 		Err(create_iron_error(status::BadRequest, SimpleError::new_from_string(format!("Missing required query parameter `{}`", key))))
