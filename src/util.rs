@@ -59,7 +59,7 @@ pub fn parse_json_object<I: Id>(s: String) -> Result<BTreeMap<String, JsonValue>
 
 pub fn generate_random_secret() -> String {
     let mut chars = vec![];
-	let options = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".as_bytes();
+	let options = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let mut rng = OsRng::new().unwrap();
 
     for _ in 0..32 {

@@ -4,6 +4,8 @@ use requests::Request;
 use traits::Id;
 use std::vec::Vec;
 
+pub type TransactionCommitResponse<I> = Vec<Result<Response<I>, ErrorResponse<I>>>;
+
 pub trait Datastore<T: Transaction<I>, I: Id> {
 	fn has_account(&self, user_id: I) -> Result<bool, SimpleError>;
 	fn create_account(&self, email: String) -> Result<(I, String), SimpleError>;
@@ -14,6 +16,6 @@ pub trait Datastore<T: Transaction<I>, I: Id> {
 
 pub trait Transaction<I: Id> {
 	fn request(&mut self, req: Request<I>);
-	fn commit(&self) -> Result<Vec<Result<Response<I>, ErrorResponse<I>>>, SimpleError>;
+	fn commit(&self) -> Result<TransactionCommitResponse<I>, SimpleError>;
 	fn rollback(&self) -> Option<SimpleError>;
 }

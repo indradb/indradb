@@ -1,6 +1,6 @@
 use pg::r2d2_postgres::{SslMode, PostgresConnectionManager};
 use pg::r2d2::{Config, Pool, GetTimeout};
-use datastore::{Datastore, Transaction};
+use datastore::{Datastore, Transaction, TransactionCommitResponse};
 use traits::Id;
 use requests::Request;
 use responses::{Response, ErrorResponse};
@@ -460,31 +460,27 @@ impl Transaction<i64> for PostgresTransaction {
 		self.requests.push(req)
 	}
 
-	fn commit(&self) -> Result<Vec<Result<Response<i64>, ErrorResponse<i64>>>, SimpleError> {
+	fn commit(&self) -> Result<TransactionCommitResponse<i64>, SimpleError> {
 		let conn = try!(self.pool.get());
 		let trans = try!(conn.transaction());
 
-		let results = {
-			let results: Vec<Result<Response<i64>, ErrorResponse<i64>>> = self.requests.iter().map(|request| {
-				match *request {
-					Request::GetVertex(ref id) => self.get_vertex(&trans, *id),
-					Request::CreateVertex(ref t, ref properties) => self.create_vertex(&trans, t.clone(), properties.clone()),
-					Request::SetVertex(ref v) => self.set_vertex(&trans, v.clone()),
-					Request::DeleteVertex(ref id) => self.delete_vertex(&trans, *id),
-					Request::GetEdge(ref outbound_id, ref t, ref inbound_id) => self.get_edge(&trans, *outbound_id, t.clone(), *inbound_id),
-					Request::SetEdge(ref e) => self.set_edge(&trans, e.clone()),
-					Request::DeleteEdge(ref outbound_id, ref t, ref inbound_id) => self.delete_edge(&trans, *outbound_id, t.clone(), *inbound_id),
-					Request::GetEdgeCount(ref outbound_id, ref t) => self.get_edge_count(&trans, *outbound_id, t.clone()),
-					Request::GetEdgeRange(ref outbound_id, ref t, ref offset, ref limit) => self.get_edge_range(&trans, *outbound_id, t.clone(), *offset, *limit),
-					Request::GetEdgeTimeRange(ref outbound_id, ref t, ref high, ref low, ref limit) => self.get_edge_time_range(&trans, *outbound_id, t.clone(), *high, *low, *limit),
-					Request::GetMetadata(ref owner_id, ref key) => self.get_metadata(&trans, *owner_id, key.clone()),
-					Request::SetMetadata(ref owner_id, ref key, ref value) => self.set_metadata(&trans, *owner_id, key.clone(), value.clone()),
-					Request::DeleteMetadata(ref owner_id, ref key) => self.delete_metadata(&trans, *owner_id, key.clone())
-				}
-			}).collect();
-
-			results
-		};
+		let results = self.requests.iter().map(|request| {
+			match *request {
+				Request::GetVertex(ref id) => self.get_vertex(&trans, *id),
+				Request::CreateVertex(ref t, ref properties) => self.create_vertex(&trans, t.clone(), properties.clone()),
+				Request::SetVertex(ref v) => self.set_vertex(&trans, v.clone()),
+				Request::DeleteVertex(ref id) => self.delete_vertex(&trans, *id),
+				Request::GetEdge(ref outbound_id, ref t, ref inbound_id) => self.get_edge(&trans, *outbound_id, t.clone(), *inbound_id),
+				Request::SetEdge(ref e) => self.set_edge(&trans, e.clone()),
+				Request::DeleteEdge(ref outbound_id, ref t, ref inbound_id) => self.delete_edge(&trans, *outbound_id, t.clone(), *inbound_id),
+				Request::GetEdgeCount(ref outbound_id, ref t) => self.get_edge_count(&trans, *outbound_id, t.clone()),
+				Request::GetEdgeRange(ref outbound_id, ref t, ref offset, ref limit) => self.get_edge_range(&trans, *outbound_id, t.clone(), *offset, *limit),
+				Request::GetEdgeTimeRange(ref outbound_id, ref t, ref high, ref low, ref limit) => self.get_edge_time_range(&trans, *outbound_id, t.clone(), *high, *low, *limit),
+				Request::GetMetadata(ref owner_id, ref key) => self.get_metadata(&trans, *owner_id, key.clone()),
+				Request::SetMetadata(ref owner_id, ref key, ref value) => self.set_metadata(&trans, *owner_id, key.clone(), value.clone()),
+				Request::DeleteMetadata(ref owner_id, ref key) => self.delete_metadata(&trans, *owner_id, key.clone())
+			}
+		}).collect();
 
 		try!(trans.commit());
 		Result::Ok(results)
