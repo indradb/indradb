@@ -609,6 +609,7 @@ unsafe fn serialize_err_res(l: &mut lua::ExternState, res: DatastoreErrorRespons
             };
 
             add_string_field_to_table(l, "owner_id", &owner_id_str[..]);
+            add_string_field_to_table(l, "key", &key[..]);
         }
     };
 }
