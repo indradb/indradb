@@ -209,7 +209,7 @@ impl PostgresTransaction {
 			return Ok(Response::Ok)
 		}
 
-		return Err(ErrorResponse::VertexDoesNotExist(v.id))
+		Err(ErrorResponse::VertexDoesNotExist(v.id))
 	}
 
 	fn delete_vertex(&self, trans: &postgres::Transaction, id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
@@ -275,7 +275,7 @@ impl PostgresTransaction {
 			return Ok(Response::Ok)
 		}
 
-		return Err(ErrorResponse::VertexDoesNotExist(e.outbound_id))
+		Err(ErrorResponse::VertexDoesNotExist(e.outbound_id))
 	}
 
 	fn delete_edge(&self, trans: &postgres::Transaction, outbound_id: i64, t: String, inbound_id: i64) -> Result<Response<i64>, ErrorResponse<i64>> {
@@ -289,7 +289,7 @@ impl PostgresTransaction {
 			return Ok(Response::Ok)
 		}
 
-		return Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id))
+		Err(ErrorResponse::EdgeDoesNotExist(outbound_id, t, inbound_id))
 	}
 
 	fn get_edge_count(&self, trans: &postgres::Transaction, outbound_id: i64, t: String) -> Result<Response<i64>, ErrorResponse<i64>> {
@@ -403,7 +403,7 @@ impl PostgresTransaction {
 			return Ok(Response::Metadata(value_obj))
 		}
 
-		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+		Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
 	}
 
 	fn set_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<Response<i64>, ErrorResponse<i64>> {
@@ -434,7 +434,7 @@ impl PostgresTransaction {
 			return Ok(Response::Ok)
 		}
 
-		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+		Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
 	}
 
 	fn delete_metadata(&self, trans: &postgres::Transaction, owner_id: Option<i64>, key: String) -> Result<Response<i64>, ErrorResponse<i64>> {
@@ -451,7 +451,7 @@ impl PostgresTransaction {
 			return Ok(Response::Ok)
 		}
 
-		return Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
+		Err(ErrorResponse::MetadataDoesNotExist(owner_id, key))
 	}
 }
 
