@@ -22,9 +22,9 @@ pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
 }
 
 impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I> {
-	pub fn new(name: String, datastore: D) -> DatastoreTestSandbox<D, T, I> {
+	pub fn new(datastore: D) -> DatastoreTestSandbox<D, T, I> {
 		return DatastoreTestSandbox{
-			name: name.clone(),
+			name: "".to_string(),
 			owner_id: I::default(),
 			owner_secret: "".to_string(),
 			datastore: datastore,
@@ -107,8 +107,11 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		(id, secret)
 	}
 
-	pub fn setup(&mut self) {
-		// First create a couple of accounts
+	pub fn setup(&mut self, name: &str) {
+		// Set the name first
+		self.name = name.to_string();
+
+		// Create a couple of accounts
 		let owner_email = self.generate_unique_string("owner");
 		let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
 		self.owner_id = owner_id;

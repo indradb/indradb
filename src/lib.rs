@@ -1,5 +1,6 @@
 #![feature(custom_derive, plugin)]
 #![plugin(serde_macros)]
+#![cfg_attr(test, plugin(stainless))]
 
 extern crate crypto;
 extern crate chrono;
