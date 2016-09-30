@@ -34,18 +34,6 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		};
 	}
 
-	fn new_review_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-		Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
-	}
-
-	fn new_purchased_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-		Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
-	}
-
-	fn new_follows_edge(&self, outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-		Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
-	}
-
 	pub fn generate_unique_string(&self, prefix: &str) -> String {
 		format!("{}-{}", prefix, self.name.clone())
 	}
@@ -147,43 +135,43 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		let mut trans = self.transaction();
 
 		// Jill isn't a fan
-		trans.request(self.new_review_edge(jill_id, inception_id, -0.8));
-		trans.request(self.new_review_edge(jill_id, dark_knight_rises_id, -0.9));
-		trans.request(self.new_review_edge(jill_id, interstellar_id, -0.8));
+		trans.request(new_review_edge(jill_id, inception_id, -0.8));
+		trans.request(new_review_edge(jill_id, dark_knight_rises_id, -0.9));
+		trans.request(new_review_edge(jill_id, interstellar_id, -0.8));
 
 		// Bob likes some stuff
-		trans.request(self.new_purchased_edge(bob_id, inception_id, 1.0));
-		trans.request(self.new_purchased_edge(bob_id, interstellar_id, 1.0));
-		trans.request(self.new_review_edge(bob_id, memento_id, 0.2));
-		trans.request(self.new_review_edge(bob_id, insomnia_id, -1.0));
-		trans.request(self.new_review_edge(bob_id, batman_begins_id, 0.7));
-		trans.request(self.new_review_edge(bob_id, prestige_id, 0.8));
-		trans.request(self.new_review_edge(bob_id, dark_knight_id, 0.9));
-		trans.request(self.new_review_edge(bob_id, inception_id, 1.0));
-		trans.request(self.new_review_edge(bob_id, dark_knight_rises_id, 0.8));
-		trans.request(self.new_review_edge(bob_id, interstellar_id, 1.0));
+		trans.request(new_purchased_edge(bob_id, inception_id, 1.0));
+		trans.request(new_purchased_edge(bob_id, interstellar_id, 1.0));
+		trans.request(new_review_edge(bob_id, memento_id, 0.2));
+		trans.request(new_review_edge(bob_id, insomnia_id, -1.0));
+		trans.request(new_review_edge(bob_id, batman_begins_id, 0.7));
+		trans.request(new_review_edge(bob_id, prestige_id, 0.8));
+		trans.request(new_review_edge(bob_id, dark_knight_id, 0.9));
+		trans.request(new_review_edge(bob_id, inception_id, 1.0));
+		trans.request(new_review_edge(bob_id, dark_knight_rises_id, 0.8));
+		trans.request(new_review_edge(bob_id, interstellar_id, 1.0));
 
 		// Christopher really likes these movies
-		trans.request(self.new_purchased_edge(christopher_id, doodlebug_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, following_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, memento_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, insomnia_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, prestige_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, inception_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(self.new_purchased_edge(christopher_id, interstellar_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, prestige_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, inception_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(self.new_review_edge(christopher_id, interstellar_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, doodlebug_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, following_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, memento_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, insomnia_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, batman_begins_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, prestige_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, dark_knight_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, inception_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, dark_knight_rises_id, 1.0));
+		trans.request(new_purchased_edge(christopher_id, interstellar_id, 1.0));
+		trans.request(new_review_edge(christopher_id, batman_begins_id, 1.0));
+		trans.request(new_review_edge(christopher_id, prestige_id, 1.0));
+		trans.request(new_review_edge(christopher_id, dark_knight_id, 1.0));
+		trans.request(new_review_edge(christopher_id, inception_id, 1.0));
+		trans.request(new_review_edge(christopher_id, dark_knight_rises_id, 1.0));
+		trans.request(new_review_edge(christopher_id, interstellar_id, 1.0));
 
 		// Jill and Bob follow each other; Christopher is anti-social
-		trans.request(self.new_follows_edge(jill_id, bob_id, 1.0));
-		trans.request(self.new_follows_edge(bob_id, jill_id, 1.0));
+		trans.request(new_follows_edge(jill_id, bob_id, 1.0));
+		trans.request(new_follows_edge(bob_id, jill_id, 1.0));
 
 		// Insert some metadata
 		trans.request(Request::SetMetadata(None, self.generate_unique_string("global"), JsonValue::Bool(true)));
@@ -214,4 +202,16 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 			self.datastore.delete_account(id.clone()).expect("Expected to be able to delete the account");
 		}
 	}
+}
+
+fn new_review_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+	Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
+}
+
+fn new_purchased_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+	Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
+}
+
+fn new_follows_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+	Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
 }
