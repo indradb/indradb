@@ -1,7 +1,10 @@
 #![cfg(test)]
 
-use super::datastore::PostgresDatastore;
-use std::env;
+pub use super::datastore::PostgresDatastore;
+pub use std::env;
+
+pub use datastore::{Datastore, Transaction, DatastoreTestSandbox};
+pub use traits::Id;
 
 test_datastore_impl! {
 	postgres {
