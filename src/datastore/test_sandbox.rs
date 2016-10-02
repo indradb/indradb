@@ -207,14 +207,14 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 	}
 }
 
-fn new_review_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+fn new_review_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
 	Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
 }
 
-fn new_purchased_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+fn new_purchased_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
 	Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
 }
 
-fn new_follows_edge(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
+fn new_follows_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
 	Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
 }
