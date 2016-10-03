@@ -188,7 +188,8 @@ pub fn delete_vertex_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(s
 }
 
 pub fn delete_vertex_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (id, _) = sandbox.register_account("isolated");
+	let email = sandbox.generate_unique_string("isolated");
+	let (id, _) = sandbox.register_account(&email[..]);
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::DeleteVertex(sandbox.jill_id()));
 	let item = single_response_from_transaction(&mut trans);
@@ -304,7 +305,8 @@ pub fn set_edge_bad_weight<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox
 }
 
 pub fn set_edge_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (id, _) = sandbox.register_account("isolated");
+	let email = sandbox.generate_unique_string("isolated");
+	let (id, _) = sandbox.register_account(&email[..]);
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::SetEdge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5)));
 	let item = single_response_from_transaction(&mut trans);
@@ -373,7 +375,8 @@ pub fn delete_edge_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(san
 }
 
 pub fn delete_edge_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (id, _) = sandbox.register_account("isolated");
+	let email = sandbox.generate_unique_string("isolated");
+	let (id, _) = sandbox.register_account(&email[..]);
 	let mut trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
 	trans.request(Request::DeleteEdge(sandbox.jill_id(), "blocks".to_string(), I::default()));
 	let item = single_response_from_transaction(&mut trans);
