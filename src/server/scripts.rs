@@ -144,13 +144,27 @@ unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<Json
         Some(lua::Type::Nil) | None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
         Some(lua::Type::Number) => JsonValue::F64(l.tonumber(-1)),
-        Some(lua::Type::String) => JsonValue::String(l.tostring(-1).unwrap().to_string().clone()),
+        Some(lua::Type::String) => JsonValue::String(l.checkstring(-1).unwrap().to_string().clone()),
         Some(lua::Type::Table) => {
             l.pushnil();
             let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 
             while l.next(offset - 1) {
-                let k = l.checkstring(-2).unwrap().to_string().clone();
+                // Keys could be strings or numbers, depending on whether it's a map-shaped table
+                // or an array-shaped table. We can't rely on `l.tostring` because we're in the
+                // middle of a next() loop.
+                let k = match l.type_(-2) {
+                    Some(lua::Type::String) => {
+                        l.checkstring(-2).unwrap().to_string().clone()
+                    },
+                    Some(lua::Type::Number) => {
+                        l.checknumber(-2).to_string()
+                    },
+                    k_type => {
+                        panic!("Unknown key type: {:?}", k_type);
+                    }
+                };
+
                 let v: JsonValue = try!(deserialize_json(l, -1));
                 d.insert(k, v);
                 l.pop(1);
