@@ -21,10 +21,6 @@ COLOR_END = '\033[0m'
 UNABLE_TO_PARSE_BODY = "<unable to parse body>"
 
 # If a test script has this pattern, the script is expected to trigger a
-# (recovered) panic on the server
-PANIC_ERROR_EXPECTED_PATTERN = re.compile("-- error: panic")
-
-# If a test script has this pattern, the script is expected to trigger a
 # runtime error on the server
 RUNTIME_ERROR_EXPECTED_PATTERN = re.compile("-- error: runtime")
 
@@ -94,7 +90,6 @@ def run_test(name, contents, user_id, secret):
     expecting_result_pattern = OK_EXPECTED_PATTERN.search(contents)
     expecting_result = expecting_result_pattern.group(1) if expecting_result_pattern else None
     expecting_runtime_error = RUNTIME_ERROR_EXPECTED_PATTERN.search(contents) != None
-    expecting_panic_error = PANIC_ERROR_EXPECTED_PATTERN.search(contents) != None
 
     res = requests.post(
         "http://localhost:8000/script",
@@ -105,14 +100,10 @@ def run_test(name, contents, user_id, secret):
     try:
         body = res.json()
     except ValueError:
-        body = UNABLE_TO_PARSE_BODY
+        result.finish(True, res, UNABLE_TO_PARSE_BODY)
+        return result
 
-    if expecting_panic_error:
-        if res.status_code == 500 and body == UNABLE_TO_PARSE_BODY:
-            result.finish(True, res, body)
-        else:
-            result.finish(False, res, body)
-    elif expecting_runtime_error:
+    if expecting_runtime_error:
         if res.status_code == 500 and "Script failed: Runtime" in body.get("error", ""):
             result.finish(True, res, body)
         else:
