@@ -1,7 +1,5 @@
 use super::{Datastore, Transaction};
 use super::test_util::*;
-use requests::Request;
-use responses::Response;
 use traits::Id;
 use models;
 use std::collections::BTreeMap;
@@ -35,11 +33,11 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 	}
 
 	pub fn generate_unique_string(&self, prefix: &str) -> String {
-		format!("{}-{}", prefix, self.name.clone())
+		format!("{}-{}", prefix, self.name.replace(" ", "-"))
 	}
 
 	pub fn transaction(&self) -> T {
-		self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction")
+		self.datastore.transaction(self.owner_id).unwrap()
 	}
 
 	fn search_id(&self, t: &str, name: &str) -> I {
@@ -79,24 +77,15 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 	}
 
 	pub fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> I {
-		let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
+		let trans = self.datastore.transaction(self.owner_id).unwrap();
 
 		let props = match name {
 			Some(name) => create_test_properties(name),
 			None => BTreeMap::new()
 		};
 
-		trans.request(Request::CreateVertex(t.to_string(), props.clone()));
-		let item = single_response_from_transaction(&mut trans);
-
-		let id = match item {
-			Ok(Response::VertexId(id)) => id,
-			_ => {
-				assert!(false, format!("Unexpected response: {:?}", item));
-				I::default()
-			}
-		};
-
+		let id = trans.create_vertex(t.to_string(), props.clone()).unwrap();
+		trans.commit().unwrap();
 		self.vertices.push(models::Vertex::new_with_properties(id, t.to_string(), props));
 		id
 	}
@@ -135,86 +124,84 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
 
 		// Create a new transaction for inserting all the test edges
-		let mut trans = self.transaction();
+		let trans = self.transaction();
 
 		// Jill isn't a fan
-		trans.request(new_review_edge(jill_id, inception_id, -0.8));
-		trans.request(new_review_edge(jill_id, dark_knight_rises_id, -0.9));
-		trans.request(new_review_edge(jill_id, interstellar_id, -0.8));
+		new_review_edge(&trans, jill_id, inception_id, -0.8);
+		new_review_edge(&trans, jill_id, dark_knight_rises_id, -0.9);
+		new_review_edge(&trans, jill_id, interstellar_id, -0.8);
 
 		// Bob likes some stuff
-		trans.request(new_purchased_edge(bob_id, inception_id, 1.0));
-		trans.request(new_purchased_edge(bob_id, interstellar_id, 1.0));
-		trans.request(new_review_edge(bob_id, memento_id, 0.2));
-		trans.request(new_review_edge(bob_id, insomnia_id, -1.0));
-		trans.request(new_review_edge(bob_id, batman_begins_id, 0.7));
-		trans.request(new_review_edge(bob_id, prestige_id, 0.8));
-		trans.request(new_review_edge(bob_id, dark_knight_id, 0.9));
-		trans.request(new_review_edge(bob_id, inception_id, 1.0));
-		trans.request(new_review_edge(bob_id, dark_knight_rises_id, 0.8));
-		trans.request(new_review_edge(bob_id, interstellar_id, 1.0));
+		new_purchased_edge(&trans, bob_id, inception_id, 1.0);
+		new_purchased_edge(&trans, bob_id, interstellar_id, 1.0);
+		new_review_edge(&trans, bob_id, memento_id, 0.2);
+		new_review_edge(&trans, bob_id, insomnia_id, -1.0);
+		new_review_edge(&trans, bob_id, batman_begins_id, 0.7);
+		new_review_edge(&trans, bob_id, prestige_id, 0.8);
+		new_review_edge(&trans, bob_id, dark_knight_id, 0.9);
+		new_review_edge(&trans, bob_id, inception_id, 1.0);
+		new_review_edge(&trans, bob_id, dark_knight_rises_id, 0.8);
+		new_review_edge(&trans, bob_id, interstellar_id, 1.0);
 
 		// Christopher really likes these movies
-		trans.request(new_purchased_edge(christopher_id, doodlebug_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, following_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, memento_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, insomnia_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, prestige_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, inception_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(new_purchased_edge(christopher_id, interstellar_id, 1.0));
-		trans.request(new_review_edge(christopher_id, batman_begins_id, 1.0));
-		trans.request(new_review_edge(christopher_id, prestige_id, 1.0));
-		trans.request(new_review_edge(christopher_id, dark_knight_id, 1.0));
-		trans.request(new_review_edge(christopher_id, inception_id, 1.0));
-		trans.request(new_review_edge(christopher_id, dark_knight_rises_id, 1.0));
-		trans.request(new_review_edge(christopher_id, interstellar_id, 1.0));
+		new_purchased_edge(&trans, christopher_id, doodlebug_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, following_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, memento_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, insomnia_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, batman_begins_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, prestige_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, dark_knight_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, inception_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
+		new_purchased_edge(&trans, christopher_id, interstellar_id, 1.0);
+		new_review_edge(&trans, christopher_id, batman_begins_id, 1.0);
+		new_review_edge(&trans, christopher_id, prestige_id, 1.0);
+		new_review_edge(&trans, christopher_id, dark_knight_id, 1.0);
+		new_review_edge(&trans, christopher_id, inception_id, 1.0);
+		new_review_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
+		new_review_edge(&trans, christopher_id, interstellar_id, 1.0);
 
 		// Jill and Bob follow each other; Christopher is anti-social
-		trans.request(new_follows_edge(jill_id, bob_id, 1.0));
-		trans.request(new_follows_edge(bob_id, jill_id, 1.0));
+		new_follows_edge(&trans, jill_id, bob_id, 1.0);
+		new_follows_edge(&trans, bob_id, jill_id, 1.0);
 
 		// Insert some metadata
-		trans.request(Request::SetMetadata(None, self.generate_unique_string("global"), JsonValue::Bool(true)));
-		trans.request(Request::SetMetadata(Some(owner_id), self.generate_unique_string("local"), JsonValue::Bool(true)));
+		trans.set_metadata(None, self.generate_unique_string("global"), JsonValue::Bool(true)).unwrap();
+		trans.set_metadata(Some(owner_id), self.generate_unique_string("local"), JsonValue::Bool(true)).unwrap();
 
-		for item in trans.commit().expect("Expected to be able to commit transaction").iter() {
-			item.clone().expect("No item should have errored out");
-		}
+		trans.commit().unwrap();
 	}
 
 	pub fn teardown(&self) {
 		// Delete global metadata
-		let mut trans = self.transaction();
-		trans.request(Request::GetMetadata(None, self.generate_unique_string("global")));
+		let has_global_metadata = {
+			let trans = self.transaction();
+			let value = trans.get_metadata(None, self.generate_unique_string("global")).is_ok();
+			trans.commit().unwrap();
+			value
+		};
 
-		match single_response_from_transaction(&mut trans) {
-			Ok(Response::Metadata(_)) => {
-				let mut trans = self.datastore.transaction(self.owner_id).expect("Expected to be able to create a transaction");
-				trans.request(Request::DeleteMetadata(None, self.generate_unique_string("global")));
-				let result = trans.commit().expect("Expected to be able to commit transaction");
-				result.get(0).expect("Delete request should not have errored out");
-			},
-			_ => ()
+		if has_global_metadata {
+			let trans = self.datastore.transaction(self.owner_id).unwrap();
+			trans.delete_metadata(None, self.generate_unique_string("global")).unwrap();
+			trans.commit().unwrap();
 		}
 
 		// Delete account data
 		for id in self.accounts.iter() {
-			self.datastore.delete_account(id.clone()).expect("Expected to be able to delete the account");
+			self.datastore.delete_account(id.clone()).unwrap();
 		}
 	}
 }
 
-fn new_review_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-	Request::SetEdge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight))
+fn new_review_edge<T: Transaction<I>, I: Id>(trans: &T, outbound_id: I, inbound_id: I, weight: f32) {
+	trans.set_edge(models::Edge::new(outbound_id, "review".to_string(), inbound_id, weight)).unwrap()
 }
 
-fn new_purchased_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-	Request::SetEdge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight))
+fn new_purchased_edge<T: Transaction<I>, I: Id>(trans: &T, outbound_id: I, inbound_id: I, weight: f32) {
+	trans.set_edge(models::Edge::new(outbound_id, "purchased".to_string(), inbound_id, weight)).unwrap()
 }
 
-fn new_follows_edge<I: Id>(outbound_id: I, inbound_id: I, weight: f32) -> Request<I> {
-	Request::SetEdge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight))
+fn new_follows_edge<T: Transaction<I>, I: Id>(trans: &T, outbound_id: I, inbound_id: I, weight: f32) {
+	trans.set_edge(models::Edge::new(outbound_id, "follows".to_string(), inbound_id, weight)).unwrap()
 }

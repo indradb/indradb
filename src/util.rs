@@ -1,48 +1,51 @@
-use std::error::Error;
+use std::error::Error as StdError;
 use std::fmt;
 use std::collections::BTreeMap;
 use serde_json::Value as JsonValue;
 use serde_json;
-use super::responses::ErrorResponse;
 use rand::{Rng, OsRng};
-use traits::Id;
 
-#[derive(Debug)]
-pub struct SimpleError {
-	description: String
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum Error {
+	AccountNotFound,
+	VertexDoesNotExist,
+	EdgeDoesNotExist,
+	LimitOutOfRange,
+	OffsetOutOfRange,
+	WeightOutOfRange,
+	MetadataDoesNotExist,
+	Unexpected(String),
 }
 
-impl SimpleError {
-	pub fn new(description: &str) -> SimpleError {
-		SimpleError {
-			description: description.to_string()
-		}
-	}
-
-	pub fn new_from_string(description: String) -> SimpleError {
-		SimpleError {
-			description: description
-		}
-	}
-}
-
-impl Error for SimpleError {
+impl StdError for Error {
 	fn description(&self) -> &str {
-		&self.description[..]
+		match *self {
+			Error::AccountNotFound => "Account not found",
+			Error::VertexDoesNotExist => "Vertex does not exist",
+			Error::EdgeDoesNotExist => "Edge does not exist",
+			Error::LimitOutOfRange => "Limit out of range",
+			Error::OffsetOutOfRange => "Offset out of range",
+			Error::WeightOutOfRange => "Weight out of range",
+			Error::MetadataDoesNotExist => "Metadata does not exist",
+			Error::Unexpected(_) => "Unexpected error"
+		}
 	}
 
-	fn cause(&self) -> Option<&Error> {
+	fn cause(&self) -> Option<&StdError> {
 		None
 	}
 }
 
-impl fmt::Display for SimpleError {
+impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{}", self.description)
+		match *self {
+			Error::Unexpected(ref msg) => write!(f, "{}", msg),
+			_ => write!(f, "{}", self.description())
+		}
 	}
 }
 
-pub fn parse_json_object<I: Id>(s: String) -> Result<BTreeMap<String, JsonValue>, ErrorResponse<I>> {
+pub fn parse_json_object(s: String) -> Result<BTreeMap<String, JsonValue>, Error> {
 	let serialized = serde_json::from_str(&s[..]);
 
 	if serialized.is_ok() {
@@ -54,7 +57,7 @@ pub fn parse_json_object<I: Id>(s: String) -> Result<BTreeMap<String, JsonValue>
 		}
 	}
 
-	Err(ErrorResponse::Unexpected("Did not get a JSON object back".to_string()))
+	Err(Error::Unexpected("Did not get a JSON object back".to_string()))
 }
 
 pub fn generate_random_secret() -> String {

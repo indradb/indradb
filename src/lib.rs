@@ -12,16 +12,12 @@ extern crate rand;
 
 #[macro_use] mod datastore;
 mod models;
-mod requests;
-mod responses;
 mod util;
 mod traits;
 
 pub use datastore::{Datastore, Transaction};
 pub use models::{Vertex, Edge};
-pub use requests::Request;
-pub use responses::{Response, ErrorResponse};
-pub use util::SimpleError;
+pub use util::Error;
 pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")] mod pg;

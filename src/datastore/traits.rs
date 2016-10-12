@@ -1,21 +1,38 @@
-use util::SimpleError;
-use responses::{Response, ErrorResponse};
-use requests::Request;
+use util::Error;
 use traits::Id;
 use std::vec::Vec;
-
-pub type TransactionCommitResponse<I> = Vec<Result<Response<I>, ErrorResponse<I>>>;
+use serde_json::value::Value as JsonValue;
+use models;
+use std::collections::BTreeMap;
+use std::option::Option;
+use chrono::naive::datetime::NaiveDateTime;
 
 pub trait Datastore<T: Transaction<I>, I: Id> {
-	fn has_account(&self, user_id: I) -> Result<bool, SimpleError>;
-	fn create_account(&self, email: String) -> Result<(I, String), SimpleError>;
-	fn delete_account(&self, user_id: I) -> Result<(), SimpleError>;
-	fn auth(&self, user_id: I, secret: String) -> Result<bool, SimpleError>;
-	fn transaction(&self, user_id: I) -> Result<T, SimpleError>;
+	fn has_account(&self, user_id: I) -> Result<bool, Error>;
+	fn create_account(&self, email: String) -> Result<(I, String), Error>;
+	fn delete_account(&self, user_id: I) -> Result<(), Error>;
+	fn auth(&self, user_id: I, secret: String) -> Result<bool, Error>;
+	fn transaction(&self, user_id: I) -> Result<T, Error>;
 }
 
 pub trait Transaction<I: Id> {
-	fn request(&mut self, req: Request<I>);
-	fn commit(&self) -> Result<TransactionCommitResponse<I>, SimpleError>;
-	fn rollback(&self) -> Option<SimpleError>;
+	fn get_vertex(&self, I) -> Result<models::Vertex<I>, Error>;
+	fn create_vertex(&self, String, BTreeMap<String, JsonValue>) -> Result<I, Error>;
+	fn set_vertex(&self, models::Vertex<I>) -> Result<(), Error>;
+	fn delete_vertex(&self, I) -> Result<(), Error>;
+
+	fn get_edge(&self, I, String, I) -> Result<models::Edge<I>, Error>;
+	fn set_edge(&self, models::Edge<I>) -> Result<(), Error>;
+	fn delete_edge(&self, I, String, I) -> Result<(), Error>;
+
+	fn get_edge_count(&self, I, String) -> Result<i64, Error>;
+	fn get_edge_range(&self, I, String, i64, i32) -> Result<Vec<models::Edge<I>>, Error>;
+	fn get_edge_time_range(&self, I, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i32) -> Result<Vec<models::Edge<I>>, Error>;
+
+	fn get_metadata(&self, Option<I>, String) -> Result<JsonValue, Error>;
+	fn set_metadata(&self, Option<I>, String, JsonValue) -> Result<(), Error>;
+	fn delete_metadata(&self, Option<I>, String) -> Result<(), Error>;
+
+	fn commit(self) -> Result<(), Error>;
+	fn rollback(self) -> Result<(), Error>;
 }
