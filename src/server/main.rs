@@ -14,12 +14,13 @@ extern crate regex;
 #[macro_use] extern crate lua;
 #[macro_use] extern crate hyper;
 #[macro_use] extern crate common;
-
-use common::datastore;
+#[macro_use] extern crate lazy_static;
 
 mod http;
 mod scripts;
+mod util;
+mod datastore;
 
 fn main() {
-	http::start(8000, datastore());
+	http::start(8000);
 }

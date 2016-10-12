@@ -6,6 +6,7 @@ dependencies = [
  "clap 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "lua 0.3.0 (git+https://github.com/ysimonson/rust-lua?branch=develop)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
