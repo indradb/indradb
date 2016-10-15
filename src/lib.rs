@@ -15,7 +15,7 @@ mod models;
 mod util;
 mod traits;
 
-pub use datastore::{Datastore, Transaction};
+pub use datastore::*;
 pub use models::{Vertex, Edge};
 pub use util::Error;
 pub use traits::Id;

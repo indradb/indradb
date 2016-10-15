@@ -1,11 +1,14 @@
 mod traits;
 pub use self::traits::*;
 
-#[cfg(test)] mod test_fns;
-#[cfg(test)] #[macro_use] mod test_macros;
-#[cfg(test)] mod test_sandbox;
-#[cfg(test)] mod test_util;
+mod test_fns;
+#[macro_use] mod test_macros;
+mod test_sandbox;
+mod test_util;
 
-#[cfg(test)] pub use self::test_fns::*;
-#[cfg(test)] pub use self::test_macros::*;
-#[cfg(test)] pub use self::test_sandbox::*;
+// NOTE: We are exporting test code. Ideally this would not be the case, but it appears that
+// outside packages cannot access exported things with #[cfg(test)], even when they themselves are
+// configured for tests.
+pub use self::test_fns::*;
+pub use self::test_macros::*;
+pub use self::test_sandbox::*;

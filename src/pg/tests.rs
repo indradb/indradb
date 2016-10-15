@@ -1,9 +1,8 @@
 #![cfg(test)]
 
-pub use super::datastore::PostgresDatastore;
+pub use super::datastore::*;
+pub use datastore::*;
 pub use std::env;
-
-pub use datastore::{Datastore, Transaction, DatastoreTestSandbox};
 pub use traits::Id;
 
 pub fn datastore() -> PostgresDatastore {
