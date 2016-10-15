@@ -21,8 +21,7 @@ def server():
     """
 
     # Start the process
-    server_proc = subprocess.Popen(["./bin/target/debug/nutrino-server"])
-
+    server_proc = subprocess.Popen(["./target/debug/nutrino-server"])
     while True:
         # Check if the server is now responding to HTTP requests
         try:
@@ -40,8 +39,10 @@ def server():
 
         time.sleep(1)
 
-    yield
-    server_proc.terminate()
+    try:
+        yield
+    finally:
+        server_proc.terminate()
 
 @contextmanager
 def user():
@@ -52,10 +53,11 @@ def user():
 
     random_value = "".join(random.sample(string.ascii_letters + string.digits, 10))
     email = "bin-test-%s@nutrino.com" % random_value
-    create_user_output = subprocess.check_output(["./bin/target/debug/nutrino-user", "add", email]).decode("utf-8")
+    create_user_output = subprocess.check_output(["./target/debug/nutrino-user", "add", email]).decode("utf-8")
     user_id = ACCOUNT_ID_MATCHER.search(create_user_output).groups()[0]
     secret = ACCOUNT_SECRET_MATCHER.search(create_user_output).groups()[0]
 
-    yield (email, user_id, secret)
-
-    subprocess.check_output(["./bin/target/debug/nutrino-user", "remove", user_id])
+    try:
+        yield (email, user_id, secret)
+    finally:
+        subprocess.check_output(["./target/debug/nutrino-user", "remove", user_id])

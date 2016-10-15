@@ -28,6 +28,9 @@ clap = "2.11.3"
 rand = "0.3.14"
 lazy_static = "0.2.1"
 
+[dev-dependencies]
+stainless = "*"
+
 [dependencies.serde_json]
 git = "https://github.com/serde-rs/json"
 
