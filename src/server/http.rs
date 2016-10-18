@@ -36,7 +36,7 @@ const MAX_RETURNABLE_EDGES: i32 = 1000;
 pub fn start(port: u16) {
 	let mut router = Router::new();
 
-	router.post("/", on_create_vertex);
+	router.post("/vertex", on_create_vertex);
 	router.post("/transaction", on_transaction);
 
 	router.get("/edge/:outbound_id/:type/:inbound_id", on_get_edge);

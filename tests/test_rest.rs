@@ -79,7 +79,7 @@ impl Transaction<i64> for RestTransaction {
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
-		let req = self.req(&client, "POST", "/".to_string()).body(&body[..]);
+		let req = self.req(&client, "POST", "/vertex".to_string()).body(&body[..]);
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
