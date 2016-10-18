@@ -14,7 +14,7 @@ extern crate hyper;
 
 mod common;
 
-use hyper::header::{Headers, Authorization, Basic};
+use hyper::header::{Authorization, Basic};
 use hyper::client::{Client, RequestBuilder};
 use hyper::client::response::Response;
 use hyper::status::StatusCode;
@@ -24,7 +24,6 @@ use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 
 use std::io::Read;
-use std::io;
 use std::str::FromStr;
 
 pub use nutrino::*;
@@ -171,13 +170,7 @@ impl Transaction<i64> for RestTransaction {
 		let client = Client::new();
 		let req = self.req(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
-
-		if res.status == StatusCode::BadRequest {
-			let message = get_error_message(&mut res);
-			Err(Error::Unexpected("foo".to_string()))
-		} else {
-			handle_response(&mut res)
-		}
+		handle_response(&mut res)
 	}
 
 	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
@@ -195,15 +188,15 @@ impl Transaction<i64> for RestTransaction {
 		handle_response(&mut res)
 	}
 
-	fn get_metadata(&self, owner_id: Option<i64>, key: String) -> Result<JsonValue, Error> {
+	fn get_metadata(&self, _: Option<i64>, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_metadata(&self, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<(), Error> {
+	fn set_metadata(&self, _: Option<i64>, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_metadata(&self, owner_id: Option<i64>, key: String) -> Result<(), Error> {
+	fn delete_metadata(&self, _: Option<i64>, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 

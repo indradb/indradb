@@ -1,10 +1,8 @@
 use nutrino::*;
 use std::process::Command;
-use rand::{Rng, thread_rng};
 use std::collections::BTreeMap;
 use regex::Regex;
 use std::marker::PhantomData;
-use std::env;
 use std::str;
 use std::cell::RefCell;
 
@@ -39,14 +37,11 @@ impl<H: HttpTransaction<T>, T: Transaction<i64>> HttpDatastore<H, T> {
 }
 
 impl<H: HttpTransaction<T>, T: Transaction<i64>> Datastore<T, i64> for HttpDatastore<H, T> {
-	fn has_account(&self, user_id: i64) -> Result<bool, Error> {
+	fn has_account(&self, _: i64) -> Result<bool, Error> {
         panic!("Unimplemented")
 	}
 
 	fn create_account(&self, email: String) -> Result<(i64, String), Error> {
-        let random_value: String = thread_rng().gen_ascii_chars().take(10).collect();
-        let email = format!("bin-test-{}@nutrino.com", random_value);
-
         let create_user_output = Command::new("./target/debug/nutrino-user")
             .arg("add")
             .arg(email)
@@ -95,7 +90,7 @@ impl<H: HttpTransaction<T>, T: Transaction<i64>> Datastore<T, i64> for HttpDatas
         }
 	}
 
-	fn auth(&self, user_id: i64, secret: String) -> Result<bool, Error> {
+	fn auth(&self, _: i64, _: String) -> Result<bool, Error> {
         panic!("Unimplemented")
 	}
 
