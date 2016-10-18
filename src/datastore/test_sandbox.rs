@@ -3,7 +3,6 @@ use super::test_util::*;
 use traits::Id;
 use models;
 use std::collections::BTreeMap;
-use serde_json::Value as JsonValue;
 use std::marker::PhantomData;
 
 pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
