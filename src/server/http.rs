@@ -344,48 +344,57 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	let query_params = try!(get_query_params(req));
 	let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
 
-	let result = match action {
-		"time" => {
-			let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
+	// TODO: Right now we check for `count` separately to avoid a type error, since it returns an
+	// i64, vs the others which return Vec<Edge<i64>>. There's probably a cleaner way to do this
+	// in rust.
+	if action == "count" {
+		let result = try!(datastore_request(trans.get_edge_count(outbound_id, t)));
+		try!(datastore_request(trans.commit()));
+		Ok(to_response(status::Ok, &result))
+	} else {
+		let result = match action {
+			"time" => {
+				let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
 
-			if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
-				limit = MAX_RETURNABLE_EDGES;
+				if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
+					limit = MAX_RETURNABLE_EDGES;
+				}
+
+				let high = match try!(get_query_param::<i64>(query_params, "high".to_string(), false)) {
+					Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
+					_ => None
+				};
+
+				let low = match try!(get_query_param::<i64>(query_params, "low".to_string(), false)) {
+					Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
+					_ => None
+				};
+
+				try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
+			},
+			"position" => {
+				let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
+
+				if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
+					limit = MAX_RETURNABLE_EDGES;
+				}
+
+				let mut offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
+
+				if offset < 0 {
+					offset = 0;
+				}
+
+				try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
+			},
+			_ => {
+				return Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string()))
 			}
+		};
 
-			let high = match try!(get_query_param::<i64>(query_params, "high".to_string(), false)) {
-				Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
-				_ => None
-			};
-
-			let low = match try!(get_query_param::<i64>(query_params, "low".to_string(), false)) {
-				Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
-				_ => None
-			};
-
-			try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
-		},
-		"position" => {
-			let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
-
-			if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
-				limit = MAX_RETURNABLE_EDGES;
-			}
-
-			let mut offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
-
-			if offset < 0 {
-				offset = 0;
-			}
-
-			try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
-		},
-		_ => {
-			return Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string()))
-		}
-	};
-
-	try!(datastore_request(trans.commit()));
-	Ok(to_response(status::Ok, &result))
+		try!(datastore_request(trans.commit()));
+		Ok(to_response(status::Ok, &result))
+	}
 }
 
 fn on_input_script(req: &mut Request) -> IronResult<Response> {

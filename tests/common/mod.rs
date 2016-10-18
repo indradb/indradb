@@ -13,6 +13,10 @@ lazy_static! {
     static ref ACCOUNT_SECRET_MATCHER: Regex = Regex::new(r"Account secret: (.+)").unwrap();
 }
 
+// We need to remember all of the secrets for the accounts that were created, to make
+// authenticated requests. This is stored in TLS to avoid storing it in the struct. We cannot
+// store this in the struct because it'd make `create_account` require a mutable self reference,
+// which the `Datastore` trait does not define.
 thread_local! {
     static ACCOUNT_IDS: RefCell<BTreeMap<i64, String>> = RefCell::new(BTreeMap::new());
 }
