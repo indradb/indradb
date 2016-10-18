@@ -299,80 +299,62 @@ fn check_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: 
 	}
 }
 
-pub fn local_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn local_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let key = sandbox.generate_unique_string("local");
 	let trans = sandbox.transaction();
-	let metadata = trans.get_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")).unwrap();
-	assert_eq!(metadata, JsonValue::Bool(true));
-}
 
-pub fn local_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	let result = trans.get_metadata(Some(sandbox.owner_id), "".to_string());
+	// Check to make sure there's no initial value
+	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+
+	// Set and get the value as true
+	let result = trans.set_metadata(Some(sandbox.owner_id), key.clone(), JsonValue::Bool(true));
+	assert!(result.is_ok());
+
+	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(true));
+
+	// Set and get the value as false
+	let result = trans.set_metadata(Some(sandbox.owner_id), key.clone(), JsonValue::Bool(false));
+	assert!(result.is_ok());
+
+	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(false));
+
+	// Delete & check that it's deleted
+	let result = trans.delete_metadata(Some(sandbox.owner_id), key.clone());
+	assert!(result.is_ok());
+
+	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 }
 
-pub fn local_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn global_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let key = sandbox.generate_unique_string("global");
 	let trans = sandbox.transaction();
-	trans.set_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local"), JsonValue::String("test".to_string())).unwrap();
-	let metadata = trans.get_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")).unwrap();
-	assert_eq!(metadata, JsonValue::String("test".to_string()));
-}
 
-pub fn local_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	trans.set_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-2"), JsonValue::String("test".to_string())).unwrap();
-	let metadata = trans.get_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-2")).unwrap();
-	assert_eq!(metadata, JsonValue::String("test".to_string()));
-}
-
-pub fn local_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	trans.delete_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local")).unwrap();
-	let result = trans.get_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local"));
+	// Check to make sure there's no initial value
+	let result = trans.get_metadata(None, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
-}
 
-pub fn local_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	let result = trans.delete_metadata(Some(sandbox.owner_id), sandbox.generate_unique_string("local-3"));
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
-}
+	// Set and get the value as true
+	let result = trans.set_metadata(None, key.clone(), JsonValue::Bool(true));
+	assert!(result.is_ok());
 
-pub fn global_get_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	let metadata = trans.get_metadata(None, sandbox.generate_unique_string("global")).unwrap();
-	assert_eq!(metadata, JsonValue::Bool(true));
-}
+	let result = trans.get_metadata(None, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
-pub fn global_get_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	let result = trans.get_metadata(None, "".to_string());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
-}
+	// Set and get the value as false
+	let result = trans.set_metadata(None, key.clone(), JsonValue::Bool(false));
+	assert!(result.is_ok());
 
-pub fn global_set_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	trans.set_metadata(None, sandbox.generate_unique_string("global"), JsonValue::String("test".to_string())).unwrap();
-	let metadata = trans.get_metadata(None, sandbox.generate_unique_string("global")).unwrap();
-	assert_eq!(metadata, JsonValue::String("test".to_string()));
-}
+	let result = trans.get_metadata(None, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
-pub fn global_set_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	trans.set_metadata(None, sandbox.generate_unique_string("global-2"), JsonValue::String("test".to_string())).unwrap();
-	let metadata = trans.get_metadata(None, sandbox.generate_unique_string("global-2")).unwrap();
-	assert_eq!(metadata, JsonValue::String("test".to_string()));
-}
+	// Delete & check that it's deleted
+	let result = trans.delete_metadata(None, key.clone());
+	assert!(result.is_ok());
 
-pub fn global_delete_metadata_existing<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	trans.delete_metadata(None, sandbox.generate_unique_string("global")).unwrap();
-	let result = trans.get_metadata(None, sandbox.generate_unique_string("global"));
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
-}
-
-pub fn global_delete_metadata_nonexisting<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let trans = sandbox.transaction();
-	let result = trans.delete_metadata(None, sandbox.generate_unique_string("global-3"));
+	let result = trans.get_metadata(None, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 }

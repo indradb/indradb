@@ -218,64 +218,14 @@ macro_rules! test_metadata_impl {
 				sandbox.teardown();
 			}
 
-			it "should get valid local metadata" {
-				sandbox.setup("should get valid local metadata");
-				local_get_metadata_existing(&mut sandbox)
+			it "should handle local metadata" {
+				sandbox.setup("should handle local metadata");
+				local_metadata(&mut sandbox)
 			}
 
-			it "should not get invalid local metadata" {
-				sandbox.setup("should not get invalid local metadata");
-				local_get_metadata_nonexisting(&mut sandbox)
-			}
-
-			it "should set valid local metadata" {
-				sandbox.setup("should set valid local metadata");
-				local_set_metadata_existing(&mut sandbox)
-			}
-
-			it "should not set invalid local metadata" {
-				sandbox.setup("should not set invalid local metadata");
-				local_set_metadata_nonexisting(&mut sandbox)
-			}
-
-			it "should delete valid local metadata" {
-				sandbox.setup("should delete valid local metadata");
-				local_delete_metadata_existing(&mut sandbox)
-			}
-
-			it "should not delete invalid local metadata" {
-				sandbox.setup("should not delete invalid local metadata");
-				local_delete_metadata_nonexisting(&mut sandbox)
-			}
-
-			it "should get valid global metadata" {
-				sandbox.setup("should get valid global metadata");
-				global_get_metadata_existing(&mut sandbox)
-			}
-
-			it "should not get invalid global metadata" {
-				sandbox.setup("should not get invalid global metadata");
-				global_get_metadata_nonexisting(&mut sandbox)
-			}
-
-			it "should set valid global metadata" {
-				sandbox.setup("should set valid global metadata");
-				global_set_metadata_existing(&mut sandbox)
-			}
-
-			it "should not set invalid global metadata" {
-				sandbox.setup("should not set invalid global metadata");
-				global_set_metadata_nonexisting(&mut sandbox)
-			}
-
-			it "should delete valid global metadata" {
-				sandbox.setup("should delete valid global metadata");
-				global_delete_metadata_existing(&mut sandbox)
-			}
-
-			it "should not delete invalid global metadata" {
-				sandbox.setup("should not delete invalid global metadata");
-				global_delete_metadata_nonexisting(&mut sandbox)
+			it "should handle global metadata" {
+				sandbox.setup("should handle global metadata");
+				global_metadata(&mut sandbox)
 			}
 		}
 	)

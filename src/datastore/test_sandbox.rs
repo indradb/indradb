@@ -165,28 +165,10 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		new_follows_edge(&trans, jill_id, bob_id, 1.0);
 		new_follows_edge(&trans, bob_id, jill_id, 1.0);
 
-		// Insert some metadata
-		trans.set_metadata(None, self.generate_unique_string("global"), JsonValue::Bool(true)).unwrap();
-		trans.set_metadata(Some(owner_id), self.generate_unique_string("local"), JsonValue::Bool(true)).unwrap();
-
 		trans.commit().unwrap();
 	}
 
 	pub fn teardown(&self) {
-		// Delete global metadata
-		let has_global_metadata = {
-			let trans = self.transaction();
-			let value = trans.get_metadata(None, self.generate_unique_string("global")).is_ok();
-			trans.commit().unwrap();
-			value
-		};
-
-		if has_global_metadata {
-			let trans = self.datastore.transaction(self.owner_id).unwrap();
-			trans.delete_metadata(None, self.generate_unique_string("global")).unwrap();
-			trans.commit().unwrap();
-		}
-
 		// Delete account data
 		for id in self.accounts.iter() {
 			self.datastore.delete_account(id.clone()).unwrap();
