@@ -1,5 +1,5 @@
 use super::{Datastore, Transaction};
-use super::test_sandbox::DatastoreTestSandbox;
+use super::test_sandbox::{DatastoreTestSandbox, insert_sample_data};
 use super::test_util::*;
 use util::Error;
 use models;
@@ -42,10 +42,12 @@ pub fn should_fail_when_attempting_to_delete_invalid_accounts<D: Datastore<T, I>
 	assert_eq!(result.unwrap_err(), Error::AccountNotFound);
 }
 
-pub fn should_get_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let jill_id = sandbox.search_id("user", "Jill");
 	let trans = sandbox.transaction();
-	let v = trans.get_vertex(sandbox.jill_id()).unwrap();
-	assert_eq!(v.id, sandbox.jill_id());
+	let v = trans.get_vertex(jill_id).unwrap();
+	assert_eq!(v.id, jill_id);
 	assert_eq!(v.t, "user".to_string());
 	let expected_properties = create_test_properties("Jill");
 	assert_eq!(v.properties, expected_properties);
@@ -82,15 +84,19 @@ pub fn should_not_update_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
 }
 
-pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let jill_id = sandbox.search_id("user", "Jill");
+	let christopher_id = sandbox.search_id("user", "Christopher");
+
 	// First create a vertex
 	let id = sandbox.create_test_vertex("movie", None);
 
 	// Create some edges, then delete the vertex and make sure the edges were cleared
 	let trans = sandbox.transaction();
-	trans.set_edge(models::Edge::new(id, "follows".to_string(), sandbox.jill_id(), 1.0)).unwrap();
-	trans.set_edge(models::Edge::new(id, "review".to_string(), sandbox.memento_id(), 1.0)).unwrap();
-	trans.set_edge(models::Edge::new(sandbox.christopher_id(), "follows".to_string(), id, 1.0)).unwrap();
+	trans.set_edge(models::Edge::new(id, "follows".to_string(), jill_id, 1.0)).unwrap();
+	trans.set_edge(models::Edge::new(id, "review".to_string(), sandbox.search_id("movie", "Memento"), 1.0)).unwrap();
+	trans.set_edge(models::Edge::new(christopher_id, "follows".to_string(), id, 1.0)).unwrap();
 	trans.delete_vertex(id).unwrap();
 	let result = trans.get_vertex(id);
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
@@ -98,7 +104,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 	assert_eq!(count, 0);
 	let count = trans.get_edge_count(id, "review".to_string()).unwrap();
 	assert_eq!(count, 0);
-	let count = trans.get_edge_count(sandbox.christopher_id(), "follows".to_string()).unwrap();
+	let count = trans.get_edge_count(christopher_id, "follows".to_string()).unwrap();
 	assert_eq!(count, 0);
 }
 
@@ -108,69 +114,86 @@ pub fn should_not_delete_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
 }
 
-pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let email = sandbox.generate_unique_string("isolated");
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).unwrap();
-	let result = trans.delete_vertex(sandbox.jill_id());
+	let result = trans.delete_vertex(sandbox.search_id("user", "Jill"));
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
 }
 
-pub fn should_get_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let jill_id = sandbox.search_id("user", "Jill");
+	let inception_id = sandbox.search_id("movie", "Inception");
 	let trans = sandbox.transaction();
-	let e = trans.get_edge(sandbox.jill_id(), "review".to_string(), sandbox.inception_id()).unwrap();
-	assert_eq!(e.outbound_id, sandbox.jill_id());
+	let e = trans.get_edge(jill_id, "review".to_string(), inception_id).unwrap();
+	assert_eq!(e.outbound_id, jill_id);
 	assert_eq!(e.t, "review".to_string());
-	assert_eq!(e.inbound_id, sandbox.inception_id());
+	assert_eq!(e.inbound_id, inception_id);
 }
 
-pub fn should_not_get_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_get_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let result = trans.get_edge(sandbox.jill_id(), "review".to_string(), I::default());
+	let result = trans.get_edge(sandbox.search_id("user", "Jill"), "review".to_string(), I::default());
 	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
 }
 
-pub fn should_update_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_update_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let jill_id = sandbox.search_id("user", "Jill");
+	let christopher_id = sandbox.search_id("user", "Christopher");
+
 	// This also tests adding a new type that didn't previously exist
-	let e1 = models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5);
-	let e2 = models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), -0.5);
+	let e1 = models::Edge::new(jill_id, "blocks".to_string(), christopher_id, 0.5);
+	let e2 = models::Edge::new(jill_id, "blocks".to_string(), christopher_id, -0.5);
 
 	let trans = sandbox.transaction();
-	let result = trans.get_edge(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id());
+	let result = trans.get_edge(jill_id, "blocks".to_string(), christopher_id);
 	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
 	trans.set_edge(e1.clone()).unwrap();
-	let e = trans.get_edge(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id()).unwrap();
+	let e = trans.get_edge(jill_id, "blocks".to_string(), christopher_id).unwrap();
 	assert_eq!(e1, e);
 	trans.set_edge(e2.clone()).unwrap();
-	let e = trans.get_edge(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id()).unwrap();
+	let e = trans.get_edge(jill_id, "blocks".to_string(), christopher_id).unwrap();
 	assert_eq!(e2, e);
 }
 
-pub fn should_not_update_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_update_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+
 	let trans = sandbox.transaction();
-	let result = trans.set_edge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), I::default(), 0.5));
+	let result = trans.set_edge(models::Edge::new(sandbox.search_id("user", "Jill"), "blocks".to_string(), I::default(), 0.5));
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
 }
 
-pub fn should_not_set_an_edge_with_a_bad_weight<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_set_an_edge_with_a_bad_weight<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let jill_id = sandbox.search_id("user", "Jill");
+	let bob_id = sandbox.search_id("user", "Bob");
+
 	let trans = sandbox.transaction();
-	let result = trans.set_edge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.bob_id(), 1.01));
+	let result = trans.set_edge(models::Edge::new(jill_id, "blocks".to_string(), bob_id, 1.01));
 	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
-	let result = trans.set_edge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.bob_id(), -1.01));
+	let result = trans.set_edge(models::Edge::new(jill_id, "blocks".to_string(), bob_id, -1.01));
 	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
 }
 
-pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let email = sandbox.generate_unique_string("isolated");
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
-	let result = trans.set_edge(models::Edge::new(sandbox.jill_id(), "blocks".to_string(), sandbox.christopher_id(), 0.5));
+	let result = trans.set_edge(models::Edge::new(sandbox.search_id("user", "Jill"), "blocks".to_string(), sandbox.search_id("user", "Christopher"), 0.5));
 	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
 }
 
-pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let bob_id = sandbox.bob_id();
-	let christopher_id = sandbox.christopher_id();
+pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let bob_id = sandbox.search_id("user", "Bob");
+	let christopher_id = sandbox.search_id("user", "Christopher");
 
 	let trans = sandbox.transaction();
 	let e = models::Edge::new(bob_id, "blocks".to_string(), christopher_id, 0.5);
@@ -181,23 +204,26 @@ pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(
 	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
 }
 
-pub fn should_not_delete_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_delete_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let result = trans.delete_edge(sandbox.jill_id(), "blocks".to_string(), I::default());
+	let result = trans.delete_edge(sandbox.search_id("user", "Jill"), "blocks".to_string(), I::default());
 	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
 }
 
-pub fn should_not_delete_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_delete_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let email = sandbox.generate_unique_string("isolated");
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).expect("Expected to be able to create a transaction");
-	let result = trans.delete_edge(sandbox.jill_id(), "blocks".to_string(), I::default());
+	let result = trans.delete_edge(sandbox.search_id("user", "Jill"), "blocks".to_string(), I::default());
 	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
 }
 
-pub fn should_get_an_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_an_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let count = trans.get_edge_count(sandbox.christopher_id(), "purchased".to_string()).unwrap();
+	let count = trans.get_edge_count(sandbox.search_id("user", "Christopher"), "purchased".to_string()).unwrap();
 	assert_eq!(count, 10);
 }
 
@@ -207,13 +233,16 @@ pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore<T, I>, T: Trans
 	assert_eq!(count, 0);
 }
 
-pub fn should_get_an_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_an_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let christopher_id = sandbox.search_id("user", "Christopher");
+
 	let check_range = |range: Vec<models::Edge<I>>, count: usize| {
 		assert_eq!(range.len(), count);
 		let mut covered_ids: HashSet<I> = HashSet::new();
 
 		for edge in range.iter() {
-			assert_eq!(edge.outbound_id, sandbox.christopher_id());
+			assert_eq!(edge.outbound_id, christopher_id);
 			assert_eq!(edge.t, "purchased".to_string());
 			assert_eq!(edge.weight, 1.0);
 			assert_eq!(edge.properties.len(), 0);
@@ -223,65 +252,74 @@ pub fn should_get_an_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sa
 	};
 
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_range(sandbox.christopher_id(), "purchased".to_string(), 0, 5).unwrap();
+	let range = trans.get_edge_range(christopher_id, "purchased".to_string(), 0, 5).unwrap();
 	check_range(range, 5);
-	let range = trans.get_edge_range(sandbox.christopher_id(), "purchased".to_string(), 5, 0).unwrap();
+	let range = trans.get_edge_range(christopher_id, "purchased".to_string(), 5, 0).unwrap();
 	check_range(range, 0);
-	let range = trans.get_edge_range(sandbox.christopher_id(), "purchased".to_string(), 5, 5).unwrap();
+	let range = trans.get_edge_range(christopher_id, "purchased".to_string(), 5, 5).unwrap();
 	check_range(range, 5);
 }
 
-pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_range(sandbox.christopher_id(), "foo".to_string(), 0, 10).unwrap();
+	let range = trans.get_edge_range(sandbox.search_id("user", "Christopher"), "foo".to_string(), 0, 10).unwrap();
 	assert_eq!(range.len(), 0);
 }
 
-pub fn should_not_get_an_edge_range_with_an_invalid_offset<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_get_an_edge_range_with_an_invalid_offset<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(sandbox.christopher_id(), "foo".to_string(), -1, 10);
+	let result = trans.get_edge_range(sandbox.search_id("user", "Christopher"), "foo".to_string(), -1, 10);
 	assert_eq!(result.unwrap_err(), Error::OffsetOutOfRange);
 }
 
-pub fn should_not_get_an_edge_range_with_an_invalid_limit<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_not_get_an_edge_range_with_an_invalid_limit<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(sandbox.christopher_id(), "foo".to_string(), 0, -1);
+	let result = trans.get_edge_range(sandbox.search_id("user", "Christopher"), "foo".to_string(), 0, -1);
 	assert_eq!(result.unwrap_err(), Error::LimitOutOfRange);
 }
 
-pub fn should_get_edges_by_a_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_edges_by_a_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "review".to_string(), get_after(), get_before(), 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "review".to_string(), get_after(), get_before(), 10).unwrap();
 	check_edge_time_range(sandbox, range, 6);
 }
 
-pub fn should_get_no_edges_for_an_invalid_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_no_edges_for_an_invalid_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "foo".to_string(), get_after(), get_before(), 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "foo".to_string(), get_after(), get_before(), 10).unwrap();
 	check_edge_time_range(sandbox, range, 0);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_high<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_edges_by_a_time_range_with_no_high<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "review".to_string(), Option::None, get_before(), 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "review".to_string(), Option::None, get_before(), 10).unwrap();
 	check_edge_time_range(sandbox, range, 6);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_low<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_edges_by_a_time_range_with_no_low<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "review".to_string(), get_after(), Option::None, 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "review".to_string(), get_after(), Option::None, 10).unwrap();
 	check_edge_time_range(sandbox, range, 6);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_time<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_edges_by_a_time_range_with_no_time<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "review".to_string(), Option::None, Option::None, 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "review".to_string(), Option::None, Option::None, 10).unwrap();
 	check_edge_time_range(sandbox, range, 6);
 }
 
-pub fn should_get_no_edges_for_a_reversed_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn should_get_no_edges_for_a_reversed_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
 	let trans = sandbox.transaction();
-	let range = trans.get_edge_time_range(sandbox.christopher_id(), "review".to_string(), get_after(), get_after(), 10).unwrap();
+	let range = trans.get_edge_time_range(sandbox.search_id("user", "Christopher"), "review".to_string(), get_after(), get_after(), 10).unwrap();
 	check_edge_time_range(sandbox, range, 0);
 }
 
@@ -290,7 +328,7 @@ fn check_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: 
 	let mut covered_ids: HashSet<I> = HashSet::new();
 
 	for edge in range.iter() {
-		assert_eq!(edge.outbound_id, sandbox.christopher_id());
+		assert_eq!(edge.outbound_id, sandbox.search_id("user", "Christopher"));
 		assert_eq!(edge.t, "review".to_string());
 		assert_eq!(edge.weight, 1.0);
 		assert_eq!(edge.properties.len(), 0);

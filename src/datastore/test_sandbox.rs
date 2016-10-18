@@ -39,7 +39,7 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		self.datastore.transaction(self.owner_id).unwrap()
 	}
 
-	fn search_id(&self, t: &str, name: &str) -> I {
+	pub fn search_id(&self, t: &str, name: &str) -> I {
 		for vertex in self.vertices.iter() {
 			if vertex.t != t {
 				continue;
@@ -53,26 +53,6 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		}
 
 		panic!("Could not find vertex with type=\"{}\" and name=\"{}\"", t, name);
-	}
-
-	pub fn jill_id(&self) -> I {
-		self.search_id("user", "Jill")
-	}
-
-	pub fn bob_id(&self) -> I {
-		self.search_id("user", "Bob")
-	}
-
-	pub fn christopher_id(&self) -> I {
-		self.search_id("user", "Christopher")
-	}
-
-	pub fn memento_id(&self) -> I {
-		self.search_id("movie", "Memento")
-	}
-
-	pub fn inception_id(&self) -> I {
-		self.search_id("movie", "Inception")
 	}
 
 	pub fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> I {
@@ -104,67 +84,6 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 		let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
 		self.owner_id = owner_id;
 		self.owner_secret = owner_secret;
-
-		// Insert some users
-		let jill_id = self.create_test_vertex("user", Some("Jill"));
-		let bob_id = self.create_test_vertex("user", Some("Bob"));
-		let christopher_id = self.create_test_vertex("user", Some("Christopher"));
-
-		// Insert some movies
-		let doodlebug_id = self.create_test_vertex("movie", Some("Doodlebug"));
-		let following_id = self.create_test_vertex("movie", Some("Following"));
-		let memento_id = self.create_test_vertex("movie", Some("Memento"));
-		let insomnia_id = self.create_test_vertex("movie", Some("Insomnia"));
-		let batman_begins_id = self.create_test_vertex("movie", Some("Batman Begins"));
-		let prestige_id = self.create_test_vertex("movie", Some("The Prestige"));
-		let dark_knight_id = self.create_test_vertex("movie", Some("The Dark Knight"));
-		let inception_id = self.create_test_vertex("movie", Some("Inception"));
-		let dark_knight_rises_id = self.create_test_vertex("movie", Some("The Dark Knight Rises"));
-		let interstellar_id = self.create_test_vertex("movie", Some("Interstellar"));
-
-		// Create a new transaction for inserting all the test edges
-		let trans = self.transaction();
-
-		// Jill isn't a fan
-		new_review_edge(&trans, jill_id, inception_id, -0.8);
-		new_review_edge(&trans, jill_id, dark_knight_rises_id, -0.9);
-		new_review_edge(&trans, jill_id, interstellar_id, -0.8);
-
-		// Bob likes some stuff
-		new_purchased_edge(&trans, bob_id, inception_id, 1.0);
-		new_purchased_edge(&trans, bob_id, interstellar_id, 1.0);
-		new_review_edge(&trans, bob_id, memento_id, 0.2);
-		new_review_edge(&trans, bob_id, insomnia_id, -1.0);
-		new_review_edge(&trans, bob_id, batman_begins_id, 0.7);
-		new_review_edge(&trans, bob_id, prestige_id, 0.8);
-		new_review_edge(&trans, bob_id, dark_knight_id, 0.9);
-		new_review_edge(&trans, bob_id, inception_id, 1.0);
-		new_review_edge(&trans, bob_id, dark_knight_rises_id, 0.8);
-		new_review_edge(&trans, bob_id, interstellar_id, 1.0);
-
-		// Christopher really likes these movies
-		new_purchased_edge(&trans, christopher_id, doodlebug_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, following_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, memento_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, insomnia_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, batman_begins_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, prestige_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, dark_knight_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, inception_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
-		new_purchased_edge(&trans, christopher_id, interstellar_id, 1.0);
-		new_review_edge(&trans, christopher_id, batman_begins_id, 1.0);
-		new_review_edge(&trans, christopher_id, prestige_id, 1.0);
-		new_review_edge(&trans, christopher_id, dark_knight_id, 1.0);
-		new_review_edge(&trans, christopher_id, inception_id, 1.0);
-		new_review_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
-		new_review_edge(&trans, christopher_id, interstellar_id, 1.0);
-
-		// Jill and Bob follow each other; Christopher is anti-social
-		new_follows_edge(&trans, jill_id, bob_id, 1.0);
-		new_follows_edge(&trans, bob_id, jill_id, 1.0);
-
-		trans.commit().unwrap();
 	}
 
 	pub fn teardown(&self) {
@@ -173,6 +92,69 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 			self.datastore.delete_account(id.clone()).unwrap();
 		}
 	}
+}
+
+pub fn insert_sample_data<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	// Insert some users
+	let jill_id = sandbox.create_test_vertex("user", Some("Jill"));
+	let bob_id = sandbox.create_test_vertex("user", Some("Bob"));
+	let christopher_id = sandbox.create_test_vertex("user", Some("Christopher"));
+
+	// Insert some movies
+	let doodlebug_id = sandbox.create_test_vertex("movie", Some("Doodlebug"));
+	let following_id = sandbox.create_test_vertex("movie", Some("Following"));
+	let memento_id = sandbox.create_test_vertex("movie", Some("Memento"));
+	let insomnia_id = sandbox.create_test_vertex("movie", Some("Insomnia"));
+	let batman_begins_id = sandbox.create_test_vertex("movie", Some("Batman Begins"));
+	let prestige_id = sandbox.create_test_vertex("movie", Some("The Prestige"));
+	let dark_knight_id = sandbox.create_test_vertex("movie", Some("The Dark Knight"));
+	let inception_id = sandbox.create_test_vertex("movie", Some("Inception"));
+	let dark_knight_rises_id = sandbox.create_test_vertex("movie", Some("The Dark Knight Rises"));
+	let interstellar_id = sandbox.create_test_vertex("movie", Some("Interstellar"));
+
+	// Create a new transaction for inserting all the test edges
+	let trans = sandbox.transaction();
+
+	// Jill isn't a fan
+	new_review_edge(&trans, jill_id, inception_id, -0.8);
+	new_review_edge(&trans, jill_id, dark_knight_rises_id, -0.9);
+	new_review_edge(&trans, jill_id, interstellar_id, -0.8);
+
+	// Bob likes some stuff
+	new_purchased_edge(&trans, bob_id, inception_id, 1.0);
+	new_purchased_edge(&trans, bob_id, interstellar_id, 1.0);
+	new_review_edge(&trans, bob_id, memento_id, 0.2);
+	new_review_edge(&trans, bob_id, insomnia_id, -1.0);
+	new_review_edge(&trans, bob_id, batman_begins_id, 0.7);
+	new_review_edge(&trans, bob_id, prestige_id, 0.8);
+	new_review_edge(&trans, bob_id, dark_knight_id, 0.9);
+	new_review_edge(&trans, bob_id, inception_id, 1.0);
+	new_review_edge(&trans, bob_id, dark_knight_rises_id, 0.8);
+	new_review_edge(&trans, bob_id, interstellar_id, 1.0);
+
+	// Christopher really likes these movies
+	new_purchased_edge(&trans, christopher_id, doodlebug_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, following_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, memento_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, insomnia_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, batman_begins_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, prestige_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, dark_knight_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, inception_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
+	new_purchased_edge(&trans, christopher_id, interstellar_id, 1.0);
+	new_review_edge(&trans, christopher_id, batman_begins_id, 1.0);
+	new_review_edge(&trans, christopher_id, prestige_id, 1.0);
+	new_review_edge(&trans, christopher_id, dark_knight_id, 1.0);
+	new_review_edge(&trans, christopher_id, inception_id, 1.0);
+	new_review_edge(&trans, christopher_id, dark_knight_rises_id, 1.0);
+	new_review_edge(&trans, christopher_id, interstellar_id, 1.0);
+
+	// Jill and Bob follow each other; Christopher is anti-social
+	new_follows_edge(&trans, jill_id, bob_id, 1.0);
+	new_follows_edge(&trans, bob_id, jill_id, 1.0);
+
+	trans.commit().unwrap();
 }
 
 fn new_review_edge<T: Transaction<I>, I: Id>(trans: &T, outbound_id: I, inbound_id: I, weight: f32) {
