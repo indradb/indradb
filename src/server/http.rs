@@ -354,11 +354,7 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	} else {
 		let result = match action {
 			"time" => {
-				let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
-
-				if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
-					limit = MAX_RETURNABLE_EDGES;
-				}
+				let limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
 
 				let high = match try!(get_query_param::<i64>(query_params, "high".to_string(), false)) {
 					Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
@@ -373,18 +369,8 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 				try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
 			},
 			"position" => {
-				let mut limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
-
-				if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
-					limit = MAX_RETURNABLE_EDGES;
-				}
-
-				let mut offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
-
-				if offset < 0 {
-					offset = 0;
-				}
-
+				let limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
+				let offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
 				try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
 			},
 			_ => {
