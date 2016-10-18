@@ -89,7 +89,7 @@ def main(pattern="*.lua"):
 
     with util.user() as (email, user_id, secret):
         with util.server():
-            for name in glob.glob(os.path.join("bin/support/test_scripts/", pattern)):
+            for name in glob.glob(os.path.join("support/test_scripts/", pattern)):
                 with open(name, "r") as f:
                     contents = f.read()
 
