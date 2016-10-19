@@ -15,13 +15,17 @@ extern crate hyper;
 mod common;
 
 use std::collections::BTreeMap;
+use std::io::Read;
 
 use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
 use chrono::NaiveDateTime;
+use serde::Deserialize;
+use hyper::status::StatusCode;
+use hyper::client::response::Response;
 
 pub use nutrino::*;
-pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message, response_to_obj};
+pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
 
 pub struct RestTransaction {
 	port: i32,
@@ -163,5 +167,20 @@ impl Transaction<i64> for RestTransaction {
 test_transaction_impl! {
 	rest_transaction {
 	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
+	}
+}
+
+pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
+	match res.status {
+		StatusCode::Ok => {
+			let mut payload = String::new();
+			res.read_to_string(&mut payload).unwrap();
+			let v: T = serde_json::from_str(&payload[..]).unwrap();
+			Ok(v)
+		},
+        _ => {
+            let message = response_to_error_message(res);
+            Err(Error::description_to_error(&message[..]))
+        }
 	}
 }

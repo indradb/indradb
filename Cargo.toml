@@ -30,6 +30,7 @@ lazy_static = "0.2.1"
 
 [dev-dependencies]
 stainless = "*"
+maplit = "0.1.4"
 
 [dependencies.serde_json]
 git = "https://github.com/serde-rs/json"

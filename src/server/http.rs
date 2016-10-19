@@ -1,5 +1,6 @@
 use iron::prelude::*;
 use std::i32;
+use std::i64;
 use iron::status;
 use iron::headers::{Headers, ContentType, Authorization, Basic};
 use iron::typemap::{Key, TypeMap};
@@ -26,6 +27,7 @@ use std::env;
 use std::path::Path;
 use regex;
 use std::fs::File;
+use std::cmp::min;
 use datastore::DATASTORE;
 
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
@@ -181,9 +183,59 @@ macro_rules! create_json_param_fn {
 }
 
 create_json_param_fn!(get_json_string_param, JsonValue::String, String);
-create_json_param_fn!(get_json_u64_param, JsonValue::U64, u64);
 create_json_param_fn!(get_json_f64_param, JsonValue::F64, f64);
 create_json_param_fn!(get_json_object_param, JsonValue::Object, BTreeMap<String, JsonValue>);
+
+fn get_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str, optional: bool) -> Result<Option<i64>, IronError> {
+	match json.get(name) {
+		Some(&JsonValue::I64(ref val)) => Ok(Some(val.clone())),
+		Some(&JsonValue::U64(ref val)) => {
+			let val = val.clone();
+			if val > i64::MAX as u64 {
+				Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+			} else {
+				Ok(Some(val as i64))
+			}
+		},
+		None | Some(&JsonValue::Null) => {
+			if optional {
+				Ok(None)
+			} else {
+				Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+			}
+		}
+		_ => {
+			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+		}
+	}
+}
+
+fn get_json_i32_param(json: &BTreeMap<String, JsonValue>, name: &str, optional: bool) -> Result<Option<i32>, IronError> {
+	match try!(get_json_i64_param(json, name, optional)) {
+		Some(val) => {
+			if val > i32::MAX as i64 {
+				Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+			} else {
+				Ok(Some(val as i32))
+			}
+		},
+		None => Ok(None)
+	}
+}
+
+fn parse_limit(val: Option<i32>) -> i32 {
+	match val {
+		Some(val) => min(val, MAX_RETURNABLE_EDGES),
+		_ => MAX_RETURNABLE_EDGES
+	}
+}
+
+fn parse_datetime(val: Option<i64>) -> Option<NaiveDateTime> {
+	match val {
+		Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
+		_ => None
+	}
+}
 
 fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 	match result {
@@ -354,22 +406,13 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	} else {
 		let result = match action {
 			"time" => {
-				let limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
-
-				let high = match try!(get_query_param::<i64>(query_params, "high".to_string(), false)) {
-					Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
-					_ => None
-				};
-
-				let low = match try!(get_query_param::<i64>(query_params, "low".to_string(), false)) {
-					Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
-					_ => None
-				};
-
+				let limit = parse_limit(try!(get_query_param::<i32>(query_params, "limit".to_string(), false)));
+				let high = parse_datetime(try!(get_query_param::<i64>(query_params, "high".to_string(), false)));
+				let low = parse_datetime(try!(get_query_param::<i64>(query_params, "low".to_string(), false)));
 				try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
 			},
 			"position" => {
-				let limit = try!(get_query_param::<i32>(query_params, "limit".to_string(), false)).unwrap_or(0);
+				let limit = parse_limit(try!(get_query_param::<i32>(query_params, "limit".to_string(), false)));
 				let offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
 				try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
 			},
@@ -490,8 +533,8 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_json_u64_param(item, "id", false));
-	transaction_item(trans.get_vertex(id.unwrap() as i64))
+	let id = try!(get_json_i64_param(item, "id", false));
+	transaction_item(trans.get_vertex(id.unwrap()))
 }
 
 fn create_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
@@ -501,90 +544,64 @@ fn create_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonV
 }
 
 fn set_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_json_u64_param(item, "id", false));
+	let id = try!(get_json_i64_param(item, "id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let properties = try!(get_json_object_param(item, "properties", true)).unwrap_or(BTreeMap::new());
-	transaction_item(trans.set_vertex(Vertex::new_with_properties(id.unwrap() as i64, t.unwrap(), properties)))
+	transaction_item(trans.set_vertex(Vertex::new_with_properties(id.unwrap(), t.unwrap(), properties)))
 }
 
 fn delete_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_json_u64_param(item, "id", false));
-	transaction_item(trans.delete_vertex(id.unwrap() as i64))
+	let id = try!(get_json_i64_param(item, "id", false));
+	transaction_item(trans.delete_vertex(id.unwrap()))
 }
 
 fn get_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
-	transaction_item(trans.get_edge(outbound_id.unwrap() as i64, t.unwrap(), inbound_id.unwrap() as i64))
+	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
+	transaction_item(trans.get_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
 }
 
 fn set_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
+	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
 	let weight = try!(get_json_f64_param(item, "weight", false));
 	let properties = try!(get_json_object_param(item, "properties", true)).unwrap_or(BTreeMap::new());
-	transaction_item(trans.set_edge(Edge::new_with_properties(outbound_id.unwrap() as i64, t.unwrap(), inbound_id.unwrap() as i64, weight.unwrap() as f32, properties)))
+	transaction_item(trans.set_edge(Edge::new_with_properties(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap(), weight.unwrap() as f32, properties)))
 }
 
 fn delete_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let inbound_id = try!(get_json_u64_param(item, "inbound_id", false));
-	transaction_item(trans.delete_edge(outbound_id.unwrap() as i64, t.unwrap(), inbound_id.unwrap() as i64))
+	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
+	transaction_item(trans.delete_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
 }
 
 fn get_edge_count_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	transaction_item(trans.get_edge_count(outbound_id.unwrap() as i64, t.unwrap()))
+	transaction_item(trans.get_edge_count(outbound_id.unwrap(), t.unwrap()))
 }
 
 fn get_edge_range_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let limit = try!(get_json_limit_param(item));
-	let offset = try!(get_json_u64_param(item, "offset", true)).unwrap_or(0);
-	transaction_item(trans.get_edge_range(outbound_id.unwrap() as i64, t.unwrap(), offset as i64, limit))
+	let limit = parse_limit(try!(get_json_i32_param(item, "limit", true)));
+	let offset = try!(get_json_i64_param(item, "offset", true)).unwrap_or(0);
+	transaction_item(trans.get_edge_range(outbound_id.unwrap(), t.unwrap(), offset, limit))
 }
 
 fn get_edge_time_range_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_json_u64_param(item, "outbound_id", false));
+	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let limit = try!(get_json_limit_param(item));
-	let high = try!(get_json_timestamp_param(item, "high"));
-	let low = try!(get_json_timestamp_param(item, "low"));
-	transaction_item(trans.get_edge_time_range(outbound_id.unwrap() as i64, t.unwrap(), high, low, limit))
+	let limit = parse_limit(try!(get_json_i32_param(item, "limit", true)));
+	let high = parse_datetime(try!(get_json_i64_param(item, "high", true)));
+	let low = parse_datetime(try!(get_json_i64_param(item, "low", true)));
+	transaction_item(trans.get_edge_time_range(outbound_id.unwrap(), t.unwrap(), high, low, limit))
 }
 
 fn transaction_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
 	let result = try!(datastore_request(result));
 	Ok(serde_json::to_value(&result))
-}
-
-fn get_json_limit_param(item: &BTreeMap<String, JsonValue>) -> Result<i32, IronError> {
-	let limit = match try!(get_json_u64_param(item, "limit", true)) {
-		Some(val) => {
-			if val <= i32::MAX as u64 {
-				val as i32
-			} else {
-				MAX_RETURNABLE_EDGES
-			}
-		},
-	 	_ => MAX_RETURNABLE_EDGES
-	};
-
-	if limit <= 0 || limit > MAX_RETURNABLE_EDGES {
-		Ok(MAX_RETURNABLE_EDGES)
-	} else {
-		Ok(limit)
-	}
-}
-
-fn get_json_timestamp_param(item: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<NaiveDateTime>, IronError> {
-	match try!(get_json_u64_param(item, name, true)) {
-		Some(val) => Ok(Some(NaiveDateTime::from_timestamp(val as i64, 0))),
-		None => Ok(None)
-	}
 }
