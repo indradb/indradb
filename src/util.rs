@@ -17,6 +17,21 @@ pub enum Error {
 	Unexpected(String),
 }
 
+impl Error {
+	pub fn description_to_error(message: &str) -> Self {
+		match &message[..] {
+	        "Account not found" => Error::AccountNotFound,
+	        "Vertex does not exist" => Error::VertexDoesNotExist,
+	        "Edge does not exist" => Error::EdgeDoesNotExist,
+	        "Metadata does not exist" => Error::MetadataDoesNotExist,
+	        "Weight out of range" => Error::WeightOutOfRange,
+	        "Limit out of range" => Error::LimitOutOfRange,
+	        "Offset out of range" => Error::OffsetOutOfRange,
+	        _ => Error::Unexpected(format!("Unexpected error message: {}", message))
+	    }
+	}
+}
+
 impl StdError for Error {
 	fn description(&self) -> &str {
 		match *self {
