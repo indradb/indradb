@@ -14,20 +14,17 @@ extern crate hyper;
 
 mod common;
 
-use hyper::header::{Authorization, Basic};
 use hyper::client::{Client, RequestBuilder};
 use hyper::client::response::Response;
 use hyper::status::StatusCode;
-use hyper::method::Method;
 
 use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 
 use std::io::Read;
-use std::str::FromStr;
 
 pub use nutrino::*;
-pub use common::{HttpDatastore, HttpTransaction};
+pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
 
 use std::collections::BTreeMap;
 use chrono::NaiveDateTime;
@@ -39,18 +36,8 @@ pub struct RestTransaction {
 }
 
 impl RestTransaction {
-	fn req<'a>(&self, client: &'a Client, method_str: &str, path: String) -> RequestBuilder<'a> {
-		let method = Method::from_str(method_str).unwrap();
-		let url = format!("http://localhost:{}{}", self.port, path);
-
-		let auth = Authorization(
-			Basic {
-				username: self.account_id.to_string(),
-				password: Some(self.secret.clone())
-			}
-		);
-
-		client.request(method, &url[..]).header(auth)
+	fn request<'a>(&self, client: &'a Client, method_str: &str, path: String) -> RequestBuilder<'a> {
+		return request(client, self.port, self.account_id, self.secret.clone(), method_str, path)
 	}
 }
 
@@ -67,7 +54,7 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 impl Transaction<i64> for RestTransaction {
 	fn get_vertex(&self, id: i64) -> Result<Vertex<i64>, Error> {
 		let client = Client::new();
-		let req = self.req(&client, "GET", format!("/vertex/{}", id));
+		let req = self.request(&client, "GET", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
@@ -79,7 +66,7 @@ impl Transaction<i64> for RestTransaction {
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
-		let req = self.req(&client, "POST", "/vertex".to_string()).body(&body[..]);
+		let req = self.request(&client, "POST", "/vertex".to_string()).body(&body[..]);
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
@@ -91,21 +78,21 @@ impl Transaction<i64> for RestTransaction {
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
-		let req = self.req(&client, "PUT", format!("/vertex/{}", v.id)).body(&body[..]);
+		let req = self.request(&client, "PUT", format!("/vertex/{}", v.id)).body(&body[..]);
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
 
 	fn delete_vertex(&self, id: i64) -> Result<(), Error> {
 		let client = Client::new();
-		let req = self.req(&client, "DELETE", format!("/vertex/{}", id));
+		let req = self.request(&client, "DELETE", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
 
 	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<Edge<i64>, Error> {
 		let client = Client::new();
-		let req = self.req(&client, "GET", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
@@ -117,28 +104,28 @@ impl Transaction<i64> for RestTransaction {
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
-		let req = self.req(&client, "PUT", format!("/edge/{}/{}/{}", e.outbound_id, e.t, e.inbound_id)).body(&body[..]);
+		let req = self.request(&client, "PUT", format!("/edge/{}/{}/{}", e.outbound_id, e.t, e.inbound_id)).body(&body[..]);
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
 
 	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
 		let client = Client::new();
-		let req = self.req(&client, "DELETE", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
+		let req = self.request(&client, "DELETE", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
 
 	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<i64, Error> {
 		let client = Client::new();
-		let req = self.req(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
 
 	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
 		let client = Client::new();
-		let req = self.req(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
@@ -153,7 +140,7 @@ impl Transaction<i64> for RestTransaction {
 			(None, None) => "".to_string(),
 		};
 
-		let req = self.req(&client, "GET", format!("/edge/{}/{}?action=time&limit={}{}", outbound_id, t, limit, qp));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=time&limit={}{}", outbound_id, t, limit, qp));
 		let mut res = req.send().unwrap();
 		handle_response(&mut res)
 	}
@@ -194,7 +181,7 @@ fn handle_response<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
 			Ok(v)
 		},
 		StatusCode::NotFound => {
-			let msg = get_error_message(res);
+			let msg = response_to_error_message(res);
 
 			match &msg[..] {
 				"Account not found" => Err(Error::AccountNotFound),
@@ -205,7 +192,7 @@ fn handle_response<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
 			}
 		},
 		StatusCode::BadRequest => {
-			let msg = get_error_message(res);
+			let msg = response_to_error_message(res);
 
 			match &msg[..] {
 				"Weight out of range" => Err(Error::WeightOutOfRange),
@@ -215,16 +202,5 @@ fn handle_response<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
 			}
 		},
 		_ => Err(Error::Unexpected(format!("Unexpected return status code: {}", res.status)))
-	}
-}
-
-fn get_error_message(res: &mut Response) -> String {
-	let mut payload = String::new();
-	res.read_to_string(&mut payload).unwrap();
-	let o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
-
-	match o.get("error") {
-		Some(&JsonValue::String(ref error)) => error.clone(),
-		_ => panic!("Could not unpack error message")
 	}
 }
