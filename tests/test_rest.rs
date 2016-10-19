@@ -14,20 +14,14 @@ extern crate hyper;
 
 mod common;
 
+use std::collections::BTreeMap;
+
 use hyper::client::{Client, RequestBuilder};
-use hyper::client::response::Response;
-use hyper::status::StatusCode;
-
-use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
-
-use std::io::Read;
+use chrono::NaiveDateTime;
 
 pub use nutrino::*;
-pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
-
-use std::collections::BTreeMap;
-use chrono::NaiveDateTime;
+pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message, response_to_obj};
 
 pub struct RestTransaction {
 	port: i32,
@@ -56,7 +50,7 @@ impl Transaction<i64> for RestTransaction {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn create_vertex(&self, t: String, properties: BTreeMap<String, JsonValue>) -> Result<i64, Error> {
@@ -68,7 +62,7 @@ impl Transaction<i64> for RestTransaction {
 		let client = Client::new();
 		let req = self.request(&client, "POST", "/vertex".to_string()).body(&body[..]);
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn set_vertex(&self, v: Vertex<i64>) -> Result<(), Error> {
@@ -80,21 +74,21 @@ impl Transaction<i64> for RestTransaction {
 		let client = Client::new();
 		let req = self.request(&client, "PUT", format!("/vertex/{}", v.id)).body(&body[..]);
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn delete_vertex(&self, id: i64) -> Result<(), Error> {
 		let client = Client::new();
 		let req = self.request(&client, "DELETE", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<Edge<i64>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn set_edge(&self, e: Edge<i64>) -> Result<(), Error> {
@@ -106,28 +100,28 @@ impl Transaction<i64> for RestTransaction {
 		let client = Client::new();
 		let req = self.request(&client, "PUT", format!("/edge/{}/{}/{}", e.outbound_id, e.t, e.inbound_id)).body(&body[..]);
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
 		let client = Client::new();
 		let req = self.request(&client, "DELETE", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<i64, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
@@ -142,7 +136,7 @@ impl Transaction<i64> for RestTransaction {
 
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=time&limit={}{}", outbound_id, t, limit, qp));
 		let mut res = req.send().unwrap();
-		handle_response(&mut res)
+		response_to_obj(&mut res)
 	}
 
 	fn get_metadata(&self, _: Option<i64>, _: String) -> Result<JsonValue, Error> {
@@ -169,38 +163,5 @@ impl Transaction<i64> for RestTransaction {
 test_transaction_impl! {
 	rest_transaction {
 	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
-	}
-}
-
-fn handle_response<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
-	match res.status {
-		StatusCode::Ok => {
-			let mut payload = String::new();
-			res.read_to_string(&mut payload).unwrap();
-			let v: T = serde_json::from_str(&payload[..]).unwrap();
-			Ok(v)
-		},
-		StatusCode::NotFound => {
-			let msg = response_to_error_message(res);
-
-			match &msg[..] {
-				"Account not found" => Err(Error::AccountNotFound),
-				"Vertex does not exist" => Err(Error::VertexDoesNotExist),
-				"Edge does not exist" => Err(Error::EdgeDoesNotExist),
-				"Metadata does not exist" => Err(Error::MetadataDoesNotExist),
-				_ => Err(Error::Unexpected(format!("Unexpected error message: {}", msg)))
-			}
-		},
-		StatusCode::BadRequest => {
-			let msg = response_to_error_message(res);
-
-			match &msg[..] {
-				"Weight out of range" => Err(Error::WeightOutOfRange),
-				"Limit out of range" => Err(Error::LimitOutOfRange),
-				"Offset out of range" => Err(Error::OffsetOutOfRange),
-				_ => Err(Error::Unexpected(format!("Unexpected error message: {}", msg)))
-			}
-		},
-		_ => Err(Error::Unexpected(format!("Unexpected return status code: {}", res.status)))
 	}
 }
