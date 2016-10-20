@@ -199,7 +199,13 @@ impl Transaction<i64> for BatchTransaction {
 }
 
 test_transaction_impl! {
-	batch_transaction {
+	test_batch_transaction {
+	    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
+	}
+}
+
+bench_transaction_impl! {
+	bench_batch_transaction {
 	    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
 	}
 }
