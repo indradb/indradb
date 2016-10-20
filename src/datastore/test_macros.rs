@@ -33,7 +33,7 @@ macro_rules! test_account_management_impl {
 
 			it "should fail to lookup invalid accounts" {
 				sandbox.setup("should fail to lookup invalid accounts");
-::				should_fail_to_lookup_invalid_accounts(&mut sandbox)
+				::should_fail_to_lookup_invalid_accounts(&mut sandbox)
 			}
 
 			it "should fail when attempting to delete invalid accounts" {
@@ -204,6 +204,78 @@ macro_rules! test_transaction_impl {
 		}
 	)
 }
+
+#[macro_export]
+macro_rules! bench_transaction_impl {
+	($name:ident $code:expr) => (
+		describe! $name {
+			bench "benchmark get_vertex" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark get_vertex");
+				::bench_get_vertex(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark create_vertex" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark create_vertex");
+				::bench_create_vertex(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark set_vertex" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark set_vertex");
+				::bench_set_vertex(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark get_edge" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark get_edge");
+				::bench_get_edge(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark set_edge" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark set_edge");
+				::bench_set_edge(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark get_edge_count" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark get_edge_count");
+				::bench_get_edge_count(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark get_edge_range" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark get_edge_range");
+				::bench_get_edge_range(b, &mut sandbox);
+				sandbox.teardown();
+			}
+
+			bench "benchmark get_edge_time_range" (b) {
+				let datastore = $code;
+				let mut sandbox = DatastoreTestSandbox::new(datastore);
+				sandbox.setup("benchmark get_edge_time_range");
+				::bench_get_edge_time_range(b, &mut sandbox);
+				sandbox.teardown();
+			}
+		}
+	)
+}
+
 
 #[macro_export]
 macro_rules! test_metadata_impl {

@@ -12,13 +12,17 @@ pub fn datastore() -> PostgresDatastore {
 }
 
 test_account_management_impl! {
-	postgres_account_management datastore()
+	test_postgres_account_management datastore()
 }
 
 test_transaction_impl! {
-	postgres_transaction datastore()
+	test_postgres_transaction datastore()
+}
+
+bench_transaction_impl! {
+	bench_postgres_transaction datastore()
 }
 
 test_metadata_impl! {
-	postgres_metadata datastore()
+	test_postgres_metadata datastore()
 }

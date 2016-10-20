@@ -1,4 +1,5 @@
 #![feature(custom_derive, plugin)]
+#![feature(test)]
 #![plugin(serde_macros)]
 #![cfg_attr(test, plugin(stainless))]
 
@@ -9,6 +10,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate libc;
 extern crate rand;
+extern crate test;
 
 #[macro_use] mod datastore;
 mod models;
