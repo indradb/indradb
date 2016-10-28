@@ -29,9 +29,21 @@ pub trait Transaction<I: Id> {
 	fn get_edge_range(&self, I, String, i64, i32) -> Result<Vec<models::Edge<I>>, Error>;
 	fn get_edge_time_range(&self, I, String, Option<NaiveDateTime>, Option<NaiveDateTime>, i32) -> Result<Vec<models::Edge<I>>, Error>;
 
-	fn get_metadata(&self, Option<I>, String) -> Result<JsonValue, Error>;
-	fn set_metadata(&self, Option<I>, String, JsonValue) -> Result<(), Error>;
-	fn delete_metadata(&self, Option<I>, String) -> Result<(), Error>;
+	fn get_global_metadata(&self, String) -> Result<JsonValue, Error>;
+	fn set_global_metadata(&self, String, JsonValue) -> Result<(), Error>;
+	fn delete_global_metadata(&self, String) -> Result<(), Error>;
+
+	fn get_account_metadata(&self, I, String) -> Result<JsonValue, Error>;
+	fn set_account_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
+	fn delete_account_metadata(&self, I, String) -> Result<(), Error>;
+
+	fn get_vertex_metadata(&self, I, String) -> Result<JsonValue, Error>;
+	fn set_vertex_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
+	fn delete_vertex_metadata(&self, I, String) -> Result<(), Error>;
+
+	fn get_edge_metadata(&self, I, String, I, String) -> Result<JsonValue, Error>;
+	fn set_edge_metadata(&self, I, String, I, String, JsonValue) -> Result<(), Error>;
+	fn delete_edge_metadata(&self, I, String, I, String) -> Result<(), Error>;
 
 	fn commit(self) -> Result<(), Error>;
 	fn rollback(self) -> Result<(), Error>;

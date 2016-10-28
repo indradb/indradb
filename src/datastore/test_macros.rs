@@ -218,14 +218,24 @@ macro_rules! test_metadata_impl {
 				sandbox.teardown();
 			}
 
-			it "should handle local metadata" {
-				sandbox.setup("should handle local metadata");
-				::should_handle_local_metadata(&mut sandbox)
-			}
-
 			it "should handle global metadata" {
 				sandbox.setup("should handle global metadata");
 				::should_handle_global_metadata(&mut sandbox)
+			}
+
+			it "should handle account metadata" {
+				sandbox.setup("should handle account metadata");
+				::should_handle_account_metadata(&mut sandbox)
+			}
+
+			it "should handle vertex metadata" {
+				sandbox.setup("should handle vertex metadata");
+				::should_handle_vertex_metadata(&mut sandbox)
+			}
+
+			it "should handle edge metadata" {
+				sandbox.setup("should handle edge metadata");
+				::should_handle_edge_metadata(&mut sandbox)
 			}
 		}
 	)

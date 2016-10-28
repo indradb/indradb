@@ -337,62 +337,127 @@ fn check_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: 
 	}
 }
 
-pub fn should_handle_local_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let key = sandbox.generate_unique_string("local");
+pub fn should_handle_global_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let key = sandbox.generate_unique_string("global-metadata");
 	let trans = sandbox.transaction();
 
 	// Check to make sure there's no initial value
-	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	let result = trans.get_global_metadata(key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 
 	// Set and get the value as true
-	let result = trans.set_metadata(Some(sandbox.owner_id), key.clone(), JsonValue::Bool(true));
+	let result = trans.set_global_metadata(key.clone(), JsonValue::Bool(true));
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	let result = trans.get_global_metadata(key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
 	// Set and get the value as false
-	let result = trans.set_metadata(Some(sandbox.owner_id), key.clone(), JsonValue::Bool(false));
+	let result = trans.set_global_metadata(key.clone(), JsonValue::Bool(false));
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	let result = trans.get_global_metadata(key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
 	// Delete & check that it's deleted
-	let result = trans.delete_metadata(Some(sandbox.owner_id), key.clone());
+	let result = trans.delete_global_metadata(key.clone());
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(Some(sandbox.owner_id), key.clone());
+	let result = trans.get_global_metadata(key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 }
 
-pub fn should_handle_global_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let key = sandbox.generate_unique_string("global");
+pub fn should_handle_account_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let key = sandbox.generate_unique_string("account-metadata");
 	let trans = sandbox.transaction();
 
 	// Check to make sure there's no initial value
-	let result = trans.get_metadata(None, key.clone());
+	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 
 	// Set and get the value as true
-	let result = trans.set_metadata(None, key.clone(), JsonValue::Bool(true));
+	let result = trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(true));
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(None, key.clone());
+	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
 	// Set and get the value as false
-	let result = trans.set_metadata(None, key.clone(), JsonValue::Bool(false));
+	let result = trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(false));
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(None, key.clone());
+	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
 	// Delete & check that it's deleted
-	let result = trans.delete_metadata(None, key.clone());
+	let result = trans.delete_account_metadata(sandbox.owner_id, key.clone());
 	assert!(result.is_ok());
 
-	let result = trans.get_metadata(None, key.clone());
+	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
+	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+}
+
+pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let key = sandbox.generate_unique_string("vertex-metadata");
+	let trans = sandbox.transaction();
+	let owner_id = sandbox.search_id("user", "Jill");
+
+	// Check to make sure there's no initial value
+	let result = trans.get_vertex_metadata(owner_id, key.clone());
+	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+
+	// Set and get the value as true
+	let result = trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(true));
+	assert!(result.is_ok());
+
+	let result = trans.get_vertex_metadata(owner_id, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(true));
+
+	// Set and get the value as false
+	let result = trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(false));
+	assert!(result.is_ok());
+
+	let result = trans.get_vertex_metadata(owner_id, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(false));
+
+	// Delete & check that it's deleted
+	let result = trans.delete_vertex_metadata(owner_id, key.clone());
+	assert!(result.is_ok());
+
+	let result = trans.get_vertex_metadata(owner_id, key.clone());
+	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+}
+
+pub fn should_handle_edge_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	insert_sample_data(&mut sandbox);
+	let key = sandbox.generate_unique_string("edge-metadata");
+	let trans = sandbox.transaction();
+	let christopher_id = sandbox.search_id("user", "Christopher");
+	let interstellar_id = sandbox.search_id("movie", "Interstellar");
+
+	// Check to make sure there's no initial value
+	let result = trans.get_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone());
+	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+
+	// Set and get the value as true
+	let result = trans.set_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone(), JsonValue::Bool(true));
+	assert!(result.is_ok());
+
+	let result = trans.get_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(true));
+
+	// Set and get the value as false
+	let result = trans.set_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone(), JsonValue::Bool(false));
+	assert!(result.is_ok());
+
+	let result = trans.get_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone());
+	assert_eq!(result.unwrap(), JsonValue::Bool(false));
+
+	// Delete & check that it's deleted
+	let result = trans.delete_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone());
+	assert!(result.is_ok());
+
+	let result = trans.get_edge_metadata(christopher_id, "purchased".to_string(), interstellar_id, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
 }

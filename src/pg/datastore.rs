@@ -178,6 +178,24 @@ impl PostgresTransaction {
 
 		Ok(edges)
 	}
+
+	fn handle_get_metadata_results(&self, results: Rows) -> Result<JsonValue, Error> {
+		for row in &results {
+			let value_str: String = row.get(0);
+			let value_obj = serde_json::from_str(&value_str[..]).unwrap();
+			return Ok(value_obj)
+		}
+
+		Err(Error::MetadataDoesNotExist)
+	}
+
+	fn handle_update_metadata_results(&self, results: Rows) -> Result<(), Error> {
+		for _ in &results {
+			return Ok(());
+		}
+
+		Err(Error::MetadataDoesNotExist)
+	}
 }
 
 impl Transaction<i64> for PostgresTransaction {
@@ -257,7 +275,7 @@ impl Transaction<i64> for PostgresTransaction {
 		let results = self.trans.query("
 			INSERT INTO edges (outbound_id, type, inbound_id, weight, properties, update_date)
 			VALUES ((SELECT id FROM vertices WHERE id=$1 AND owner_id=$2), $3, $4, $5, $6, NOW())
-			ON CONFLICT ON CONSTRAINT edges_pkey DO UPDATE SET weight=$5, properties=$6, update_date=NOW()
+			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$5, properties=$6, update_date=NOW()
 			RETURNING 1
 		", &[&e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight, &serde_json::to_string(&e.properties).unwrap()]);
 
@@ -382,71 +400,110 @@ impl Transaction<i64> for PostgresTransaction {
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_metadata(&self, owner_id: Option<i64>, key: String) -> Result<JsonValue, Error> {
-		let results = try!(match owner_id {
-			Some(owner_id) => {
-				self.trans.query("SELECT value FROM metadata WHERE owner_id=$1 AND key=$2", &[&(owner_id as i32), &key])
-			},
-			None => {
-				self.trans.query("SELECT value FROM metadata WHERE owner_id IS NULL AND key=$1", &[&key])
-			}
-		});
-
-		for row in &results {
-			let value_str: String = row.get(0);
-			let value_obj = serde_json::from_str(&value_str[..]).unwrap();
-			return Ok(value_obj)
-		}
-
-		Err(Error::MetadataDoesNotExist)
+	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
+		let results = try!(self.trans.query("SELECT value FROM global_metadata WHERE key=$1", &[&key]));
+		self.handle_get_metadata_results(results)
 	}
 
-	fn set_metadata(&self, owner_id: Option<i64>, key: String, value: JsonValue) -> Result<(), Error> {
+	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
 		let value_str = serde_json::to_string(&value).unwrap();
 
-		let results = match owner_id {
-			Some(owner_id) => {
-				try!(self.trans.query("
-					INSERT INTO metadata (owner_id, key, value)
-					VALUES ($1, $2, $3)
-					ON CONFLICT ON CONSTRAINT metadata_owner_id_key_ukey
-					DO UPDATE SET value=$3
-					RETURNING 1
-				", &[&(owner_id as i32), &key, &value_str]))
-			},
-			None => {
-				try!(self.trans.query("
-					INSERT INTO metadata (owner_id, key, value)
-					VALUES (NULL, $1, $2)
-					ON CONFLICT ON CONSTRAINT metadata_owner_id_key_ukey
-					DO UPDATE SET value=$2
-					RETURNING 1
-				", &[&key, &value_str]))
-			}
-		};
+		let results = try!(self.trans.query("
+			INSERT INTO global_metadata (key, value)
+			VALUES ($1, $2)
+			ON CONFLICT ON CONSTRAINT global_metadata_key_ukey
+			DO UPDATE SET value=$2
+			RETURNING 1
+		", &[&key, &value_str]));
 
-		for _ in &results {
-			return Ok(());
-		}
-
-		Err(Error::MetadataDoesNotExist)
+		self.handle_update_metadata_results(results)
 	}
 
-	fn delete_metadata(&self, owner_id: Option<i64>, key: String) -> Result<(), Error> {
-		let results = match owner_id {
-			Some(owner_id) => {
-				try!(self.trans.query("DELETE FROM metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&(owner_id as i32), &key]))
-			},
-			None => {
-				try!(self.trans.query("DELETE FROM metadata WHERE owner_id IS NULL AND key=$1 RETURNING 1", &[&key]))
-			}
-		};
+	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
+		let results = try!(self.trans.query("DELETE FROM global_metadata WHERE key=$1 RETURNING 1", &[&key]));
+		self.handle_update_metadata_results(results)
+	}
 
-		for _ in &results {
-			return Ok(())
-		}
+	fn get_account_metadata(&self, owner_id: i64, key: String) -> Result<JsonValue, Error> {
+		let results = try!(self.trans.query("SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2", &[&(owner_id as i32), &key]));
+		self.handle_get_metadata_results(results)
+	}
 
-		Err(Error::MetadataDoesNotExist)
+	fn set_account_metadata(&self, owner_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
+		let value_str = serde_json::to_string(&value).unwrap();
+
+		let results = try!(self.trans.query("
+			INSERT INTO account_metadata (owner_id, key, value)
+			VALUES ($1, $2, $3)
+			ON CONFLICT ON CONSTRAINT account_metadata_owner_id_key_ukey
+			DO UPDATE SET value=$3
+			RETURNING 1
+		", &[&(owner_id as i32), &key, &value_str]));
+
+		self.handle_update_metadata_results(results)
+	}
+
+	fn delete_account_metadata(&self, owner_id: i64, key: String) -> Result<(), Error> {
+		let results = try!(self.trans.query("DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&(owner_id as i32), &key]));
+		self.handle_update_metadata_results(results)
+	}
+
+	fn get_vertex_metadata(&self, owner_id: i64, key: String) -> Result<JsonValue, Error> {
+		let results = try!(self.trans.query("SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key]));
+		self.handle_get_metadata_results(results)
+	}
+
+	fn set_vertex_metadata(&self, owner_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
+		let value_str = serde_json::to_string(&value).unwrap();
+
+		let results = try!(self.trans.query("
+			INSERT INTO vertex_metadata (owner_id, key, value)
+			VALUES ($1, $2, $3)
+			ON CONFLICT ON CONSTRAINT vertex_metadata_owner_id_key_ukey
+			DO UPDATE SET value=$3
+			RETURNING 1
+		", &[&owner_id, &key, &value_str]));
+
+		self.handle_update_metadata_results(results)
+	}
+
+	fn delete_vertex_metadata(&self, owner_id: i64, key: String) -> Result<(), Error> {
+		let results = try!(self.trans.query("DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key]));
+		self.handle_update_metadata_results(results)
+	}
+
+	fn get_edge_metadata(&self, outbound_id: i64, t: String, inbound_id: i64, key: String) -> Result<JsonValue, Error> {
+		let results = try!(self.trans.query("
+			SELECT value
+			FROM edge_metadata
+			WHERE owner_id=(SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3) AND key=$4
+		", &[&outbound_id, &t, &inbound_id, &key]));
+
+		self.handle_get_metadata_results(results)
+	}
+
+	fn set_edge_metadata(&self, outbound_id: i64, t: String, inbound_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
+		let value_str = serde_json::to_string(&value).unwrap();
+
+		let results = try!(self.trans.query("
+			INSERT INTO edge_metadata (owner_id, key, value)
+			VALUES ((SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3), $4, $5)
+			ON CONFLICT ON CONSTRAINT edge_metadata_owner_id_key_ukey
+			DO UPDATE SET value=$5
+			RETURNING 1
+		", &[&outbound_id, &t, &inbound_id, &key, &value_str]));
+
+		self.handle_update_metadata_results(results)
+	}
+
+	fn delete_edge_metadata(&self, outbound_id: i64, t: String, inbound_id: i64, key: String) -> Result<(), Error> {
+		let results = try!(self.trans.query("
+			DELETE FROM edge_metadata
+			WHERE owner_id=(SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3) AND key=$4
+			RETURNING 1
+		", &[&outbound_id, &t, &inbound_id, &key]));
+
+		self.handle_update_metadata_results(results)
 	}
 
 	fn commit(self) -> Result<(), Error> {
