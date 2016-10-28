@@ -100,9 +100,19 @@ pub fn run(mut trans: PostgresTransaction, user_id: i64, source: &str, arg: Json
     l.register("get_edge_count", get_edge_count);
     l.register("get_edge_range", get_edge_range);
     l.register("get_edge_time_range", get_edge_time_range);
-    l.register("get_metadata", get_metadata);
-    l.register("set_metadata", set_metadata);
-    l.register("delete_metadata", delete_metadata);
+
+    l.register("get_global_metadata", get_global_metadata);
+    l.register("set_global_metadata", set_global_metadata);
+    l.register("delete_global_metadata", delete_global_metadata);
+    l.register("get_account_metadata", get_account_metadata);
+    l.register("set_account_metadata", set_account_metadata);
+    l.register("delete_account_metadata", delete_account_metadata);
+    l.register("get_vertex_metadata", get_vertex_metadata);
+    l.register("set_vertex_metadata", set_vertex_metadata);
+    l.register("delete_vertex_metadata", delete_vertex_metadata);
+    l.register("get_edge_metadata", get_edge_metadata);
+    l.register("set_edge_metadata", set_edge_metadata);
+    l.register("delete_edge_metadata", delete_edge_metadata);
 
     if let Err(err) = l.loadstring(source) {
         return Err(ScriptError::new_from_loaderror(&mut l, err));
@@ -402,26 +412,92 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn get_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_optional_i64_param(l, 1));
+    unsafe fn get_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
-        let result = try!(trans.get_metadata(owner_id, key));
+        let result = try!(trans.get_global_metadata(key));
         serialize_json(l, result);
         Ok(1)
     }
 
-    unsafe fn set_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_optional_i64_param(l, 1));
+    unsafe fn set_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
-        try!(trans.set_metadata(owner_id, key, value));
+        try!(trans.set_global_metadata(key, value));
         Ok(0)
     }
 
-    unsafe fn delete_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_optional_i64_param(l, 1));
+    unsafe fn delete_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
-        try!(trans.delete_metadata(owner_id, key));
+        try!(trans.delete_global_metadata(key));
+        Ok(0)
+    }
+
+    unsafe fn get_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let result = try!(trans.get_account_metadata(owner_id, key));
+        serialize_json(l, result);
+        Ok(1)
+    }
+
+    unsafe fn set_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let value = try!(get_json_param(l, 3));
+        try!(trans.set_account_metadata(owner_id, key, value));
+        Ok(0)
+    }
+
+    unsafe fn delete_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        try!(trans.delete_account_metadata(owner_id, key));
+        Ok(0)
+    }
+
+    unsafe fn get_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let result = try!(trans.get_vertex_metadata(owner_id, key));
+        serialize_json(l, result);
+        Ok(1)
+    }
+
+    unsafe fn set_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let value = try!(get_json_param(l, 3));
+        try!(trans.set_vertex_metadata(owner_id, key, value));
+        Ok(0)
+    }
+
+    unsafe fn delete_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        try!(trans.delete_vertex_metadata(owner_id, key));
+        Ok(0)
+    }
+
+    unsafe fn get_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let result = try!(trans.get_edge_metadata(owner_id, key));
+        serialize_json(l, result);
+        Ok(1)
+    }
+
+    unsafe fn set_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        let value = try!(get_json_param(l, 3));
+        try!(trans.set_edge_metadata(owner_id, key, value));
+        Ok(0)
+    }
+
+    unsafe fn delete_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let owner_id = try!(get_i64_param(l, 1));
+        let key = try!(get_string_param(l, 2));
+        try!(trans.delete_edge_metadata(owner_id, key));
         Ok(0)
     }
 }
