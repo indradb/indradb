@@ -171,9 +171,7 @@ impl PostgresTransaction {
 		for row in &results {
 			let inbound_id: i64 = row.get(0);
 			let weight: f32 = row.get(1);
-			let properties_str: String = row.get(2);
-			let properties_obj = try!(parse_json_object(properties_str));
-			edges.push(models::Edge::new_with_properties(outbound_id, t.clone(), inbound_id, weight, properties_obj));
+			edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
 		}
 
 		Ok(edges)
@@ -200,23 +198,21 @@ impl PostgresTransaction {
 
 impl Transaction<i64> for PostgresTransaction {
 	fn get_vertex(&self, id: i64) -> Result<models::Vertex<i64>, Error> {
-		let results = try!(self.trans.query("SELECT properties, type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
+		let results = try!(self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
 
 		for row in &results {
-			let properties_str: String = row.get(0);
-			let properties_obj = try!(parse_json_object(properties_str));
-			let t: String = row.get(1);
-			let v = models::Vertex::new_with_properties(id, t, properties_obj);
+			let t: String = row.get(0);
+			let v = models::Vertex::new(id, t);
 			return Ok(v)
 		}
 
 		Err(Error::VertexDoesNotExist)
 	}
 
-	fn create_vertex(&self, t: String, properties: BTreeMap<String, JsonValue>) -> Result<i64, Error> {
+	fn create_vertex(&self, t: String) -> Result<i64, Error> {
 		let results = try!(self.trans.query("
-			INSERT INTO vertices (type, owner_id, properties) VALUES ($1, $2, $3) RETURNING id
-		", &[&t, &self.account_id, &serde_json::to_string(&properties).unwrap()]));
+			INSERT INTO vertices (type, owner_id) VALUES ($1, $2) RETURNING id
+		", &[&t, &self.account_id]));
 
 		for row in &results {
 			let id: i64 = row.get(0);
@@ -229,10 +225,10 @@ impl Transaction<i64> for PostgresTransaction {
 	fn set_vertex(&self, v: models::Vertex<i64>) -> Result<(), Error> {
 		let results = try!(self.trans.query("
 			UPDATE vertices
-			SET type=$1, properties=$2
-			WHERE id=$3 AND owner_id=$4
+			SET type=$1
+			WHERE id=$2 AND owner_id=$3
 			RETURNING 1
-		", &[&v.t, &serde_json::to_string(&v.properties).unwrap(), &v.id, &self.account_id]));
+		", &[&v.t, &v.id, &self.account_id]));
 
 		for _ in &results {
 			return Ok(())
@@ -253,14 +249,12 @@ impl Transaction<i64> for PostgresTransaction {
 
 	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<models::Edge<i64>, Error> {
 		let results = try!(self.trans.query("
-			SELECT properties, weight FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3 LIMIT 1
+			SELECT weight FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3 LIMIT 1
 		", &[&outbound_id, &t, &inbound_id]));
 
 		for row in &results {
-			let properties_str: String = row.get(0);
-			let properties_obj = try!(parse_json_object(properties_str));
-			let weight: f32 = row.get(1);
-			let e = models::Edge::new_with_properties(outbound_id, t, inbound_id, weight, properties_obj);
+			let weight: f32 = row.get(0);
+			let e = models::Edge::new(outbound_id, t, inbound_id, weight);
 			return Ok(e)
 		}
 
@@ -273,11 +267,11 @@ impl Transaction<i64> for PostgresTransaction {
 		}
 
 		let results = self.trans.query("
-			INSERT INTO edges (outbound_id, type, inbound_id, weight, properties, update_date)
-			VALUES ((SELECT id FROM vertices WHERE id=$1 AND owner_id=$2), $3, $4, $5, $6, NOW())
-			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$5, properties=$6, update_date=NOW()
+			INSERT INTO edges (outbound_id, type, inbound_id, weight, update_date)
+			VALUES ((SELECT id FROM vertices WHERE id=$1 AND owner_id=$2), $3, $4, $5, NOW())
+			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$5, update_date=NOW()
 			RETURNING 1
-		", &[&e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight, &serde_json::to_string(&e.properties).unwrap()]);
+		", &[&e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight]);
 
 		if let Err(err) = results {
 			return match err {
@@ -342,7 +336,7 @@ impl Transaction<i64> for PostgresTransaction {
 		}
 
 		let results = try!(self.trans.query("
-			SELECT inbound_id, weight, properties
+			SELECT inbound_id, weight
 			FROM edges
 			WHERE outbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
@@ -361,7 +355,7 @@ impl Transaction<i64> for PostgresTransaction {
 		let results = try!(match (high, low) {
 			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
 				self.trans.query("
-					SELECT inbound_id, weight, properties
+					SELECT inbound_id, weight
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
@@ -370,7 +364,7 @@ impl Transaction<i64> for PostgresTransaction {
 			},
 			(Option::Some(high_unboxed), Option::None) => {
 				self.trans.query("
-					SELECT inbound_id, weight, properties
+					SELECT inbound_id, weight
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
@@ -379,7 +373,7 @@ impl Transaction<i64> for PostgresTransaction {
 			},
 			(Option::None, Option::Some(low_unboxed)) => {
 				self.trans.query("
-					SELECT inbound_id, weight, properties
+					SELECT inbound_id, weight
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
@@ -388,7 +382,7 @@ impl Transaction<i64> for PostgresTransaction {
 			},
 			_ => {
 				self.trans.query("
-					SELECT inbound_id, weight, properties
+					SELECT inbound_id, weight
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_date DESC

@@ -3,7 +3,6 @@ use traits::Id;
 use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
-use std::collections::BTreeMap;
 use std::option::Option;
 use chrono::naive::datetime::NaiveDateTime;
 
@@ -17,7 +16,7 @@ pub trait Datastore<T: Transaction<I>, I: Id> {
 
 pub trait Transaction<I: Id> {
 	fn get_vertex(&self, I) -> Result<models::Vertex<I>, Error>;
-	fn create_vertex(&self, String, BTreeMap<String, JsonValue>) -> Result<I, Error>;
+	fn create_vertex(&self, String) -> Result<I, Error>;
 	fn set_vertex(&self, models::Vertex<I>) -> Result<(), Error>;
 	fn delete_vertex(&self, I) -> Result<(), Error>;
 

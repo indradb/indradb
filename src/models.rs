@@ -6,20 +6,14 @@ use traits::Id;
 pub struct Vertex<I: Id> {
 	pub id: I,
 	#[serde(rename="type")]
-	pub t: String,
-	pub properties: BTreeMap<String, JsonValue>
+	pub t: String
 }
 
 impl<I: Id> Vertex<I> {
 	pub fn new(id: I, t: String) -> Vertex<I> {
-		Vertex::new_with_properties(id, t, BTreeMap::new())
-	}
-
-	pub fn new_with_properties(id: I, t: String, properties: BTreeMap<String, JsonValue>) -> Vertex<I> {
 		Vertex {
 			id: id,
-			t: t,
-			properties: properties
+			t: t
 		}
 	}
 }
@@ -39,22 +33,16 @@ pub struct Edge<I: Id> {
 	#[serde(rename="type")]
 	pub t: String,
 	pub inbound_id: I,
-	pub weight: f32,
-	pub properties: BTreeMap<String, JsonValue>
+	pub weight: f32
 }
 
 impl<I: Id> Edge<I> {
 	pub fn new(outbound_id: I, t: String, inbound_id: I, weight: f32) -> Edge<I> {
-		Edge::new_with_properties(outbound_id, t, inbound_id, weight, BTreeMap::new())
-	}
-
-	pub fn new_with_properties(outbound_id: I, t: String, inbound_id: I, weight: f32, properties: BTreeMap<String, JsonValue>) -> Edge<I> {
 		Edge {
 			outbound_id: outbound_id,
 			t: t,
 			inbound_id: inbound_id,
-			weight: weight,
-			properties: properties
+			weight: weight
 		}
 	}
 }

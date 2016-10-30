@@ -12,7 +12,7 @@ pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
 	pub owner_secret: String,
 
 	pub datastore: D,
-	pub vertices: Vec<models::Vertex<I>>,
+	pub vertices: BTreeMap<String, BTreeMap<String, I>>,
 	pub accounts: Vec<I>,
 
 	phantom_transaction: PhantomData<T>
@@ -25,7 +25,7 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 			owner_id: I::default(),
 			owner_secret: "".to_string(),
 			datastore: datastore,
-			vertices: Vec::new(),
+			vertices: BTreeMap::new(),
 			accounts: Vec::new(),
 			phantom_transaction: PhantomData
 		};
@@ -40,32 +40,21 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 	}
 
 	pub fn search_id(&self, t: &str, name: &str) -> I {
-		for vertex in self.vertices.iter() {
-			if vertex.t != t {
-				continue;
-			}
-
-			if vertex.properties.get("name").unwrap().as_str().unwrap().to_string() != name.to_string() {
-				continue;
-			}
-
-			return vertex.id;
-		}
-
-		panic!("Could not find vertex with type=\"{}\" and name=\"{}\"", t, name);
+		let container = self.vertices.get(t).unwrap();
+		container.get(name).unwrap().clone()
 	}
 
-	pub fn create_test_vertex(&mut self, t: &str, name: Option<&str>) -> I {
+	pub fn create_test_vertex(&mut self, t: &str, name: &str) -> I {
 		let trans = self.datastore.transaction(self.owner_id).unwrap();
-
-		let props = match name {
-			Some(name) => create_test_properties(name),
-			None => BTreeMap::new()
-		};
-
-		let id = trans.create_vertex(t.to_string(), props.clone()).unwrap();
+		let id = trans.create_vertex(t.to_string()).unwrap();
 		trans.commit().unwrap();
-		self.vertices.push(models::Vertex::new_with_properties(id, t.to_string(), props));
+
+		if !self.vertices.contains_key(t) {
+			self.vertices.insert(t.to_string(), BTreeMap::new());
+		}
+
+		let container = self.vertices.get_mut(t).unwrap();
+		container.insert(name.to_string(), id);
 		id
 	}
 
@@ -96,21 +85,21 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 
 pub fn insert_sample_data<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	// Insert some users
-	let jill_id = sandbox.create_test_vertex("user", Some("Jill"));
-	let bob_id = sandbox.create_test_vertex("user", Some("Bob"));
-	let christopher_id = sandbox.create_test_vertex("user", Some("Christopher"));
+	let jill_id = sandbox.create_test_vertex("user", "Jill");
+	let bob_id = sandbox.create_test_vertex("user", "Bob");
+	let christopher_id = sandbox.create_test_vertex("user", "Christopher");
 
 	// Insert some movies
-	let doodlebug_id = sandbox.create_test_vertex("movie", Some("Doodlebug"));
-	let following_id = sandbox.create_test_vertex("movie", Some("Following"));
-	let memento_id = sandbox.create_test_vertex("movie", Some("Memento"));
-	let insomnia_id = sandbox.create_test_vertex("movie", Some("Insomnia"));
-	let batman_begins_id = sandbox.create_test_vertex("movie", Some("Batman Begins"));
-	let prestige_id = sandbox.create_test_vertex("movie", Some("The Prestige"));
-	let dark_knight_id = sandbox.create_test_vertex("movie", Some("The Dark Knight"));
-	let inception_id = sandbox.create_test_vertex("movie", Some("Inception"));
-	let dark_knight_rises_id = sandbox.create_test_vertex("movie", Some("The Dark Knight Rises"));
-	let interstellar_id = sandbox.create_test_vertex("movie", Some("Interstellar"));
+	let doodlebug_id = sandbox.create_test_vertex("movie", "Doodlebug");
+	let following_id = sandbox.create_test_vertex("movie", "Following");
+	let memento_id = sandbox.create_test_vertex("movie", "Memento");
+	let insomnia_id = sandbox.create_test_vertex("movie", "Insomnia");
+	let batman_begins_id = sandbox.create_test_vertex("movie", "Batman Begins");
+	let prestige_id = sandbox.create_test_vertex("movie", "The Prestige");
+	let dark_knight_id = sandbox.create_test_vertex("movie", "The Dark Knight");
+	let inception_id = sandbox.create_test_vertex("movie", "Inception");
+	let dark_knight_rises_id = sandbox.create_test_vertex("movie", "The Dark Knight Rises");
+	let interstellar_id = sandbox.create_test_vertex("movie", "Interstellar");
 
 	// Create a new transaction for inserting all the test edges
 	let trans = sandbox.transaction();

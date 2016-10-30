@@ -49,8 +49,6 @@ pub fn should_get_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(m
 	let v = trans.get_vertex(jill_id).unwrap();
 	assert_eq!(v.id, jill_id);
 	assert_eq!(v.t, "user".to_string());
-	let expected_properties = create_test_properties("Jill");
-	assert_eq!(v.properties, expected_properties);
 }
 
 pub fn should_not_get_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -60,22 +58,19 @@ pub fn should_not_get_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I
 }
 
 pub fn should_create_a_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let props = create_test_properties("Jill 2.0");
 	let trans = sandbox.transaction();
-	trans.create_vertex("user".to_string(), props).unwrap();
+	trans.create_vertex("user".to_string()).unwrap();
 }
 
 pub fn should_update_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	// First create a vertex
-	let created_id = sandbox.create_test_vertex("movie", None);
+	let created_id = sandbox.create_test_vertex("movie", "Some New Venture");
 
 	// Now update the vertex & double-check the results
-	let props = create_test_properties("Trainspotting 2");
 	let trans = sandbox.transaction();
-	trans.set_vertex(models::Vertex::new_with_properties(created_id, "movie".to_string(), props.clone())).unwrap();
+	trans.set_vertex(models::Vertex::new(created_id, "movie".to_string())).unwrap();
 	let v = trans.get_vertex(created_id).unwrap();
 	assert_eq!(v.id, created_id);
-	assert_eq!(v.properties, props);
 }
 
 pub fn should_not_update_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -90,7 +85,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 	let christopher_id = sandbox.search_id("user", "Christopher");
 
 	// First create a vertex
-	let id = sandbox.create_test_vertex("movie", None);
+	let id = sandbox.create_test_vertex("movie", "Some New Venture");
 
 	// Create some edges, then delete the vertex and make sure the edges were cleared
 	let trans = sandbox.transaction();
@@ -245,7 +240,6 @@ pub fn should_get_an_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mu
 			assert_eq!(edge.outbound_id, christopher_id);
 			assert_eq!(edge.t, "purchased".to_string());
 			assert_eq!(edge.weight, 1.0);
-			assert_eq!(edge.properties.len(), 0);
 			assert!(!covered_ids.contains(&edge.inbound_id));
 			covered_ids.insert(edge.inbound_id);
 		}
@@ -331,7 +325,6 @@ fn check_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: 
 		assert_eq!(edge.outbound_id, sandbox.search_id("user", "Christopher"));
 		assert_eq!(edge.t, "review".to_string());
 		assert_eq!(edge.weight, 1.0);
-		assert_eq!(edge.properties.len(), 0);
 		assert!(!covered_ids.contains(&edge.inbound_id));
 		covered_ids.insert(edge.inbound_id);
 	}
