@@ -8,4 +8,3 @@ assert(edges[1].outbound_id == outbound_id);
 assert(edges[1].type == "baz");
 assert(edges[1].inbound_id == inbound_id);
 assert(edges[1].weight == 0.5);
-assert(edges[1].properties == "{}");

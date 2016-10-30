@@ -44,10 +44,6 @@ describe! script_tests {
 		delete_account(account_id).unwrap();
 	}
 
-	it "should run create_vertex_bad_properties" {
-		run_script(account_id, secret, "create_vertex_bad_properties")
-	}
-
 	it "should run create_vertex_bad_type" {
 		run_script(account_id, secret, "create_vertex_bad_type")
 	}

@@ -89,11 +89,10 @@ impl Transaction<i64> for BatchTransaction {
 		})
 	}
 
-	fn create_vertex(&self, t: String, properties: BTreeMap<String, JsonValue>) -> Result<i64, Error> {
+	fn create_vertex(&self, t: String) -> Result<i64, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("create_vertex".to_string()),
-			"type".to_string() => JsonValue::String(t),
-			"properties".to_string() => JsonValue::Object(properties)
+			"type".to_string() => JsonValue::String(t)
 		})
 	}
 
@@ -101,8 +100,7 @@ impl Transaction<i64> for BatchTransaction {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("set_vertex".to_string()),
 			"id".to_string() => JsonValue::I64(v.id),
-			"type".to_string() => JsonValue::String(v.t),
-			"properties".to_string() => JsonValue::Object(v.properties)
+			"type".to_string() => JsonValue::String(v.t)
 		})
 	}
 

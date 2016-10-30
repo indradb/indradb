@@ -184,7 +184,6 @@ macro_rules! create_json_param_fn {
 
 create_json_param_fn!(get_json_string_param, JsonValue::String, String);
 create_json_param_fn!(get_json_f64_param, JsonValue::F64, f64);
-create_json_param_fn!(get_json_object_param, JsonValue::Object, BTreeMap<String, JsonValue>);
 
 fn get_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str, optional: bool) -> Result<Option<i64>, IronError> {
 	match json.get(name) {
@@ -322,10 +321,8 @@ fn on_get_vertex(req: &mut Request) -> IronResult<Response> {
 fn on_create_vertex(req: &mut Request) -> IronResult<Response> {
 	let obj = try!(read_json_object(&mut req.body));
 	let t = try!(get_json_string_param(&obj, "type", false));
-	let properties = try!(get_json_object_param(&obj, "properties", true)).unwrap_or(BTreeMap::new());
-
 	let trans = try!(get_transaction(req));
-	let result = try!(datastore_request(trans.create_vertex(t.unwrap(), properties)));
+	let result = try!(datastore_request(trans.create_vertex(t.unwrap())));
 	try!(datastore_request(trans.commit()));
 	Ok(to_response(status::Ok, &result))
 }
@@ -334,9 +331,7 @@ fn on_set_vertex(req: &mut Request) -> IronResult<Response> {
 	let id: i64 = try!(get_url_param(req, "id"));
 	let obj = try!(read_json_object(&mut req.body));
 	let t = try!(get_json_string_param(&obj, "type", false));
-	let properties = try!(get_json_object_param(&obj, "properties", true)).unwrap_or(BTreeMap::new());
-	let v = Vertex::new_with_properties(id, t.unwrap(), properties);
-
+	let v = Vertex::new(id, t.unwrap());
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.set_vertex(v)));
 	try!(datastore_request(trans.commit()));
@@ -367,8 +362,7 @@ fn on_set_edge(req: &mut Request) -> IronResult<Response> {
 	let inbound_id: i64 = try!(get_url_param(req, "inbound_id"));
 	let obj = try!(read_json_object(&mut req.body));
 	let weight = try!(get_json_f64_param(&obj, "weight", false));
-	let properties = try!(get_json_object_param(&obj, "properties", true)).unwrap_or(BTreeMap::new());
-	let e = Edge::new_with_properties(outbound_id, t, inbound_id, weight.unwrap() as f32, properties);
+	let e = Edge::new(outbound_id, t, inbound_id, weight.unwrap() as f32);
 
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.set_edge(e)));
@@ -539,15 +533,13 @@ fn get_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValu
 
 fn create_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let t = try!(get_json_string_param(item, "type", false));
-	let properties = try!(get_json_object_param(item, "properties", true)).unwrap_or(BTreeMap::new());
-	transaction_item(trans.create_vertex(t.unwrap(), properties))
+	transaction_item(trans.create_vertex(t.unwrap()))
 }
 
 fn set_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_json_i64_param(item, "id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	let properties = try!(get_json_object_param(item, "properties", true)).unwrap_or(BTreeMap::new());
-	transaction_item(trans.set_vertex(Vertex::new_with_properties(id.unwrap(), t.unwrap(), properties)))
+	transaction_item(trans.set_vertex(Vertex::new(id.unwrap(), t.unwrap())))
 }
 
 fn delete_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
@@ -567,8 +559,7 @@ fn set_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
 	let weight = try!(get_json_f64_param(item, "weight", false));
-	let properties = try!(get_json_object_param(item, "properties", true)).unwrap_or(BTreeMap::new());
-	transaction_item(trans.set_edge(Edge::new_with_properties(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap(), weight.unwrap() as f32, properties)))
+	transaction_item(trans.set_edge(Edge::new(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap(), weight.unwrap() as f32)))
 }
 
 fn delete_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {

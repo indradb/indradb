@@ -28,8 +28,7 @@ CREATE SEQUENCE vertex_id_seq
 CREATE TABLE vertices (
     id BIGINT DEFAULT nextval('vertex_id_seq'::regclass) NOT NULL,
     owner_id INT NOT NULL,
-    type VARCHAR(1000) NOT NULL,
-    properties VARCHAR(8192) NOT NULL
+    type VARCHAR(1000) NOT NULL
 );
 
 ALTER TABLE vertices
@@ -50,8 +49,7 @@ CREATE TABLE edges (
     type VARCHAR(1000) NOT NULL,
     inbound_id BIGINT NOT NULL,
     update_date TIMESTAMP NOT NULL,
-    weight REAL NOT NULL,
-    properties VARCHAR(8192) NOT NULL
+    weight REAL NOT NULL
 );
 
 ALTER TABLE edges

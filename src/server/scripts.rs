@@ -236,7 +236,6 @@ unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<i64>) {
     add_string_field_to_table(l, "type", &edge.t[..]);
     add_string_field_to_table(l, "inbound_id", &edge.inbound_id.to_string()[..]);
     add_number_field_to_table(l, "weight", edge.weight as f64);
-    add_json_object_field_to_table(l, "properties", edge.properties.clone());
 }
 
 unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) {
@@ -244,31 +243,9 @@ unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) 
     l.setfield(-2, k);
 }
 
-unsafe fn add_json_object_field_to_table(l: &mut lua::ExternState, k: &str, v: BTreeMap<String, JsonValue>) {
-    let s = serde_json::to_string(&JsonValue::Object(v)).unwrap();
-    l.pushstring(&s[..]);
-    l.setfield(-2, k);
-}
-
 unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f64) {
     l.pushnumber(v);
     l.setfield(-2, k);
-}
-
-unsafe fn get_obj_param(l: &mut lua::ExternState, narg: i32) -> Result<BTreeMap<String, JsonValue>, LuaError> {
-    let s = match l.checkstring(narg) {
-        Some(s) => &s[..],
-        None => {
-            return Err(LuaError::Arg(narg, "Expected JSON object as string".to_string()))
-        }
-    };
-
-    let json = serde_json::from_str(s);
-
-    match json {
-        Ok(JsonValue::Object(o)) => Ok(o),
-        _ => Err(LuaError::Arg(narg, "Expected JSON object as string".to_string()))
-    }
 }
 
 unsafe fn get_json_param(l: &mut lua::ExternState, narg: i32) -> Result<JsonValue, LuaError> {
@@ -328,14 +305,12 @@ lua_fn! {
         l.newtable();
         add_string_field_to_table(l, "id", &result.id.to_string()[..]);
         add_string_field_to_table(l, "type", &result.t[..]);
-        add_json_object_field_to_table(l, "properties", result.properties);
         Ok(1)
     }
 
     unsafe fn create_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let t = try!(get_string_param(l, 1));
-        let properties = try!(get_obj_param(l, 2));
-        let result = try!(trans.create_vertex(t, properties));
+        let result = try!(trans.create_vertex(t));
         l.pushstring(&result.to_string()[..]);
         Ok(1)
     }
@@ -343,8 +318,7 @@ lua_fn! {
     unsafe fn set_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_i64_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let properties = try!(get_obj_param(l, 3));
-        let v = Vertex::new_with_properties(id, t, properties);
+        let v = Vertex::new(id, t);
         try!(trans.set_vertex(v));
         Ok(0)
     }
@@ -369,8 +343,7 @@ lua_fn! {
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_i64_param(l, 3));
         let weight = l.checknumber(4);
-        let properties = try!(get_obj_param(l, 5));
-        let e = Edge::new_with_properties(outbound_id, t, inbound_id, weight as f32, properties);
+        let e = Edge::new(outbound_id, t, inbound_id, weight as f32);
         try!(trans.set_edge(e));
         Ok(1)
     }

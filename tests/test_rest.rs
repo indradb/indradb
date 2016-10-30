@@ -57,10 +57,9 @@ impl Transaction<i64> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn create_vertex(&self, t: String, properties: BTreeMap<String, JsonValue>) -> Result<i64, Error> {
+	fn create_vertex(&self, t: String) -> Result<i64, Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("type".to_string(), JsonValue::String(t));
-		d.insert("properties".to_string(), JsonValue::Object(properties));
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
@@ -72,7 +71,6 @@ impl Transaction<i64> for RestTransaction {
 	fn set_vertex(&self, v: Vertex<i64>) -> Result<(), Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("type".to_string(), JsonValue::String(v.t));
-		d.insert("properties".to_string(), JsonValue::Object(v.properties));
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
@@ -98,7 +96,6 @@ impl Transaction<i64> for RestTransaction {
 	fn set_edge(&self, e: Edge<i64>) -> Result<(), Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("weight".to_string(), JsonValue::F64(e.weight as f64));
-		d.insert("properties".to_string(), JsonValue::Object(e.properties));
 		let body = serde_json::to_string(&d).unwrap();
 
 		let client = Client::new();
