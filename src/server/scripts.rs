@@ -360,14 +360,14 @@ lua_fn! {
         let outbound_id = try!(get_i64_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let result = try!(trans.get_edge_count(outbound_id, t));
-        l.pushnumber(result as f64);
+        l.pushinteger(result as isize);
         Ok(1)
     }
 
     unsafe fn get_edge_range(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_i64_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let offset = l.checknumber(3);
+        let offset = l.checkinteger(3);
         let limit = l.checkinteger(4);
         let result = try!(trans.get_edge_range(outbound_id, t, offset as i64, limit as i32));
         serialize_edges(l, result);

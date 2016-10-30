@@ -198,7 +198,13 @@ impl Transaction<i64> for RestTransaction {
 }
 
 test_transaction_impl! {
-	rest_transaction {
+	test_rest_transaction {
+	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
+	}
+}
+
+bench_transaction_impl! {
+	bench_rest_transaction {
 	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
 	}
 }
