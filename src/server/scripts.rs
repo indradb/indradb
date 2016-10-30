@@ -452,25 +452,31 @@ lua_fn! {
     }
 
     unsafe fn get_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
-        let key = try!(get_string_param(l, 2));
-        let result = try!(trans.get_edge_metadata(owner_id, key));
+        let outbound_id = try!(get_i64_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let inbound_id = try!(get_i64_param(l, 3));
+        let key = try!(get_string_param(l, 4));
+        let result = try!(trans.get_edge_metadata(outbound_id, t, inbound_id, key));
         serialize_json(l, result);
         Ok(1)
     }
 
     unsafe fn set_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
-        let key = try!(get_string_param(l, 2));
-        let value = try!(get_json_param(l, 3));
-        try!(trans.set_edge_metadata(owner_id, key, value));
+        let outbound_id = try!(get_i64_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let inbound_id = try!(get_i64_param(l, 3));
+        let key = try!(get_string_param(l, 4));
+        let value = try!(get_json_param(l, 5));
+        try!(trans.set_edge_metadata(outbound_id, t, inbound_id, key, value));
         Ok(0)
     }
 
     unsafe fn delete_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
-        let key = try!(get_string_param(l, 2));
-        try!(trans.delete_edge_metadata(owner_id, key));
+        let outbound_id = try!(get_i64_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let inbound_id = try!(get_i64_param(l, 3));
+        let key = try!(get_string_param(l, 4));
+        try!(trans.delete_edge_metadata(outbound_id, t, inbound_id, key));
         Ok(0)
     }
 }

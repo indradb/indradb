@@ -140,15 +140,51 @@ impl Transaction<i64> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn get_metadata(&self, _: Option<i64>, _: String) -> Result<JsonValue, Error> {
+	fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_metadata(&self, _: Option<i64>, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_global_metadata(&self, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_metadata(&self, _: Option<i64>, _: String) -> Result<(), Error> {
+	fn delete_global_metadata(&self, _: String) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn get_account_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+		panic!("Unimplemented")
+	}
+
+	fn set_account_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn delete_account_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn get_vertex_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+		panic!("Unimplemented")
+	}
+
+	fn set_vertex_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn delete_vertex_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn get_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<JsonValue, Error> {
+		panic!("Unimplemented")
+	}
+
+	fn set_edge_metadata(&self, _: i64, _: String, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+		panic!("Unimplemented")
+	}
+
+	fn delete_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
