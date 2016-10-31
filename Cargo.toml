@@ -14,8 +14,9 @@ postgres-datastore = ["postgres", "r2d2", "r2d2_postgres", "num_cpus"]
 [dependencies]
 rust-crypto = "0.2.35"
 chrono = "0.2.20"
-serde = "0.8.8"
-serde_macros = "0.8.8"
+serde = "0.8.13"
+serde_json = "0.8.3"
+serde_macros = "0.8.9"
 libc = "0.2.11"
 rand = "0.3.14"
 
@@ -26,9 +27,6 @@ num_cpus = { version = "0.2.11", optional = true }
 
 [dev-dependencies]
 stainless = "*"
-
-[dependencies.serde_json]
-git = "https://github.com/serde-rs/json"
 
 [dependencies.postgres]
 version = "0.11.3"
