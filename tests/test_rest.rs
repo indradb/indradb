@@ -1,10 +1,11 @@
 #![cfg(test)]
 
-#![feature(custom_derive, plugin)]
-#![cfg_attr(test, plugin(stainless))]
+#![feature(custom_derive, plugin, test)]
+#![plugin(stainless)]
 
 #[macro_use] extern crate nutrino;
 #[macro_use] extern crate lazy_static;
+extern crate test;
 extern crate serde;
 extern crate serde_json;
 extern crate chrono;
