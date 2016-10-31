@@ -19,8 +19,9 @@ path = "src/common/lib.rs"
 iron = "0.3.0"
 hyper = "0.8.1"
 chrono = "0.2.20"
-serde = "0.8.8"
-serde_macros = "0.8.8"
+serde = "0.8.13"
+serde_json = "0.8.3"
+serde_macros = "0.8.9"
 urlencoded = "0.3.0"
 libc = "0.2.11"
 regex = "0.1.73"
@@ -31,9 +32,6 @@ lazy_static = "0.2.1"
 [dev-dependencies]
 stainless = "*"
 maplit = "0.1.4"
-
-[dependencies.serde_json]
-git = "https://github.com/serde-rs/json"
 
 [dependencies.rust-nutrino-lib]
 path = "../lib"
