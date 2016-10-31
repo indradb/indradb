@@ -16,16 +16,14 @@ pub fn bench_get_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Be
 }
 
 pub fn bench_create_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-    let props = create_test_properties("Jill 2.0");
-
     b.iter(|| {
         let trans = sandbox.transaction();
-    	trans.create_vertex("user".to_string(), props.clone()).unwrap();
+    	trans.create_vertex("user".to_string()).unwrap();
     });
 }
 
 pub fn bench_set_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let id = sandbox.create_test_vertex("movie", None);
+	let id = sandbox.create_test_vertex("movie", "Some New Movie");
     let v = models::Vertex::new(id, "movie".to_string());
 
     b.iter(|| {
