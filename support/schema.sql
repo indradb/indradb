@@ -72,7 +72,7 @@ CREATE SEQUENCE global_metadata_seq
 CREATE TABLE global_metadata (
     id INT DEFAULT nextval('global_metadata_seq'::regclass) NOT NULL,
     key VARCHAR(1024) NOT NULL,
-    value VARCHAR NOT NULL
+    value JSONB NOT NULL
 );
 
 ALTER TABLE global_metadata
@@ -91,7 +91,7 @@ CREATE TABLE account_metadata (
     id INT DEFAULT nextval('account_metadata_seq'::regclass) NOT NULL,
     owner_id INT NOT NULL,
     key VARCHAR(1024) NOT NULL,
-    value VARCHAR NOT NULL
+    value JSONB NOT NULL
 );
 
 ALTER TABLE account_metadata
@@ -111,7 +111,7 @@ CREATE TABLE vertex_metadata (
     id INT DEFAULT nextval('vertex_metadata_seq'::regclass) NOT NULL,
     owner_id BIGINT NOT NULL,
     key VARCHAR(1024) NOT NULL,
-    value VARCHAR NOT NULL
+    value JSONB NOT NULL
 );
 
 ALTER TABLE vertex_metadata
@@ -131,7 +131,7 @@ CREATE TABLE edge_metadata (
     id INT DEFAULT nextval('edge_metadata_seq'::regclass) NOT NULL,
     owner_id BIGINT NOT NULL,
     key VARCHAR(1024) NOT NULL,
-    value VARCHAR NOT NULL
+    value JSONB NOT NULL
 );
 
 ALTER TABLE edge_metadata
