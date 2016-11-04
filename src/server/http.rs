@@ -30,6 +30,10 @@ use std::fs::File;
 use std::cmp::min;
 use datastore::DATASTORE;
 
+lazy_static! {
+	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+}
+
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
 
 const MAX_RETURNABLE_EDGES: i32 = 1000;
@@ -434,10 +438,9 @@ fn on_input_script(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_named_script(req: &mut Request) -> IronResult<Response> {
-	let script_name_validator = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
 	let script_name: String = try!(get_url_param(req, "name"));
 
-	if !script_name_validator.is_match(&script_name[..]) {
+	if !SCRIPT_NAME_VALIDATOR.is_match(&script_name[..]) {
 		return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
 	}
 
