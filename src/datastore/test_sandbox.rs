@@ -1,5 +1,4 @@
 use super::{Datastore, Transaction};
-use super::test_util::*;
 use traits::Id;
 use models;
 use std::collections::BTreeMap;

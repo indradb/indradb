@@ -1,8 +1,5 @@
 use std::error::Error as StdError;
 use std::fmt;
-use std::collections::BTreeMap;
-use serde_json::Value as JsonValue;
-use serde_json;
 use rand::{Rng, OsRng};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -58,21 +55,6 @@ impl fmt::Display for Error {
 			_ => write!(f, "{}", self.description())
 		}
 	}
-}
-
-pub fn parse_json_object(s: String) -> Result<BTreeMap<String, JsonValue>, Error> {
-	let serialized = serde_json::from_str(&s[..]);
-
-	if serialized.is_ok() {
-		let json: JsonValue = serialized.unwrap();
-		let obj = json.as_object();
-
-		if obj.is_some() {
-			return Ok(obj.unwrap().clone())
-		}
-	}
-
-	Err(Error::Unexpected("Did not get a JSON object back".to_string()))
 }
 
 pub fn generate_random_secret() -> String {

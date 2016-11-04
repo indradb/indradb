@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-use serde_json::value::Value as JsonValue;
 use traits::Id;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
