@@ -32,6 +32,10 @@ use datastore::DATASTORE;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+	static ref SCRIPT_ROOT: String = match env::var("NUTRINO_SCRIPT_ROOT") {
+		Ok(s) => s,
+		Err(_) => Path::new(".").join("scripts").to_str().unwrap().to_string()
+	};
 }
 
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
@@ -54,8 +58,7 @@ pub fn start(port: u16) {
 	router.put("/vertex/:id", on_set_vertex);
 	router.delete("/vertex/:id", on_delete_vertex);
 
-	router.post("/script", on_input_script);
-	router.post("/script/:name", on_named_script);
+	router.post("/script/:name", on_script);
 
 	let binding = format!("0.0.0.0:{}", port);
 	println!("Listening on {}", binding);
@@ -267,7 +270,7 @@ fn get_transaction(req: &Request) -> Result<PostgresTransaction, IronError> {
 	}
 }
 
-fn read_json(body: &mut Body) -> Result<JsonValue, IronError> {
+fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronError> {
 	let mut payload = String::new();
 	let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
 
@@ -275,14 +278,25 @@ fn read_json(body: &mut Body) -> Result<JsonValue, IronError> {
 		return Err(create_iron_error(status::BadRequest, format!("Could not read JSON body: {}", err)))
 	}
 
-	match serde_json::from_str(&payload[..]) {
-	    Ok(json) => Ok(json),
-	    Err(err) => Err(create_iron_error(status::BadRequest, format!("Could not parse JSON payload: {}", err.description())))
+	if payload.len() == 0 {
+		Ok(None)
+	} else {
+		match serde_json::from_str(&payload[..]) {
+			Ok(json) => Ok(Some(json)),
+			Err(err) => Err(create_iron_error(status::BadRequest, format!("Could not parse JSON payload: {}", err.description())))
+		}
+	}	
+}
+
+fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
+	match try!(read_optional_json(&mut body)) {
+		Some(value) => Ok(value),
+		None => Err(create_iron_error(status::BadRequest, "Missing JSON payload".to_string())),
 	}
 }
 
 fn read_json_object(body: &mut Body) -> Result<BTreeMap<String, JsonValue>, IronError> {
-	match try!(read_json(body)) {
+	match try!(read_required_json(body)) {
 		JsonValue::Object(obj) => Ok(obj),
 		_ => Err(create_iron_error(status::BadRequest, "Bad payload: expected object".to_string()))
 	}
@@ -423,34 +437,19 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	}
 }
 
-fn on_input_script(req: &mut Request) -> IronResult<Response> {
-	let mut payload = String::new();
-	let read_result: Result<usize, io::Error> = req.body.read_to_string(&mut payload);
-
-	if let Err(err) = read_result {
-		return Err(create_iron_error(status::BadRequest, format!("Could not read script contents: {}", err)))
-	}
-
-	let account_id = get_account_id(req);
-	let trans = try!(get_transaction(req));
-	execute_script(trans, account_id, &payload[..], JsonValue::Null)
-}
-
-fn on_named_script(req: &mut Request) -> IronResult<Response> {
+fn on_script(req: &mut Request) -> IronResult<Response> {
 	let script_name: String = try!(get_url_param(req, "name"));
 
 	if !SCRIPT_NAME_VALIDATOR.is_match(&script_name[..]) {
 		return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
 	}
 
-	let arg = try!(read_json(&mut req.body));
-
-	let script_root = match env::var("NUTRINO_SCRIPT_ROOT") {
-		Ok(s) => s,
-		Err(_) => Path::new(".").join("scripts").to_str().unwrap().to_string()
+	let arg = match try!(read_optional_json(&mut req.body)) {
+		Some(val) => val,
+		None => JsonValue::Null
 	};
 
-	let path = Path::new(&script_root[..]).join(script_name);
+	let path = Path::new(&SCRIPT_ROOT[..]).join(script_name);
 
 	let mut f = match File::open(path) {
 		Ok(f) => f,
@@ -465,10 +464,7 @@ fn on_named_script(req: &mut Request) -> IronResult<Response> {
 
 	let account_id = get_account_id(req);
 	let trans = try!(get_transaction(req));
-	execute_script(trans, account_id, &payload[..], arg)
-}
 
-fn execute_script(trans: PostgresTransaction, account_id: i64, payload: &str, arg: JsonValue) -> IronResult<Response> {
 	match scripts::run(trans, account_id, &payload[..], arg) {
 		Ok(val) => Ok(to_response(status::Ok, &val)),
 		Err(err) => Err(create_iron_error(status::InternalServerError, format!("Script failed: {:?}", err)))
@@ -480,7 +476,7 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 	let mut idx: u16 = 0;
 	let mut jsonable_res: Vec<JsonValue> = Vec::new();
 
-	match read_json(&mut req.body) {
+	match read_required_json(&mut req.body) {
 		Ok(JsonValue::Array(items)) => {
 			for item in items {
 				match item {

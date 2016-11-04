@@ -159,7 +159,7 @@ pub fn run_script(account_id: i64, secret: String, name: &str) {
 	file.read_to_string(&mut contents).unwrap();
 
 	let client = Client::new();
-	let req = request(&client, 8000, account_id, secret, "POST", "/script".to_string()).body(&contents[..]);
+	let req = request(&client, 8000, account_id, secret, "POST", format!("/script/{}.lua", name));
 	let mut res = req.send().unwrap();
 
 	if RUNTIME_ERROR_EXPECTED_PATTERN.is_match(&contents[..]) {
@@ -181,6 +181,8 @@ pub fn run_script(account_id: i64, secret: String, name: &str) {
 			assert_eq!(expected_result, actual_result)
 		}
 	} else {
+		let mut payload = String::new();
+		res.read_to_string(&mut payload).unwrap();
 		panic!("Unexpected status code: {}", res.status)
 	}
 }
