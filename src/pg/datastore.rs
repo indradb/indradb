@@ -12,7 +12,6 @@ use pg::postgres::rows::Rows;
 use pg::postgres::error as pg_error;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
-use serde_json;
 use pg::num_cpus;
 
 impl Id for i64 {}
@@ -178,9 +177,8 @@ impl PostgresTransaction {
 
 	fn handle_get_metadata_results(&self, results: Rows) -> Result<JsonValue, Error> {
 		for row in &results {
-			let value_str: String = row.get(0);
-			let value_obj = serde_json::from_str(&value_str[..]).unwrap();
-			return Ok(value_obj)
+			let value: JsonValue = row.get(0);
+			return Ok(value)
 		}
 
 		Err(Error::MetadataDoesNotExist)
@@ -399,15 +397,13 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
-		let value_str = serde_json::to_string(&value).unwrap();
-
 		let results = try!(self.trans.query("
 			INSERT INTO global_metadata (key, value)
 			VALUES ($1, $2)
 			ON CONFLICT ON CONSTRAINT global_metadata_key_ukey
 			DO UPDATE SET value=$2
 			RETURNING 1
-		", &[&key, &value_str]));
+		", &[&key, &value]));
 
 		self.handle_update_metadata_results(results)
 	}
@@ -423,15 +419,13 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn set_account_metadata(&self, owner_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
-		let value_str = serde_json::to_string(&value).unwrap();
-
 		let results = try!(self.trans.query("
 			INSERT INTO account_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
 			ON CONFLICT ON CONSTRAINT account_metadata_owner_id_key_ukey
 			DO UPDATE SET value=$3
 			RETURNING 1
-		", &[&(owner_id as i32), &key, &value_str]));
+		", &[&(owner_id as i32), &key, &value]));
 
 		self.handle_update_metadata_results(results)
 	}
@@ -447,15 +441,13 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn set_vertex_metadata(&self, owner_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
-		let value_str = serde_json::to_string(&value).unwrap();
-
 		let results = try!(self.trans.query("
 			INSERT INTO vertex_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
 			ON CONFLICT ON CONSTRAINT vertex_metadata_owner_id_key_ukey
 			DO UPDATE SET value=$3
 			RETURNING 1
-		", &[&owner_id, &key, &value_str]));
+		", &[&owner_id, &key, &value]));
 
 		self.handle_update_metadata_results(results)
 	}
@@ -476,15 +468,13 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn set_edge_metadata(&self, outbound_id: i64, t: String, inbound_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
-		let value_str = serde_json::to_string(&value).unwrap();
-
 		let results = try!(self.trans.query("
 			INSERT INTO edge_metadata (owner_id, key, value)
 			VALUES ((SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3), $4, $5)
 			ON CONFLICT ON CONSTRAINT edge_metadata_owner_id_key_ukey
 			DO UPDATE SET value=$5
 			RETURNING 1
-		", &[&outbound_id, &t, &inbound_id, &key, &value_str]));
+		", &[&outbound_id, &t, &inbound_id, &key, &value]));
 
 		self.handle_update_metadata_results(results)
 	}
