@@ -489,16 +489,16 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 						let action = try!(get_json_string_param(&obj, "action", false));
 
 						let result: Result<JsonValue, IronError> = match &action.unwrap()[..] {
-							"get_vertex" => get_vertex_item(&trans, &obj),
-							"create_vertex" => create_vertex_item(&trans, &obj),
-							"set_vertex" => set_vertex_item(&trans, &obj),
-							"delete_vertex" => delete_vertex_item(&trans, &obj),
-							"get_edge" => get_edge_item(&trans, &obj),
-							"set_edge" => set_edge_item(&trans, &obj),
-							"delete_edge" => delete_edge_item(&trans, &obj),
-							"get_edge_count" => get_edge_count_item(&trans, &obj),
-							"get_edge_range" => get_edge_range_item(&trans, &obj),
-							"get_edge_time_range" => get_edge_time_range_item(&trans, &obj),
+							"get_vertex" => trans_get_vertex(&trans, &obj),
+							"create_vertex" => trans_create_vertex(&trans, &obj),
+							"set_vertex" => trans_set_vertex(&trans, &obj),
+							"delete_vertex" => trans_delete_vertex(&trans, &obj),
+							"get_edge" => trans_get_edge(&trans, &obj),
+							"set_edge" => trans_set_edge(&trans, &obj),
+							"delete_edge" => trans_delete_edge(&trans, &obj),
+							"get_edge_count" => trans_get_edge_count(&trans, &obj),
+							"get_edge_range" => trans_get_edge_range(&trans, &obj),
+							"get_edge_time_range" => trans_get_edge_time_range(&trans, &obj),
 							_ => {
 								return Err(create_iron_error(status::BadRequest, "Unknown action".to_string()))
 							}
@@ -529,73 +529,73 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 	Ok(to_response(status::Ok, &jsonable_res))
 }
 
-fn get_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_json_i64_param(item, "id", false));
-	transaction_item(trans.get_vertex(id.unwrap()))
+	execute_trans_item(trans.get_vertex(id.unwrap()))
 }
 
-fn create_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_create_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let t = try!(get_json_string_param(item, "type", false));
-	transaction_item(trans.create_vertex(t.unwrap()))
+	execute_trans_item(trans.create_vertex(t.unwrap()))
 }
 
-fn set_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_set_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_json_i64_param(item, "id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	transaction_item(trans.set_vertex(Vertex::new(id.unwrap(), t.unwrap())))
+	execute_trans_item(trans.set_vertex(Vertex::new(id.unwrap(), t.unwrap())))
 }
 
-fn delete_vertex_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_delete_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_json_i64_param(item, "id", false));
-	transaction_item(trans.delete_vertex(id.unwrap()))
+	execute_trans_item(trans.delete_vertex(id.unwrap()))
 }
 
-fn get_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
-	transaction_item(trans.get_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
+	execute_trans_item(trans.get_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
 }
 
-fn set_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_set_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
 	let weight = try!(get_json_f64_param(item, "weight", false));
-	transaction_item(trans.set_edge(Edge::new(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap(), weight.unwrap() as f32)))
+	execute_trans_item(trans.set_edge(Edge::new(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap(), weight.unwrap() as f32)))
 }
 
-fn delete_edge_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_delete_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let inbound_id = try!(get_json_i64_param(item, "inbound_id", false));
-	transaction_item(trans.delete_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
+	execute_trans_item(trans.delete_edge(outbound_id.unwrap(), t.unwrap(), inbound_id.unwrap()))
 }
 
-fn get_edge_count_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_count(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
-	transaction_item(trans.get_edge_count(outbound_id.unwrap(), t.unwrap()))
+	execute_trans_item(trans.get_edge_count(outbound_id.unwrap(), t.unwrap()))
 }
 
-fn get_edge_range_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let limit = parse_limit(try!(get_json_i32_param(item, "limit", true)));
 	let offset = try!(get_json_i64_param(item, "offset", true)).unwrap_or(0);
-	transaction_item(trans.get_edge_range(outbound_id.unwrap(), t.unwrap(), offset, limit))
+	execute_trans_item(trans.get_edge_range(outbound_id.unwrap(), t.unwrap(), offset, limit))
 }
 
-fn get_edge_time_range_item(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_time_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_json_i64_param(item, "outbound_id", false));
 	let t = try!(get_json_string_param(item, "type", false));
 	let limit = parse_limit(try!(get_json_i32_param(item, "limit", true)));
 	let high = parse_datetime(try!(get_json_i64_param(item, "high", true)));
 	let low = parse_datetime(try!(get_json_i64_param(item, "low", true)));
-	transaction_item(trans.get_edge_time_range(outbound_id.unwrap(), t.unwrap(), high, low, limit))
+	execute_trans_item(trans.get_edge_time_range(outbound_id.unwrap(), t.unwrap(), high, low, limit))
 }
 
-fn transaction_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
+fn execute_trans_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
 	let result = try!(datastore_request(result));
 	Ok(serde_json::to_value(&result))
 }
