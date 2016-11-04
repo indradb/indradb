@@ -58,9 +58,9 @@ impl PostgresDatastore {
 }
 
 impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
-	fn has_account(&self, user_id: i64) -> Result<bool, Error> {
+	fn has_account(&self, account_id: i64) -> Result<bool, Error> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&(user_id as i32)]));
+		let results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&(account_id as i32)]));
 
 		for _ in &results {
 			return Result::Ok(true);
@@ -84,9 +84,9 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 		panic!("Hit unreachable code");
 	}
 
-	fn delete_account(&self, user_id: i64) -> Result<(), Error> {
+	fn delete_account(&self, account_id: i64) -> Result<(), Error> {
 		let conn = try!(self.pool.get());
-		let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&(user_id as i32)]));
+		let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&(account_id as i32)]));
 
 		for _ in &results {
 			return Result::Ok(());
@@ -95,14 +95,14 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 		Err(Error::AccountNotFound)
 	}
 
-	fn auth(&self, user_id: i64, secret: String) -> Result<bool, Error> {
+	fn auth(&self, account_id: i64, secret: String) -> Result<bool, Error> {
 		let conn = try!(self.pool.get());
-		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&(user_id as i32)]));
+		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&(account_id as i32)]));
 
 		for row in &get_salt_results {
 			let salt = row.get(0);
 			let expected_hash = self.get_salted_hash(salt, secret);
-			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&(user_id as i32), &expected_hash]));
+			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&(account_id as i32), &expected_hash]));
 
 			for _ in &auth_results {
 				return Result::Ok(true);
@@ -114,9 +114,9 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 		Result::Ok(false)
 	}
 
-	fn transaction(&self, user_id: i64) -> Result<PostgresTransaction, Error> {
+	fn transaction(&self, account_id: i64) -> Result<PostgresTransaction, Error> {
 		let conn = try!(self.pool.get());
-		let trans = try!(PostgresTransaction::new(conn, user_id as i32));
+		let trans = try!(PostgresTransaction::new(conn, account_id as i32));
 		Ok(trans)
 	}
 }

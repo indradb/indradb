@@ -7,11 +7,11 @@ use std::option::Option;
 use chrono::naive::datetime::NaiveDateTime;
 
 pub trait Datastore<T: Transaction<I>, I: Id> {
-	fn has_account(&self, user_id: I) -> Result<bool, Error>;
+	fn has_account(&self, account_id: I) -> Result<bool, Error>;
 	fn create_account(&self, email: String) -> Result<(I, String), Error>;
-	fn delete_account(&self, user_id: I) -> Result<(), Error>;
-	fn auth(&self, user_id: I, secret: String) -> Result<bool, Error>;
-	fn transaction(&self, user_id: I) -> Result<T, Error>;
+	fn delete_account(&self, account_id: I) -> Result<(), Error>;
+	fn auth(&self, account_id: I, secret: String) -> Result<bool, Error>;
+	fn transaction(&self, account_id: I) -> Result<T, Error>;
 }
 
 pub trait Transaction<I: Id> {
