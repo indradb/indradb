@@ -287,27 +287,30 @@ impl Transaction<i64> for PostgresTransaction {
 			RETURNING 1
 		", &[&e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight]);
 
-		if let Err(err) = results {
-			return match err {
-				pg_error::Error::Db(ref db_err) => {
-					match db_err.code {
-						// This should only happen when the inner select fails
-						pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
+		match results {
+			Ok(results) => {
+				for _ in &results {
+					return Ok(());
+				}
+			},
+			Err(err) => {
+				return match err {
+					pg_error::Error::Db(ref db_err) => {
+						match db_err.code {
+							// This should only happen when the inner select fails
+							pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
 
-						// This should only happen when there is no vertex with id=inbound_id
-						pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
+							// This should only happen when there is no vertex with id=inbound_id
+							pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
 
-						// Other db error
-						_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
-					}
-				},
-				pg_error::Error::Io(_) => Err(Error::Unexpected("Database I/O error".to_string())),
-				pg_error::Error::Conversion(err) => panic!(err)
-			};
-		}
-
-		for _ in &results.unwrap() {
-			return Ok(())
+							// Other db error
+							_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
+						}
+					},
+					pg_error::Error::Io(_) => Err(Error::Unexpected("Database I/O error".to_string())),
+					pg_error::Error::Conversion(err) => panic!(err)
+				};
+			}
 		}
 
 		Err(Error::VertexDoesNotExist)
