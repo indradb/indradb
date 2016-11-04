@@ -86,7 +86,7 @@ macro_rules! lua_fn {
     )
 }
 
-pub fn run(mut trans: PostgresTransaction, user_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+pub fn run(mut trans: PostgresTransaction, account_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 
@@ -123,8 +123,8 @@ pub fn run(mut trans: PostgresTransaction, user_id: i64, source: &str, arg: Json
     l.pushlightuserdata(trans_ptr);
     l.setglobal("trans");
 
-    l.pushstring(&user_id.to_string()[..]);
-    l.setglobal("user_id");
+    l.pushstring(&account_id.to_string()[..]);
+    l.setglobal("account_id");
 
     unsafe {
         serialize_json(l.as_extern(), arg);

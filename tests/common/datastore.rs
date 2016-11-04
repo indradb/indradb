@@ -46,21 +46,21 @@ impl<H: HttpTransaction<T>, T: Transaction<i64>> Datastore<T, i64> for HttpDatas
         Ok((account_id, secret))
 	}
 
-	fn delete_account(&self, user_id: i64) -> Result<(), Error> {
-        delete_account(user_id)
+	fn delete_account(&self, account_id: i64) -> Result<(), Error> {
+        delete_account(account_id)
 	}
 
 	fn auth(&self, _: i64, _: String) -> Result<bool, Error> {
         panic!("Unimplemented")
 	}
 
-	fn transaction(&self, user_id: i64) -> Result<T, Error> {
+	fn transaction(&self, account_id: i64) -> Result<T, Error> {
         let secret = ACCOUNT_IDS.with(|account_ids| {
             let ref account_ids: BTreeMap<i64, String> = *account_ids.borrow();
-            account_ids.get(&user_id).unwrap().clone()
+            account_ids.get(&account_id).unwrap().clone()
         });
 
-        Ok(H::new(self.port, user_id, secret))
+        Ok(H::new(self.port, account_id, secret))
 	}
 }
 

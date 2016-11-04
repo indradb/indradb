@@ -31,10 +31,10 @@ pub fn create_account(email: String) -> Result<(i64, String), Error> {
     }
 }
 
-pub fn delete_account(user_id: i64) -> Result<(), Error> {
+pub fn delete_account(account_id: i64) -> Result<(), Error> {
     let remove_user_status = Command::new("./target/debug/nutrino-user")
         .arg("remove")
-        .arg(user_id.to_string())
+        .arg(account_id.to_string())
         .status();
 
     match remove_user_status {
