@@ -13,6 +13,7 @@ use pg::postgres::error as pg_error;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use pg::num_cpus;
+use std::i32;
 
 impl Id for i64 {}
 
@@ -57,6 +58,10 @@ impl PostgresDatastore {
 
 impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	fn has_account(&self, account_id: i64) -> Result<bool, Error> {
+		if account_id > i32::MAX as i64 as i64 {
+			return Result::Err(Error::Unexpected("`account_id` too large".to_string()));
+		}
+
 		let conn = try!(self.pool.get());
 		let results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&(account_id as i32)]));
 
@@ -83,6 +88,10 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	}
 
 	fn delete_account(&self, account_id: i64) -> Result<(), Error> {
+		if account_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`account_id` too large".to_string()));
+		}
+
 		let conn = try!(self.pool.get());
 		let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&(account_id as i32)]));
 
@@ -94,6 +103,10 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	}
 
 	fn auth(&self, account_id: i64, secret: String) -> Result<bool, Error> {
+		if account_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`account_id` too large".to_string()));
+		}
+
 		let conn = try!(self.pool.get());
 		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&(account_id as i32)]));
 
@@ -113,6 +126,10 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	}
 
 	fn transaction(&self, account_id: i64) -> Result<PostgresTransaction, Error> {
+		if account_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`account_id` too large".to_string()));
+		}
+
 		let conn = try!(self.pool.get());
 		let trans = try!(PostgresTransaction::new(conn, account_id as i32));
 		Ok(trans)
@@ -414,11 +431,19 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn get_account_metadata(&self, owner_id: i64, key: String) -> Result<JsonValue, Error> {
+		if owner_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`owner_id` too large".to_string()));
+		}
+
 		let results = try!(self.trans.query("SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2", &[&(owner_id as i32), &key]));
 		self.handle_get_metadata_results(results)
 	}
 
 	fn set_account_metadata(&self, owner_id: i64, key: String, value: JsonValue) -> Result<(), Error> {
+		if owner_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`owner_id` too large".to_string()));
+		}
+
 		let results = try!(self.trans.query("
 			INSERT INTO account_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
@@ -431,6 +456,10 @@ impl Transaction<i64> for PostgresTransaction {
 	}
 
 	fn delete_account_metadata(&self, owner_id: i64, key: String) -> Result<(), Error> {
+		if owner_id > i32::MAX as i64 {
+			return Result::Err(Error::Unexpected("`owner_id` too large".to_string()));
+		}
+
 		let results = try!(self.trans.query("DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&(owner_id as i32), &key]));
 		self.handle_update_metadata_results(results)
 	}
