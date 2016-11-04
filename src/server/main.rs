@@ -21,6 +21,18 @@ mod scripts;
 mod util;
 mod datastore;
 
+use std::env;
+
 fn main() {
-	http::start(8000);
+	let port: u16 = match env::var("PORT") {
+		Ok(s) => {
+			match s.parse::<u16>() {
+				Ok(val) => val,
+				Err(_) => panic!("Could not parse environment variable `PORT`") 
+			}
+		},
+		Err(_) => 8000
+	};
+
+	http::start(port);
 }
