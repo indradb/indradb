@@ -9,6 +9,7 @@ use serde_json::value::Value as JsonValue;
 use std::collections::BTreeMap;
 use nutrino::{Vertex, Edge, Transaction, PostgresTransaction, Error};
 use chrono::naive::datetime::NaiveDateTime;
+use std::{isize, i32};
 
 #[derive(Debug)]
 pub enum LuaError {
@@ -360,7 +361,12 @@ lua_fn! {
         let outbound_id = try!(get_i64_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let result = try!(trans.get_edge_count(outbound_id, t));
-        l.pushinteger(result as isize);
+
+        l.pushinteger(match result {
+            i if i > isize::MAX as i64 => isize::MAX,
+            i => i as isize
+        });
+
         Ok(1)
     }
 
@@ -368,8 +374,13 @@ lua_fn! {
         let outbound_id = try!(get_i64_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let offset = l.checkinteger(3);
-        let limit = l.checkinteger(4);
-        let result = try!(trans.get_edge_range(outbound_id, t, offset as i64, limit as i32));
+
+        let limit = match l.checkinteger(4) {
+            i if i > i32::MAX as isize => i32::MAX,
+            i => i as i32
+        };
+        
+        let result = try!(trans.get_edge_range(outbound_id, t, offset as i64, limit));
         serialize_edges(l, result);
         Ok(1)
     }
@@ -379,8 +390,13 @@ lua_fn! {
         let t = try!(get_string_param(l, 2));
         let high = try!(get_optional_datetime_param(l, 3));
         let low = try!(get_optional_datetime_param(l, 4));
-        let limit = l.checkinteger(5);
-        let result = try!(trans.get_edge_time_range(outbound_id, t, high, low, limit as i32));
+        
+        let limit = match l.checkinteger(5) {
+            i if i > i32::MAX as isize => i32::MAX,
+            i => i as i32
+        };
+
+        let result = try!(trans.get_edge_time_range(outbound_id, t, high, low, limit));
         serialize_edges(l, result);
         Ok(1)
     }
