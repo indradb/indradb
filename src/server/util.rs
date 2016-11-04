@@ -7,13 +7,7 @@ pub struct SimpleError {
 }
 
 impl SimpleError {
-	pub fn new(description: &str) -> SimpleError {
-		SimpleError {
-			description: description.to_string()
-		}
-	}
-
-	pub fn new_from_string(description: String) -> SimpleError {
+	pub fn new(description: String) -> SimpleError {
 		SimpleError {
 			description: description
 		}

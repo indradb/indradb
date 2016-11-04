@@ -114,7 +114,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 		let json_content_type_modifier = HeaderModifier(get_json_content_type());
 
 		let modifiers = (status::Unauthorized, json_content_type_modifier, www_authenticate_modifier, body);
-		Err(IronError::new(SimpleError::new_from_string(error_message), modifiers))
+		Err(IronError::new(SimpleError::new(error_message), modifiers))
 	}
 }
 
@@ -134,7 +134,7 @@ fn create_iron_error(status_code: status::Status, err: String) -> IronError {
 	let body = serde_json::to_string(&d).unwrap();
 	let json_content_type_modifier = HeaderModifier(get_json_content_type());
 	let modifiers = (status_code, json_content_type_modifier, body);
-	IronError::new(SimpleError::new_from_string(err), modifiers)
+	IronError::new(SimpleError::new(err), modifiers)
 }
 
 fn get_json_content_type() -> ContentType {
