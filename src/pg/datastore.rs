@@ -292,28 +292,26 @@ impl Transaction<i64> for PostgresTransaction {
 				for _ in &results {
 					return Ok(());
 				}
+
+				Err(Error::VertexDoesNotExist)
 			},
-			Err(err) => {
-				return match err {
-					pg_error::Error::Db(ref db_err) => {
-						match db_err.code {
-							// This should only happen when the inner select fails
-							pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
+			Err(pg_error::Error::Db(ref db_err)) => {
+				match db_err.code {
+					// This should only happen when the inner select fails
+					pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
 
-							// This should only happen when there is no vertex with id=inbound_id
-							pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
+					// This should only happen when there is no vertex with id=inbound_id
+					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
 
-							// Other db error
-							_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
-						}
-					},
-					pg_error::Error::Io(_) => Err(Error::Unexpected("Database I/O error".to_string())),
-					pg_error::Error::Conversion(err) => panic!(err)
-				};
-			}
+					// Other db error
+					_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
+				}
+			},
+			Err(pg_error::Error::Io(_)) => {
+				Err(Error::Unexpected("Database I/O error".to_string()))
+			},
+			Err(pg_error::Error::Conversion(err)) => panic!(err)
 		}
-
-		Err(Error::VertexDoesNotExist)
 	}
 
 	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
