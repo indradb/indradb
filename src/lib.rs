@@ -24,3 +24,6 @@ pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")] mod pg;
 #[cfg(feature="postgres-datastore")] pub use pg::{PostgresDatastore, PostgresTransaction};
+
+#[cfg(feature="rocksdb-datastore")] mod rocksdb;
+#[cfg(feature="rocksdb-datastore")] pub use rocksdb::{RocksdbDatastore, RocksdbTransaction};
