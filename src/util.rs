@@ -1,6 +1,8 @@
 use std::error::Error as StdError;
 use std::fmt;
 use rand::{Rng, OsRng};
+use crypto::sha2::Sha256;
+use crypto::digest::Digest;
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Error {
@@ -68,4 +70,16 @@ pub fn generate_random_secret() -> String {
     }
 
     String::from_utf8(chars).unwrap()
+}
+
+pub fn get_salted_hash(salt: String, pepper: Option<String>, secret: String) -> String {
+	let mut sha = Sha256::new();
+	sha.input(salt.as_bytes());
+
+	if pepper.is_some() {
+		sha.input(pepper.unwrap().as_bytes());
+	}
+
+	sha.input(secret.as_bytes());
+	return format!("1:{}", sha.result_str());
 }

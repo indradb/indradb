@@ -4,8 +4,7 @@ use std::mem;
 use datastore::{Datastore, Transaction};
 use traits::Id;
 use models;
-use util::{Error, generate_random_secret};
-use crypto::sha2::Sha256;
+use util::{Error, generate_random_secret, get_salted_hash};
 use crypto::digest::Digest;
 use pg::postgres;
 use pg::postgres::rows::Rows;
@@ -46,14 +45,6 @@ impl PostgresDatastore {
 			secret: secret
 		}
 	}
-
-	fn get_salted_hash(&self, salt: String, secret: String) -> String {
-		let mut sha = Sha256::new();
-		sha.input(salt.as_bytes());
-		sha.input(self.secret.as_bytes());
-		sha.input(secret.as_bytes());
-		return format!("1:{}", sha.result_str());
-	}
 }
 
 impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
@@ -75,7 +66,7 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	fn create_account(&self, email: String) -> Result<(i64, String), Error> {
 		let salt = generate_random_secret();
 		let secret = generate_random_secret();
-		let hash = self.get_salted_hash(salt.clone(), secret.clone());
+		let hash = get_salted_hash(salt.clone(), Some(self.secret.clone()), secret.clone());
 		let conn = try!(self.pool.get());
 		let results = try!(conn.query("INSERT INTO accounts(email, salt, api_secret_hash) VALUES ($1, $2, $3) RETURNING id", &[&email, &salt, &hash]));
 
@@ -112,7 +103,7 @@ impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 
 		for row in &get_salt_results {
 			let salt = row.get(0);
-			let expected_hash = self.get_salted_hash(salt, secret);
+			let expected_hash = get_salted_hash(salt, Some(self.secret.clone()), secret);
 			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&(account_id as i32), &expected_hash]));
 
 			for _ in &auth_results {

@@ -2,11 +2,13 @@
 
 pub use super::datastore::*;
 pub use datastore::*;
+pub use super::super::util::generate_random_secret;
 pub use std::env;
 pub use traits::Id;
 
 pub fn datastore() -> RocksdbDatastore {
-	RocksdbDatastore::new()
+	let unique = generate_random_secret();
+	RocksdbDatastore::new(format!("./rdb-test-{}", unique)).unwrap()
 }
 
 test_account_management_impl! {
