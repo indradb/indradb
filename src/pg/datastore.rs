@@ -280,20 +280,24 @@ impl Transaction<i64> for PostgresTransaction {
 			return Err(Error::WeightOutOfRange);
 		}
 
-		let results = self.trans.query("
+		// Because this command could fail, we need to set a savepoint to roll
+		// back to, rather than spoiling the entire transaction
+		let trans = try!(self.trans.savepoint("set_edge"));
+
+		let results = trans.query("
 			INSERT INTO edges (outbound_id, type, inbound_id, weight, update_date)
 			VALUES ((SELECT id FROM vertices WHERE id=$1 AND owner_id=$2), $3, $4, $5, NOW())
 			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$5, update_date=NOW()
 			RETURNING 1
 		", &[&e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight]);
 
-		match results {
+		let returnable = match results {
 			Ok(results) => {
-				for _ in &results {
-					return Ok(());
+				if results.len() > 0 {
+					Ok(())
+				} else {
+					Err(Error::VertexDoesNotExist)
 				}
-
-				Err(Error::VertexDoesNotExist)
 			},
 			Err(pg_error::Error::Db(ref db_err)) => {
 				match db_err.code {
@@ -311,7 +315,15 @@ impl Transaction<i64> for PostgresTransaction {
 				Err(Error::Unexpected("Database I/O error".to_string()))
 			},
 			Err(pg_error::Error::Conversion(err)) => panic!(err)
+		};
+
+		if returnable.is_err() {
+			trans.set_rollback();
+		} else {
+			trans.set_commit();
 		}
+
+		returnable
 	}
 
 	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
