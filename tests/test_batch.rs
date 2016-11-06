@@ -67,7 +67,7 @@ impl BatchTransaction {
 				Ok(o)
 			},
 	        _ => {
-				let mut o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
+				let o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
 
 				match o.get("error") {
 					Some(&JsonValue::String(ref error)) => {
