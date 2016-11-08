@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [features]
 default = ["postgres-datastore", "rocksdb-datastore"]
 postgres-datastore = ["postgres", "r2d2", "r2d2_postgres", "num_cpus"]
-rocksdb-datastore = ["rocksdb", "uuid", "bincode"]
+rocksdb-datastore = ["rocksdb", "uuid", "bincode", "lazy_static", "regex"]
 
 [dependencies]
 rust-crypto = "0.2.35"
@@ -28,6 +28,8 @@ num_cpus = { version = "0.2.11", optional = true }
 
 # Rocksdb dependencies
 rocksdb = { version = "0.4.1", optional = true }
+lazy_static = { version = "0.2.1", optional = true }
+regex = { version = "0.1.73", optional = true }
 
 [dev-dependencies]
 stainless = "*"

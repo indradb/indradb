@@ -11,6 +11,7 @@ extern crate serde_json;
 extern crate libc;
 extern crate rand;
 extern crate test;
+#[cfg(feature="rocksdb-datastore")] #[macro_use] extern crate lazy_static;
 
 #[macro_use] mod datastore;
 mod models;

@@ -49,7 +49,7 @@ impl PostgresDatastore {
 
 impl Datastore<PostgresTransaction, i64> for PostgresDatastore {
 	fn has_account(&self, account_id: i64) -> Result<bool, Error> {
-		if account_id > i32::MAX as i64 as i64 {
+		if account_id > i32::MAX as i64 {
 			return Result::Err(Error::Unexpected("`account_id` too large".to_string()));
 		}
 
@@ -347,9 +347,7 @@ impl Transaction<i64> for PostgresTransaction {
 	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<models::Edge<i64>>, Error> {
 		if offset < 0 {
 			return Err(Error::OffsetOutOfRange);
-		}
-
-		if limit < 0 {
+		} else if limit < 0 {
 			return Err(Error::LimitOutOfRange);
 		}
 
