@@ -8,7 +8,8 @@ use chrono::naive::datetime::{NaiveDateTime};
 use chrono::offset::utc::UTC;
 use rocksdb::rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch};
 use super::models::{AccountValue, EdgeValue, VertexValue};
-use rocksdb::bincode::{SizeLimit, serde};
+use rocksdb::bincode::SizeLimit;
+use rocksdb::bincode::serde as bincode_serde;
 use std::io::Write;
 use rocksdb::bincode::serde::{SerializeError, DeserializeError};
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use std::usize;
 use std::i32;
 use std::io::BufWriter;
 use std::str::Utf8Error;
+use serde_json;
 
 lazy_static! {
 	static ref EDGE_KEY_MATCHER: Regex = Regex::new("^e1:.{32}:([^:]*):(.{32})$").unwrap();
@@ -84,7 +86,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		let secret = generate_random_secret();
 		let hash = get_salted_hash(salt.clone(), None, secret.clone());
 		let account = AccountValue::new(email, salt, hash);
-		let account_bytes = try!(serde::serialize(&account, SizeLimit::Infinite));
+		let account_bytes = try!(bincode_serde::serialize(&account, SizeLimit::Infinite));
 		try!(self.db.put(account_key(account_id).as_bytes(), &account_bytes[..]));
 		Ok((account_id, secret))
 	}
@@ -108,7 +110,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 				break;
 			}
 
-			let vertex_value = try!(serde::deserialize::<VertexValue>(&value.to_owned()[..]));
+			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&value.to_owned()[..]));
 			
 			if vertex_value.owner_id == account_id {
 				batch.delete(&key);
@@ -122,7 +124,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 	fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
 		match try!(self.db.get(account_key(account_id).as_bytes())) {
 			Some(account_bytes) => {
-				let account = try!(serde::deserialize::<AccountValue>(&account_bytes.to_owned()[..]));
+				let account = try!(bincode_serde::deserialize::<AccountValue>(&account_bytes.to_owned()[..]));
 				let expected_hash = get_salted_hash(account.salt, None, secret);
 				Ok(expected_hash == account.hash)
 			},
@@ -159,6 +161,12 @@ impl From<Utf8Error> for Error {
 	}
 }
 
+impl From<serde_json::Error> for Error {
+	fn from(err: serde_json::Error) -> Error {
+		Error::Unexpected(format!("Could not (de-)serialize json: {:?}", err))
+	}
+}
+
 pub struct RocksdbTransaction {
 	db: Arc<DB>,
 	account_id: Uuid
@@ -175,7 +183,7 @@ impl RocksdbTransaction {
 	fn get_vertex_value(&self, id: Uuid) -> Result<VertexValue, Error> {
 		match try!(self.db.get(vertex_key(id).as_bytes())) {
 			Some(vertex_bytes) => {
-				let vertex_value = try!(serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
+				let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
 				Ok(vertex_value)
 			},
 			None => Err(Error::VertexDoesNotExist)
@@ -193,7 +201,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
 		let id = Uuid::new_v4();
 		let vertex_value = VertexValue::new(self.account_id.clone(), t);
-		let vertex_value_bytes = try!(serde::serialize(&vertex_value, SizeLimit::Infinite));
+		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
 		try!(self.db.put(vertex_key(id).as_bytes(), &vertex_value_bytes[..]));
 		Ok(id)
 	}
@@ -205,7 +213,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		vertex_value.t = vertex.t;
-		let vertex_value_bytes = try!(serde::serialize(&vertex_value, SizeLimit::Infinite));
+		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
 		try!(self.db.put(vertex_key(vertex.id).as_bytes(), &vertex_value_bytes[..]));
 		Ok(())
 	}
@@ -222,7 +230,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
 		match try!(self.db.get(edge_key(outbound_id, t.clone(), inbound_id).as_bytes())) {
 			Some(edge_value_bytes) => {
-				let edge_value = try!(serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
+				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
 				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
 			},
 			None => Err(Error::EdgeDoesNotExist)
@@ -242,7 +250,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		try!(self.get_vertex_value(edge.inbound_id));
 
 		let edge_value = EdgeValue::new(UTC::now().timestamp(), edge.weight);
-		let edge_value_bytes = try!(serde::serialize(&edge_value, SizeLimit::Infinite));
+		let edge_value_bytes = try!(bincode_serde::serialize(&edge_value, SizeLimit::Infinite));
 		try!(self.db.put(edge_key(edge.outbound_id, edge.t, edge.inbound_id).as_bytes(), &edge_value_bytes[..]));
 		Ok(())
 	}
@@ -300,7 +308,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			let inbound_id_str = try!(str::from_utf8(caps.at(2).unwrap()));
 			let inbound_id = Uuid::parse_str(inbound_id_str).unwrap();
 			
-			let edge_value = try!(serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
+			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
 			let edge = models::Edge::new(outbound_id.clone(), t.to_string(), inbound_id, edge_value.weight);
 			
 			edges.push(edge)
@@ -330,7 +338,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			let inbound_id_str = try!(str::from_utf8(caps.at(2).unwrap()));
 			let inbound_id = Uuid::parse_str(inbound_id_str).unwrap();
 			
-			let edge_value = try!(serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
+			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
 
 			// Filter out items out of the date range
 			// NOTE: This currently involves a sequential scan through all
@@ -352,15 +360,25 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
-		Err(Error::Unexpected("Unimplemented".to_string()))
+		match try!(self.db.get(global_metadata_key(key).as_bytes())) {
+			Some(json_bytes) => {
+				let json = try!(serde_json::from_slice::<JsonValue>(&json_bytes.to_owned()[..]));
+				Ok(json)
+			},
+			None => Err(Error::MetadataDoesNotExist)
+		}
 	}
 
 	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
-		Err(Error::Unexpected("Unimplemented".to_string()))
+		let json_bytes = try!(serde_json::to_vec(&value));
+		try!(self.db.put(global_metadata_key(key).as_bytes(), &json_bytes[..]));
+		Ok(())
 	}
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
-		Err(Error::Unexpected("Unimplemented".to_string()))
+		try!(self.get_global_metadata(key.clone()));
+		try!(self.db.delete(global_metadata_key(key).as_bytes()));
+		Ok(())
 	}
 
 	fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
