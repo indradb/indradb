@@ -11,20 +11,18 @@ extern crate chrono;
 extern crate rand;
 extern crate regex;
 extern crate hyper;
+extern crate uuid;
 
 mod common;
 
 use std::io::prelude::*;
 use std::fs::File;
-
+use uuid::Uuid;
 use hyper::client::Client;
 use hyper::status::StatusCode;
-
 pub use rand::{thread_rng, Rng};
 pub use regex::Regex;
-
 pub use serde_json::Value as JsonValue;
-
 pub use common::{request, create_account, delete_account, response_to_error_message};
 
 lazy_static! {
@@ -153,7 +151,7 @@ describe! script_tests {
 	}
 }
 
-pub fn run_script(account_id: i64, secret: String, name: &str) {
+pub fn run_script(account_id: Uuid, secret: String, name: &str) {
 	let mut file = File::open(format!("test_scripts/{}.lua", name)).unwrap();
 	let mut contents = String::new();
 	file.read_to_string(&mut contents).unwrap();

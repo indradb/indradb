@@ -12,6 +12,7 @@ extern crate chrono;
 extern crate rand;
 extern crate regex;
 extern crate hyper;
+extern crate uuid;
 
 mod common;
 
@@ -24,13 +25,14 @@ use chrono::NaiveDateTime;
 use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
+use uuid::Uuid;
 
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
 
 pub struct RestTransaction {
 	port: i32,
-	account_id: i64,
+	account_id: Uuid,
 	secret: String
 }
 
@@ -41,7 +43,7 @@ impl RestTransaction {
 }
 
 impl HttpTransaction<RestTransaction> for RestTransaction {
-	fn new(port: i32, account_id: i64, secret: String) -> Self {
+	fn new(port: i32, account_id: Uuid, secret: String) -> Self {
 		RestTransaction {
 			port: port,
 			account_id: account_id,
@@ -50,15 +52,15 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 	}
 }
 
-impl Transaction<i64> for RestTransaction {
-	fn get_vertex(&self, id: i64) -> Result<Vertex<i64>, Error> {
+impl Transaction<Uuid> for RestTransaction {
+	fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn create_vertex(&self, t: String) -> Result<i64, Error> {
+	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("type".to_string(), JsonValue::String(t));
 		let body = serde_json::to_string(&d).unwrap();
@@ -69,7 +71,7 @@ impl Transaction<i64> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn set_vertex(&self, v: Vertex<i64>) -> Result<(), Error> {
+	fn set_vertex(&self, v: Vertex<Uuid>) -> Result<(), Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("type".to_string(), JsonValue::String(v.t));
 		let body = serde_json::to_string(&d).unwrap();
@@ -80,21 +82,21 @@ impl Transaction<i64> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn delete_vertex(&self, id: i64) -> Result<(), Error> {
+	fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
 		let client = Client::new();
 		let req = self.request(&client, "DELETE", format!("/vertex/{}", id));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<Edge<i64>, Error> {
+	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn set_edge(&self, e: Edge<i64>) -> Result<(), Error> {
+	fn set_edge(&self, e: Edge<Uuid>) -> Result<(), Error> {
 		let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 		d.insert("weight".to_string(), JsonValue::F64(e.weight as f64));
 		let body = serde_json::to_string(&d).unwrap();
@@ -105,28 +107,28 @@ impl Transaction<i64> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
+	fn delete_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<(), Error> {
 		let client = Client::new();
 		let req = self.request(&client, "DELETE", format!("/edge/{}/{}/{}", outbound_id, t, inbound_id));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
 
 		let qp = match (high, low) {
@@ -153,39 +155,39 @@ impl Transaction<i64> for RestTransaction {
 		panic!("Unimplemented")
 	}
 
-	fn get_account_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_account_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_account_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_account_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_account_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+	fn delete_account_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn get_vertex_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_vertex_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_vertex_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_vertex_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_vertex_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+	fn delete_vertex_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn get_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_edge_metadata(&self, _: i64, _: String, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<(), Error> {
+	fn delete_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 

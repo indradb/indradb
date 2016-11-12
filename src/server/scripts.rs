@@ -10,6 +10,8 @@ use std::collections::BTreeMap;
 use nutrino::{Vertex, Edge, Transaction, PostgresTransaction, Error};
 use chrono::naive::datetime::NaiveDateTime;
 use std::{isize, i32};
+use uuid::Uuid;
+use core::str::FromStr;
 
 #[derive(Debug)]
 pub enum LuaError {
@@ -87,7 +89,7 @@ macro_rules! lua_fn {
     )
 }
 
-pub fn run(mut trans: PostgresTransaction, account_id: i64, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+pub fn run(mut trans: PostgresTransaction, account_id: Uuid, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 
@@ -221,7 +223,7 @@ unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
     }
 }
 
-unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<i64>>) {
+unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) {
     l.newtable();
 
     for (i, edge) in edges.iter().enumerate() {
@@ -231,7 +233,7 @@ unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<i64>>) {
     }
 }
 
-unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<i64>) {
+unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<Uuid>) {
     l.newtable();
     add_string_field_to_table(l, "outbound_id", &edge.outbound_id.to_string()[..]);
     add_string_field_to_table(l, "type", &edge.t[..]);
@@ -292,6 +294,15 @@ unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<
     }
 }
 
+unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid, LuaError> {
+    let s = try!(get_string_param(l, narg));
+
+    match Uuid::from_str(&s[..]) {
+        Ok(u) => Ok(u),
+        Err(_) => Err(LuaError::Generic("Expected uuid as string".to_string()))
+    }
+}
+
 unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<NaiveDateTime>, LuaError> {
     match try!(get_optional_i64_param(l, narg)) {
         Some(i) => Ok(Some(NaiveDateTime::from_timestamp(i, 0))),
@@ -301,7 +312,7 @@ unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Re
 
 lua_fn! {
     unsafe fn get_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let id = try!(get_i64_param(l, 1));
+        let id = try!(get_uuid_param(l, 1));
         let result = try!(trans.get_vertex(id));
         l.newtable();
         add_string_field_to_table(l, "id", &result.id.to_string()[..]);
@@ -317,7 +328,7 @@ lua_fn! {
     }
 
     unsafe fn set_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let id = try!(get_i64_param(l, 1));
+        let id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let v = Vertex::new(id, t);
         try!(trans.set_vertex(v));
@@ -325,24 +336,24 @@ lua_fn! {
     }
 
     unsafe fn delete_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let id = try!(get_i64_param(l, 1));
+        let id = try!(get_uuid_param(l, 1));
         try!(trans.delete_vertex(id));
         Ok(0)
     }
 
     unsafe fn get_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         let result = try!(trans.get_edge(outbound_id, t, inbound_id));
         serialize_edge(l, &result);
         Ok(1)
     }
 
     unsafe fn set_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         let weight = l.checknumber(4);
         let e = Edge::new(outbound_id, t, inbound_id, weight as f32);
         try!(trans.set_edge(e));
@@ -350,15 +361,15 @@ lua_fn! {
     }
 
     unsafe fn delete_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         try!(trans.delete_edge(outbound_id, t, inbound_id));
         Ok(0)
     }
 
     unsafe fn get_edge_count(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let result = try!(trans.get_edge_count(outbound_id, t));
 
@@ -371,7 +382,7 @@ lua_fn! {
     }
 
     unsafe fn get_edge_range(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let offset = l.checkinteger(3);
 
@@ -386,7 +397,7 @@ lua_fn! {
     }
 
     unsafe fn get_edge_time_range(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let high = try!(get_optional_datetime_param(l, 3));
         let low = try!(get_optional_datetime_param(l, 4));
@@ -422,7 +433,7 @@ lua_fn! {
     }
 
     unsafe fn get_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let result = try!(trans.get_account_metadata(owner_id, key));
         serialize_json(l, result);
@@ -430,7 +441,7 @@ lua_fn! {
     }
 
     unsafe fn set_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
         try!(trans.set_account_metadata(owner_id, key, value));
@@ -438,14 +449,14 @@ lua_fn! {
     }
 
     unsafe fn delete_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         try!(trans.delete_account_metadata(owner_id, key));
         Ok(0)
     }
 
     unsafe fn get_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let result = try!(trans.get_vertex_metadata(owner_id, key));
         serialize_json(l, result);
@@ -453,7 +464,7 @@ lua_fn! {
     }
 
     unsafe fn set_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
         try!(trans.set_vertex_metadata(owner_id, key, value));
@@ -461,16 +472,16 @@ lua_fn! {
     }
 
     unsafe fn delete_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = try!(get_i64_param(l, 1));
+        let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         try!(trans.delete_vertex_metadata(owner_id, key));
         Ok(0)
     }
 
     unsafe fn get_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         let key = try!(get_string_param(l, 4));
         let result = try!(trans.get_edge_metadata(outbound_id, t, inbound_id, key));
         serialize_json(l, result);
@@ -478,9 +489,9 @@ lua_fn! {
     }
 
     unsafe fn set_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         let key = try!(get_string_param(l, 4));
         let value = try!(get_json_param(l, 5));
         try!(trans.set_edge_metadata(outbound_id, t, inbound_id, key, value));
@@ -488,9 +499,9 @@ lua_fn! {
     }
 
     unsafe fn delete_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = try!(get_i64_param(l, 1));
+        let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let inbound_id = try!(get_i64_param(l, 3));
+        let inbound_id = try!(get_uuid_param(l, 3));
         let key = try!(get_string_param(l, 4));
         try!(trans.delete_edge_metadata(outbound_id, t, inbound_id, key));
         Ok(0)

@@ -1,11 +1,13 @@
 #[macro_use] extern crate clap;
 extern crate nutrino;
 #[macro_use] extern crate common;
+extern crate uuid;
 
 use clap::{Arg, App, SubCommand};
 use std::error::Error;
 use common::datastore;
 use nutrino::Datastore;
+use uuid::Uuid;
 
 fn main() {
     // Parse command line arguments
@@ -29,7 +31,7 @@ fn main() {
             Err(err) => exit_with_err!("Could not create account: {}", err.description())
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {
-        let id = value_t!(matches, "ID", i64).unwrap();
+        let id = value_t!(matches, "ID", Uuid).unwrap();
 
         if let Err(err) = datastore.delete_account(id) {
             exit_with_err!("Could not delete account: {}", err.description());

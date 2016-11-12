@@ -10,6 +10,7 @@ extern crate serde_json;
 extern crate urlencoded;
 extern crate libc;
 extern crate regex;
+extern crate uuid;
 #[macro_use] extern crate nutrino;
 #[macro_use] extern crate lua;
 #[macro_use] extern crate hyper;

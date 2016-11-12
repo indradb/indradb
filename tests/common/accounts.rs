@@ -2,13 +2,15 @@ use regex::Regex;
 use std::str;
 use std::process::Command;
 use nutrino::*;
+use uuid::Uuid;
+use std::str::FromStr;
 
 lazy_static! {
-    static ref ACCOUNT_ID_MATCHER: Regex = Regex::new(r"Account ID: (\d+)").unwrap();
+    static ref ACCOUNT_ID_MATCHER: Regex = Regex::new(r"Account ID: (.+)").unwrap();
     static ref ACCOUNT_SECRET_MATCHER: Regex = Regex::new(r"Account secret: (.+)").unwrap();
 }
 
-pub fn create_account(email: String) -> Result<(i64, String), Error> {
+pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
     let create_user_output = Command::new("./target/debug/nutrino-user")
         .arg("add")
         .arg(email)
@@ -17,11 +19,12 @@ pub fn create_account(email: String) -> Result<(i64, String), Error> {
     match create_user_output {
         Ok(output) => {
             if !output.status.success() {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user`: {}", output.status)))
+                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user add`: {}", output.status)))
             } else {
                 let stdout = str::from_utf8(&output.stdout).unwrap();
-                let account_id: i64 = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().at(1).unwrap().parse::<i64>().unwrap();
-                let secret: String = ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().at(1).unwrap().to_string();
+                let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().at(1).unwrap();
+                let account_id = Uuid::from_str(account_id_str).unwrap();
+                let secret = ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().at(1).unwrap().to_string();
                 Ok((account_id, secret))
             }
         },
@@ -31,7 +34,7 @@ pub fn create_account(email: String) -> Result<(i64, String), Error> {
     }
 }
 
-pub fn delete_account(account_id: i64) -> Result<(), Error> {
+pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
     let remove_user_status = Command::new("./target/debug/nutrino-user")
         .arg("remove")
         .arg(account_id.to_string())
@@ -42,7 +45,7 @@ pub fn delete_account(account_id: i64) -> Result<(), Error> {
             if status.success() {
                 Ok(())
             } else {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user`: {}", status.code().unwrap())))
+                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user remove`: {}", status.code().unwrap())))
             }
         },
         Err(err) => {

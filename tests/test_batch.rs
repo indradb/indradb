@@ -13,6 +13,7 @@ extern crate chrono;
 extern crate rand;
 extern crate regex;
 extern crate hyper;
+extern crate uuid;
 
 mod common;
 
@@ -24,10 +25,9 @@ use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
 use chrono::NaiveDateTime;
 pub use regex::Regex;
-
+use uuid::Uuid;
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
-
 use std::io::Read;
 
 lazy_static! {
@@ -36,12 +36,12 @@ lazy_static! {
 
 pub struct BatchTransaction {
 	port: i32,
-	account_id: i64,
+	account_id: Uuid,
 	secret: String
 }
 
 impl HttpTransaction<BatchTransaction> for BatchTransaction {
-	fn new(port: i32, account_id: i64, secret: String) -> Self {
+	fn new(port: i32, account_id: Uuid, secret: String) -> Self {
 		BatchTransaction {
 			port: port,
 			account_id: account_id,
@@ -82,83 +82,83 @@ impl BatchTransaction {
 	}
 }
 
-impl Transaction<i64> for BatchTransaction {
-	fn get_vertex(&self, id: i64) -> Result<Vertex<i64>, Error> {
+impl Transaction<Uuid> for BatchTransaction {
+	fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_vertex".to_string()),
-			"id".to_string() => JsonValue::I64(id)
+			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
 		})
 	}
 
-	fn create_vertex(&self, t: String) -> Result<i64, Error> {
+	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("create_vertex".to_string()),
 			"type".to_string() => JsonValue::String(t)
 		})
 	}
 
-	fn set_vertex(&self, v: Vertex<i64>) -> Result<(), Error> {
+	fn set_vertex(&self, v: Vertex<Uuid>) -> Result<(), Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("set_vertex".to_string()),
-			"id".to_string() => JsonValue::I64(v.id),
+			"id".to_string() => JsonValue::String(v.id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(v.t)
 		})
 	}
 
-	fn delete_vertex(&self, id: i64) -> Result<(), Error> {
+	fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("delete_vertex".to_string()),
-			"id".to_string() => JsonValue::I64(id)
+			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
 		})
 	}
 
-	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<Edge<i64>, Error> {
+	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(outbound_id),
+			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
-			"inbound_id".to_string() => JsonValue::I64(inbound_id)
+			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string())
 		})
 	}
 
-	fn set_edge(&self, e: Edge<i64>) -> Result<(), Error> {
+	fn set_edge(&self, e: Edge<Uuid>) -> Result<(), Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("set_edge".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(e.outbound_id),
+			"outbound_id".to_string() => JsonValue::String(e.outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(e.t),
-			"inbound_id".to_string() => JsonValue::I64(e.inbound_id),
+			"inbound_id".to_string() => JsonValue::String(e.inbound_id.hyphenated().to_string()),
 			"weight".to_string() => JsonValue::F64(e.weight as f64)
 		})
 	}
 
-	fn delete_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<(), Error> {
+	fn delete_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<(), Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("delete_edge".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(outbound_id),
+			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
-			"inbound_id".to_string() => JsonValue::I64(inbound_id)
+			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string())
 		})
 	}
 
-	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_count".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(outbound_id),
+			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t)
 		})
 	}
 
-	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(outbound_id),
+			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
 			"offset".to_string() => JsonValue::I64(offset),
 			"limit".to_string() => JsonValue::I64(limit as i64)
 		})
 	}
 
-	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<i64>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
 		let datetime_converter = |val: Option<NaiveDateTime>| {
 			match val {
 				Some(val) => JsonValue::I64(val.timestamp()),
@@ -168,7 +168,7 @@ impl Transaction<i64> for BatchTransaction {
 
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_time_range".to_string()),
-			"outbound_id".to_string() => JsonValue::I64(outbound_id),
+			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
 			"high".to_string() => datetime_converter(high),
 			"low".to_string() => datetime_converter(low),
@@ -188,39 +188,39 @@ impl Transaction<i64> for BatchTransaction {
 		panic!("Unimplemented")
 	}
 
-	fn get_account_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_account_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_account_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_account_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_account_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+	fn delete_account_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn get_vertex_metadata(&self, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_vertex_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_vertex_metadata(&self, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_vertex_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_vertex_metadata(&self, _: i64, _: String) -> Result<(), Error> {
+	fn delete_vertex_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn get_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<JsonValue, Error> {
+	fn get_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String) -> Result<JsonValue, Error> {
 		panic!("Unimplemented")
 	}
 
-	fn set_edge_metadata(&self, _: i64, _: String, _: i64, _: String, _: JsonValue) -> Result<(), Error> {
+	fn set_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 
-	fn delete_edge_metadata(&self, _: i64, _: String, _: i64, _: String) -> Result<(), Error> {
+	fn delete_edge_metadata(&self, _: Uuid, _: String, _: Uuid, _: String) -> Result<(), Error> {
 		panic!("Unimplemented")
 	}
 

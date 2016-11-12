@@ -2,6 +2,7 @@ use hyper::header::{Authorization, Basic};
 use hyper::client::{Client, RequestBuilder};
 use hyper::method::Method;
 use hyper::client::response::Response;
+use uuid::Uuid;
 
 use serde_json;
 use serde_json::value::Value as JsonValue;
@@ -11,13 +12,13 @@ use std::io::Read;
 use std::str;
 use std::collections::BTreeMap;
 
-pub fn request<'a>(client: &'a Client, port: i32, account_id: i64, secret: String, method_str: &str, path: String) -> RequestBuilder<'a> {
+pub fn request<'a>(client: &'a Client, port: i32, account_id: Uuid, secret: String, method_str: &str, path: String) -> RequestBuilder<'a> {
     let method = Method::from_str(method_str).unwrap();
     let url = format!("http://localhost:{}{}", port, path);
 
     let auth = Authorization(
         Basic {
-            username: account_id.to_string(),
+            username: account_id.hyphenated().to_string(),
             password: Some(secret)
         }
     );

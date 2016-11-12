@@ -2,6 +2,7 @@ use nutrino::*;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::cell::RefCell;
+use uuid::Uuid;
 
 use super::accounts::{create_account, delete_account};
 
@@ -10,17 +11,17 @@ use super::accounts::{create_account, delete_account};
 // store this in the struct because it'd make `create_account` require a mutable self reference,
 // which the `Datastore` trait does not define.
 thread_local! {
-    static ACCOUNT_IDS: RefCell<BTreeMap<i64, String>> = RefCell::new(BTreeMap::new());
+    static ACCOUNT_IDS: RefCell<BTreeMap<Uuid, String>> = RefCell::new(BTreeMap::new());
 }
 
 #[derive(Clone, Debug)]
-pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction<i64>> {
+pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction<Uuid>> {
 	port: i32,
     phantom_http_transaction: PhantomData<H>,
     phantom_transaction: PhantomData<T>
 }
 
-impl<H: HttpTransaction<T>, T: Transaction<i64>> HttpDatastore<H, T> {
+impl<H: HttpTransaction<T>, T: Transaction<Uuid>> HttpDatastore<H, T> {
 	pub fn new(port: i32) -> HttpDatastore<H, T> {
 		HttpDatastore {
 			port: port,
@@ -30,33 +31,33 @@ impl<H: HttpTransaction<T>, T: Transaction<i64>> HttpDatastore<H, T> {
 	}
 }
 
-impl<H: HttpTransaction<T>, T: Transaction<i64>> Datastore<T, i64> for HttpDatastore<H, T> {
-	fn has_account(&self, _: i64) -> Result<bool, Error> {
+impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDatastore<H, T> {
+	fn has_account(&self, _: Uuid) -> Result<bool, Error> {
         panic!("Unimplemented")
 	}
 
-	fn create_account(&self, email: String) -> Result<(i64, String), Error> {
+	fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
         let (account_id, secret) = try!(create_account(email));
 
         ACCOUNT_IDS.with(|account_ids| {
-            let ref mut account_ids: BTreeMap<i64, String> = *account_ids.borrow_mut();
+            let ref mut account_ids: BTreeMap<Uuid, String> = *account_ids.borrow_mut();
             account_ids.insert(account_id, secret.clone());
         });
 
         Ok((account_id, secret))
 	}
 
-	fn delete_account(&self, account_id: i64) -> Result<(), Error> {
+	fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
         delete_account(account_id)
 	}
 
-	fn auth(&self, _: i64, _: String) -> Result<bool, Error> {
+	fn auth(&self, _: Uuid, _: String) -> Result<bool, Error> {
         panic!("Unimplemented")
 	}
 
-	fn transaction(&self, account_id: i64) -> Result<T, Error> {
+	fn transaction(&self, account_id: Uuid) -> Result<T, Error> {
         let secret = ACCOUNT_IDS.with(|account_ids| {
-            let ref account_ids: BTreeMap<i64, String> = *account_ids.borrow();
+            let ref account_ids: BTreeMap<Uuid, String> = *account_ids.borrow();
             account_ids.get(&account_id).unwrap().clone()
         });
 
@@ -64,6 +65,6 @@ impl<H: HttpTransaction<T>, T: Transaction<i64>> Datastore<T, i64> for HttpDatas
 	}
 }
 
-pub trait HttpTransaction<T: Transaction<i64>> {
-    fn new(i32, i64, String) -> T;
+pub trait HttpTransaction<T: Transaction<Uuid>> {
+    fn new(i32, Uuid, String) -> T;
 }

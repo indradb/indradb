@@ -29,6 +29,7 @@ use regex;
 use std::fs::File;
 use std::cmp::min;
 use datastore::DATASTORE;
+use uuid::Uuid;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
@@ -77,9 +78,9 @@ impl BasicAuthMiddleware {
 		BasicAuthMiddleware {}
 	}
 
-	fn get_account_id(&self, auth: Option<&Authorization<Basic>>) -> Option<i64> {
+	fn get_account_id(&self, auth: Option<&Authorization<Basic>>) -> Option<Uuid> {
 		if let Some(auth) = auth {
-			if let Ok(val) = auth.username.parse::<i64>() {
+			if let Ok(val) = Uuid::from_str(&auth.username[..]) {
 				return Some(val);
 			}
 		}
@@ -127,7 +128,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 
 // Need this to avoid orphan rules
 struct AccountKey {
-	account_id: i64
+	account_id: Uuid
 }
 
 impl Key for AccountKey {
@@ -196,6 +197,15 @@ fn json_u64_to_i64(name: &str, val: u64) -> Result<i64, IronError> {
 	}
 }
 
+fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Uuid, IronError> {
+	let s = try!(get_required_json_string_param(json, name));
+
+	match Uuid::from_str(&s[..]) {
+		Ok(u) => Ok(u),
+		Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid uuid format for `{}`", name)))
+	}
+}
+
 fn get_required_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<i64, IronError> {
 	match json.get(name) {
 		Some(&JsonValue::I64(ref val)) => Ok(val.clone()),
@@ -257,7 +267,7 @@ fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 	}
 }
 
-fn get_account_id(req: &Request) -> i64 {
+fn get_account_id(req: &Request) -> Uuid {
 	let ext = &(*req.extensions.get::<AccountKey>().unwrap());
 	ext.account_id
 }
@@ -328,7 +338,7 @@ fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: Strin
 
 // -- Handlers
 fn on_get_vertex(req: &mut Request) -> IronResult<Response> {
-	let id: i64 = try!(get_url_param(req, "id"));
+	let id: Uuid = try!(get_url_param(req, "id"));
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.get_vertex(id)));
 	try!(datastore_request(trans.commit()));
@@ -345,7 +355,7 @@ fn on_create_vertex(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_set_vertex(req: &mut Request) -> IronResult<Response> {
-	let id: i64 = try!(get_url_param(req, "id"));
+	let id: Uuid = try!(get_url_param(req, "id"));
 	let obj = try!(read_json_object(&mut req.body));
 	let t = try!(get_required_json_string_param(&obj, "type"));
 	let v = Vertex::new(id, t);
@@ -356,7 +366,7 @@ fn on_set_vertex(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_delete_vertex(req: &mut Request) -> IronResult<Response> {
-	let id: i64 = try!(get_url_param(req, "id"));
+	let id: Uuid = try!(get_url_param(req, "id"));
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.delete_vertex(id)));
 	try!(datastore_request(trans.commit()));
@@ -364,9 +374,9 @@ fn on_delete_vertex(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_get_edge(req: &mut Request) -> IronResult<Response> {
-	let outbound_id: i64 = try!(get_url_param(req, "outbound_id"));
+	let outbound_id: Uuid = try!(get_url_param(req, "outbound_id"));
 	let t: String = try!(get_url_param(req, "type"));
-	let inbound_id: i64 = try!(get_url_param(req, "inbound_id"));
+	let inbound_id: Uuid = try!(get_url_param(req, "inbound_id"));
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.get_edge(outbound_id, t, inbound_id)));
 	try!(datastore_request(trans.commit()));
@@ -374,9 +384,9 @@ fn on_get_edge(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_set_edge(req: &mut Request) -> IronResult<Response> {
-	let outbound_id: i64 = try!(get_url_param(req, "outbound_id"));
+	let outbound_id: Uuid = try!(get_url_param(req, "outbound_id"));
 	let t: String = try!(get_url_param(req, "type"));
-	let inbound_id: i64 = try!(get_url_param(req, "inbound_id"));
+	let inbound_id: Uuid = try!(get_url_param(req, "inbound_id"));
 	let obj = try!(read_json_object(&mut req.body));
 	let weight = try!(get_required_json_f64_param(&obj, "weight"));
 	let e = Edge::new(outbound_id, t, inbound_id, weight as f32);
@@ -388,9 +398,9 @@ fn on_set_edge(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_delete_edge(req: &mut Request) -> IronResult<Response> {
-	let outbound_id: i64 = try!(get_url_param(req, "outbound_id"));
+	let outbound_id: Uuid = try!(get_url_param(req, "outbound_id"));
 	let t: String = try!(get_url_param(req, "type"));
-	let inbound_id: i64 = try!(get_url_param(req, "inbound_id"));
+	let inbound_id: Uuid = try!(get_url_param(req, "inbound_id"));
 
 	let trans = try!(get_transaction(req));
 	let result = try!(datastore_request(trans.delete_edge(outbound_id, t, inbound_id)));
@@ -399,7 +409,7 @@ fn on_delete_edge(req: &mut Request) -> IronResult<Response> {
 }
 
 fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
-	let outbound_id: i64 = try!(get_url_param(req, "outbound_id"));
+	let outbound_id: Uuid = try!(get_url_param(req, "outbound_id"));
 	let t: String = try!(get_url_param(req, "type"));
 
 	let trans = try!(get_transaction(req));
@@ -408,7 +418,7 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
 
 	// TODO: Right now we check for `count` separately to avoid a type error, since it returns an
-	// i64, vs the others which return Vec<Edge<i64>>. There's probably a cleaner way to do this
+	// i64, vs the others which return Vec<Edge<Uuid>>. There's probably a cleaner way to do this
 	// in rust.
 	if action == "count" {
 		let result = try!(datastore_request(trans.get_edge_count(outbound_id, t)));
@@ -525,7 +535,7 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn trans_get_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_required_json_i64_param(item, "id"));
+	let id = try!(get_required_json_uuid_param(item, "id"));
 	execute_trans_item(trans.get_vertex(id))
 }
 
@@ -535,46 +545,46 @@ fn trans_create_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, Json
 }
 
 fn trans_set_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_required_json_i64_param(item, "id"));
+	let id = try!(get_required_json_uuid_param(item, "id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	execute_trans_item(trans.set_vertex(Vertex::new(id, t)))
 }
 
 fn trans_delete_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let id = try!(get_required_json_i64_param(item, "id"));
+	let id = try!(get_required_json_uuid_param(item, "id"));
 	execute_trans_item(trans.delete_vertex(id))
 }
 
 fn trans_get_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
-	let inbound_id = try!(get_required_json_i64_param(item, "inbound_id"));
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
 	execute_trans_item(trans.get_edge(outbound_id, t, inbound_id))
 }
 
 fn trans_set_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
-	let inbound_id = try!(get_required_json_i64_param(item, "inbound_id"));
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
 	let weight = try!(get_required_json_f64_param(item, "weight"));
 	execute_trans_item(trans.set_edge(Edge::new(outbound_id, t, inbound_id, weight as f32)))
 }
 
 fn trans_delete_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
-	let inbound_id = try!(get_required_json_i64_param(item, "inbound_id"));
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
 	execute_trans_item(trans.delete_edge(outbound_id, t, inbound_id))
 }
 
 fn trans_get_edge_count(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	execute_trans_item(trans.get_edge_count(outbound_id, t))
 }
 
 fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));
 	let offset = try!(get_optional_json_i64_param(item, "offset")).unwrap_or(0);
@@ -582,7 +592,7 @@ fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, Jso
 }
 
 fn trans_get_edge_time_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-	let outbound_id = try!(get_required_json_i64_param(item, "outbound_id"));
+	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));
 	let high = parse_datetime(try!(get_optional_json_i64_param(item, "high")));
