@@ -19,11 +19,13 @@ use std::usize;
 use std::i32;
 use std::io::BufWriter;
 use std::str::Utf8Error;
+use std::io::Cursor;
 use serde_json;
+use std::ops::Deref;
 
 lazy_static! {
-	static ref VERTEX_KEY_MATCHER: Regex = Regex::new("^v1:(.{32})$").unwrap();
-	static ref EDGE_KEY_MATCHER: Regex = Regex::new("^e1:(.{32}):([^:]*):(.{32})$").unwrap();
+	static ref VERTEX_KEY_MATCHER: Regex = Regex::new("^\x01(.{16})$").unwrap();
+	static ref EDGE_KEY_MATCHER: Regex = Regex::new("^\x02(.{16})([^\x00]*)\x00(.{16})$").unwrap();
 }
 
 // We use a macro to avoid take_while, and the overhead that closure callbacks would cause
@@ -41,67 +43,181 @@ macro_rules! prefix_iterate {
 
 impl Id for Uuid {}
 
-fn account_key(id: Uuid) -> String {
-	format!("a1:{}", id.simple().to_string())
+enum KeyComponent {
+	Uuid(Uuid),
+	String(String),
+	Prelude(u8),
+	Separator
 }
 
-fn vertex_key(id: Uuid) -> String {
-	format!("v1:{}", id.simple().to_string())
+struct KeyBuilder {
+	components: Vec<KeyComponent>
 }
 
-fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> String {
-	format!("e1:{}:{}:{}", outbound_id.simple().to_string(), t, inbound_id.simple().to_string())
+fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
+	let mut len = 0;
+
+	for component in components.iter() {
+		len += match *component {
+			KeyComponent::Uuid(_) => 16,
+			KeyComponent::String(ref s) => s.len(),
+			KeyComponent::Prelude(_) | KeyComponent::Separator => 1
+		};
+	}
+
+	let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
+
+	for component in components.iter() {
+		let res = match *component {
+			KeyComponent::Uuid(ref uuid) => cursor.write(uuid.as_bytes()),
+			KeyComponent::String(ref s) => cursor.write(s.as_bytes()),
+			KeyComponent::Prelude(b) => cursor.write(&[b]),
+			KeyComponent::Separator => cursor.write(&[0u8])
+		};
+
+		if let Err(err) = res {
+			panic!("Could not build key: {}", err);
+		}
+
+	}
+
+	cursor.into_inner().into_boxed_slice()
 }
 
-fn global_metadata_key(key: String) -> String {
-	format!("gm1:{}", key)
+const ACCOUNT_PRELUDE: u8 = 0;
+const VERTEX_PRELUDE: u8 = 1;
+const EDGE_PRELUDE: u8 = 2;
+const GLOBAL_METADATA_PRELUDE: u8 = 10;
+const ACCOUNT_METADATA_PRELUDE: u8 = 11;
+const VERTEX_METADATA_PRELUDE: u8 = 12;
+const EDGE_METADATA_PRELUDE: u8 = 13;
+
+fn account_key(id: Uuid) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(ACCOUNT_PRELUDE),
+		KeyComponent::Uuid(id)
+	])
 }
 
-fn account_metadata_key(id: Uuid, key: String) -> String {
-	format!("am1:{}:{}", id.simple().to_string(), key)
+fn vertex_key(id: Uuid) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(VERTEX_PRELUDE),
+		KeyComponent::Uuid(id)
+	])
 }
 
-fn vertex_metadata_key(id: Uuid, key: String) -> String {
-	format!("vm1:{}:{}", id.simple().to_string(), key)
+fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(EDGE_PRELUDE),
+		KeyComponent::Uuid(outbound_id),
+		KeyComponent::String(t),
+		KeyComponent::Separator,
+		KeyComponent::Uuid(inbound_id)
+	])
 }
 
-fn edge_metadata_key(outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> String {
-	format!("em1:{}:{}:{}:{}", outbound_id.simple().to_string(), t, inbound_id.simple().to_string(), key)
+fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: String) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(EDGE_PRELUDE),
+		KeyComponent::Uuid(outbound_id),
+		KeyComponent::String(t),
+		KeyComponent::Separator
+	])
+}
+
+fn global_metadata_key(key: String) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(GLOBAL_METADATA_PRELUDE),
+		KeyComponent::String(key)
+	])
+}
+
+fn account_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(ACCOUNT_METADATA_PRELUDE),
+		KeyComponent::Uuid(id),
+		KeyComponent::String(key)
+	])
+}
+
+fn vertex_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(VERTEX_METADATA_PRELUDE),
+		KeyComponent::Uuid(id),
+		KeyComponent::String(key)
+	])
+}
+
+fn edge_metadata_key(outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Box<[u8]> {
+	build_key(vec![
+		KeyComponent::Prelude(EDGE_METADATA_PRELUDE),
+		KeyComponent::Uuid(outbound_id),
+		KeyComponent::String(t),
+		KeyComponent::Separator,
+		KeyComponent::Uuid(inbound_id),
+		KeyComponent::String(key)
+	])
+}
+
+fn parse_edge_key(key: &[u8]) -> (Uuid, String, Uuid) {
+	let caps = match EDGE_KEY_MATCHER.captures(&key).unwrap();
+	let outbound_id = Uuid::from_bytes(caps.at(1).unwrap()).unwrap();
+	let t = str::from_utf8(caps.at(2).unwrap()).unwrap();
+	let inbound_id = Uuid::from_bytes(caps.at(3).unwrap()).unwrap();
+	(outbound_id, t.to_string(), inbound_id)
+}
+
+fn parse_vertex_key(key: &[u8]) -> Uuid {
+	let caps = VERTEX_KEY_MATCHER.captures(&key).unwrap();
+	Uuid::from_bytes(caps.at(1).unwrap()).unwrap()
 }
 
 // Abstracted out so we can use it both for `RocksdbDatastore::has_account`,
 // and for account metadata sanity checks
 fn has_account(db: &DB, id: Uuid) -> Result<bool, Error> {
-	match try!(db.get(account_key(id).as_bytes())) {
+	match try!(db.get(&account_key(id))) {
 		Some(_) => Ok(true),
 		None => Ok(false)
 	}
 }
 
 fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Error> {
-	try!(w.delete(vertex_key(id).as_bytes()));
+	try!(w.delete(&vertex_key(id)));
 
-	prefix_iterate!(db, format!("vm1:{}:", id.simple().to_string()).as_bytes(), key, value, {
+	let vertex_metadata_key_prefix = build_key(vec![
+		KeyComponent::Prelude(VERTEX_METADATA_PRELUDE),
+		KeyComponent::Uuid(id)
+	]);
+
+	prefix_iterate!(db, &vertex_metadata_key_prefix, key, value, {
 		try!(w.delete(&key));
 	});
 
-	prefix_iterate!(db, format!("e1:{}:", id.simple().to_string()).as_bytes(), key, value, {
-		let caps = EDGE_KEY_MATCHER.captures(&key).unwrap();
-		let outbound_id_str = try!(str::from_utf8(caps.at(1).unwrap()));
-		let outbound_id = Uuid::parse_str(outbound_id_str).unwrap();
-		let t = str::from_utf8(caps.at(2).unwrap()).unwrap();
-		let inbound_id_str = try!(str::from_utf8(caps.at(3).unwrap()));
-		let inbound_id = Uuid::parse_str(inbound_id_str).unwrap();
-		try!(delete_edge(outbound_id, t.to_string(), inbound_id, db, w));
+	let edge_key_prefix = build_key(vec![
+		KeyComponent::Prelude(EDGE_PRELUDE),
+		KeyComponent::Uuid(id)
+	]);
+
+	prefix_iterate!(db, &edge_key_prefix, key, value, {
+		let (_, t, inbound_id) = parse_edge_key(&key);
+		try!(delete_edge(id.clone(), t, inbound_id, db, w));
 	});
 
 	Ok(())
 }
 
 fn delete_edge<W: Writable>(outbound_id: Uuid, t: String, inbound_id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Error> {
-	try!(w.delete(edge_key(outbound_id, t.clone(), inbound_id).as_bytes()));
+	try!(w.delete(&edge_key(outbound_id, t.clone(), inbound_id)));
 
-	prefix_iterate!(db, format!("em1:{}:{}:{}:", outbound_id.simple().to_string(), t, inbound_id.simple().to_string()).as_bytes(), key, value, {
+	let edge_metadata_key_prefix = build_key(vec![
+		KeyComponent::Prelude(EDGE_METADATA_PRELUDE),
+		KeyComponent::Uuid(outbound_id),
+		KeyComponent::String(t),
+		KeyComponent::Separator,
+		KeyComponent::Uuid(inbound_id)
+	]);
+
+	prefix_iterate!(db, &edge_metadata_key_prefix, key, value, {
 		try!(w.delete(&key));
 	});
 
@@ -118,14 +234,14 @@ fn get_metadata(result: Option<DBVector>) -> Result<JsonValue, Error> {
 	}
 }
 
-fn set_metadata(db: &DB, key: String, value: JsonValue) -> Result<(), Error> {
+fn set_metadata(db: &DB, key: Box<[u8]>, value: JsonValue) -> Result<(), Error> {
 	let json_bytes = try!(serde_json::to_vec(&value));
-	try!(db.put(key.as_bytes(), &json_bytes[..]));
+	try!(db.put(&key, &json_bytes[..]));
 	Ok(())
 }
 
 fn get_vertex_value(db: &DB, id: Uuid) -> Result<VertexValue, Error> {
-	match try!(db.get(vertex_key(id).as_bytes())) {
+	match try!(db.get(&vertex_key(id))) {
 		Some(vertex_bytes) => {
 			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
 			Ok(vertex_value)
@@ -163,7 +279,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		let hash = get_salted_hash(salt.clone(), None, secret.clone());
 		let account = AccountValue::new(email, salt, hash);
 		let account_bytes = try!(bincode_serde::serialize(&account, SizeLimit::Infinite));
-		try!(self.db.put(account_key(account_id).as_bytes(), &account_bytes[..]));
+		try!(self.db.put(&account_key(account_id), &account_bytes[..]));
 		Ok((account_id, secret))
 	}
 
@@ -173,7 +289,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		}
 
 		let mut batch = WriteBatch::default();
-		batch.delete(account_key(account_id).as_bytes());
+		batch.delete(&account_key(account_id));
 
 		// NOTE: This currently does a sequential scan through all keys to
 		// find which vertices to delete. This could be more efficient.
@@ -184,13 +300,16 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 				batch.delete(&key);
 			}
 
-			let caps = VERTEX_KEY_MATCHER.captures(&key).unwrap();
-			let vertex_id_str = try!(str::from_utf8(caps.at(1).unwrap()));
-			let vertex_id = Uuid::parse_str(vertex_id_str).unwrap();
+			let vertex_id = parse_vertex_key(&key);
 			delete_vertex(vertex_id, &self.db, &mut batch);
 		});
 
-		prefix_iterate!(self.db, format!("a1:{}", account_id.simple().to_string()).as_bytes(), key, value, {
+		let account_metadata_key_prefix = build_key(vec![
+			KeyComponent::Prelude(ACCOUNT_METADATA_PRELUDE),
+			KeyComponent::Uuid(account_id)
+		]);
+
+		prefix_iterate!(self.db, &account_metadata_key_prefix, key, value, {
 			batch.delete(&key);
 		});
 
@@ -199,7 +318,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 	}
 
 	fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-		match try!(self.db.get(account_key(account_id).as_bytes())) {
+		match try!(self.db.get(&account_key(account_id))) {
 			Some(account_bytes) => {
 				let account = try!(bincode_serde::deserialize::<AccountValue>(&account_bytes.to_owned()[..]));
 				let expected_hash = get_salted_hash(account.salt, None, secret);
@@ -269,7 +388,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let id = Uuid::new_v4();
 		let vertex_value = VertexValue::new(self.account_id.clone(), t);
 		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
-		try!(self.db.put(vertex_key(id).as_bytes(), &vertex_value_bytes[..]));
+		try!(self.db.put(&vertex_key(id), &vertex_value_bytes[..]));
 		Ok(id)
 	}
 
@@ -281,7 +400,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		vertex_value.t = vertex.t;
 		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
-		try!(self.db.put(vertex_key(vertex.id).as_bytes(), &vertex_value_bytes[..]));
+		try!(self.db.put(&vertex_key(vertex.id), &vertex_value_bytes[..]));
 		Ok(())
 	}
 
@@ -299,7 +418,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
-		match try!(self.db.get(edge_key(outbound_id, t.clone(), inbound_id).as_bytes())) {
+		match try!(self.db.get(&edge_key(outbound_id, t.clone(), inbound_id))) {
 			Some(edge_value_bytes) => {
 				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
 				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
@@ -322,7 +441,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let edge_value = EdgeValue::new(UTC::now().timestamp(), edge.weight);
 		let edge_value_bytes = try!(bincode_serde::serialize(&edge_value, SizeLimit::Infinite));
-		try!(self.db.put(edge_key(edge.outbound_id, edge.t, edge.inbound_id).as_bytes(), &edge_value_bytes[..]));
+		try!(self.db.put(&edge_key(edge.outbound_id, edge.t, edge.inbound_id), &edge_value_bytes[..]));
 		Ok(())
 	}
 
@@ -345,10 +464,10 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
-		let key_prefix = format!("e1:{}:{}:", outbound_id.simple().to_string(), t);
+		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
 		let mut count = 0;
 
-		prefix_iterate!(self.db, key_prefix.as_bytes(), key, value, {
+		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
 			count += 1;
 		});
 
@@ -362,22 +481,18 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			return Err(Error::LimitOutOfRange);
 		}
 
-		let key_prefix = format!("e1:{}:{}:", outbound_id.simple().to_string(), t);
+		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 		let mut i = 0;
 
-		prefix_iterate!(self.db, key_prefix.as_bytes(), key, value, {
+		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
 			if i < offset as usize {
 				continue;
 			}
 
-			let caps = EDGE_KEY_MATCHER.captures(&key).unwrap();
-			let t = str::from_utf8(caps.at(2).unwrap()).unwrap();
-			let inbound_id_str = try!(str::from_utf8(caps.at(3).unwrap()));
-			let inbound_id = Uuid::parse_str(inbound_id_str).unwrap();
-
+			let (_, t, inbound_id) = parse_edge_key(&key);
 			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
-			let edge = models::Edge::new(outbound_id.clone(), t.to_string(), inbound_id, edge_value.weight);
+			let edge = models::Edge::new(outbound_id.clone(), t, inbound_id, edge_value.weight);
 
 			edges.push(edge);
 			i += 1;
@@ -391,18 +506,13 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			return Err(Error::LimitOutOfRange);
 		}
 
-		let key_prefix = format!("e1:{}:{}:", outbound_id.simple().to_string(), t);
+		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
-		prefix_iterate!(self.db, key_prefix.as_bytes(), key, value, {
+		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
 			if edges.len() >= limit as usize {
 				break;
 			}
-
-			let caps = EDGE_KEY_MATCHER.captures(&key).unwrap();
-			let t = str::from_utf8(caps.at(2).unwrap()).unwrap();
-			let inbound_id_str = try!(str::from_utf8(caps.at(3).unwrap()));
-			let inbound_id = Uuid::parse_str(inbound_id_str).unwrap();
 
 			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
 
@@ -418,6 +528,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				continue;
 			}
 
+			let (_, t, inbound_id) = parse_edge_key(&key);
 			let edge = models::Edge::new(outbound_id, t.to_string(), inbound_id, edge_value.weight);
 			edges.push(edge)
 		});
@@ -426,7 +537,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(global_metadata_key(key).as_bytes()));
+		let result = try!(self.db.get(&global_metadata_key(key)));
 		get_metadata(result)
 	}
 
@@ -436,12 +547,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
 		try!(self.get_global_metadata(key.clone()));
-		try!(self.db.delete(global_metadata_key(key).as_bytes()));
+		try!(self.db.delete(&global_metadata_key(key)));
 		Ok(())
 	}
 
 	fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(account_metadata_key(owner_id, key).as_bytes()));
+		let result = try!(self.db.get(&account_metadata_key(owner_id, key)));
 		get_metadata(result)
 	}
 
@@ -455,12 +566,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		try!(self.get_account_metadata(owner_id, key.clone()));
-		try!(self.db.delete(account_metadata_key(owner_id, key).as_bytes()));
+		try!(self.db.delete(&account_metadata_key(owner_id, key)));
 		Ok(())
 	}
 
 	fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(vertex_metadata_key(owner_id, key).as_bytes()));
+		let result = try!(self.db.get(&vertex_metadata_key(owner_id, key)));
 		get_metadata(result)
 	}
 
@@ -471,12 +582,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		try!(self.get_vertex_metadata(owner_id, key.clone()));
-		try!(self.db.delete(vertex_metadata_key(owner_id, key).as_bytes()));
+		try!(self.db.delete(&vertex_metadata_key(owner_id, key)));
 		Ok(())
 	}
 
 	fn get_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(edge_metadata_key(outbound_id, t, inbound_id, key).as_bytes()));
+		let result = try!(self.db.get(&edge_metadata_key(outbound_id, t, inbound_id, key)));
 		get_metadata(result)
 	}
 
@@ -487,7 +598,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn delete_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<(), Error> {
 		try!(self.get_edge_metadata(outbound_id, t.clone(), inbound_id, key.clone()));
-		try!(self.db.delete(edge_metadata_key(outbound_id, t, inbound_id, key).as_bytes()));
+		try!(self.db.delete(&edge_metadata_key(outbound_id, t, inbound_id, key)));
 		Ok(())
 	}
 
