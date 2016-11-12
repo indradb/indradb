@@ -1,6 +1,5 @@
-use common::datastore;
-use nutrino::PostgresDatastore;
+use common::{ProxyDatastore, datastore};
 
 lazy_static! {
-    pub static ref DATASTORE: PostgresDatastore = datastore();
+    pub static ref DATASTORE: ProxyDatastore = datastore();
 }

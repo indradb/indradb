@@ -7,7 +7,8 @@ use iron::typemap::{Key, TypeMap};
 use iron::middleware::BeforeMiddleware;
 use router::Router;
 use util::SimpleError;
-use nutrino::{Vertex, Edge, Transaction, Datastore, PostgresTransaction, Error};
+use nutrino::{Vertex, Edge, Transaction, Datastore, Error};
+use common::ProxyTransaction;
 use std::collections::BTreeMap;
 use std::error::Error as StdError;
 use core::str::FromStr;
@@ -272,7 +273,7 @@ fn get_account_id(req: &Request) -> Uuid {
 	ext.account_id
 }
 
-fn get_transaction(req: &Request) -> Result<PostgresTransaction, IronError> {
+fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
 	let account_id = get_account_id(req);
 	match DATASTORE.transaction(account_id) {
 		Ok(val) => Ok(val),
@@ -534,35 +535,35 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 	Ok(to_response(status::Ok, &jsonable_res))
 }
 
-fn trans_get_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_required_json_uuid_param(item, "id"));
 	execute_trans_item(trans.get_vertex(id))
 }
 
-fn trans_create_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_create_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let t = try!(get_required_json_string_param(item, "type"));
 	execute_trans_item(trans.create_vertex(t))
 }
 
-fn trans_set_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_set_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_required_json_uuid_param(item, "id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	execute_trans_item(trans.set_vertex(Vertex::new(id, t)))
 }
 
-fn trans_delete_vertex(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_delete_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let id = try!(get_required_json_uuid_param(item, "id"));
 	execute_trans_item(trans.delete_vertex(id))
 }
 
-fn trans_get_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
 	execute_trans_item(trans.get_edge(outbound_id, t, inbound_id))
 }
 
-fn trans_set_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_set_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
@@ -570,20 +571,20 @@ fn trans_set_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue
 	execute_trans_item(trans.set_edge(Edge::new(outbound_id, t, inbound_id, weight as f32)))
 }
 
-fn trans_delete_edge(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_delete_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
 	execute_trans_item(trans.delete_edge(outbound_id, t, inbound_id))
 }
 
-fn trans_get_edge_count(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_count(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	execute_trans_item(trans.get_edge_count(outbound_id, t))
 }
 
-fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));
@@ -591,7 +592,7 @@ fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, Jso
 	execute_trans_item(trans.get_edge_range(outbound_id, t, offset, limit))
 }
 
-fn trans_get_edge_time_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn trans_get_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
 	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));

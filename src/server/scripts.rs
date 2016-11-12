@@ -7,7 +7,8 @@ use libc;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::collections::BTreeMap;
-use nutrino::{Vertex, Edge, Transaction, PostgresTransaction, Error};
+use common::ProxyTransaction;
+use nutrino::{Vertex, Edge, Transaction, Error};
 use chrono::naive::datetime::NaiveDateTime;
 use std::{isize, i32};
 use uuid::Uuid;
@@ -60,7 +61,7 @@ impl ScriptError {
 }
 
 macro_rules! lua_fn {
-    ($(unsafe fn $name:ident($targ:ident: &mut PostgresTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
+    ($(unsafe fn $name:ident($targ:ident: &mut ProxyTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
         $(
             unsafe extern "C" fn $name($larg: *mut ::lua::raw::lua_State) -> ::libc::c_int {
                 let mut $larg = &mut ::lua::ExternState::from_lua_State($larg);
@@ -73,7 +74,7 @@ macro_rules! lua_fn {
                 }
 
                 let trans_ptr = $larg.touserdata(-1);
-                let $targ = &mut *(trans_ptr as *mut PostgresTransaction);
+                let $targ = &mut *(trans_ptr as *mut ProxyTransaction);
 
                 return match inner($targ, &mut $larg) {
                     Ok(i) => i,
@@ -83,13 +84,13 @@ macro_rules! lua_fn {
                     }
                 } as ::libc::c_int;
 
-                unsafe fn inner($targ: &mut PostgresTransaction, $larg: &mut $typ) -> Result<i32, LuaError> $code
+                unsafe fn inner($targ: &mut ProxyTransaction, $larg: &mut $typ) -> Result<i32, LuaError> $code
             }
         )+
     )
 }
 
-pub fn run(mut trans: PostgresTransaction, account_id: Uuid, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 
@@ -311,7 +312,7 @@ unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Re
 }
 
 lua_fn! {
-    unsafe fn get_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_uuid_param(l, 1));
         let result = try!(trans.get_vertex(id));
         l.newtable();
@@ -320,14 +321,14 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn create_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn create_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let t = try!(get_string_param(l, 1));
         let result = try!(trans.create_vertex(t));
         l.pushstring(&result.to_string()[..]);
         Ok(1)
     }
 
-    unsafe fn set_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let v = Vertex::new(id, t);
@@ -335,13 +336,13 @@ lua_fn! {
         Ok(0)
     }
 
-    unsafe fn delete_vertex(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_uuid_param(l, 1));
         try!(trans.delete_vertex(id));
         Ok(0)
     }
 
-    unsafe fn get_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
@@ -350,7 +351,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn set_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
@@ -360,7 +361,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn delete_edge(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
@@ -368,7 +369,7 @@ lua_fn! {
         Ok(0)
     }
 
-    unsafe fn get_edge_count(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let result = try!(trans.get_edge_count(outbound_id, t));
@@ -381,7 +382,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn get_edge_range(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let offset = l.checkinteger(3);
@@ -396,7 +397,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn get_edge_time_range(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_edge_time_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let high = try!(get_optional_datetime_param(l, 3));
@@ -412,27 +413,27 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn get_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
         let result = try!(trans.get_global_metadata(key));
         serialize_json(l, result);
         Ok(1)
     }
 
-    unsafe fn set_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
         try!(trans.set_global_metadata(key, value));
         Ok(0)
     }
 
-    unsafe fn delete_global_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 2));
         try!(trans.delete_global_metadata(key));
         Ok(0)
     }
 
-    unsafe fn get_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_account_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let result = try!(trans.get_account_metadata(owner_id, key));
@@ -440,7 +441,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn set_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_account_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
@@ -448,14 +449,14 @@ lua_fn! {
         Ok(0)
     }
 
-    unsafe fn delete_account_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_account_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         try!(trans.delete_account_metadata(owner_id, key));
         Ok(0)
     }
 
-    unsafe fn get_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let result = try!(trans.get_vertex_metadata(owner_id, key));
@@ -463,7 +464,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn set_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         let value = try!(get_json_param(l, 3));
@@ -471,14 +472,14 @@ lua_fn! {
         Ok(0)
     }
 
-    unsafe fn delete_vertex_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
         try!(trans.delete_vertex_metadata(owner_id, key));
         Ok(0)
     }
 
-    unsafe fn get_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn get_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
@@ -488,7 +489,7 @@ lua_fn! {
         Ok(1)
     }
 
-    unsafe fn set_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn set_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
@@ -498,7 +499,7 @@ lua_fn! {
         Ok(0)
     }
 
-    unsafe fn delete_edge_metadata(trans: &mut PostgresTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    unsafe fn delete_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
