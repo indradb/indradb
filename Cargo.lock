@@ -186,6 +186,7 @@ dependencies = [
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "phf 0.7.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

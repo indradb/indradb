@@ -1,5 +1,5 @@
 use chrono::naive::datetime::NaiveDateTime;
-use rocksdb::uuid::Uuid;
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountValue {

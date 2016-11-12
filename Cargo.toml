@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [features]
 default = ["postgres-datastore", "rocksdb-datastore"]
 postgres-datastore = ["postgres", "r2d2", "r2d2_postgres", "num_cpus"]
-rocksdb-datastore = ["rocksdb", "uuid", "bincode", "lazy_static", "regex"]
+rocksdb-datastore = ["rocksdb", "bincode", "lazy_static", "regex"]
 
 [dependencies]
 rust-crypto = "0.2.35"
@@ -42,9 +42,8 @@ features = ["serde"]
 [dependencies.uuid]
 version = "0.3.1"
 features = ["serde", "v4"]
-optional = true
 
 [dependencies.postgres]
 version = "0.11.3"
-features = ["serde_json", "chrono"]
+features = ["serde_json", "chrono", "uuid"]
 optional = true

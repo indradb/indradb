@@ -1,4 +1,3 @@
-extern crate uuid;
 extern crate rocksdb;
 extern crate bincode;
 extern crate regex;

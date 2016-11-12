@@ -3,6 +3,7 @@
 #![plugin(serde_macros)]
 #![cfg_attr(test, plugin(stainless))]
 
+extern crate uuid;
 extern crate crypto;
 extern crate chrono;
 extern crate core;

@@ -1,7 +1,7 @@
 use datastore::{Datastore, Transaction};
 use traits::Id;
 use models;
-use rocksdb::uuid::Uuid;
+use uuid::Uuid;
 use util::{Error, generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::{NaiveDateTime};
@@ -35,8 +35,6 @@ macro_rules! prefix_iterate {
 		}
 	}
 }
-
-impl Id for Uuid {}
 
 enum KeyComponent {
 	Uuid(Uuid),
