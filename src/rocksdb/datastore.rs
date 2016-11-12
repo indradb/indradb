@@ -13,20 +13,15 @@ use rocksdb::bincode::serde as bincode_serde;
 use std::io::Write;
 use rocksdb::bincode::serde::{SerializeError, DeserializeError};
 use std::sync::Arc;
-use rocksdb::regex::bytes::Regex;
 use std::str;
 use std::usize;
 use std::i32;
+use std::u8;
 use std::io::BufWriter;
 use std::str::Utf8Error;
 use std::io::Cursor;
 use serde_json;
 use std::ops::Deref;
-
-lazy_static! {
-	static ref VERTEX_KEY_MATCHER: Regex = Regex::new("^\x01(.{16})$").unwrap();
-	static ref EDGE_KEY_MATCHER: Regex = Regex::new("^\x02(.{16})([^\x00]*)\x00(.{16})$").unwrap();
-}
 
 // We use a macro to avoid take_while, and the overhead that closure callbacks would cause
 macro_rules! prefix_iterate {
@@ -46,8 +41,7 @@ impl Id for Uuid {}
 enum KeyComponent {
 	Uuid(Uuid),
 	String(String),
-	Prelude(u8),
-	Separator
+	Byte(u8)
 }
 
 struct KeyBuilder {
@@ -61,7 +55,7 @@ fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
 		len += match *component {
 			KeyComponent::Uuid(_) => 16,
 			KeyComponent::String(ref s) => s.len(),
-			KeyComponent::Prelude(_) | KeyComponent::Separator => 1
+			KeyComponent::Byte(_) => 1
 		};
 	}
 
@@ -71,8 +65,7 @@ fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
 		let res = match *component {
 			KeyComponent::Uuid(ref uuid) => cursor.write(uuid.as_bytes()),
 			KeyComponent::String(ref s) => cursor.write(s.as_bytes()),
-			KeyComponent::Prelude(b) => cursor.write(&[b]),
-			KeyComponent::Separator => cursor.write(&[0u8])
+			KeyComponent::Byte(b) => cursor.write(&[b])
 		};
 
 		if let Err(err) = res {
@@ -94,47 +87,55 @@ const EDGE_METADATA_PRELUDE: u8 = 13;
 
 fn account_key(id: Uuid) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(ACCOUNT_PRELUDE),
+		KeyComponent::Byte(ACCOUNT_PRELUDE),
 		KeyComponent::Uuid(id)
 	])
 }
 
 fn vertex_key(id: Uuid) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(VERTEX_PRELUDE),
+		KeyComponent::Byte(VERTEX_PRELUDE),
 		KeyComponent::Uuid(id)
 	])
 }
 
-fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Prelude(EDGE_PRELUDE),
+fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Box<[u8]>, Error> {
+	if t.len() > u8::MAX as usize {
+		return Err(Error::Unexpected("`type` is too long".to_string()));
+	}
+
+	Ok(build_key(vec![
+		KeyComponent::Byte(EDGE_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
+		KeyComponent::Byte(t.len() as u8),
 		KeyComponent::String(t),
-		KeyComponent::Separator,
 		KeyComponent::Uuid(inbound_id)
-	])
+	]))
 }
 
-fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: String) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Prelude(EDGE_PRELUDE),
+fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: String) -> Result<Box<[u8]>, Error> {
+	if t.len() > u8::MAX as usize {
+		return Err(Error::Unexpected("`type` is too long".to_string()));
+	}
+
+	Ok(build_key(vec![
+		KeyComponent::Byte(EDGE_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
-		KeyComponent::String(t),
-		KeyComponent::Separator
-	])
+		KeyComponent::Byte(t.len() as u8),
+		KeyComponent::String(t)
+	]))
 }
 
 fn global_metadata_key(key: String) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(GLOBAL_METADATA_PRELUDE),
+		KeyComponent::Byte(GLOBAL_METADATA_PRELUDE),
 		KeyComponent::String(key)
 	])
 }
 
 fn account_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(ACCOUNT_METADATA_PRELUDE),
+		KeyComponent::Byte(ACCOUNT_METADATA_PRELUDE),
 		KeyComponent::Uuid(id),
 		KeyComponent::String(key)
 	])
@@ -142,7 +143,7 @@ fn account_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
 
 fn vertex_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(VERTEX_METADATA_PRELUDE),
+		KeyComponent::Byte(VERTEX_METADATA_PRELUDE),
 		KeyComponent::Uuid(id),
 		KeyComponent::String(key)
 	])
@@ -150,26 +151,37 @@ fn vertex_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
 
 fn edge_metadata_key(outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Box<[u8]> {
 	build_key(vec![
-		KeyComponent::Prelude(EDGE_METADATA_PRELUDE),
+		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
+		KeyComponent::Byte(t.len() as u8),
 		KeyComponent::String(t),
-		KeyComponent::Separator,
 		KeyComponent::Uuid(inbound_id),
 		KeyComponent::String(key)
 	])
 }
 
 fn parse_edge_key(key: &[u8]) -> (Uuid, String, Uuid) {
-	let caps = match EDGE_KEY_MATCHER.captures(&key).unwrap();
-	let outbound_id = Uuid::from_bytes(caps.at(1).unwrap()).unwrap();
-	let t = str::from_utf8(caps.at(2).unwrap()).unwrap();
-	let inbound_id = Uuid::from_bytes(caps.at(3).unwrap()).unwrap();
+	if key.len() < 34 {
+		panic!("Unexpected key length: {}", key.len());
+	} else if key[0] != EDGE_PRELUDE {
+		panic!("Unexpected prelude: {:x}", key[0]);
+	}
+
+	let outbound_id = Uuid::from_bytes(&key[1..17]).unwrap();
+	let t_len = key[17] as usize;
+	let t = str::from_utf8(&key[18..t_len+18]).unwrap();
+	let inbound_id = Uuid::from_bytes(&key[t_len+18..key.len()]).unwrap();
 	(outbound_id, t.to_string(), inbound_id)
 }
 
 fn parse_vertex_key(key: &[u8]) -> Uuid {
-	let caps = VERTEX_KEY_MATCHER.captures(&key).unwrap();
-	Uuid::from_bytes(caps.at(1).unwrap()).unwrap()
+	if key.len() != 17 {
+		panic!("Unexpected key length: {}", key.len());
+	} else if key[0] != VERTEX_PRELUDE {
+		panic!("Unexpected prelude: {:x}", key[0]);
+	}
+
+	Uuid::from_bytes(&key[1..17]).unwrap()
 }
 
 // Abstracted out so we can use it both for `RocksdbDatastore::has_account`,
@@ -185,7 +197,7 @@ fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Er
 	try!(w.delete(&vertex_key(id)));
 
 	let vertex_metadata_key_prefix = build_key(vec![
-		KeyComponent::Prelude(VERTEX_METADATA_PRELUDE),
+		KeyComponent::Byte(VERTEX_METADATA_PRELUDE),
 		KeyComponent::Uuid(id)
 	]);
 
@@ -194,7 +206,7 @@ fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Er
 	});
 
 	let edge_key_prefix = build_key(vec![
-		KeyComponent::Prelude(EDGE_PRELUDE),
+		KeyComponent::Byte(EDGE_PRELUDE),
 		KeyComponent::Uuid(id)
 	]);
 
@@ -207,13 +219,13 @@ fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Er
 }
 
 fn delete_edge<W: Writable>(outbound_id: Uuid, t: String, inbound_id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Error> {
-	try!(w.delete(&edge_key(outbound_id, t.clone(), inbound_id)));
+	try!(w.delete(&try!(edge_key(outbound_id, t.clone(), inbound_id))));
 
 	let edge_metadata_key_prefix = build_key(vec![
-		KeyComponent::Prelude(EDGE_METADATA_PRELUDE),
+		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
+		KeyComponent::Byte(t.len() as u8),
 		KeyComponent::String(t),
-		KeyComponent::Separator,
 		KeyComponent::Uuid(inbound_id)
 	]);
 
@@ -305,7 +317,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		});
 
 		let account_metadata_key_prefix = build_key(vec![
-			KeyComponent::Prelude(ACCOUNT_METADATA_PRELUDE),
+			KeyComponent::Byte(ACCOUNT_METADATA_PRELUDE),
 			KeyComponent::Uuid(account_id)
 		]);
 
@@ -418,7 +430,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
-		match try!(self.db.get(&edge_key(outbound_id, t.clone(), inbound_id))) {
+		match try!(self.db.get(&try!(edge_key(outbound_id, t.clone(), inbound_id)))) {
 			Some(edge_value_bytes) => {
 				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
 				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
@@ -441,7 +453,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let edge_value = EdgeValue::new(UTC::now().timestamp(), edge.weight);
 		let edge_value_bytes = try!(bincode_serde::serialize(&edge_value, SizeLimit::Infinite));
-		try!(self.db.put(&edge_key(edge.outbound_id, edge.t, edge.inbound_id), &edge_value_bytes[..]));
+		try!(self.db.put(&try!(edge_key(edge.outbound_id, edge.t, edge.inbound_id)), &edge_value_bytes[..]));
 		Ok(())
 	}
 
@@ -464,7 +476,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
-		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
+		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		let mut count = 0;
 
 		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
@@ -481,7 +493,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			return Err(Error::LimitOutOfRange);
 		}
 
-		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
+		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 		let mut i = 0;
 
@@ -506,7 +518,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			return Err(Error::LimitOutOfRange);
 		}
 
-		let edge_key_prefix = edge_without_inbound_id_key_pattern(outbound_id, t);
+		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
 		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
