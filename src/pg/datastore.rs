@@ -1,17 +1,17 @@
-use pg::r2d2_postgres::{SslMode, PostgresConnectionManager};
-use pg::r2d2::{Config, Pool, GetTimeout, PooledConnection};
+use r2d2_postgres::{SslMode, PostgresConnectionManager};
+use r2d2::{Config, Pool, GetTimeout, PooledConnection};
 use std::mem;
 use datastore::{Datastore, Transaction};
 use traits::Id;
 use models;
 use util::{Error, generate_random_secret, get_salted_hash};
 use crypto::digest::Digest;
-use pg::postgres;
-use pg::postgres::rows::Rows;
-use pg::postgres::error as pg_error;
+use postgres;
+use postgres::rows::Rows;
+use postgres::error as pg_error;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
-use pg::num_cpus;
+use num_cpus;
 use std::i32;
 
 impl Id for i64 {}
