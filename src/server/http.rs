@@ -273,7 +273,7 @@ fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 		Ok(result) => Ok(result),
 		Err(err) => {
 			let status = match err {
-				Error::AccountNotFound | Error::VertexDoesNotExist | Error::EdgeDoesNotExist | Error::MetadataDoesNotExist => status::NotFound,
+				Error::AccountNotFound | Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
 				Error::OutOfRange(_) => status::BadRequest,
 				Error::Unexpected(_) => status::InternalServerError
 			};
