@@ -6,7 +6,7 @@ use util::{Error, generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::{NaiveDateTime};
 use chrono::offset::utc::UTC;
-use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBIterator, DBVector};
+use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBIterator, DBVector, DBCompactionStyle};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
 use bincode::serde as bincode_serde;
@@ -23,6 +23,7 @@ use std::str::Utf8Error;
 use std::io::Cursor;
 use serde_json;
 use std::ops::Deref;
+use libc;
 
 // We use a macro to avoid take_while, and the overhead that closure callbacks would cause
 macro_rules! prefix_iterate {
@@ -266,9 +267,27 @@ pub struct RocksdbDatastore {
 }
 
 impl RocksdbDatastore {
-	pub fn new(path: String) -> Result<RocksdbDatastore, Error> {
+	pub fn new(path: String, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
+		// NOTE: the rocksdb lib currently doesn't support prefix databases.
+		// Once it does, we could use that to speed things up quite a bit.
+		// Current tuning based off of the total ordered example, flash
+		// storage example on
+		// https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
+		// Some of the options for it were not available 
+
 		let mut opts = Options::default();
 		opts.create_if_missing(true);
+		opts.set_compaction_style(DBCompactionStyle::Level);
+		opts.set_write_buffer_size(67108864); //64mb
+		opts.set_max_write_buffer_number(3);
+		opts.set_target_file_size_base(67108864); //64mb
+		opts.set_max_background_compactions(4);
+		opts.set_level_zero_slowdown_writes_trigger(17);
+		opts.set_level_zero_stop_writes_trigger(24);
+
+		if max_open_files.is_some() {
+			opts.set_max_open_files(max_open_files.unwrap());
+		}
 
 		let mut db = try!(DB::open(&opts, &path[..]));
 
