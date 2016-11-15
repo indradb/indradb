@@ -52,7 +52,7 @@ pub fn should_get_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(s
 pub fn should_not_get_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
 	let result = trans.get_vertex(I::default());
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_update_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -67,7 +67,7 @@ pub fn should_update_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 pub fn should_not_update_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
 	let result = trans.set_vertex(models::Vertex::new(I::default(), "movie".to_string()));
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -75,7 +75,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 	let trans = sandbox.transaction();
 	trans.delete_vertex(outbound_id).unwrap();
 	let result = trans.get_vertex(outbound_id);
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 	let count = trans.get_edge_count(outbound_id, "test_edge_type".to_string()).unwrap();
 	assert_eq!(count, 0);
 }
@@ -83,7 +83,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 pub fn should_not_delete_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
 	let result = trans.delete_vertex(I::default());
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -95,7 +95,7 @@ pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>
 	let (account_id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(account_id).unwrap();
 	let result = trans.delete_vertex(vertex_id);
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_get_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -117,9 +117,9 @@ pub fn should_not_get_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: 
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let result = trans.get_edge(outbound_id, "test_edge_type".to_string(), I::default());
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 	let result = trans.get_edge(I::default(), "test_edge_type".to_string(), inbound_id);
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
 pub fn should_update_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -129,7 +129,7 @@ pub fn should_update_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(
 
 	// Edge should not exist yet
 	let result = trans.get_edge(outbound_id, "test_edge_type".to_string(), inbound_id);
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 
 	// Set the edge and check
 	let e1 = models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 0.5);
@@ -149,9 +149,9 @@ pub fn should_not_update_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, 
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), I::default(), 0.5));
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 	let result = trans.set_edge(models::Edge::new(I::default(), "test_edge_type".to_string(), inbound_id, 0.5));
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_not_set_an_edge_with_a_bad_weight<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -159,9 +159,9 @@ pub fn should_not_set_an_edge_with_a_bad_weight<D: Datastore<T, I>, T: Transacti
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 1.01));
-	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
+	assert_eq!(result.unwrap_err(), Error::OutOfRange("weight".to_string()));
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, -1.01));
-	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
+	assert_eq!(result.unwrap_err(), Error::OutOfRange("weight".to_string()));
 }
 
 pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -174,7 +174,7 @@ pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transa
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).unwrap();
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 0.5));
-	assert_eq!(result.unwrap_err(), Error::VertexDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
 pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -186,14 +186,14 @@ pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(
 	trans.get_edge(outbound_id, "test_edge_type".to_string(), inbound_id).unwrap();
 	trans.delete_edge(outbound_id, "test_edge_type".to_string(), inbound_id).unwrap();
 	let result = trans.get_edge(outbound_id, "test_edge_type".to_string(), inbound_id);
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
 pub fn should_not_delete_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let result = trans.delete_edge(outbound_id, "test_edge_type".to_string(), I::default());
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
 pub fn should_not_delete_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -208,7 +208,7 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Tra
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).unwrap();
 	let result = trans.delete_edge(outbound_id, "test_edge_type".to_string(), inbound_id);
-	assert_eq!(result.unwrap_err(), Error::EdgeDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
 pub fn should_get_an_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -250,20 +250,6 @@ pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T:
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let range = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), 0, 10).unwrap();
 	assert_eq!(range.len(), 0);
-}
-
-pub fn should_not_get_an_edge_range_with_an_invalid_offset<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let outbound_id = create_edges(&mut sandbox);
-	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), -1, 10);
-	assert_eq!(result.unwrap_err(), Error::OffsetOutOfRange);
-}
-
-pub fn should_not_get_an_edge_range_with_an_invalid_limit<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let outbound_id = create_edges(&mut sandbox);
-	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), 0, -1);
-	assert_eq!(result.unwrap_err(), Error::LimitOutOfRange);
 }
 
 pub fn should_get_edges_by_a_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -314,7 +300,7 @@ pub fn should_handle_global_metadata<D: Datastore<T, I>, T: Transaction<I>, I: I
 
 	// Check to make sure there's no initial value
 	let result = trans.get_global_metadata(key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
 	// Set and get the value as true
 	let result = trans.set_global_metadata(key.clone(), JsonValue::Bool(true));
@@ -335,7 +321,7 @@ pub fn should_handle_global_metadata<D: Datastore<T, I>, T: Transaction<I>, I: I
 	assert!(result.is_ok());
 
 	let result = trans.get_global_metadata(key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
 pub fn should_handle_account_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -344,7 +330,7 @@ pub fn should_handle_account_metadata<D: Datastore<T, I>, T: Transaction<I>, I: 
 
 	// Check to make sure there's no initial value
 	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
 	// Set and get the value as true
 	let result = trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(true));
@@ -365,7 +351,7 @@ pub fn should_handle_account_metadata<D: Datastore<T, I>, T: Transaction<I>, I: 
 	assert!(result.is_ok());
 
 	let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
 pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -375,7 +361,7 @@ pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: I
 
 	// Check to make sure there's no initial value
 	let result = trans.get_vertex_metadata(owner_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
 	// Set and get the value as true
 	let result = trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(true));
@@ -396,7 +382,7 @@ pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: I
 	assert!(result.is_ok());
 
 	let result = trans.get_vertex_metadata(owner_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
 pub fn should_handle_edge_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -410,7 +396,7 @@ pub fn should_handle_edge_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>
 
 	// Check to make sure there's no initial value
 	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
 	// Set and get the value as true
 	let result = trans.set_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone(), JsonValue::Bool(true));
@@ -431,5 +417,5 @@ pub fn should_handle_edge_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>
 	assert!(result.is_ok());
 
 	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
-	assert_eq!(result.unwrap_err(), Error::MetadataDoesNotExist);
+	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }

@@ -145,14 +145,6 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get an empty edge range for an invalid edge");
 				::should_get_an_empty_edge_range_for_an_invalid_edge(&mut sandbox)
 			}
-			it "should not get an edge range with an invalid offset" {
-				sandbox.setup("should not get an edge range with an invalid offset");
-				::should_not_get_an_edge_range_with_an_invalid_offset(&mut sandbox)
-			}
-			it "should not get an edge range with an invalid limit" {
-				sandbox.setup("should not get an edge range with an invalid limit");
-				::should_not_get_an_edge_range_with_an_invalid_limit(&mut sandbox)
-			}
 			it "should get edges by a time range" {
 				sandbox.setup("should get edges by a time range");
 				::should_get_edges_by_a_time_range(&mut sandbox)

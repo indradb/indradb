@@ -6,16 +6,17 @@ use util::{Error, generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::{NaiveDateTime};
 use chrono::offset::utc::UTC;
-use rocksdb::rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBIterator, DBVector};
+use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBIterator, DBVector};
 use super::models::{AccountValue, EdgeValue, VertexValue};
-use rocksdb::bincode::SizeLimit;
-use rocksdb::bincode::serde as bincode_serde;
+use bincode::SizeLimit;
+use bincode::serde as bincode_serde;
 use std::io::Write;
-use rocksdb::bincode::serde::{SerializeError, DeserializeError};
+use bincode::serde::{SerializeError, DeserializeError};
 use std::sync::Arc;
 use std::str;
 use std::usize;
 use std::i32;
+use std::u64;
 use std::u8;
 use std::io::BufWriter;
 use std::str::Utf8Error;
@@ -240,7 +241,7 @@ fn get_metadata(result: Option<DBVector>) -> Result<JsonValue, Error> {
 			let json = try!(serde_json::from_slice::<JsonValue>(&json_bytes.to_owned()[..]));
 			Ok(json)
 		},
-		None => Err(Error::MetadataDoesNotExist)
+		None => Err(Error::MetadataNotFound)
 	}
 }
 
@@ -256,7 +257,7 @@ fn get_vertex_value(db: &DB, id: Uuid) -> Result<VertexValue, Error> {
 			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
 			Ok(vertex_value)
 		},
-		None => Err(Error::VertexDoesNotExist)
+		None => Err(Error::VertexNotFound)
 	}
 }
 
@@ -405,7 +406,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn set_vertex(&self, vertex: models::Vertex<Uuid>) -> Result<(), Error> {
 		let mut vertex_value = try!(get_vertex_value(&self.db, vertex.id));
 		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		vertex_value.t = vertex.t;
@@ -418,7 +419,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let vertex_value = try!(get_vertex_value(&self.db, id));
 
 		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		let mut batch = WriteBatch::default();
@@ -433,18 +434,18 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
 				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
 			},
-			None => Err(Error::EdgeDoesNotExist)
+			None => Err(Error::EdgeNotFound)
 		}
 	}
 
 	fn set_edge(&self, edge: models::Edge<Uuid>) -> Result<(), Error> {
 		if edge.weight < -1.0 || edge.weight > 1.0 {
-			return Err(Error::WeightOutOfRange);
+			return Err(Error::OutOfRange("weight".to_string()));
 		}
 
 		let outbound_vertex_value = try!(get_vertex_value(&self.db, edge.outbound_id));
 		if outbound_vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		try!(get_vertex_value(&self.db, edge.inbound_id));
@@ -464,7 +465,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let outbound_vertex_value = try!(get_vertex_value(&self.db, outbound_id));
 		if outbound_vertex_value.owner_id != self.account_id {
-			return Err(Error::EdgeDoesNotExist);
+			return Err(Error::EdgeNotFound);
 		}
 
 		let mut batch = WriteBatch::default();
@@ -473,22 +474,24 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(())
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
-		let mut count = 0;
+		let mut count: u64 = 0;
 
 		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
 			count += 1;
+
+			if count == u64::MAX {
+				break;
+			}
 		});
 
 		Ok(count)
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if offset > i32::MAX as i64 || offset < 0 {
-			return Err(Error::OffsetOutOfRange);
-		} else if limit < 0 {
-			return Err(Error::LimitOutOfRange);
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		if offset > usize::MAX as u64 {
+			return Err(Error::OutOfRange("offset".to_string()));
 		}
 
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
@@ -498,6 +501,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
 			if i < offset as usize {
 				continue;
+			} else if edges.len() >= limit as usize {
+				break;
 			}
 
 			let (_, t, inbound_id) = parse_edge_key(&key);
@@ -511,11 +516,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(edges)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if limit < 0 {
-			return Err(Error::LimitOutOfRange);
-		}
-
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 

@@ -1,19 +1,20 @@
-use pg::r2d2_postgres::{SslMode, PostgresConnectionManager};
-use pg::r2d2::{Config, Pool, GetTimeout, PooledConnection};
+use r2d2_postgres::{SslMode, PostgresConnectionManager};
+use r2d2::{Config, Pool, GetTimeout, PooledConnection};
 use std::mem;
 use datastore::{Datastore, Transaction};
 use traits::Id;
 use models;
 use util::{Error, generate_random_secret, get_salted_hash};
 use crypto::digest::Digest;
-use pg::postgres;
-use pg::postgres::rows::Rows;
-use pg::postgres::error as pg_error;
+use postgres;
+use postgres::rows::Rows;
+use postgres::error as pg_error;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
-use pg::num_cpus;
+use num_cpus;
 use std::i32;
 use uuid::Uuid;
+use std::i64;
 
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
@@ -167,7 +168,7 @@ impl PostgresTransaction {
 			return Ok(value)
 		}
 
-		Err(Error::MetadataDoesNotExist)
+		Err(Error::MetadataNotFound)
 	}
 
 	fn handle_update_metadata_results(&self, results: Rows) -> Result<(), Error> {
@@ -175,7 +176,7 @@ impl PostgresTransaction {
 			return Ok(());
 		}
 
-		Err(Error::MetadataDoesNotExist)
+		Err(Error::MetadataNotFound)
 	}
 }
 
@@ -189,7 +190,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(v)
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
@@ -214,7 +215,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
@@ -224,7 +225,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
@@ -238,12 +239,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(e)
 		}
 
-		Err(Error::EdgeDoesNotExist)
+		Err(Error::EdgeNotFound)
 	}
 
 	fn set_edge(&self, e: models::Edge<Uuid>) -> Result<(), Error> {
 		if e.weight < -1.0 || e.weight > 1.0 {
-			return Err(Error::WeightOutOfRange);
+			return Err(Error::OutOfRange("weight".to_string()));
 		}
 
 		let id = Uuid::new_v4();
@@ -264,16 +265,16 @@ impl Transaction<Uuid> for PostgresTransaction {
 				if results.len() > 0 {
 					Ok(())
 				} else {
-					Err(Error::VertexDoesNotExist)
+					Err(Error::VertexNotFound)
 				}
 			},
 			Err(pg_error::Error::Db(ref db_err)) => {
 				match db_err.code {
 					// This should only happen when the inner select fails
-					pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
+					pg_error::SqlState::NotNullViolation => Err(Error::VertexNotFound),
 
 					// This should only happen when there is no vertex with id=inbound_id
-					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
+					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexNotFound),
 
 					// Other db error
 					_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
@@ -305,29 +306,27 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::EdgeDoesNotExist)
+		Err(Error::EdgeNotFound)
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		let results = try!(self.trans.query("
 			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
 		", &[&outbound_id, &t]));
 
 		for row in &results {
 			let count: i64 = row.get(0);
-			return Ok(count)
+			return Ok(count as u64)
 		}
 
 		panic!("Unreachable point hit")
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if offset < 0 {
-			return Err(Error::OffsetOutOfRange);
-		} else if limit < 0 {
-			return Err(Error::LimitOutOfRange);
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		if offset > i64::MAX as u64 {
+			return Err(Error::OutOfRange("offset".to_string()));
 		}
-
+		
 		let results = try!(self.trans.query("
 			SELECT inbound_id, weight
 			FROM edges
@@ -335,16 +334,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&outbound_id, &t, &offset, &(limit as i64)]));
+		", &[&outbound_id, &t, &(offset as i64), &(limit as i64)]));
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if limit < 0 {
-			return Err(Error::LimitOutOfRange);
-		}
-
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let results = try!(match (high, low) {
 			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
 				self.trans.query("

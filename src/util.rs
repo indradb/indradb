@@ -7,12 +7,10 @@ use crypto::digest::Digest;
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Error {
 	AccountNotFound,
-	VertexDoesNotExist,
-	EdgeDoesNotExist,
-	LimitOutOfRange,
-	OffsetOutOfRange,
-	WeightOutOfRange,
-	MetadataDoesNotExist,
+	VertexNotFound,
+	EdgeNotFound,
+	MetadataNotFound,
+	OutOfRange(String),
 	Unexpected(String),
 }
 
@@ -20,13 +18,16 @@ impl Error {
 	pub fn description_to_error(message: &str) -> Self {
 		match &message[..] {
 	        "Account not found" => Error::AccountNotFound,
-	        "Vertex does not exist" => Error::VertexDoesNotExist,
-	        "Edge does not exist" => Error::EdgeDoesNotExist,
-	        "Metadata does not exist" => Error::MetadataDoesNotExist,
-	        "Weight out of range" => Error::WeightOutOfRange,
-	        "Limit out of range" => Error::LimitOutOfRange,
-	        "Offset out of range" => Error::OffsetOutOfRange,
-	        _ => Error::Unexpected(format!("Unexpected error message: {}", message))
+	        "Vertex does not exist" => Error::VertexNotFound,
+	        "Edge does not exist" => Error::EdgeNotFound,
+	        "Metadata does not exist" => Error::MetadataNotFound,
+	        _ => {
+				if message.starts_with("Value out of range: ") {
+					Error::OutOfRange(message[20..message.len()].to_string())
+				} else {
+					Error::Unexpected(message.to_string())
+				}
+			}
 	    }
 	}
 }
@@ -35,12 +36,10 @@ impl StdError for Error {
 	fn description(&self) -> &str {
 		match *self {
 			Error::AccountNotFound => "Account not found",
-			Error::VertexDoesNotExist => "Vertex does not exist",
-			Error::EdgeDoesNotExist => "Edge does not exist",
-			Error::LimitOutOfRange => "Limit out of range",
-			Error::OffsetOutOfRange => "Offset out of range",
-			Error::WeightOutOfRange => "Weight out of range",
-			Error::MetadataDoesNotExist => "Metadata does not exist",
+			Error::VertexNotFound => "Vertex does not exist",
+			Error::EdgeNotFound => "Edge does not exist",
+			Error::MetadataNotFound => "Metadata does not exist",
+			Error::OutOfRange(_) => "Value out of range",
 			Error::Unexpected(_) => "Unexpected error"
 		}
 	}
@@ -54,6 +53,7 @@ impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
 			Error::Unexpected(ref msg) => write!(f, "{}", msg),
+			Error::OutOfRange(ref name) => write!(f, "Value out of range: {}", name), 
 			_ => write!(f, "{}", self.description())
 		}
 	}
