@@ -190,7 +190,7 @@ impl PostgresTransaction {
 			return Ok(value)
 		}
 
-		Err(Error::MetadataDoesNotExist)
+		Err(Error::MetadataNotFound)
 	}
 
 	fn handle_update_metadata_results(&self, results: Rows) -> Result<(), Error> {
@@ -198,7 +198,7 @@ impl PostgresTransaction {
 			return Ok(());
 		}
 
-		Err(Error::MetadataDoesNotExist)
+		Err(Error::MetadataNotFound)
 	}
 }
 
@@ -212,7 +212,7 @@ impl Transaction<i64> for PostgresTransaction {
 			return Ok(v)
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn create_vertex(&self, t: String) -> Result<i64, Error> {
@@ -240,7 +240,7 @@ impl Transaction<i64> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn delete_vertex(&self, id: i64) -> Result<(), Error> {
@@ -250,7 +250,7 @@ impl Transaction<i64> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::VertexDoesNotExist)
+		Err(Error::VertexNotFound)
 	}
 
 	fn get_edge(&self, outbound_id: i64, t: String, inbound_id: i64) -> Result<models::Edge<i64>, Error> {
@@ -264,7 +264,7 @@ impl Transaction<i64> for PostgresTransaction {
 			return Ok(e)
 		}
 
-		Err(Error::EdgeDoesNotExist)
+		Err(Error::EdgeNotFound)
 	}
 
 	fn set_edge(&self, e: models::Edge<i64>) -> Result<(), Error> {
@@ -288,16 +288,16 @@ impl Transaction<i64> for PostgresTransaction {
 				if results.len() > 0 {
 					Ok(())
 				} else {
-					Err(Error::VertexDoesNotExist)
+					Err(Error::VertexNotFound)
 				}
 			},
 			Err(pg_error::Error::Db(ref db_err)) => {
 				match db_err.code {
 					// This should only happen when the inner select fails
-					pg_error::SqlState::NotNullViolation => Err(Error::VertexDoesNotExist),
+					pg_error::SqlState::NotNullViolation => Err(Error::VertexNotFound),
 
 					// This should only happen when there is no vertex with id=inbound_id
-					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexDoesNotExist),
+					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexNotFound),
 
 					// Other db error
 					_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
@@ -329,7 +329,7 @@ impl Transaction<i64> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::EdgeDoesNotExist)
+		Err(Error::EdgeNotFound)
 	}
 
 	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<u64, Error> {

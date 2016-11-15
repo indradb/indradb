@@ -243,7 +243,7 @@ fn get_metadata(result: Option<DBVector>) -> Result<JsonValue, Error> {
 			let json = try!(serde_json::from_slice::<JsonValue>(&json_bytes.to_owned()[..]));
 			Ok(json)
 		},
-		None => Err(Error::MetadataDoesNotExist)
+		None => Err(Error::MetadataNotFound)
 	}
 }
 
@@ -259,7 +259,7 @@ fn get_vertex_value(db: &DB, id: Uuid) -> Result<VertexValue, Error> {
 			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
 			Ok(vertex_value)
 		},
-		None => Err(Error::VertexDoesNotExist)
+		None => Err(Error::VertexNotFound)
 	}
 }
 
@@ -408,7 +408,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn set_vertex(&self, vertex: models::Vertex<Uuid>) -> Result<(), Error> {
 		let mut vertex_value = try!(get_vertex_value(&self.db, vertex.id));
 		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		vertex_value.t = vertex.t;
@@ -421,7 +421,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let vertex_value = try!(get_vertex_value(&self.db, id));
 
 		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		let mut batch = WriteBatch::default();
@@ -436,7 +436,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
 				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
 			},
-			None => Err(Error::EdgeDoesNotExist)
+			None => Err(Error::EdgeNotFound)
 		}
 	}
 
@@ -447,7 +447,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let outbound_vertex_value = try!(get_vertex_value(&self.db, edge.outbound_id));
 		if outbound_vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexDoesNotExist);
+			return Err(Error::VertexNotFound);
 		}
 
 		try!(get_vertex_value(&self.db, edge.inbound_id));
@@ -467,7 +467,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let outbound_vertex_value = try!(get_vertex_value(&self.db, outbound_id));
 		if outbound_vertex_value.owner_id != self.account_id {
-			return Err(Error::EdgeDoesNotExist);
+			return Err(Error::EdgeNotFound);
 		}
 
 		let mut batch = WriteBatch::default();

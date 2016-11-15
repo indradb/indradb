@@ -7,9 +7,9 @@ use crypto::digest::Digest;
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Error {
 	AccountNotFound,
-	VertexDoesNotExist,
-	EdgeDoesNotExist,
-	MetadataDoesNotExist,
+	VertexNotFound,
+	EdgeNotFound,
+	MetadataNotFound,
 	OutOfRange(String),
 	Unexpected(String),
 }
@@ -18,9 +18,9 @@ impl Error {
 	pub fn description_to_error(message: &str) -> Self {
 		match &message[..] {
 	        "Account not found" => Error::AccountNotFound,
-	        "Vertex does not exist" => Error::VertexDoesNotExist,
-	        "Edge does not exist" => Error::EdgeDoesNotExist,
-	        "Metadata does not exist" => Error::MetadataDoesNotExist,
+	        "Vertex does not exist" => Error::VertexNotFound,
+	        "Edge does not exist" => Error::EdgeNotFound,
+	        "Metadata does not exist" => Error::MetadataNotFound,
 	        _ => {
 				if message.starts_with("Value out of range: ") {
 					Error::OutOfRange(message[20..message.len()].to_string())
@@ -36,9 +36,9 @@ impl StdError for Error {
 	fn description(&self) -> &str {
 		match *self {
 			Error::AccountNotFound => "Account not found",
-			Error::VertexDoesNotExist => "Vertex does not exist",
-			Error::EdgeDoesNotExist => "Edge does not exist",
-			Error::MetadataDoesNotExist => "Metadata does not exist",
+			Error::VertexNotFound => "Vertex does not exist",
+			Error::EdgeNotFound => "Edge does not exist",
+			Error::MetadataNotFound => "Metadata does not exist",
 			Error::OutOfRange(_) => "Value out of range",
 			Error::Unexpected(_) => "Unexpected error"
 		}
