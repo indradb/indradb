@@ -12,8 +12,8 @@ pub fn datastore() -> RocksdbDatastore {
 	let unique = generate_random_secret();
 	let path = Path::new(&test_rdb_directory[..]).join(format!("rdb-test-{}", unique)).to_str().unwrap().to_string();
 
-	let max_open_files_str = env::var("MAX_OPEN_FILES").unwrap_or("512".to_string());
-	let max_open_files = max_open_files_str.parse::<i32>().unwrap();
+	let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
+		let max_open_files = max_open_files_str.parse::<i32>().unwrap();
 
 	RocksdbDatastore::new(path, Some(max_open_files)).unwrap()
 }
