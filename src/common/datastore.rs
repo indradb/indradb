@@ -96,15 +96,15 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, delete_edge, outbound_id, t, inbound_id)
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		proxy_transaction!(self, get_edge_count, outbound_id, t)
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
 	}
 
@@ -181,7 +181,10 @@ pub fn datastore() -> ProxyDatastore {
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
-        let datastore = match RocksdbDatastore::new(path.to_string()) {
+		let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
+		let max_open_files = max_open_files_str.parse::<i32>().expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: should be an i32");
+
+        let datastore = match RocksdbDatastore::new(path.to_string(), Some(max_open_files)) {
             Ok(datastore) => datastore,
             Err(err) => panic!("Could not instantiate a rocksdb datastore: {:?}", err)
         };
