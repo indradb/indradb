@@ -140,7 +140,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_count".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
@@ -148,17 +148,17 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
-			"offset".to_string() => JsonValue::I64(offset),
-			"limit".to_string() => JsonValue::I64(limit as i64)
+			"offset".to_string() => JsonValue::U64(offset),
+			"limit".to_string() => JsonValue::U64(limit as u64)
 		})
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		let datetime_converter = |val: Option<NaiveDateTime>| {
 			match val {
 				Some(val) => JsonValue::I64(val.timestamp()),

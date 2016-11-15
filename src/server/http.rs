@@ -28,6 +28,7 @@ use std::path::Path;
 use regex;
 use std::fs::File;
 use std::cmp::min;
+use std::u16;
 use datastore::DATASTORE;
 use uuid::Uuid;
 
@@ -41,7 +42,7 @@ lazy_static! {
 
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
 
-const MAX_RETURNABLE_EDGES: i32 = 1000;
+const MAX_RETURNABLE_EDGES: u16 = 1000;
 
 // -- Public function for starting the server
 pub fn start(port: u16) {
@@ -230,6 +231,23 @@ fn get_optional_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str) -
 	}
 }
 
+fn get_optional_json_u64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<u64>, IronError> {
+	match json.get(name) {
+		Some(&JsonValue::I64(ref val)) => {
+			if *val < 0 {
+				Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+			} else {
+				Ok(Some(val.clone() as u64))
+			}
+		}
+		Some(&JsonValue::U64(ref val)) => Ok(Some(val.clone())),
+		None | Some(&JsonValue::Null) => Ok(None),
+		_ => {
+			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+		}
+	}
+}
+
 fn get_optional_json_i32_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<i32>, IronError> {
 	match try!(get_optional_json_i64_param(json, name)) {
 		Some(val) if val > i32::MAX as i64 => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
@@ -238,7 +256,15 @@ fn get_optional_json_i32_param(json: &BTreeMap<String, JsonValue>, name: &str) -
 	}
 }
 
-fn parse_limit(val: Option<i32>) -> i32 {
+fn get_optional_json_u16_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<u16>, IronError> {
+	match try!(get_optional_json_u64_param(json, name)) {
+		Some(val) if val > u16::MAX as u64 => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
+		Some(val) => Ok(Some(val as u16)),
+		None => Ok(None)
+	}
+}
+
+fn parse_limit(val: Option<u16>) -> u16 {
 	match val {
 		Some(val) => min(val, MAX_RETURNABLE_EDGES),
 		_ => MAX_RETURNABLE_EDGES
@@ -257,8 +283,8 @@ fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 		Ok(result) => Ok(result),
 		Err(err) => {
 			let status = match err {
-				Error::AccountNotFound | Error::VertexDoesNotExist | Error::EdgeDoesNotExist | Error::MetadataDoesNotExist => status::NotFound,
-				Error::LimitOutOfRange | Error::OffsetOutOfRange | Error::WeightOutOfRange => status::BadRequest,
+				Error::AccountNotFound | Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
+				Error::OutOfRange(_) => status::BadRequest,
 				Error::Unexpected(_) => status::InternalServerError
 			};
 
@@ -427,14 +453,14 @@ fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	} else {
 		let result = match action {
 			"time" => {
-				let limit = parse_limit(try!(get_query_param::<i32>(query_params, "limit".to_string(), false)));
+				let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
 				let high = parse_datetime(try!(get_query_param::<i64>(query_params, "high".to_string(), false)));
 				let low = parse_datetime(try!(get_query_param::<i64>(query_params, "low".to_string(), false)));
 				try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
 			},
 			"position" => {
-				let limit = parse_limit(try!(get_query_param::<i32>(query_params, "limit".to_string(), false)));
-				let offset = try!(get_query_param::<i64>(query_params, "offset".to_string(), false)).unwrap_or(0);
+				let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+				let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
 				try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
 			},
 			_ => {
@@ -586,15 +612,15 @@ fn trans_get_edge_count(trans: &PostgresTransaction, item: &BTreeMap<String, Jso
 fn trans_get_edge_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
-	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));
-	let offset = try!(get_optional_json_i64_param(item, "offset")).unwrap_or(0);
+	let limit = parse_limit(try!(get_optional_json_u16_param(item, "limit")));
+	let offset = try!(get_optional_json_u64_param(item, "offset")).unwrap_or(0);
 	execute_trans_item(trans.get_edge_range(outbound_id, t, offset, limit))
 }
 
 fn trans_get_edge_time_range(trans: &PostgresTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
 	let outbound_id = try!(get_required_json_uuid_param(item, "outbound_id"));
 	let t = try!(get_required_json_string_param(item, "type"));
-	let limit = parse_limit(try!(get_optional_json_i32_param(item, "limit")));
+	let limit = parse_limit(try!(get_optional_json_u16_param(item, "limit")));
 	let high = parse_datetime(try!(get_optional_json_i64_param(item, "high")));
 	let low = parse_datetime(try!(get_optional_json_i64_param(item, "low")));
 	execute_trans_item(trans.get_edge_time_range(outbound_id, t, high, low, limit))

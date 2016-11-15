@@ -114,21 +114,21 @@ impl Transaction<Uuid> for RestTransaction {
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: i64, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
 		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
 
 		let qp = match (high, low) {
