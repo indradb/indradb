@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use common::ProxyTransaction;
 use nutrino::{Vertex, Edge, Transaction, Error};
 use chrono::naive::datetime::NaiveDateTime;
-use std::{isize, i32};
+use std::{isize, i32, u16};
 use uuid::Uuid;
 use core::str::FromStr;
 
@@ -311,6 +311,14 @@ unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Re
     }
 }
 
+unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16, LuaError> {
+    match l.checkinteger(narg) {
+        i if i > u16::MAX as isize => Ok(u16::MAX),
+        i if i < 0 => Err(LuaError::Generic("Limit cannot be negative".to_string())),
+        i => Ok(i as u16)
+    }
+}
+
 lua_fn! {
     unsafe fn get_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_uuid_param(l, 1));
@@ -375,7 +383,7 @@ lua_fn! {
         let result = try!(trans.get_edge_count(outbound_id, t));
 
         l.pushinteger(match result {
-            i if i > isize::MAX as i64 => isize::MAX,
+            i if i > isize::MAX as u64 => isize::MAX,
             i => i as isize
         });
 
@@ -385,14 +393,15 @@ lua_fn! {
     unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-        let offset = l.checkinteger(3);
 
-        let limit = match l.checkinteger(4) {
-            i if i > i32::MAX as isize => i32::MAX,
-            i => i as i32
+        let offset = match l.checkinteger(3) {
+            i if i < 0 => return Err(LuaError::Generic("Offset cannot be negative".to_string())),
+            i => i as u64
         };
-        
-        let result = try!(trans.get_edge_range(outbound_id, t, offset as i64, limit));
+
+        let limit = try!(get_limit_param(l, 4));
+
+        let result = try!(trans.get_edge_range(outbound_id, t, offset, limit));
         serialize_edges(l, result);
         Ok(1)
     }
@@ -402,12 +411,8 @@ lua_fn! {
         let t = try!(get_string_param(l, 2));
         let high = try!(get_optional_datetime_param(l, 3));
         let low = try!(get_optional_datetime_param(l, 4));
+        let limit = try!(get_limit_param(l, 5));
         
-        let limit = match l.checkinteger(5) {
-            i if i > i32::MAX as isize => i32::MAX,
-            i => i as i32
-        };
-
         let result = try!(trans.get_edge_time_range(outbound_id, t, high, low, limit));
         serialize_edges(l, result);
         Ok(1)
