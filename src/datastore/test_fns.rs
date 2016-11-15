@@ -159,9 +159,9 @@ pub fn should_not_set_an_edge_with_a_bad_weight<D: Datastore<T, I>, T: Transacti
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 1.01));
-	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
+	assert_eq!(result.unwrap_err(), Error::OutOfRange("weight".to_string()));
 	let result = trans.set_edge(models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, -1.01));
-	assert_eq!(result.unwrap_err(), Error::WeightOutOfRange);
+	assert_eq!(result.unwrap_err(), Error::OutOfRange("weight".to_string()));
 }
 
 pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -250,20 +250,6 @@ pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T:
 	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
 	let range = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), 0, 10).unwrap();
 	assert_eq!(range.len(), 0);
-}
-
-pub fn should_not_get_an_edge_range_with_an_invalid_offset<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let outbound_id = create_edges(&mut sandbox);
-	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), -1, 10);
-	assert_eq!(result.unwrap_err(), Error::OffsetOutOfRange);
-}
-
-pub fn should_not_get_an_edge_range_with_an_invalid_limit<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let outbound_id = create_edges(&mut sandbox);
-	let trans = sandbox.transaction();
-	let result = trans.get_edge_range(outbound_id, "test_edge_type".to_string(), 0, -1);
-	assert_eq!(result.unwrap_err(), Error::LimitOutOfRange);
 }
 
 pub fn should_get_edges_by_a_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {

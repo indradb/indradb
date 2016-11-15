@@ -13,6 +13,7 @@ use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use std::i32;
+use std::i64;
 
 impl Id for i64 {}
 
@@ -268,7 +269,7 @@ impl Transaction<i64> for PostgresTransaction {
 
 	fn set_edge(&self, e: models::Edge<i64>) -> Result<(), Error> {
 		if e.weight < -1.0 || e.weight > 1.0 {
-			return Err(Error::WeightOutOfRange);
+			return Err(Error::OutOfRange("weight".to_string()));
 		}
 
 		// Because this command could fail, we need to set a savepoint to roll
@@ -331,24 +332,22 @@ impl Transaction<i64> for PostgresTransaction {
 		Err(Error::EdgeDoesNotExist)
 	}
 
-	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<i64, Error> {
+	fn get_edge_count(&self, outbound_id: i64, t: String) -> Result<u64, Error> {
 		let results = try!(self.trans.query("
 			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
 		", &[&outbound_id, &t]));
 
 		for row in &results {
 			let count: i64 = row.get(0);
-			return Ok(count)
+			return Ok(count as u64)
 		}
 
 		panic!("Unreachable point hit")
 	}
 
-	fn get_edge_range(&self, outbound_id: i64, t: String, offset: i64, limit: i32) -> Result<Vec<models::Edge<i64>>, Error> {
-		if offset < 0 {
-			return Err(Error::OffsetOutOfRange);
-		} else if limit < 0 {
-			return Err(Error::LimitOutOfRange);
+	fn get_edge_range(&self, outbound_id: i64, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<i64>>, Error> {
+		if offset > i64::MAX as u64 {
+			return Err(Error::OutOfRange("offset".to_string()));
 		}
 
 		let results = try!(self.trans.query("
@@ -358,16 +357,12 @@ impl Transaction<i64> for PostgresTransaction {
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&outbound_id, &t, &offset, &(limit as i64)]));
+		", &[&outbound_id, &t, &(offset as i64), &(limit as i64)]));
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: i32) -> Result<Vec<models::Edge<i64>>, Error> {
-		if limit < 0 {
-			return Err(Error::LimitOutOfRange);
-		}
-
+	fn get_edge_time_range(&self, outbound_id: i64, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<i64>>, Error> {
 		let results = try!(match (high, low) {
 			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
 				self.trans.query("
