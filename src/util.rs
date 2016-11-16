@@ -15,7 +15,7 @@ pub fn generate_random_secret() -> String {
     String::from_utf8(chars).unwrap()
 }
 
-pub fn get_salted_hash(salt: String, pepper: Option<String>, secret: String) -> String {
+pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String {
 	let mut sha = Sha256::new();
 	sha.input(salt.as_bytes());
 

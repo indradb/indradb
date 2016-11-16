@@ -158,7 +158,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		let account_id = Uuid::new_v4();
 		let salt = generate_random_secret();
 		let secret = generate_random_secret();
-		let hash = get_salted_hash(salt.clone(), None, secret.clone());
+		let hash = get_salted_hash(&salt[..], None, &secret[..]);
 		let account = AccountValue::new(email, salt, hash);
 		let account_bytes = try!(bincode_serde::serialize(&account, SizeLimit::Infinite));
 		try!(self.db.put(&account_key(account_id), &account_bytes[..]));
@@ -203,7 +203,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		match try!(self.db.get(&account_key(account_id))) {
 			Some(account_bytes) => {
 				let account = try!(bincode_serde::deserialize::<AccountValue>(&account_bytes.to_owned()[..]));
-				let expected_hash = get_salted_hash(account.salt, None, secret);
+				let expected_hash = get_salted_hash(&account.salt[..], None, &secret[..]);
 				Ok(expected_hash == account.hash)
 			},
 			_ => Ok(false)

@@ -62,7 +62,7 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 		let id = Uuid::new_v4();
 		let salt = generate_random_secret();
 		let secret = generate_random_secret();
-		let hash = get_salted_hash(salt.clone(), Some(self.secret.clone()), secret.clone());
+		let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
 		let conn = try!(self.pool.get());
 		try!(conn.execute("INSERT INTO accounts(id, email, salt, api_secret_hash) VALUES ($1, $2, $3, $4)", &[&id, &email, &salt, &hash]));
 		Ok((id, secret))
@@ -84,8 +84,8 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&account_id]));
 
 		for row in &get_salt_results {
-			let salt = row.get(0);
-			let expected_hash = get_salted_hash(salt, Some(self.secret.clone()), secret);
+			let salt: String = row.get(0);
+			let expected_hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
 			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&account_id, &expected_hash]));
 
 			for _ in &auth_results {
