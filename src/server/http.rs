@@ -171,24 +171,29 @@ fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronError> 
 	}
 }
 
-macro_rules! create_required_json_param_fn {
-	($func: ident, $enum_val: path, $ty: ty) => {
-		fn $func(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<$ty, IronError> {
-			match json.get(name) {
-				Some(&$enum_val(ref val)) => Ok(val.clone()),
-				None | Some(&JsonValue::Null) => {
-					Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
-				},
-				_ => {
-					Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-				}
-			}
+fn get_required_json_string_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<String, IronError> {
+	match json.get(name) {
+		Some(&JsonValue::String(ref val)) => Ok(val.clone()),
+		None | Some(&JsonValue::Null) => {
+			Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+		},
+		_ => {
+			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
 		}
 	}
 }
 
-create_required_json_param_fn!(get_required_json_string_param, JsonValue::String, String);
-create_required_json_param_fn!(get_required_json_f64_param, JsonValue::F64, f64);
+fn get_required_json_f64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<f64, IronError> {
+	match json.get(name) {
+		Some(&JsonValue::F64(ref val)) => Ok(val.clone()),
+		None | Some(&JsonValue::Null) => {
+			Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+		},
+		_ => {
+			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+		}
+	}
+}
 
 fn json_u64_to_i64(name: &str, val: u64) -> Result<i64, IronError> {
 	if val > i64::MAX as u64 {
