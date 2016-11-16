@@ -1,3 +1,8 @@
+// This module a proxy datastore and transaction that in turn call actual
+// atastore/transaction implementations. Ideally this would not be necessary,
+// and we'd rely on something like trait objects to get the job done. However,
+// rust is not flexible enough (yet) to support that. 
+
 use std::env;
 use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction};
 use uuid::Uuid;
