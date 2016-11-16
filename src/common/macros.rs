@@ -1,7 +1,3 @@
-use std::env;
-use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore};
-use uuid::Uuid;
-
 // Based off of https://github.com/rust-lang/rfcs/issues/1078
 #[macro_export]
 macro_rules! exit_with_err {

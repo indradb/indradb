@@ -273,15 +273,6 @@ unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<String
     }
 }
 
-unsafe fn get_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<i64, LuaError> {
-    let s = try!(get_string_param(l, narg));
-
-    match i64::from_str_radix(&s[..], 10) {
-        Ok(i) => Ok(i),
-        Err(_) => Err(LuaError::Generic("Expected i64 as string".to_string()))
-    }
-}
-
 unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
     let s = try!(get_string_param(l, narg));
 

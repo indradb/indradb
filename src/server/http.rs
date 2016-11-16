@@ -1,5 +1,4 @@
 use iron::prelude::*;
-use std::i32;
 use std::i64;
 use iron::status;
 use iron::headers::{Headers, ContentType, Authorization, Basic};
@@ -208,19 +207,6 @@ fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &str) 
 	}
 }
 
-fn get_required_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<i64, IronError> {
-	match json.get(name) {
-		Some(&JsonValue::I64(ref val)) => Ok(val.clone()),
-		Some(&JsonValue::U64(ref val)) => Ok(try!(json_u64_to_i64(name, val.clone()))),
-		None | Some(&JsonValue::Null) => {
-			Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
-		},
-		_ => {
-			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-		}
-	}
-}
-
 fn get_optional_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<i64>, IronError> {
 	match json.get(name) {
 		Some(&JsonValue::I64(ref val)) => Ok(Some(val.clone())),
@@ -246,14 +232,6 @@ fn get_optional_json_u64_param(json: &BTreeMap<String, JsonValue>, name: &str) -
 		_ => {
 			Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
 		}
-	}
-}
-
-fn get_optional_json_i32_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<i32>, IronError> {
-	match try!(get_optional_json_i64_param(json, name)) {
-		Some(val) if val > i32::MAX as i64 => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
-		Some(val) => Ok(Some(val as i32)),
-		None => Ok(None)
 	}
 }
 
