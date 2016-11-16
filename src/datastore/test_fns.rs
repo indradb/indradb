@@ -1,7 +1,7 @@
 use super::{Datastore, Transaction};
 use super::test_sandbox::DatastoreTestSandbox;
 use super::test_util::*;
-use util::Error;
+use errors::Error;
 use models;
 use traits::Id;
 use serde_json::Value as JsonValue;

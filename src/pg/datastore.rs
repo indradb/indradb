@@ -3,15 +3,17 @@ use r2d2::{Config, Pool, GetTimeout, PooledConnection};
 use std::mem;
 use datastore::{Datastore, Transaction};
 use models;
-use util::{Error, generate_random_secret, get_salted_hash};
+use errors::Error;
+use util::{generate_random_secret, get_salted_hash};
 use postgres;
 use postgres::rows::Rows;
-use postgres::error as pg_error;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
 use std::i64;
+use postgres::error as pg_error;
+use super::util::*;
 
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
@@ -100,31 +102,6 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 		let conn = try!(self.pool.get());
 		let trans = try!(PostgresTransaction::new(conn, account_id));
 		Ok(trans)
-	}
-}
-
-fn pg_error_to_description(err: pg_error::Error) -> String {
-	match err {
-		pg_error::Error::Db(err) => {
-			match err.detail {
-				Some(ref detail) => format!("[{}] {}: {}", err.code.code(), err.message, detail),
-				None => format!("[{}] {}", err.code.code(), err.message)
-			}
-		},
-		pg_error::Error::Io(_) => "Could not communicate with the database instance".to_string(),
-		pg_error::Error::Conversion(err) => panic!(err)
-	}
-}
-
-impl From<pg_error::Error> for Error {
-	fn from(err: pg_error::Error) -> Error {
-		Error::Unexpected(pg_error_to_description(err))
-	}
-}
-
-impl From<GetTimeout> for Error {
-	fn from(err: GetTimeout) -> Error {
-		Error::Unexpected(format!("Could not fetch connection: {}", err))
 	}
 }
 

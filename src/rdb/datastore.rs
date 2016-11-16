@@ -1,9 +1,10 @@
 use datastore::{Datastore, Transaction};
 use models;
 use uuid::Uuid;
-use util::{Error, generate_random_secret, get_salted_hash};
+use errors::Error;
+use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
-use chrono::naive::datetime::{NaiveDateTime};
+use chrono::naive::datetime::NaiveDateTime;
 use chrono::offset::utc::UTC;
 use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBVector, DBCompactionStyle};
 use super::models::{AccountValue, EdgeValue, VertexValue};
@@ -20,6 +21,7 @@ use std::u8;
 use std::str::Utf8Error;
 use std::io::Cursor;
 use serde_json;
+use super::keys::*;
 
 // We use a macro to avoid take_while, and the overhead that closure callbacks would cause
 macro_rules! prefix_iterate {
@@ -32,148 +34,6 @@ macro_rules! prefix_iterate {
 			$code;
 		}
 	}
-}
-
-enum KeyComponent {
-	Uuid(Uuid),
-	String(String),
-	Byte(u8)
-}
-
-fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
-	let mut len = 0;
-
-	for component in components.iter() {
-		len += match *component {
-			KeyComponent::Uuid(_) => 16,
-			KeyComponent::String(ref s) => s.len(),
-			KeyComponent::Byte(_) => 1
-		};
-	}
-
-	let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
-
-	for component in components.iter() {
-		let res = match *component {
-			KeyComponent::Uuid(ref uuid) => cursor.write(uuid.as_bytes()),
-			KeyComponent::String(ref s) => cursor.write(s.as_bytes()),
-			KeyComponent::Byte(b) => cursor.write(&[b])
-		};
-
-		if let Err(err) = res {
-			panic!("Could not build key: {}", err);
-		}
-
-	}
-
-	cursor.into_inner().into_boxed_slice()
-}
-
-const ACCOUNT_PRELUDE: u8 = 0;
-const VERTEX_PRELUDE: u8 = 1;
-const EDGE_PRELUDE: u8 = 2;
-const GLOBAL_METADATA_PRELUDE: u8 = 10;
-const ACCOUNT_METADATA_PRELUDE: u8 = 11;
-const VERTEX_METADATA_PRELUDE: u8 = 12;
-const EDGE_METADATA_PRELUDE: u8 = 13;
-
-fn account_key(id: Uuid) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(ACCOUNT_PRELUDE),
-		KeyComponent::Uuid(id)
-	])
-}
-
-fn vertex_key(id: Uuid) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(VERTEX_PRELUDE),
-		KeyComponent::Uuid(id)
-	])
-}
-
-fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
-	Ok(build_key(vec![
-		KeyComponent::Byte(EDGE_PRELUDE),
-		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
-		KeyComponent::Uuid(inbound_id)
-	]))
-}
-
-fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: String) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
-	Ok(build_key(vec![
-		KeyComponent::Byte(EDGE_PRELUDE),
-		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t)
-	]))
-}
-
-fn global_metadata_key(key: String) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(GLOBAL_METADATA_PRELUDE),
-		KeyComponent::String(key)
-	])
-}
-
-fn account_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(ACCOUNT_METADATA_PRELUDE),
-		KeyComponent::Uuid(id),
-		KeyComponent::String(key)
-	])
-}
-
-fn vertex_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(VERTEX_METADATA_PRELUDE),
-		KeyComponent::Uuid(id),
-		KeyComponent::String(key)
-	])
-}
-
-fn edge_metadata_key(outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Box<[u8]> {
-	build_key(vec![
-		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
-		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
-		KeyComponent::Uuid(inbound_id),
-		KeyComponent::String(key)
-	])
-}
-
-fn parse_edge_key(key: &[u8]) -> (Uuid, String, Uuid) {
-	if key.len() < 34 {
-		panic!("Unexpected key length: {}", key.len());
-	} else if key[0] != EDGE_PRELUDE {
-		panic!("Unexpected prelude: {:x}", key[0]);
-	}
-
-	let outbound_id = Uuid::from_bytes(&key[1..17]).unwrap();
-	let t_len = key[17] as usize;
-	let t = str::from_utf8(&key[18..t_len+18]).unwrap();
-	let inbound_id = Uuid::from_bytes(&key[t_len+18..key.len()]).unwrap();
-	(outbound_id, t.to_string(), inbound_id)
-}
-
-fn parse_vertex_key(key: &[u8]) -> Uuid {
-	if key.len() != 17 {
-		panic!("Unexpected key length: {}", key.len());
-	} else if key[0] != VERTEX_PRELUDE {
-		panic!("Unexpected prelude: {:x}", key[0]);
-	}
-
-	Uuid::from_bytes(&key[1..17]).unwrap()
 }
 
 // Abstracted out so we can use it both for `RocksdbDatastore::has_account`,
@@ -352,36 +212,6 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 
 	fn transaction(&self, account_id: Uuid) -> Result<RocksdbTransaction, Error> {
 		RocksdbTransaction::new(self.db.clone(), account_id)
-	}
-}
-
-impl From<String> for Error {
-	fn from(message: String) -> Error {
-		Error::Unexpected(message)
-	}
-}
-
-impl From<SerializeError> for Error {
-	fn from(err: SerializeError) -> Error {
-		Error::Unexpected(format!("Could not serialize contents: {:?}", err))
-	}
-}
-
-impl From<DeserializeError> for Error {
-	fn from(err: DeserializeError) -> Error {
-		Error::Unexpected(format!("Could not deserialize contents: {:?}", err))
-	}
-}
-
-impl From<Utf8Error> for Error {
-	fn from(_: Utf8Error) -> Error {
-		Error::Unexpected(format!("Could not parse utf-8 contents"))
-	}
-}
-
-impl From<serde_json::Error> for Error {
-	fn from(err: serde_json::Error) -> Error {
-		Error::Unexpected(format!("Could not (de-)serialize json: {:?}", err))
 	}
 }
 

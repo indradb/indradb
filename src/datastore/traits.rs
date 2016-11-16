@@ -1,4 +1,4 @@
-use util::Error;
+use errors::Error;
 use traits::Id;
 use std::vec::Vec;
 use serde_json::value::Value as JsonValue;

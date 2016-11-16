@@ -22,13 +22,14 @@ extern crate test;
 #[cfg(feature="rocksdb-datastore")] extern crate bincode;
 
 #[macro_use] mod datastore;
+mod errors;
 mod models;
 mod util;
 mod traits;
 
 pub use datastore::*;
 pub use models::{Vertex, Edge};
-pub use util::Error;
+pub use errors::Error;
 pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")] mod pg;
