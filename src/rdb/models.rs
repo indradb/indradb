@@ -1,4 +1,3 @@
-use chrono::naive::datetime::NaiveDateTime;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

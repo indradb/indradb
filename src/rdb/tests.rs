@@ -5,7 +5,7 @@ pub use datastore::*;
 pub use super::super::util::generate_random_secret;
 pub use std::env;
 pub use traits::Id;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn datastore() -> RocksdbDatastore {
 	let test_rdb_directory = env::var("TEST_RDB_DIRECTORY").unwrap_or("/tmp/test-rdb".to_string());

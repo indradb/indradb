@@ -1,12 +1,11 @@
 use datastore::{Datastore, Transaction};
-use traits::Id;
 use models;
 use uuid::Uuid;
 use util::{Error, generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::{NaiveDateTime};
 use chrono::offset::utc::UTC;
-use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBIterator, DBVector, DBCompactionStyle};
+use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBVector, DBCompactionStyle};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
 use bincode::serde as bincode_serde;
@@ -18,12 +17,9 @@ use std::usize;
 use std::i32;
 use std::u64;
 use std::u8;
-use std::io::BufWriter;
 use std::str::Utf8Error;
 use std::io::Cursor;
 use serde_json;
-use std::ops::Deref;
-use libc;
 
 // We use a macro to avoid take_while, and the overhead that closure callbacks would cause
 macro_rules! prefix_iterate {
@@ -42,10 +38,6 @@ enum KeyComponent {
 	Uuid(Uuid),
 	String(String),
 	Byte(u8)
-}
-
-struct KeyBuilder {
-	components: Vec<KeyComponent>
 }
 
 fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
@@ -218,7 +210,7 @@ fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Er
 	Ok(())
 }
 
-fn delete_edge<W: Writable>(outbound_id: Uuid, t: String, inbound_id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Error> {
+fn delete_edge<W: Writable>(outbound_id: Uuid, t: String, inbound_id: Uuid, db: &DB, w: &mut W) -> Result<(), Error> {
 	try!(w.delete(&try!(edge_key(outbound_id, t.clone(), inbound_id))));
 
 	let edge_metadata_key_prefix = build_key(vec![
@@ -289,7 +281,7 @@ impl RocksdbDatastore {
 			opts.set_max_open_files(max_open_files.unwrap());
 		}
 
-		let mut db = try!(DB::open(&opts, &path[..]));
+		let db = try!(DB::open(&opts, &path[..]));
 
 		Ok(RocksdbDatastore{
 			db: Arc::new(db)
@@ -319,7 +311,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		}
 
 		let mut batch = WriteBatch::default();
-		batch.delete(&account_key(account_id));
+		try!(batch.delete(&account_key(account_id)));
 
 		// NOTE: This currently does a sequential scan through all keys to
 		// find which vertices to delete. This could be more efficient.
@@ -327,11 +319,11 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&value.to_owned()[..]));
 
 			if vertex_value.owner_id == account_id {
-				batch.delete(&key);
+				try!(batch.delete(&key));
 			}
 
 			let vertex_id = parse_vertex_key(&key);
-			delete_vertex(vertex_id, &self.db, &mut batch);
+			try!(delete_vertex(vertex_id, &self.db, &mut batch));
 		});
 
 		let account_metadata_key_prefix = build_key(vec![
@@ -340,7 +332,7 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 		]);
 
 		prefix_iterate!(self.db, &account_metadata_key_prefix, key, value, {
-			batch.delete(&key);
+			try!(batch.delete(&key));
 		});
 
 		try!(self.db.write(batch));
