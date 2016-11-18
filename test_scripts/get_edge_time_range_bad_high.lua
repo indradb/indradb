@@ -1,13 +1,9 @@
-x = transaction({
-  get_edge_time_range("3", "purchased", -1, 10, 10)
-});
+local id = create_vertex("foo");
 
-assert(table.getn(x) == 1);
-assert(x[1]._type == "edges");
-assert(table.getn(x[1].edges) == 1);
+function test_get_edge_time_range_bad_high()
+    get_edge_time_range(id, "purchased", "bar", 10, 10);
+end
 
-transaction({
-  get_edge_time_range("3", "purchased", "foo", 10, 10)
-});
-
--- error: runtime
+local status, err = pcall(test_get_edge_time_range_bad_high)
+assert(status == false);
+assert(string.find(err, "Expected i64 as string"));

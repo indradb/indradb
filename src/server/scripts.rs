@@ -207,19 +207,16 @@ unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
                 l.pushinteger((i + 1) as isize);
                 serialize_json(l, iv.clone());
                 l.settable(-3);
-            };
-
-            l.settable(-3);
+            }
         },
         JsonValue::Object(v) => {
             l.newtable();
 
             for (k, iv) in &v {
+                l.pushstring(k);
                 serialize_json(l, iv.clone());
-                l.setfield(-2, k);
+                l.settable(-3);
             }
-
-            l.settable(-3);
         }
     }
 }
@@ -282,7 +279,7 @@ unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<
 
     match i64::from_str_radix(&s[..], 10) {
         Ok(i) => Ok(Some(i)),
-        Err(_) => Err(LuaError::Generic("Expected i64 as string".to_string()))
+        Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string()))
     }
 }
 
@@ -291,7 +288,7 @@ unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid, Lu
 
     match Uuid::from_str(&s[..]) {
         Ok(u) => Ok(u),
-        Err(_) => Err(LuaError::Generic("Expected uuid as string".to_string()))
+        Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string()))
     }
 }
 
@@ -305,7 +302,7 @@ unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Re
 unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16, LuaError> {
     match l.checkinteger(narg) {
         i if i > u16::MAX as isize => Ok(u16::MAX),
-        i if i < 0 => Err(LuaError::Generic("Limit cannot be negative".to_string())),
+        i if i < 0 => Err(LuaError::Arg(narg, "Limit cannot be negative".to_string())),
         i => Ok(i as u16)
     }
 }
@@ -386,7 +383,7 @@ lua_fn! {
         let t = try!(get_string_param(l, 2));
 
         let offset = match l.checkinteger(3) {
-            i if i < 0 => return Err(LuaError::Generic("Offset cannot be negative".to_string())),
+            i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
             i => i as u64
         };
 
@@ -403,28 +400,28 @@ lua_fn! {
         let high = try!(get_optional_datetime_param(l, 3));
         let low = try!(get_optional_datetime_param(l, 4));
         let limit = try!(get_limit_param(l, 5));
-        
+
         let result = try!(trans.get_edge_time_range(outbound_id, t, high, low, limit));
         serialize_edges(l, result);
         Ok(1)
     }
 
     unsafe fn get_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let key = try!(get_string_param(l, 2));
-        let result = try!(trans.get_global_metadata(key));
+        let key = try!(get_string_param(l, 1));
+        let result = try!(trans.get_global_metadata(key.clone()));
         serialize_json(l, result);
         Ok(1)
     }
 
     unsafe fn set_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let key = try!(get_string_param(l, 2));
-        let value = try!(get_json_param(l, 3));
+        let key = try!(get_string_param(l, 1));
+        let value = try!(get_json_param(l, 2));
         try!(trans.set_global_metadata(key, value));
         Ok(0)
     }
 
     unsafe fn delete_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let key = try!(get_string_param(l, 2));
+        let key = try!(get_string_param(l, 1));
         try!(trans.delete_global_metadata(key));
         Ok(0)
     }

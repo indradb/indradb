@@ -26,8 +26,6 @@ pub use serde_json::Value as JsonValue;
 pub use common::{request, create_account, delete_account, response_to_error_message};
 
 lazy_static! {
-	static ref RUNTIME_ERROR_RESPONSE_PATTERN: Regex = Regex::new(r"Script failed: Runtime").unwrap();
-    static ref RUNTIME_ERROR_EXPECTED_PATTERN: Regex = Regex::new(r"-- error: runtime").unwrap();
     static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: (.+)$").unwrap();
 }
 
@@ -98,8 +96,16 @@ describe! script_tests {
 		run_script(account_id, secret, "global_metadata")
 	}
 
-	it "should run local_metadata" {
-		run_script(account_id, secret, "local_metadata")
+	it "should run account_metadata" {
+		run_script(account_id, secret, "account_metadata")
+	}
+
+	it "should run vertex_metadata" {
+		run_script(account_id, secret, "vertex_metadata")
+	}
+
+	it "should run edge_metadata" {
+		run_script(account_id, secret, "edge_metadata")
 	}
 
 	it "should run return_array" {
@@ -108,10 +114,6 @@ describe! script_tests {
 
 	it "should run return_boolean" {
 		run_script(account_id, secret, "return_boolean")
-	}
-
-	it "should run return_function" {
-		run_script(account_id, secret, "return_function")
 	}
 
 	it "should run return_int" {
@@ -124,10 +126,6 @@ describe! script_tests {
 
 	it "should run return_number" {
 		run_script(account_id, secret, "return_number")
-	}
-
-	it "should run return_obj_with_bad_values" {
-		run_script(account_id, secret, "return_obj_with_bad_values")
 	}
 
 	it "should run return_obj" {
@@ -160,27 +158,17 @@ pub fn run_script(account_id: Uuid, secret: String, name: &str) {
 	let req = request(&client, 8000, account_id, secret, "POST", format!("/script/{}.lua", name));
 	let mut res = req.send().unwrap();
 
-	if RUNTIME_ERROR_EXPECTED_PATTERN.is_match(&contents[..]) {
-		let error = response_to_error_message(&mut res);
+	let mut payload = String::new();
+	res.read_to_string(&mut payload).unwrap();
 
-		if res.status != StatusCode::InternalServerError {
-			panic!("Unexpected status code: {}", res.status);
-		} else if !RUNTIME_ERROR_RESPONSE_PATTERN.is_match(&error[..]) {
-			panic!("Unexpected error response: {}", error);
-		}
-	} else if res.status == StatusCode::Ok {
+	if res.status == StatusCode::Ok {
 		if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
 			let s = cap.at(1).unwrap();
 			let expected_result: JsonValue = serde_json::from_str(&s[..]).unwrap();
-
-			let mut payload = String::new();
-			res.read_to_string(&mut payload).unwrap();
 			let actual_result: JsonValue = serde_json::from_str(&payload[..]).unwrap();
 			assert_eq!(expected_result, actual_result)
 		}
 	} else {
-		let mut payload = String::new();
-		res.read_to_string(&mut payload).unwrap();
-		panic!("Unexpected status code: {}", res.status)
+		panic!("Unexpected status code: {} - payload: {}", res.status, payload)
 	}
 }

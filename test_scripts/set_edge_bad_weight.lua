@@ -1,12 +1,17 @@
-x = transaction({
-  set_edge(3, "purchased", 5, -2, "{}")
-});
+local outbound_id = create_vertex("foo");
+local inbound_id = create_vertex("bar");
 
-assert(table.getn(x) == 1);
-assert(x[1]._type == "weight_out_of_range");
+function test_set_edge_weight_out_of_range()
+    set_edge(outbound_id, "purchased", inbound_id, -2);
+end
 
-transaction({
-  set_edge(3, "purchased", 5, "foo", "{}")
-});
+function test_set_edge_bad_weight()
+    set_edge(outbound_id, "purchased", inbound_id, "foo");
+end
 
--- error: runtime
+local status, err = pcall(test_set_edge_weight_out_of_range);
+assert(status == false);
+assert(string.find(err, "OutOfRange"));
+local status, err = pcall(test_set_edge_bad_weight);
+assert(status == false);
+assert(string.find(err, "number expected, got string"));

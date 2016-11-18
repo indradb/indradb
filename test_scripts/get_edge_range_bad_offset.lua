@@ -1,12 +1,16 @@
-x = transaction({
-  get_edge_range("3", "purchased", -1, "10")
-});
+local id = create_vertex("foo");
 
-assert(table.getn(x) == 1);
-assert(x[1]._type == "offset_out_of_range");
+function test_get_edge_range_offset_out_of_range()
+    get_edge_range(id, "purchased", -1, 10);
+end
 
-transaction({
-  get_edge_range("3", "purchased", "foo", 3)
-});
+function test_get_edge_range_bad_offset()
+    get_edge_range(id, "purchased", "foo", 10);
+end
 
--- error: runtime
+local status, err = pcall(test_get_edge_range_offset_out_of_range)
+assert(status == false);
+assert(string.find(err, "Offset cannot be negative"));
+local status, err = pcall(test_get_edge_range_bad_offset)
+assert(status == false);
+assert(string.find(err, "number expected, got string"));
