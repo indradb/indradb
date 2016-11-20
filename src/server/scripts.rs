@@ -60,6 +60,12 @@ impl ScriptError {
     }
 }
 
+impl From<LuaError> for ScriptError {
+    fn from(err: LuaError) -> ScriptError {
+		ScriptError::Runtime(format!("{:?}", err))
+	}
+}
+
 macro_rules! lua_fn {
     ($(unsafe fn $name:ident($targ:ident: &mut ProxyTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
         $(
@@ -148,22 +154,23 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
         Ok(JsonValue::Null)
     } else {
         unsafe {
-            deserialize_json(l.as_extern(), -1)
+            Ok(try!(deserialize_json(l.as_extern(), -1)))
         }
     }
 }
 
-unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, ScriptError> {
-    Ok(match l.type_(-1) {
+unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
+    Ok(match l.type_(offset) {
         Some(lua::Type::Nil) | None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
         Some(lua::Type::Number) => JsonValue::F64(l.tonumber(-1)),
         Some(lua::Type::String) => JsonValue::String(l.checkstring(-1).unwrap().to_string().clone()),
         Some(lua::Type::Table) => {
+            l.pushvalue(offset);
             l.pushnil();
             let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
 
-            while l.next(offset - 1) {
+            while l.next(-2) {
                 // Keys could be strings or numbers, depending on whether it's a map-shaped table
                 // or an array-shaped table. We can't rely on `l.tostring` because we're in the
                 // middle of a next() loop.
@@ -184,10 +191,12 @@ unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<Json
                 l.pop(1);
             }
 
+            l.pop(1);
+
             JsonValue::Object(d)
         },
         _ => {
-            return Err(ScriptError::Runtime("Could not deserialize return value".to_string()))
+            return Err(LuaError::Generic("Could not deserialize return value".to_string()))
         }
     })
 }
@@ -247,20 +256,6 @@ unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) 
 unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f64) {
     l.pushnumber(v);
     l.setfield(-2, k);
-}
-
-unsafe fn get_json_param(l: &mut lua::ExternState, narg: i32) -> Result<JsonValue, LuaError> {
-    let s = match l.checkstring(narg) {
-        Some(s) => &s[..],
-        None => {
-            return Err(LuaError::Arg(narg, "Expected JSON value as string".to_string()))
-        }
-    };
-
-    match serde_json::from_str(s) {
-        Ok(val) => Ok(val),
-        _ => Err(LuaError::Arg(narg, "Expected JSON value as string".to_string()))
-    }
 }
 
 unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<String, LuaError> {
@@ -415,7 +410,7 @@ lua_fn! {
 
     unsafe fn set_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = try!(get_string_param(l, 1));
-        let value = try!(get_json_param(l, 2));
+        let value = try!(deserialize_json(l, 2));
         try!(trans.set_global_metadata(key, value));
         Ok(0)
     }
@@ -437,7 +432,7 @@ lua_fn! {
     unsafe fn set_account_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
-        let value = try!(get_json_param(l, 3));
+        let value = try!(deserialize_json(l, 3));
         try!(trans.set_account_metadata(owner_id, key, value));
         Ok(0)
     }
@@ -460,7 +455,7 @@ lua_fn! {
     unsafe fn set_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let owner_id = try!(get_uuid_param(l, 1));
         let key = try!(get_string_param(l, 2));
-        let value = try!(get_json_param(l, 3));
+        let value = try!(deserialize_json(l, 3));
         try!(trans.set_vertex_metadata(owner_id, key, value));
         Ok(0)
     }
@@ -487,7 +482,7 @@ lua_fn! {
         let t = try!(get_string_param(l, 2));
         let inbound_id = try!(get_uuid_param(l, 3));
         let key = try!(get_string_param(l, 4));
-        let value = try!(get_json_param(l, 5));
+        let value = try!(deserialize_json(l, 5));
         try!(trans.set_edge_metadata(outbound_id, t, inbound_id, key, value));
         Ok(0)
     }
