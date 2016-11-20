@@ -40,6 +40,15 @@ impl RestTransaction {
 	fn request<'a>(&self, client: &'a Client, method_str: &str, path: String) -> RequestBuilder<'a> {
 		return request(client, self.port, self.account_id, self.secret.clone(), method_str, path)
 	}
+
+	fn build_time_range_qp(&self, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>) -> String {
+		match (high, low) {
+			(Some(high), Some(low)) => format!("&high={}&low={}", high.timestamp(), low.timestamp()),
+			(Some(high), None) => format!("&high={}", high.timestamp()),
+			(None, Some(low)) => format!("&low={}", low.timestamp()),
+			(None, None) => "".to_string(),
+		}
+	}
 }
 
 impl HttpTransaction<RestTransaction> for RestTransaction {
@@ -116,29 +125,44 @@ impl Transaction<Uuid> for RestTransaction {
 
 	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
 		let client = Client::new();
-		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=count", outbound_id, t));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}/_?action=count", outbound_id, t));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
 	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
-		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
+		let req = self.request(&client, "GET", format!("/edge/{}/{}/_?action=position&limit={}&offset={}", outbound_id, t, limit, offset));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		let client = Client::new();
+		let qp = self.build_time_range_qp(high, low);
+		let req = self.request(&client, "GET", format!("/edge/{}/{}/_?action=time&limit={}{}", outbound_id, t, limit, qp));
+		let mut res = req.send().unwrap();
+		response_to_obj(&mut res)
+	}
 
-		let qp = match (high, low) {
-			(Some(high), Some(low)) => format!("&high={}&low={}", high.timestamp(), low.timestamp()),
-			(Some(high), None) => format!("&high={}", high.timestamp()),
-			(None, Some(low)) => format!("&low={}", low.timestamp()),
-			(None, None) => "".to_string(),
-		};
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+		let client = Client::new();
+		let req = self.request(&client, "GET", format!("/edge/_/{}/{}?action=count", inbound_id, t));
+		let mut res = req.send().unwrap();
+		response_to_obj(&mut res)
+	}
 
-		let req = self.request(&client, "GET", format!("/edge/{}/{}?action=time&limit={}{}", outbound_id, t, limit, qp));
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		let client = Client::new();
+		let req = self.request(&client, "GET", format!("/edge/_/{}/{}?action=position&limit={}&offset={}", inbound_id, t, limit, offset));
+		let mut res = req.send().unwrap();
+		response_to_obj(&mut res)
+	}
+
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		let client = Client::new();
+		let qp = self.build_time_range_qp(high, low);
+		let req = self.request(&client, "GET", format!("/edge/_/{}/{}?action=time&limit={}{}", inbound_id, t, limit, qp));
 		let mut res = req.send().unwrap();
 		response_to_obj(&mut res)
 	}

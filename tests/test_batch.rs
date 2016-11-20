@@ -60,6 +60,8 @@ impl BatchTransaction {
 		let mut payload = String::new();
 		res.read_to_string(&mut payload).unwrap();
 
+		println!("XXX {} => {}", body, payload);
+
 		match res.status {
 			StatusCode::Ok => {
 				let mut v: Vec<T> = serde_json::from_str(&payload[..]).unwrap();
@@ -78,6 +80,13 @@ impl BatchTransaction {
 					_ => panic!("Could not unpack error message")
 				}
 	        }
+		}
+	}
+
+	fn datetime_to_json(&self, datetime: Option<NaiveDateTime>) -> JsonValue {
+		match datetime {
+			Some(val) => JsonValue::I64(val.timestamp()),
+			None => JsonValue::Null
 		}
 	}
 }
@@ -159,19 +168,41 @@ impl Transaction<Uuid> for BatchTransaction {
 	}
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
-		let datetime_converter = |val: Option<NaiveDateTime>| {
-			match val {
-				Some(val) => JsonValue::I64(val.timestamp()),
-				None => JsonValue::Null
-			}
-		};
-
 		self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_time_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(t),
-			"high".to_string() => datetime_converter(high),
-			"low".to_string() => datetime_converter(low),
+			"high".to_string() => self.datetime_to_json(high),
+			"low".to_string() => self.datetime_to_json(low),
+			"limit".to_string() => JsonValue::I64(limit as i64)
+		})
+	}
+
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+		self.request(btreemap!{
+			"action".to_string() => JsonValue::String("get_reversed_edge_count".to_string()),
+			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
+			"type".to_string() => JsonValue::String(t)
+		})
+	}
+
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		self.request(btreemap!{
+			"action".to_string() => JsonValue::String("get_reversed_edge_range".to_string()),
+			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
+			"type".to_string() => JsonValue::String(t),
+			"offset".to_string() => JsonValue::U64(offset),
+			"limit".to_string() => JsonValue::U64(limit as u64)
+		})
+	}
+
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		self.request(btreemap!{
+			"action".to_string() => JsonValue::String("get_reversed_edge_time_range".to_string()),
+			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
+			"type".to_string() => JsonValue::String(t),
+			"high".to_string() => self.datetime_to_json(high),
+			"low".to_string() => self.datetime_to_json(low),
 			"limit".to_string() => JsonValue::I64(limit as i64)
 		})
 	}

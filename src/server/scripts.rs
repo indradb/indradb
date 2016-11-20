@@ -104,12 +104,18 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
     l.register("create_vertex", create_vertex);
     l.register("set_vertex", set_vertex);
     l.register("delete_vertex", delete_vertex);
+
     l.register("get_edge", get_edge);
     l.register("set_edge", set_edge);
     l.register("delete_edge", delete_edge);
+    
     l.register("get_edge_count", get_edge_count);
     l.register("get_edge_range", get_edge_range);
     l.register("get_edge_time_range", get_edge_time_range);
+
+    l.register("get_reversed_edge_count", get_reversed_edge_count);
+    l.register("get_reversed_edge_range", get_reversed_edge_range);
+    l.register("get_reversed_edge_time_range", get_reversed_edge_time_range);
 
     l.register("get_global_metadata", get_global_metadata);
     l.register("set_global_metadata", set_global_metadata);
@@ -302,6 +308,20 @@ unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16, Lu
     }
 }
 
+unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u64, LuaError> {
+    match l.checkinteger(narg) {
+        i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
+        i => Ok(i as u64)
+    }
+}
+
+unsafe fn serialize_u64(l: &mut lua::ExternState, val: u64) {
+    l.pushinteger(match val {
+        i if i > isize::MAX as u64 => isize::MAX,
+        i => i as isize
+    })
+}
+
 lua_fn! {
     unsafe fn get_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = try!(get_uuid_param(l, 1));
@@ -364,26 +384,15 @@ lua_fn! {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
         let result = try!(trans.get_edge_count(outbound_id, t));
-
-        l.pushinteger(match result {
-            i if i > isize::MAX as u64 => isize::MAX,
-            i => i as isize
-        });
-
+        serialize_u64(l, result);
         Ok(1)
     }
 
     unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = try!(get_uuid_param(l, 1));
         let t = try!(get_string_param(l, 2));
-
-        let offset = match l.checkinteger(3) {
-            i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
-            i => i as u64
-        };
-
+        let offset = try!(get_offset_param(l, 3));
         let limit = try!(get_limit_param(l, 4));
-
         let result = try!(trans.get_edge_range(outbound_id, t, offset, limit));
         serialize_edges(l, result);
         Ok(1)
@@ -395,8 +404,36 @@ lua_fn! {
         let high = try!(get_optional_datetime_param(l, 3));
         let low = try!(get_optional_datetime_param(l, 4));
         let limit = try!(get_limit_param(l, 5));
-
         let result = try!(trans.get_edge_time_range(outbound_id, t, high, low, limit));
+        serialize_edges(l, result);
+        Ok(1)
+    }
+
+    unsafe fn get_reversed_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let inbound_id = try!(get_uuid_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let result = try!(trans.get_reversed_edge_count(inbound_id, t));
+        serialize_u64(l, result);
+        Ok(1)
+    }
+
+    unsafe fn get_reversed_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let inbound_id = try!(get_uuid_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let offset = try!(get_offset_param(l, 3));
+        let limit = try!(get_limit_param(l, 4));
+        let result = try!(trans.get_reversed_edge_range(inbound_id, t, offset, limit));
+        serialize_edges(l, result);
+        Ok(1)
+    }
+
+    unsafe fn get_reversed_edge_time_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let inbound_id = try!(get_uuid_param(l, 1));
+        let t = try!(get_string_param(l, 2));
+        let high = try!(get_optional_datetime_param(l, 3));
+        let low = try!(get_optional_datetime_param(l, 4));
+        let limit = try!(get_limit_param(l, 5));
+        let result = try!(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit));
         serialize_edges(l, result);
         Ok(1)
     }

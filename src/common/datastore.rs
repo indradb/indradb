@@ -113,6 +113,18 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
 	}
 
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+		proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
+	}
+
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
+	}
+
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+		proxy_transaction!(self, get_reversed_edge_time_range, inbound_id, t, high, low, limit)
+	}
+
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
 		proxy_transaction!(self, get_global_metadata, key)
 	}

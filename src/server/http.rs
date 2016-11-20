@@ -3,7 +3,7 @@ use std::i64;
 use iron::status;
 use iron::headers::{Headers, ContentType, Authorization, Basic};
 use iron::typemap::{Key, TypeMap};
-use iron::middleware::BeforeMiddleware;
+use iron::middleware::{BeforeMiddleware, AfterMiddleware};
 use router::Router;
 use util::SimpleError;
 use nutrino::{Vertex, Edge, Transaction, Datastore, Error};
@@ -31,6 +31,7 @@ use std::cmp::min;
 use std::u16;
 use datastore::DATASTORE;
 use uuid::Uuid;
+use router::NoRoute;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
@@ -51,10 +52,11 @@ pub fn start(port: u16) {
 	router.post("/vertex", on_create_vertex);
 	router.post("/transaction", on_transaction);
 
+	router.get("/edge/_/:inbound_id/:type", on_get_reversed_edge_range);
 	router.get("/edge/:outbound_id/:type/:inbound_id", on_get_edge);
 	router.put("/edge/:outbound_id/:type/:inbound_id", on_set_edge);
 	router.delete("/edge/:outbound_id/:type/:inbound_id", on_delete_edge);
-	router.get("/edge/:outbound_id/:type", on_get_edge_range);
+	router.get("/edge/:outbound_id/:type/_", on_get_edge_range);
 
 	router.get("/vertex/:id", on_get_vertex);
 	router.put("/vertex/:id", on_set_vertex);
@@ -67,6 +69,7 @@ pub fn start(port: u16) {
 
 	let mut chain = Chain::new(router);
 	chain.link_before(BasicAuthMiddleware::new());
+	chain.link_after(ErrorMiddleware::new());
 	Iron::new(chain).http(&*binding).unwrap();
 }
 
@@ -124,6 +127,30 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 
 		let modifiers = (status::Unauthorized, json_content_type_modifier, www_authenticate_modifier, body);
 		Err(IronError::new(SimpleError::new(error_message), modifiers))
+	}
+}
+
+// -- Error middleware
+struct ErrorMiddleware {
+}
+
+impl ErrorMiddleware {
+	fn new() -> ErrorMiddleware {
+		ErrorMiddleware {}
+	}
+}
+
+impl AfterMiddleware for ErrorMiddleware {
+	fn after(&self, req: &mut Request, res: Response) -> IronResult<Response> {
+		Ok(res)
+	}
+
+	fn catch(&self, req: &mut Request, err: IronError) -> IronResult<Response> {
+		if err.error.is::<NoRoute>() {
+			Err(create_iron_error(status::Status::NotFound, "No route found".to_string()))
+		} else {
+			Err(err)
+		}
 	}
 }
 
@@ -421,39 +448,68 @@ fn on_delete_edge(req: &mut Request) -> IronResult<Response> {
 fn on_get_edge_range(req: &mut Request) -> IronResult<Response> {
 	let outbound_id: Uuid = try!(get_url_param(req, "outbound_id"));
 	let t: String = try!(get_url_param(req, "type"));
-
 	let trans = try!(get_transaction(req));
-
 	let query_params = try!(get_query_params(req));
 	let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
 
-	// TODO: Right now we check for `count` separately to avoid a type error, since it returns an
-	// i64, vs the others which return Vec<Edge<Uuid>>. There's probably a cleaner way to do this
-	// in rust.
-	if action == "count" {
-		let result = try!(datastore_request(trans.get_edge_count(outbound_id, t)));
-		try!(datastore_request(trans.commit()));
-		Ok(to_response(status::Ok, &result))
-	} else {
-		let result = match action {
-			"time" => {
-				let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-				let high = parse_datetime(try!(get_query_param::<i64>(query_params, "high".to_string(), false)));
-				let low = parse_datetime(try!(get_query_param::<i64>(query_params, "low".to_string(), false)));
-				try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)))
-			},
-			"position" => {
-				let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-				let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
-				try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)))
-			},
-			_ => {
-				return Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string()))
-			}
-		};
+	match action {
+		"count" => {
+			let result = try!(datastore_request(trans.get_edge_count(outbound_id, t)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		"time" => {
+			let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+			let high = parse_datetime(try!(get_query_param::<i64>(query_params, "high".to_string(), false)));
+			let low = parse_datetime(try!(get_query_param::<i64>(query_params, "low".to_string(), false)));
+			let result = try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		"position" => {
+			let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+			let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
+			let result = try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		_ => {
+			Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string()))
+		}
+	}
+}
 
-		try!(datastore_request(trans.commit()));
-		Ok(to_response(status::Ok, &result))
+fn on_get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
+	let inbound_id: Uuid = try!(get_url_param(req, "inbound_id"));
+	let t: String = try!(get_url_param(req, "type"));
+	let trans = try!(get_transaction(req));
+	let query_params = try!(get_query_params(req));
+	let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
+
+	match action {
+		"count" => {
+			let result = try!(datastore_request(trans.get_reversed_edge_count(inbound_id, t)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		"time" => {
+			let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+			let high = parse_datetime(try!(get_query_param::<i64>(query_params, "high".to_string(), false)));
+			let low = parse_datetime(try!(get_query_param::<i64>(query_params, "low".to_string(), false)));
+			let result = try!(datastore_request(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		"position" => {
+			let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+			let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
+			let result = try!(datastore_request(trans.get_reversed_edge_range(inbound_id, t, offset, limit)));
+			try!(datastore_request(trans.commit()));
+			Ok(to_response(status::Ok, &result))
+		},
+		_ => {
+			Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string()))
+		}
 	}
 }
 
@@ -508,12 +564,19 @@ fn on_transaction(req: &mut Request) -> IronResult<Response> {
 							"create_vertex" => trans_create_vertex(&trans, &obj),
 							"set_vertex" => trans_set_vertex(&trans, &obj),
 							"delete_vertex" => trans_delete_vertex(&trans, &obj),
+							
 							"get_edge" => trans_get_edge(&trans, &obj),
 							"set_edge" => trans_set_edge(&trans, &obj),
 							"delete_edge" => trans_delete_edge(&trans, &obj),
+							
 							"get_edge_count" => trans_get_edge_count(&trans, &obj),
 							"get_edge_range" => trans_get_edge_range(&trans, &obj),
 							"get_edge_time_range" => trans_get_edge_time_range(&trans, &obj),
+							
+							"get_reversed_edge_count" => trans_get_reversed_edge_count(&trans, &obj),
+							"get_reversed_edge_range" => trans_get_reversed_edge_range(&trans, &obj),
+							"get_reversed_edge_time_range" => trans_get_reversed_edge_time_range(&trans, &obj),
+							
 							_ => {
 								return Err(create_iron_error(status::BadRequest, "Unknown action".to_string()))
 							}
@@ -608,6 +671,29 @@ fn trans_get_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, J
 	let high = parse_datetime(try!(get_optional_json_i64_param(item, "high")));
 	let low = parse_datetime(try!(get_optional_json_i64_param(item, "low")));
 	execute_trans_item(trans.get_edge_time_range(outbound_id, t, high, low, limit))
+}
+
+fn trans_get_reversed_edge_count(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
+	let t = try!(get_required_json_string_param(item, "type"));
+	execute_trans_item(trans.get_reversed_edge_count(inbound_id, t))
+}
+
+fn trans_get_reversed_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
+	let t = try!(get_required_json_string_param(item, "type"));
+	let limit = parse_limit(try!(get_optional_json_u16_param(item, "limit")));
+	let offset = try!(get_optional_json_u64_param(item, "offset")).unwrap_or(0);
+	execute_trans_item(trans.get_reversed_edge_range(inbound_id, t, offset, limit))
+}
+
+fn trans_get_reversed_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+	let inbound_id = try!(get_required_json_uuid_param(item, "inbound_id"));
+	let t = try!(get_required_json_string_param(item, "type"));
+	let limit = parse_limit(try!(get_optional_json_u16_param(item, "limit")));
+	let high = parse_datetime(try!(get_optional_json_i64_param(item, "high")));
+	let low = parse_datetime(try!(get_optional_json_i64_param(item, "low")));
+	execute_trans_item(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit))
 }
 
 fn execute_trans_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
