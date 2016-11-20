@@ -85,6 +85,7 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should not delete an unowned vertex");
 				::should_not_delete_an_unowned_vertex(&mut sandbox)
 			}
+
 			it "should get a valid edge" {
 				sandbox.setup("should get a valid edge");
 				::should_get_a_valid_edge(&mut sandbox)
@@ -121,6 +122,7 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should not delete an edge with bad permissions");
 				::should_not_delete_an_edge_with_bad_permissions(&mut sandbox)
 			}
+			
 			it "should get an edge count" {
 				sandbox.setup("should get an edge count");
 				::should_get_an_edge_count(&mut sandbox)
@@ -168,6 +170,55 @@ macro_rules! test_transaction_impl {
 			it "should get no edges for a reversed time range" {
 				sandbox.setup("should get no edges for a reversed time range");
 				::should_get_no_edges_for_a_reversed_time_range(&mut sandbox)
+			}
+
+			it "should get a reversed edge count" {
+				sandbox.setup("should get a reversed edge count");
+				::should_get_a_reversed_edge_count(&mut sandbox)
+			}
+			it "should get a reversed edge count for an invalid edge" {
+				sandbox.setup("should get a reversed edge count for an invalid edge");
+				::should_get_a_reversed_edge_count_for_an_invalid_edge(&mut sandbox)
+			}
+			it "should get an empty reversed edge range with zero limit" {
+				sandbox.setup("should get an empty reversed edge range with zero limit");
+				::should_get_an_empty_reversed_edge_range_with_zero_limit(&mut sandbox)
+			}
+			it "should get an empty reversed edge range" {
+				sandbox.setup("should get an empty reversed edge range");
+				::should_get_an_empty_reversed_edge_range(&mut sandbox)
+			}
+			it "should get a reversed edge range" {
+				sandbox.setup("should get a reversed edge range");
+				::should_get_a_reversed_edge_range(&mut sandbox)
+			}
+			it "should get an empty reversed edge range for an invalid edge" {
+				sandbox.setup("should get an empty reversed edge range for an invalid edge");
+				::should_get_an_empty_reversed_edge_range_for_an_invalid_edge(&mut sandbox)
+			}
+			it "should get reversed edges by a time range" {
+				sandbox.setup("should get reversed edges by a time range");
+				::should_get_reversed_edges_by_a_time_range(&mut sandbox)
+			}
+			it "should get no reversed edges for an invalid time range" {
+				sandbox.setup("should get no reversed edges for an invalid time range");
+				::should_get_no_reversed_edges_for_an_invalid_time_range(&mut sandbox)
+			}
+			it "should get reversed edges by a time range with no high" {
+				sandbox.setup("should get reversed edges by a time range with no high");
+				::should_get_reversed_edges_by_a_time_range_with_no_high(&mut sandbox)
+			}
+			it "should get reversed edges by a time range with no low" {
+				sandbox.setup("should get reversed edges by a time range with no low");
+				::should_get_reversed_edges_by_a_time_range_with_no_low(&mut sandbox)
+			}
+			it "should get reversed edges by a time range with no time" {
+				sandbox.setup("should get reversed edges by a time range with no time");
+				::should_get_reversed_edges_by_a_time_range_with_no_time(&mut sandbox)
+			}
+			it "should get no reversed edges for a reversed time range" {
+				sandbox.setup("should get no reversed edges for a reversed time range");
+				::should_get_no_reversed_edges_for_a_reversed_time_range(&mut sandbox)
 			}
 		}
 	)

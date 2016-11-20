@@ -63,7 +63,7 @@ pub fn bench_set_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Benc
 }
 
 pub fn bench_get_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-    let outbound_id = create_edges(&mut sandbox);
+    let (outbound_id, _) = create_edges(&mut sandbox);
 
     b.iter(|| {
         let trans = sandbox.transaction();
@@ -72,7 +72,7 @@ pub fn bench_get_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
 }
 
 pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-    let outbound_id = create_edges(&mut sandbox);
+    let (outbound_id, _) = create_edges(&mut sandbox);
 
     b.iter(|| {
         let trans = sandbox.transaction();
@@ -81,7 +81,7 @@ pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
 }
 
 pub fn bench_get_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-    let outbound_id = create_edges(&mut sandbox);
+    let (outbound_id, _) = create_edges(&mut sandbox);
     let after = get_after();
     let before = get_before();
 

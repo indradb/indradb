@@ -136,7 +136,19 @@ impl PostgresTransaction {
 		Ok(edges)
 	}
 
-	fn handle_get_metadata_results(&self, results: Rows) -> Result<JsonValue, Error> {
+	fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid, t: String) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+
+		for row in &results {
+			let outbound_id: Uuid = row.get(0);
+			let weight: f32 = row.get(1);
+			edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
+		}
+
+		Ok(edges)
+	}
+
+	fn handle_get_metadata(&self, results: Rows) -> Result<JsonValue, Error> {
 		for row in &results {
 			let value: JsonValue = row.get(0);
 			return Ok(value)
@@ -145,7 +157,7 @@ impl PostgresTransaction {
 		Err(Error::MetadataNotFound)
 	}
 
-	fn handle_update_metadata_results(&self, results: Rows) -> Result<(), Error> {
+	fn handle_update_metadata(&self, results: Rows) -> Result<(), Error> {
 		for _ in &results {
 			return Ok(());
 		}
@@ -356,9 +368,82 @@ impl Transaction<Uuid> for PostgresTransaction {
 		self.fill_edges(results, outbound_id, t)
 	}
 
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+		let results = try!(self.trans.query("
+			SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
+		", &[&inbound_id, &t]));
+
+		for row in &results {
+			let count: i64 = row.get(0);
+			return Ok(count as u64)
+		}
+
+		panic!("Unreachable point hit")
+	}
+
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		if offset > i64::MAX as u64 {
+			return Err(Error::OutOfRange("offset".to_string()));
+		}
+		
+		let results = try!(self.trans.query("
+			SELECT outbound_id, weight
+			FROM edges
+			WHERE inbound_id=$1 AND type=$2
+			ORDER BY update_date DESC
+			OFFSET $3
+			LIMIT $4
+		", &[&inbound_id, &t, &(offset as i64), &(limit as i64)]));
+
+		self.fill_reversed_edges(results, inbound_id, t)
+	}
+
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		let results = try!(match (high, low) {
+			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
+				self.trans.query("
+					SELECT outbound_id, weight
+					FROM edges
+					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
+					ORDER BY update_date DESC
+					LIMIT $5
+				", &[&inbound_id, &t, &high_unboxed, &low_unboxed, &(limit as i64)])
+			},
+			(Option::Some(high_unboxed), Option::None) => {
+				self.trans.query("
+					SELECT outbound_id, weight
+					FROM edges
+					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3
+					ORDER BY update_date DESC
+					LIMIT $4
+				", &[&inbound_id, &t, &high_unboxed, &(limit as i64)])
+			},
+			(Option::None, Option::Some(low_unboxed)) => {
+				self.trans.query("
+					SELECT outbound_id, weight
+					FROM edges
+					WHERE inbound_id=$1 AND type=$2 AND update_date >= $3
+					ORDER BY update_date DESC
+					LIMIT $4
+				", &[&inbound_id, &t, &low_unboxed, &(limit as i64)])
+			},
+			_ => {
+				self.trans.query("
+					SELECT outbound_id, weight
+					FROM edges
+					WHERE inbound_id=$1 AND type=$2
+					ORDER BY update_date DESC
+					LIMIT $3
+				", &[&inbound_id, &t, &(limit as i64)])
+			}
+		});
+
+		self.fill_reversed_edges(results, inbound_id, t)
+	}
+
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
 		let results = try!(self.trans.query("SELECT value FROM global_metadata WHERE key=$1", &[&key]));
-		self.handle_get_metadata_results(results)
+		self.handle_get_metadata(results)
 	}
 
 	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
@@ -370,17 +455,17 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&key, &value]));
 
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
 		let results = try!(self.trans.query("DELETE FROM global_metadata WHERE key=$1 RETURNING 1", &[&key]));
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let results = try!(self.trans.query("SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key]));
-		self.handle_get_metadata_results(results)
+		self.handle_get_metadata(results)
 	}
 
 	fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
@@ -392,17 +477,17 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&owner_id, &key, &value]));
 
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		let results = try!(self.trans.query("DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key]));
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let results = try!(self.trans.query("SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2", &[&owner_id, &key]));
-		self.handle_get_metadata_results(results)
+		self.handle_get_metadata(results)
 	}
 
 	fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
@@ -414,12 +499,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&owner_id, &key, &value]));
 
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		let results = try!(self.trans.query("DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1", &[&owner_id, &key]));
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn get_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
@@ -429,7 +514,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			WHERE owner_id=(SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3) AND key=$4
 		", &[&outbound_id, &t, &inbound_id, &key]));
 
-		self.handle_get_metadata_results(results)
+		self.handle_get_metadata(results)
 	}
 
 	fn set_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
@@ -441,7 +526,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&outbound_id, &t, &inbound_id, &key, &value]));
 
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn delete_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<(), Error> {
@@ -451,7 +536,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&outbound_id, &t, &inbound_id, &key]));
 
-		self.handle_update_metadata_results(results)
+		self.handle_update_metadata(results)
 	}
 
 	fn commit(self) -> Result<(), Error> {

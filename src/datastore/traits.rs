@@ -28,6 +28,10 @@ pub trait Transaction<I: Id> {
 	fn get_edge_range(&self, I, String, u64, u16) -> Result<Vec<models::Edge<I>>, Error>;
 	fn get_edge_time_range(&self, I, String, Option<NaiveDateTime>, Option<NaiveDateTime>, u16) -> Result<Vec<models::Edge<I>>, Error>;
 
+	fn get_reversed_edge_count(&self, I, String) -> Result<u64, Error>;
+	fn get_reversed_edge_range(&self, I, String, u64, u16) -> Result<Vec<models::Edge<I>>, Error>;
+	fn get_reversed_edge_time_range(&self, I, String, Option<NaiveDateTime>, Option<NaiveDateTime>, u16) -> Result<Vec<models::Edge<I>>, Error>;
+
 	fn get_global_metadata(&self, String) -> Result<JsonValue, Error>;
 	fn set_global_metadata(&self, String, JsonValue) -> Result<(), Error>;
 	fn delete_global_metadata(&self, String) -> Result<(), Error>;
