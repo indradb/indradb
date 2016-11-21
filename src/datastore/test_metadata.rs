@@ -68,7 +68,8 @@ pub fn should_handle_account_metadata<D: Datastore<T, I>, T: Transaction<I>, I: 
 
 pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let owner_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
+	let t = models::Type::new("test_edge_type".to_string()).unwrap();
+	let owner_id = trans.create_vertex(t).unwrap();
 	let key = sandbox.generate_unique_string("vertex-metadata");
 
 	// Check to make sure there's no initial value
@@ -99,35 +100,37 @@ pub fn should_handle_vertex_metadata<D: Datastore<T, I>, T: Transaction<I>, I: I
 
 pub fn should_handle_edge_metadata<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
-	let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
-	let e = models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 0.5);
+	let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
+	let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
+	let inbound_id = trans.create_vertex(vertex_t).unwrap();
+	let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
+	let e = models::Edge::new(outbound_id, edge_t.clone(), inbound_id, models::Weight::new(0.5).unwrap());
 	trans.set_edge(e).unwrap();
 
 	let key = sandbox.generate_unique_string("edge-metadata");
 
 	// Check to make sure there's no initial value
-	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
+	let result = trans.get_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
 	// Set and get the value as true
-	let result = trans.set_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone(), JsonValue::Bool(true));
+	let result = trans.set_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone(), JsonValue::Bool(true));
 	assert!(result.is_ok());
 
-	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
+	let result = trans.get_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
 	// Set and get the value as false
-	let result = trans.set_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone(), JsonValue::Bool(false));
+	let result = trans.set_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone(), JsonValue::Bool(false));
 	assert!(result.is_ok());
 
-	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
+	let result = trans.get_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
 	assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
 	// Delete & check that it's deleted
-	let result = trans.delete_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
+	let result = trans.delete_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
 	assert!(result.is_ok());
 
-	let result = trans.get_edge_metadata(outbound_id, "test_edge_type".to_string(), inbound_id, key.clone());
+	let result = trans.get_edge_metadata(outbound_id, edge_t, inbound_id, key.clone());
 	assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }

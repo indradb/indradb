@@ -102,10 +102,6 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should not update an invalid edge");
 				::should_not_update_an_invalid_edge(&mut sandbox)
 			}
-			it "should not set an edge with a bad weight" {
-				sandbox.setup("should not set an edge with a bad weight");
-				::should_not_set_an_edge_with_a_bad_weight(&mut sandbox)
-			}
 			it "should not set an edge with bad permissions" {
 				sandbox.setup("should not set an edge with bad permissions");
 				::should_not_set_an_edge_with_bad_permissions(&mut sandbox)

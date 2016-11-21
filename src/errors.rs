@@ -55,3 +55,32 @@ impl fmt::Display for Error {
 		}
 	}
 }
+
+#[derive(Debug)]
+pub struct ValidationError {
+	description: String
+}
+
+impl ValidationError {
+	pub fn new(description: String) -> ValidationError {
+		ValidationError {
+			description: description
+		}
+	}
+}
+
+impl StdError for ValidationError {
+	fn description(&self) -> &str {
+		&self.description[..]
+	}
+
+	fn cause(&self) -> Option<&StdError> {
+		None
+	}
+}
+
+impl fmt::Display for ValidationError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "{}", self.description)
+	}
+}

@@ -4,6 +4,7 @@ use std::io::Write;
 use std::str;
 use std::u8;
 use std::io::Cursor;
+use models;
 
 pub enum KeyComponent {
 	Uuid(Uuid),
@@ -63,57 +64,41 @@ pub fn vertex_key(id: Uuid) -> Box<[u8]> {
 	])
 }
 
-pub fn edge_key(outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
+pub fn edge_key(outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<Box<[u8]>, Error> {
 	Ok(build_key(vec![
 		KeyComponent::Byte(EDGE_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0),
 		KeyComponent::Uuid(inbound_id)
 	]))
 }
 
-pub fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: String) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
+pub fn edge_without_inbound_id_key_pattern(outbound_id: Uuid, t: models::Type) -> Result<Box<[u8]>, Error> {
 	Ok(build_key(vec![
 		KeyComponent::Byte(EDGE_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t)
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0)
 	]))
 }
 
-pub fn reversed_edge_key(inbound_id: Uuid, t: String, outbound_id: Uuid) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
+pub fn reversed_edge_key(inbound_id: Uuid, t: models::Type, outbound_id: Uuid) -> Result<Box<[u8]>, Error> {
 	Ok(build_key(vec![
 		KeyComponent::Byte(REVERSED_EDGE_PRELUDE),
 		KeyComponent::Uuid(inbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0),
 		KeyComponent::Uuid(outbound_id)
 	]))
 }
 
-pub fn reversed_edge_without_outbound_id_key_pattern(inbound_id: Uuid, t: String) -> Result<Box<[u8]>, Error> {
-	if t.len() > u8::MAX as usize {
-		return Err(Error::Unexpected("`type` is too long".to_string()));
-	}
-
+pub fn reversed_edge_without_outbound_id_key_pattern(inbound_id: Uuid, t: models::Type) -> Result<Box<[u8]>, Error> {
 	Ok(build_key(vec![
 		KeyComponent::Byte(REVERSED_EDGE_PRELUDE),
 		KeyComponent::Uuid(inbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t)
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0)
 	]))
 }
 
@@ -140,46 +125,40 @@ pub fn vertex_metadata_key(id: Uuid, key: String) -> Box<[u8]> {
 	])
 }
 
-pub fn edge_metadata_key(outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Box<[u8]> {
+pub fn edge_metadata_key(outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Box<[u8]> {
 	build_key(vec![
 		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0),
 		KeyComponent::Uuid(inbound_id),
 		KeyComponent::String(key)
 	])
 }
 
-fn handle_parse_edge_key(key: &[u8], expected_prelude: u8) -> (Uuid, String, Uuid) {
-	if key.len() < 34 {
-		panic!("Unexpected key length: {}", key.len());
-	} else if key[0] != expected_prelude {
-		panic!("Unexpected prelude: {:x}", key[0]);
-	}
+fn handle_parse_edge_key(key: &[u8], expected_prelude: u8) -> (Uuid, models::Type, Uuid) {
+	assert!(key.len() >= 34);
+	assert_eq!(key[0], expected_prelude);
 
 	let first_id = Uuid::from_bytes(&key[1..17]).unwrap();
 	let t_len = key[17] as usize;
 	let t = str::from_utf8(&key[18..t_len+18]).unwrap();
 	let second_id = Uuid::from_bytes(&key[t_len+18..key.len()]).unwrap();
-	(first_id, t.to_string(), second_id)
+	(first_id, models::Type::new(t.to_string()).unwrap(), second_id)
 }
 
-pub fn parse_edge_key(key: &[u8]) -> (Uuid, String, Uuid) {
+pub fn parse_edge_key(key: &[u8]) -> (Uuid, models::Type, Uuid) {
 	handle_parse_edge_key(key, EDGE_PRELUDE)
 }
 
-pub fn parse_reversed_edge_key(key: &[u8]) -> (Uuid, String, Uuid) {
+pub fn parse_reversed_edge_key(key: &[u8]) -> (Uuid, models::Type, Uuid) {
 	let (inbound_id, t, outbound_id) = handle_parse_edge_key(key, REVERSED_EDGE_PRELUDE);
 	(outbound_id, t, inbound_id)
 }
 
 pub fn parse_vertex_key(key: &[u8]) -> Uuid {
-	if key.len() != 17 {
-		panic!("Unexpected key length: {}", key.len());
-	} else if key[0] != VERTEX_PRELUDE {
-		panic!("Unexpected prelude: {:x}", key[0]);
-	}
+	assert_eq!(key.len(), 17);
+	assert_eq!(key[0], VERTEX_PRELUDE);
 
 	Uuid::from_bytes(&key[1..17]).unwrap()
 }

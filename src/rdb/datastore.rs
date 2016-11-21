@@ -70,15 +70,15 @@ fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Er
 	Ok(())
 }
 
-fn delete_edge<W: Writable>(outbound_id: Uuid, t: String, inbound_id: Uuid, db: &DB, w: &mut W) -> Result<(), Error> {
+fn delete_edge<W: Writable>(outbound_id: Uuid, t: models::Type, inbound_id: Uuid, db: &DB, w: &mut W) -> Result<(), Error> {
 	try!(w.delete(&try!(edge_key(outbound_id, t.clone(), inbound_id))));
 	try!(w.delete(&try!(reversed_edge_key(inbound_id, t.clone(), outbound_id))));
 
 	let edge_metadata_key_prefix = build_key(vec![
 		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
 		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.len() as u8),
-		KeyComponent::String(t),
+		KeyComponent::Byte(t.0.len() as u8),
+		KeyComponent::String(t.0),
 		KeyComponent::Uuid(inbound_id)
 	]);
 
@@ -243,7 +243,7 @@ impl RocksdbTransaction {
 		Ok(count)
 	}
 
-	fn handle_get_edge_range(&self, edge_key_prefix: Box<[u8]>, offset: usize, limit: usize, parser: &Fn(&[u8]) -> (Uuid, String, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn handle_get_edge_range(&self, edge_key_prefix: Box<[u8]>, offset: usize, limit: usize, parser: &Fn(&[u8]) -> (Uuid, models::Type, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 		let mut i = 0;
 
@@ -265,7 +265,7 @@ impl RocksdbTransaction {
 		Ok(edges)
 	}
 
-	fn handle_get_edge_time_range(&self, edge_key_prefix: Box<[u8]>, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: usize, parser: &Fn(&[u8]) -> (Uuid, String, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn handle_get_edge_time_range(&self, edge_key_prefix: Box<[u8]>, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: usize, parser: &Fn(&[u8]) -> (Uuid, models::Type, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
 		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
@@ -303,7 +303,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(vertex)
 	}
 
-	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
+	fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
 		let id = Uuid::new_v4();
 		let vertex_value = VertexValue::new(self.account_id.clone(), t);
 		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
@@ -336,7 +336,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(())
 	}
 
-	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
+	fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
 		match try!(self.db.get(&try!(edge_key(outbound_id, t.clone(), inbound_id)))) {
 			Some(edge_value_bytes) => {
 				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
@@ -347,10 +347,6 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn set_edge(&self, edge: models::Edge<Uuid>) -> Result<(), Error> {
-		if edge.weight < -1.0 || edge.weight > 1.0 {
-			return Err(Error::OutOfRange("weight".to_string()));
-		}
-
 		// Verify that the vertices exist and that we own the vertex with the outbound ID
 		try!(self.get_vertex_value(edge.inbound_id));
 		let outbound_vertex_value = try!(self.get_vertex_value(edge.outbound_id));
@@ -367,7 +363,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(())
 	}
 
-	fn delete_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<(), Error> {
+	fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
 		// Verify that the edge exists and that we own it
 		try!(self.get_edge(outbound_id, t.clone(), inbound_id));
 		let outbound_vertex_value = try!(self.get_vertex_value(outbound_id));
@@ -381,40 +377,40 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(())
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		self.handle_get_edge_count(edge_key_prefix)
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		if offset > usize::MAX as u64 {
-			return Err(Error::OutOfRange("offset".to_string()));
+			return Err(Error::Unexpected("Offset out of range".to_string()));
 		}
 
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		self.handle_get_edge_range(edge_key_prefix, offset as usize, limit as usize, &parse_edge_key)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
 		self.handle_get_edge_time_range(edge_key_prefix, high, low, limit as usize, &parse_edge_key)
 	}
 
-	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
 		self.handle_get_edge_count(edge_key_prefix)
 	}
 
-	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		if offset > usize::MAX as u64 {
-			return Err(Error::OutOfRange("offset".to_string()));
+			return Err(Error::Unexpected("Offset out of range".to_string()));
 		}
 
 		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
 		self.handle_get_edge_range(edge_key_prefix, offset as usize, limit as usize, &parse_reversed_edge_key)
 	}
 
-	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
 		self.handle_get_edge_time_range(edge_key_prefix, high, low, limit as usize, &parse_reversed_edge_key)
 	}
@@ -469,17 +465,17 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		Ok(())
 	}
 
-	fn get_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
+	fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let result = try!(self.db.get(&edge_metadata_key(outbound_id, t, inbound_id, key)));
 		self.handle_get_metadata(result)
 	}
 
-	fn set_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+	fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
 		try!(self.get_edge(outbound_id, t.clone(), inbound_id));
 		self.handle_set_metadata(edge_metadata_key(outbound_id, t, inbound_id, key), value)
 	}
 
-	fn delete_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<(), Error> {
+	fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
 		try!(self.get_edge_metadata(outbound_id, t.clone(), inbound_id, key.clone()));
 		try!(self.db.delete(&edge_metadata_key(outbound_id, t, inbound_id, key)));
 		Ok(())

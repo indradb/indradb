@@ -8,10 +8,11 @@ use serde_json::Value as JsonValue;
 
 pub fn should_get_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let id = trans.create_vertex("test_vertex".to_string()).unwrap();
+	let t = models::Type::new("test_vertex_type".to_string()).unwrap();
+	let id = trans.create_vertex(t.clone()).unwrap();
 	let v = trans.get_vertex(id).unwrap();
 	assert_eq!(v.id, id);
-	assert_eq!(v.t, "test_vertex".to_string());
+	assert_eq!(v.t, t);
 }
 
 pub fn should_not_get_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -22,16 +23,19 @@ pub fn should_not_get_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I
 
 pub fn should_update_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let id = trans.create_vertex("test_vertex".to_string()).unwrap();
-	trans.set_vertex(models::Vertex::new(id, "test_vertex_2".to_string())).unwrap();
+	let original_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+	let id = trans.create_vertex(original_t).unwrap();
+	let updated_t = models::Type::new("test_vertex_type_2".to_string()).unwrap();
+	trans.set_vertex(models::Vertex::new(id, updated_t.clone())).unwrap();
 	let v = trans.get_vertex(id).unwrap();
 	assert_eq!(v.id, id);
-	assert_eq!(v.t, "test_vertex_2".to_string());
+	assert_eq!(v.t, updated_t);
 }
 
 pub fn should_not_update_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let result = trans.set_vertex(models::Vertex::new(I::default(), "movie".to_string()));
+	let t = models::Type::new("test_vertex_type".to_string()).unwrap();
+	let result = trans.set_vertex(models::Vertex::new(I::default(), t));
 	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
@@ -41,7 +45,8 @@ pub fn should_delete_a_valid_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id
 	trans.delete_vertex(outbound_id).unwrap();
 	let result = trans.get_vertex(outbound_id);
 	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
-	let count = trans.get_edge_count(outbound_id, "test_edge_type".to_string()).unwrap();
+	let t = models::Type::new("test_edge_type".to_string()).unwrap();
+	let count = trans.get_edge_count(outbound_id, t).unwrap();
 	assert_eq!(count, 0);
 }
 
@@ -53,7 +58,8 @@ pub fn should_not_delete_an_invalid_vertex<D: Datastore<T, I>, T: Transaction<I>
 
 pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
-	let vertex_id = trans.create_vertex("test_vertex".to_string()).unwrap();
+	let t = models::Type::new("test_vertex_type".to_string()).unwrap();
+	let vertex_id = trans.create_vertex(t).unwrap();
 	trans.commit().unwrap();
 
 	let email = sandbox.generate_unique_string("isolated");

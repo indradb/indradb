@@ -12,6 +12,7 @@ extern crate serde_json;
 extern crate libc;
 extern crate rand;
 extern crate test;
+extern crate regex;
 
 #[cfg(feature="postgres-datastore")] extern crate postgres;
 #[cfg(feature="postgres-datastore")] extern crate r2d2;
@@ -28,8 +29,8 @@ mod util;
 mod traits;
 
 pub use datastore::*;
-pub use models::{Vertex, Edge};
-pub use errors::Error;
+pub use models::{Vertex, Edge, Type, Weight};
+pub use errors::{Error, ValidationError};
 pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")] mod pg;

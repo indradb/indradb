@@ -1,4 +1,5 @@
 use uuid::Uuid;
+use models;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountValue {
@@ -20,11 +21,11 @@ impl AccountValue {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VertexValue {
     pub owner_id: Uuid,
-    pub t: String
+    pub t: models::Type
 }
 
 impl VertexValue {
-    pub fn new(owner_id: Uuid, t: String) -> Self {
+    pub fn new(owner_id: Uuid, t: models::Type) -> Self {
         VertexValue {
             owner_id: owner_id,
             t: t
@@ -35,11 +36,11 @@ impl VertexValue {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeValue {
     pub update_date: i64,
-    pub weight: f32
+    pub weight: models::Weight
 }
 
 impl EdgeValue {
-    pub fn new(update_date: i64, weight: f32) -> Self {
+    pub fn new(update_date: i64, weight: models::Weight) -> Self {
         EdgeValue {
             update_date: update_date,
             weight: weight

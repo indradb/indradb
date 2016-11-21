@@ -124,24 +124,26 @@ impl PostgresTransaction {
 		})
 	}
 
-	fn fill_edges(&self, results: Rows, outbound_id: Uuid, t: String) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn fill_edges(&self, results: Rows, outbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
 		for row in &results {
 			let inbound_id: Uuid = row.get(0);
-			let weight: f32 = row.get(1);
+			let weight_f32: f32 = row.get(1);
+			let weight = models::Weight::new(weight_f32).unwrap();
 			edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
 		}
 
 		Ok(edges)
 	}
 
-	fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid, t: String) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
 		for row in &results {
 			let outbound_id: Uuid = row.get(0);
-			let weight: f32 = row.get(1);
+			let weight_f32: f32 = row.get(1);
+			let weight = models::Weight::new(weight_f32).unwrap();
 			edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
 		}
 
@@ -171,20 +173,20 @@ impl Transaction<Uuid> for PostgresTransaction {
 		let results = try!(self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
 
 		for row in &results {
-			let t: String = row.get(0);
-			let v = models::Vertex::new(id, t);
+			let t_str: String = row.get(0);
+			let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
 			return Ok(v)
 		}
 
 		Err(Error::VertexNotFound)
 	}
 
-	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
+	fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
 		let id = Uuid::new_v4();
 
 		try!(self.trans.execute("
 			INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)
-		", &[&id, &t, &self.account_id]));
+		", &[&id, &t.0, &self.account_id]));
 
 		Ok(id)
 	}
@@ -195,7 +197,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			SET type=$1
 			WHERE id=$2 AND owner_id=$3
 			RETURNING 1
-		", &[&v.t, &v.id, &self.account_id]));
+		", &[&v.t.0, &v.id, &self.account_id]));
 
 		for _ in &results {
 			return Ok(())
@@ -214,13 +216,14 @@ impl Transaction<Uuid> for PostgresTransaction {
 		Err(Error::VertexNotFound)
 	}
 
-	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
+	fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
 		let results = try!(self.trans.query("
 			SELECT weight FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3 LIMIT 1
-		", &[&outbound_id, &t, &inbound_id]));
+		", &[&outbound_id, &t.0, &inbound_id]));
 
 		for row in &results {
-			let weight: f32 = row.get(0);
+			let weight_f32: f32 = row.get(0);
+			let weight = models::Weight::new(weight_f32).unwrap();
 			let e = models::Edge::new(outbound_id, t, inbound_id, weight);
 			return Ok(e)
 		}
@@ -229,10 +232,6 @@ impl Transaction<Uuid> for PostgresTransaction {
 	}
 
 	fn set_edge(&self, e: models::Edge<Uuid>) -> Result<(), Error> {
-		if e.weight < -1.0 || e.weight > 1.0 {
-			return Err(Error::OutOfRange("weight".to_string()));
-		}
-
 		let id = Uuid::new_v4();
 
 		// Because this command could fail, we need to set a savepoint to roll
@@ -244,7 +243,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, NOW())
 			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$6, update_date=NOW()
 			RETURNING 1
-		", &[&id, &e.outbound_id, &self.account_id, &e.t, &e.inbound_id, &e.weight]);
+		", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
 
 		let returnable = match results {
 			Ok(results) => {
@@ -281,12 +280,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 		returnable
 	}
 
-	fn delete_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<(), Error> {
+	fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
 		let results = try!(self.trans.query("
 			DELETE FROM EDGES
 			WHERE outbound_id=(SELECT id FROM vertices WHERE id=$1 AND owner_id=$2) AND type=$3 AND inbound_id=$4
 			RETURNING 1
-		", &[&outbound_id, &self.account_id, &t, &inbound_id]));
+		", &[&outbound_id, &self.account_id, &t.0, &inbound_id]));
 
 		for _ in &results {
 			return Ok(())
@@ -295,10 +294,10 @@ impl Transaction<Uuid> for PostgresTransaction {
 		Err(Error::EdgeNotFound)
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let results = try!(self.trans.query("
 			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
-		", &[&outbound_id, &t]));
+		", &[&outbound_id, &t.0]));
 
 		for row in &results {
 			let count: i64 = row.get(0);
@@ -308,9 +307,9 @@ impl Transaction<Uuid> for PostgresTransaction {
 		panic!("Unreachable point hit")
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		if offset > i64::MAX as u64 {
-			return Err(Error::OutOfRange("offset".to_string()));
+			return Err(Error::Unexpected("Offset out of range".to_string()));
 		}
 		
 		let results = try!(self.trans.query("
@@ -320,12 +319,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&outbound_id, &t, &(offset as i64), &(limit as i64)]));
+		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)]));
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let results = try!(match (high, low) {
 			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
 				self.trans.query("
@@ -334,7 +333,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
 					LIMIT $5
-				", &[&outbound_id, &t, &high_unboxed, &low_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
 			},
 			(Option::Some(high_unboxed), Option::None) => {
 				self.trans.query("
@@ -343,7 +342,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&outbound_id, &t, &high_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &high_unboxed, &(limit as i64)])
 			},
 			(Option::None, Option::Some(low_unboxed)) => {
 				self.trans.query("
@@ -352,7 +351,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&outbound_id, &t, &low_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &low_unboxed, &(limit as i64)])
 			},
 			_ => {
 				self.trans.query("
@@ -361,17 +360,17 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
 					LIMIT $3
-				", &[&outbound_id, &t, &(limit as i64)])
+				", &[&outbound_id, &t.0, &(limit as i64)])
 			}
 		});
 
 		self.fill_edges(results, outbound_id, t)
 	}
 
-	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let results = try!(self.trans.query("
 			SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
-		", &[&inbound_id, &t]));
+		", &[&inbound_id, &t.0]));
 
 		for row in &results {
 			let count: i64 = row.get(0);
@@ -381,9 +380,9 @@ impl Transaction<Uuid> for PostgresTransaction {
 		panic!("Unreachable point hit")
 	}
 
-	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		if offset > i64::MAX as u64 {
-			return Err(Error::OutOfRange("offset".to_string()));
+			return Err(Error::Unexpected("Offset out of range".to_string()));
 		}
 		
 		let results = try!(self.trans.query("
@@ -393,12 +392,12 @@ impl Transaction<Uuid> for PostgresTransaction {
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&inbound_id, &t, &(offset as i64), &(limit as i64)]));
+		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)]));
 
 		self.fill_reversed_edges(results, inbound_id, t)
 	}
 
-	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let results = try!(match (high, low) {
 			(Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
 				self.trans.query("
@@ -407,7 +406,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
 					LIMIT $5
-				", &[&inbound_id, &t, &high_unboxed, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
 			},
 			(Option::Some(high_unboxed), Option::None) => {
 				self.trans.query("
@@ -416,7 +415,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&inbound_id, &t, &high_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high_unboxed, &(limit as i64)])
 			},
 			(Option::None, Option::Some(low_unboxed)) => {
 				self.trans.query("
@@ -425,7 +424,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE inbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
 					LIMIT $4
-				", &[&inbound_id, &t, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &low_unboxed, &(limit as i64)])
 			},
 			_ => {
 				self.trans.query("
@@ -434,7 +433,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 					WHERE inbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
 					LIMIT $3
-				", &[&inbound_id, &t, &(limit as i64)])
+				", &[&inbound_id, &t.0, &(limit as i64)])
 			}
 		});
 
@@ -507,34 +506,34 @@ impl Transaction<Uuid> for PostgresTransaction {
 		self.handle_update_metadata(results)
 	}
 
-	fn get_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
+	fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let results = try!(self.trans.query("
 			SELECT value
 			FROM edge_metadata
 			WHERE owner_id=(SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3) AND key=$4
-		", &[&outbound_id, &t, &inbound_id, &key]));
+		", &[&outbound_id, &t.0, &inbound_id, &key]));
 
 		self.handle_get_metadata(results)
 	}
 
-	fn set_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+	fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
 		let results = try!(self.trans.query("
 			INSERT INTO edge_metadata (owner_id, key, value)
 			VALUES ((SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3), $4, $5)
 			ON CONFLICT ON CONSTRAINT edge_metadata_pkey
 			DO UPDATE SET value=$5
 			RETURNING 1
-		", &[&outbound_id, &t, &inbound_id, &key, &value]));
+		", &[&outbound_id, &t.0, &inbound_id, &key, &value]));
 
 		self.handle_update_metadata(results)
 	}
 
-	fn delete_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<(), Error> {
+	fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
 		let results = try!(self.trans.query("
 			DELETE FROM edge_metadata
 			WHERE owner_id=(SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3) AND key=$4
 			RETURNING 1
-		", &[&outbound_id, &t, &inbound_id, &key]));
+		", &[&outbound_id, &t.0, &inbound_id, &key]));
 
 		self.handle_update_metadata(results)
 	}

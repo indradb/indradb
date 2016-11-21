@@ -7,7 +7,8 @@ use test::Bencher;
 
 pub fn bench_get_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
     let trans = sandbox.transaction();
-    let id = trans.create_vertex("test_name".to_string()).unwrap();
+    let t = models::Type::new("test_name".to_string()).unwrap();
+    let id = trans.create_vertex(t).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
@@ -19,45 +20,55 @@ pub fn bench_get_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Be
 pub fn bench_create_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
     b.iter(|| {
         let trans = sandbox.transaction();
-    	trans.create_vertex("user".to_string()).unwrap();
+        let t = models::Type::new("user".to_string()).unwrap();
+    	trans.create_vertex(t).unwrap();
     });
 }
 
 pub fn bench_set_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
     let trans = sandbox.transaction();
-    let id = trans.create_vertex("test_name".to_string()).unwrap();
+    let t = models::Type::new("test_name".to_string()).unwrap();
+    let id = trans.create_vertex(t).unwrap();
     trans.commit().unwrap();
     
     b.iter(|| {
         let trans = sandbox.transaction();
-        let v = models::Vertex::new(id, "test_vertex".to_string());
+        let t = models::Type::new("test_vertex".to_string()).unwrap();
+        let v = models::Vertex::new(id, t);
         trans.set_vertex(v).unwrap();
     });
 }
 
 pub fn bench_get_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
     let trans = sandbox.transaction();
-    let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
-    let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 0.5);
+
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
+    let inbound_id = trans.create_vertex(vertex_t).unwrap();
+    
+    let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
+    let e = models::Edge::new(outbound_id, edge_t, inbound_id, models::Weight::new(0.5).unwrap());
 	trans.set_edge(e).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
         let trans = sandbox.transaction();
-        trans.get_edge(outbound_id, "test_edge_type".to_string(), inbound_id).unwrap();
+        let t = models::Type::new("test_edge_type".to_string()).unwrap();
+        trans.get_edge(outbound_id, t, inbound_id).unwrap();
     });
 }
 
 pub fn bench_set_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
     let trans = sandbox.transaction();
-    let outbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
-    let inbound_id = trans.create_vertex("test_vertex_type".to_string()).unwrap();
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
+    let inbound_id = trans.create_vertex(vertex_t).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
         let trans = sandbox.transaction();
-        let e = models::Edge::new(outbound_id, "test_edge_type".to_string(), inbound_id, 1.0);
+        let t = models::Type::new("test_edge_type".to_string()).unwrap();
+        let e = models::Edge::new(outbound_id, t, inbound_id, models::Weight::new(1.0).unwrap());
         trans.set_edge(e).unwrap();
     });
 }
@@ -67,7 +78,8 @@ pub fn bench_get_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
 
     b.iter(|| {
         let trans = sandbox.transaction();
-    	trans.get_edge_count(outbound_id, "test_edge_type".to_string()).unwrap();
+        let t = models::Type::new("test_edge_type".to_string()).unwrap();
+    	trans.get_edge_count(outbound_id, t).unwrap();
     });
 }
 
@@ -76,7 +88,8 @@ pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
 
     b.iter(|| {
         let trans = sandbox.transaction();
-        trans.get_edge_range(outbound_id, "test_edge_type".to_string(), 0, 5).unwrap();
+        let t = models::Type::new("test_edge_type".to_string()).unwrap();
+        trans.get_edge_range(outbound_id, t, 0, 5).unwrap();
     });
 }
 
@@ -87,6 +100,7 @@ pub fn bench_get_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b
 
     b.iter(|| {
         let trans = sandbox.transaction();
-    	trans.get_edge_time_range(outbound_id, "test_edge_type".to_string(), after.clone(), before.clone(), 10).unwrap();
+        let t = models::Type::new("test_edge_type".to_string()).unwrap();
+    	trans.get_edge_time_range(outbound_id, t, after.clone(), before.clone(), 10).unwrap();
     });
 }
