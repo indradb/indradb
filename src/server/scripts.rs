@@ -4,7 +4,6 @@
 
 use lua;
 use libc;
-use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::collections::BTreeMap;
 use common::ProxyTransaction;
