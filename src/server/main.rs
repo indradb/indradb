@@ -18,7 +18,7 @@ extern crate uuid;
 #[macro_use] extern crate lazy_static;
 
 mod http;
-mod scripts;
+mod script;
 mod util;
 mod datastore;
 

@@ -4,7 +4,7 @@ use iron::status;
 use nutrino::{Vertex, Edge, Transaction, Type};
 use std::io::Read;
 use serde_json::value::Value as JsonValue;
-use scripts;
+use script;
 use std::env;
 use std::path::Path;
 use regex;
@@ -188,7 +188,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
 	let account_id = get_account_id(req);
 	let trans = try!(get_transaction(req));
 
-	match scripts::run(trans, account_id, &payload[..], arg) {
+	match script::run(trans, account_id, &payload[..], arg) {
 		Ok(val) => Ok(to_response(status::Ok, &val)),
 		Err(err) => Err(create_iron_error(status::InternalServerError, format!("Script failed: {:?}", err)))
 	}
