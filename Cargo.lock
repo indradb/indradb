@@ -550,6 +550,7 @@ dependencies = [
  "r2d2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2_postgres 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocksdb 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.8.16 (registry+https://github.com/rust-lang/crates.io-index)",

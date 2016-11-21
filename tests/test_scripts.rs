@@ -140,10 +140,6 @@ describe! script_tests {
 		run_script(account_id, secret, "set_and_get_edge")
 	}
 
-	it "should run set_edge_bad_weight" {
-		run_script(account_id, secret, "set_edge_bad_weight")
-	}
-
 	it "should run set_vertex" {
 		run_script(account_id, secret, "set_vertex")
 	}

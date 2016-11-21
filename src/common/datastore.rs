@@ -4,7 +4,7 @@
 // rust is not flexible enough (yet) to support that. 
 
 use std::env;
-use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction};
+use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction, Type};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use chrono::NaiveDateTime;
@@ -77,7 +77,7 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, get_vertex, id)
 	}
 
-	fn create_vertex(&self, t: String) -> Result<Uuid, Error> {
+	fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
 		proxy_transaction!(self, create_vertex, t)
 	}
 
@@ -89,7 +89,7 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, delete_vertex, id)
 	}
 
-	fn get_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
+	fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
 		proxy_transaction!(self, get_edge, outbound_id, t, inbound_id)
 	}
 
@@ -97,31 +97,31 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, set_edge, edge)
 	}
 
-	fn delete_edge(&self, outbound_id: Uuid, t: String, inbound_id: Uuid) -> Result<(), Error> {
+	fn delete_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<(), Error> {
 		proxy_transaction!(self, delete_edge, outbound_id, t, inbound_id)
 	}
 
-	fn get_edge_count(&self, outbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_edge_count(&self, outbound_id: Uuid, t: Type) -> Result<u64, Error> {
 		proxy_transaction!(self, get_edge_count, outbound_id, t)
 	}
 
-	fn get_edge_range(&self, outbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
 	}
 
-	fn get_edge_time_range(&self, outbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
 	}
 
-	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: String) -> Result<u64, Error> {
+	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Type) -> Result<u64, Error> {
 		proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
 	}
 
-	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: String, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
 	}
 
-	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: String, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
 		proxy_transaction!(self, get_reversed_edge_time_range, inbound_id, t, high, low, limit)
 	}
 
@@ -161,15 +161,15 @@ impl Transaction<Uuid> for ProxyTransaction {
 		proxy_transaction!(self, delete_vertex_metadata, owner_id, key)
 	}
 
-	fn get_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
+	fn get_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		proxy_transaction!(self, get_edge_metadata, outbound_id, t, inbound_id, key)
 	}
 
-	fn set_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+	fn set_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
 		proxy_transaction!(self, set_edge_metadata, outbound_id, t, inbound_id, key, value)
 	}
 
-	fn delete_edge_metadata(&self, outbound_id: Uuid, t: String, inbound_id: Uuid, key: String) -> Result<(), Error> {
+	fn delete_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
 		proxy_transaction!(self, delete_edge_metadata, outbound_id, t, inbound_id, key)
 	}
 
