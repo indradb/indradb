@@ -15,6 +15,58 @@ use super::keys::*;
 use librocksdb_sys::rocksdb_column_family_handle_t;
 use std::i64;
 use std::i32;
+use serde::{Serialize, Deserialize};
+
+fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
+    let result = try!(bincode_serde::serialize(value, SizeLimit::Infinite));
+    Ok(result.into_boxed_slice())
+}
+
+fn bincode_deserialize_value<T: Deserialize>(value: &[u8]) -> Result<T, Error> {
+    let result = try!(bincode_serde::deserialize(value));
+    Ok(result)
+}
+
+fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>, Error> {
+    let result = try!(serde_json::to_vec(value));
+    Ok(result.into_boxed_slice())
+}
+
+fn json_deserialize_value(value: &[u8]) -> Result<JsonValue, Error> {
+    let result = try!(serde_json::from_slice(value));
+    Ok(result)
+}
+
+fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool, Error> {
+    match try!(db.get_cf(cf, &key)) {
+        Some(_) => Ok(true),
+        None => Ok(false)
+    }
+}
+
+fn get_bincode<T: Deserialize>(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<T>, Error> {
+    match try!(db.get_cf(cf, &key)) {
+        Some(value_bytes) => Ok(Some(try!(bincode_deserialize_value(&value_bytes)))),
+        None => Ok(None)
+    }
+}
+
+fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &T) -> Result<(), Error> {
+    try!(db.put_cf(cf, &key, &try!(bincode_serialize_value(value))));
+    Ok(())
+}
+
+fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValue>, Error> {
+    match try!(db.get_cf(cf, &key)) {
+        Some(value_bytes) => Ok(Some(try!(json_deserialize_value(&value_bytes)))),
+        None => Ok(None)
+    }
+}
+
+fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<(), Error> {
+    try!(db.put_cf(cf, &key, &try!(json_serialize_value(value))));
+    Ok(())
+}
 
 type ColumnFamily = *mut rocksdb_column_family_handle_t;
 
@@ -36,26 +88,19 @@ impl AccountManager {
 	}
 
     pub fn serialize_value(&self, value: &AccountValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(bincode_serde::serialize(value, SizeLimit::Infinite)).into_boxed_slice())
+        bincode_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<AccountValue, Error> {
-        let result = try!(bincode_serde::deserialize(value));
-        Ok(result)
+        bincode_deserialize_value(value)
     }
 
 	pub fn exists(&self, id: Uuid) -> Result<bool, Error> {
-		match try!(self.db.get_cf(self.cf, &self.key(id))) {
-			Some(_) => Ok(true),
-			None => Ok(false)
-		}
+        exists(&self.db, self.cf, self.key(id))
 	}
 
     pub fn get(&self, id: Uuid) -> Result<Option<AccountValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(id))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_bincode(&self.db, self.cf, self.key(id))
     }
 
 	pub fn create(&self, email: String) -> Result<(Uuid, String), Error> {
@@ -64,8 +109,7 @@ impl AccountManager {
 		let secret = generate_random_secret();
 		let hash = get_salted_hash(&salt[..], None, &secret[..]);
 		let value = AccountValue::new(email, salt, hash);
-        let value_bytes = try!(self.serialize_value(&value));
-		try!(self.db.put_cf(self.cf, &self.key(id), &value_bytes[..]));
+        try!(set_bincode(&self.db, self.cf, self.key(id), &value));
 		Ok((id, secret))
 	}
 
@@ -112,38 +156,30 @@ impl VertexManager {
 	}
 
     pub fn serialize_value(&self, value: &VertexValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(bincode_serde::serialize(value, SizeLimit::Infinite)).into_boxed_slice())
+        bincode_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<VertexValue, Error> {
-        let result = try!(bincode_serde::deserialize(value));
-        Ok(result)
+        bincode_deserialize_value(value)
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool, Error> {
-		match try!(self.db.get_cf(self.cf, &self.key(id))) {
-			Some(_) => Ok(true),
-			None => Ok(false)
-		}
+		exists(&self.db, self.cf, self.key(id))
 	}
 
     pub fn get(&self, id: Uuid) -> Result<Option<VertexValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(id))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_bincode(&self.db, self.cf, self.key(id))
     }
 
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
 		let value = VertexValue::new(account_id, t);
-		let value_bytes = try!(self.serialize_value(&value));
-		try!(self.db.put_cf(self.cf, &self.key(id), &value_bytes[..]));
+        try!(set_bincode(&self.db, self.cf, self.key(id), &value));
 		Ok(id)
     }
 
     pub fn update(&self, id: Uuid, value: &VertexValue) -> Result<(), Error> {
-        try!(self.db.put_cf(self.cf, &self.key(id), &try!(self.serialize_value(value))));
+        try!(set_bincode(&self.db, self.cf, self.key(id), value));
         Ok(())
     }
 
@@ -194,32 +230,25 @@ impl EdgeManager {
     }
 
     pub fn serialize_value(&self, value: &EdgeValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(bincode_serde::serialize(value, SizeLimit::Infinite)).into_boxed_slice())
+        bincode_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<EdgeValue, Error> {
-        let result = try!(bincode_serde::deserialize(value));
-        Ok(result)
+        bincode_deserialize_value(value)
     }
 
     pub fn exists(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<bool, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))) {
-            Some(_) => Ok(true),
-            None => Ok(false)
-        }
+        exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
     }
 
     pub fn get(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<Option<EdgeValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_bincode(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
     }
 
     pub fn set(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, old_update_datetime: Option<NaiveDateTime>, new_update_datetime: NaiveDateTime, weight: models::Weight) -> Result<(), Error> {
         let edge_value = EdgeValue::new(new_update_datetime.timestamp(), weight);
-        try!(batch.put_cf(self.cf, &self.key(outbound_id, t.clone(), inbound_id), &try!(self.serialize_value(&edge_value))));
-
+        try!(set_bincode(&self.db, self.cf, self.key(outbound_id, t.clone(), inbound_id), &edge_value));
+        
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         try!(edge_range_manager.update(&mut batch, outbound_id, t.clone(), inbound_id, old_update_datetime, new_update_datetime, weight));
 
@@ -294,12 +323,11 @@ impl EdgeRangeManager {
     }
 
     pub fn serialize_value(&self, value: &EdgeRangeValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(bincode_serde::serialize(value, SizeLimit::Infinite)).into_boxed_slice())
+        bincode_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<EdgeRangeValue, Error> {
-        let result = try!(bincode_serde::deserialize(value));
-        Ok(result)
+        bincode_deserialize_value(value)
     }
 
     pub fn update(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, second_id: Uuid, old_update_datetime: Option<NaiveDateTime>, new_update_datetime: NaiveDateTime, weight: models::Weight) -> Result<(), Error> {
@@ -308,7 +336,7 @@ impl EdgeRangeManager {
         }
 
         let value = EdgeRangeValue::new(second_id, weight);
-        try!(batch.put_cf(self.cf, &self.key(first_id, t, new_update_datetime), &try!(self.serialize_value(&value))));
+        try!(set_bincode(&self.db, self.cf, self.key(first_id, t, new_update_datetime), &value));
         Ok(())
     }
 
@@ -336,24 +364,19 @@ impl GlobalMetadataManager {
 	}
 
     pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(serde_json::to_vec(value)).into_boxed_slice())
+        json_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        let result = try!(serde_json::from_slice(value));
-        Ok(result)
+        json_deserialize_value(value)
     }
 
     pub fn get(&self, name: String) -> Result<Option<JsonValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(name))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_json(&self.db, self.cf, self.key(name))
     }
 
     pub fn set(&self, name: String, value: &JsonValue) -> Result<(), Error> {
-        try!(self.db.put_cf(self.cf, &self.key(name), &try!(self.serialize_value(value))));
-        Ok(())
+        set_json(&self.db, self.cf, self.key(name), value)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, name: String) -> Result<(), Error> {
@@ -387,24 +410,19 @@ impl AccountMetadataManager {
     }
 
     pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(serde_json::to_vec(value)).into_boxed_slice())
+        json_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        let result = try!(serde_json::from_slice(value));
-        Ok(result)
+        json_deserialize_value(value)
     }
 
     pub fn get(&self, account_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(account_id, name))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_json(&self.db, self.cf, self.key(account_id, name))
     }
 
     pub fn set(&self, account_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
-        try!(self.db.put_cf(self.cf, &self.key(account_id, name), &try!(self.serialize_value(value))));
-        Ok(())
+        set_json(&self.db, self.cf, self.key(account_id, name), value)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, account_id: Uuid, name: String) -> Result<(), Error> {
@@ -443,24 +461,19 @@ impl VertexMetadataManager {
     }
 
     pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(serde_json::to_vec(value)).into_boxed_slice())
+        json_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        let result = try!(serde_json::from_slice(value));
-        Ok(result)
+        json_deserialize_value(value)
     }
 
     pub fn get(&self, vertex_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(vertex_id, name))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_json(&self.db, self.cf, self.key(vertex_id, name))
     }
 
     pub fn set(&self, vertex_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
-        try!(self.db.put_cf(self.cf, &self.key(vertex_id, name), &try!(self.serialize_value(value))));
-        Ok(())
+        set_json(&self.db, self.cf, self.key(vertex_id, name), value)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, vertex_id: Uuid, name: String) -> Result<(), Error> {
@@ -505,24 +518,19 @@ impl EdgeMetadataManager {
     }
 
     pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        Ok(try!(serde_json::to_vec(value)).into_boxed_slice())
+        json_serialize_value(value)
     }
 
     pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        let result = try!(serde_json::from_slice(value));
-        Ok(result)
+        json_deserialize_value(value)
     }
 
     pub fn get(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
-        match try!(self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))) {
-            Some(value_bytes) => Ok(Some(try!(self.deserialize_value(&value_bytes)))),
-            None => Ok(None)
-        }
+        get_json(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name))
     }
 
     pub fn set(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
-        try!(self.db.put_cf(self.cf, &self.key(outbound_id, t, inbound_id, name), &try!(self.serialize_value(value))));
-        Ok(())
+        set_json(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name), value)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<(), Error> {
