@@ -1,3 +1,4 @@
+#[macro_use] mod macros;
 mod api;
 mod errors;
 mod util;

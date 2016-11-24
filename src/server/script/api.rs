@@ -1,42 +1,9 @@
-#![allow(unreachable_code, unused_variables)]
-// Above warnings are ignored because the lua_fn! macro generates too much noise
-
 use lua;
 use common::ProxyTransaction;
 use nutrino::{Vertex, Edge, Transaction};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;
-
-macro_rules! lua_fn {
-    ($(pub unsafe fn $name:ident($targ:ident: &mut ProxyTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
-        $(
-            pub unsafe extern "C" fn $name($larg: *mut ::lua::raw::lua_State) -> ::libc::c_int {
-                let mut $larg = &mut ::lua::ExternState::from_lua_State($larg);
-
-                $larg.getglobal("trans");
-
-                if !$larg.islightuserdata(-1) {
-                    $larg.errorstr("Corrupted transaction");
-                    return 1;
-                }
-
-                let trans_ptr = $larg.touserdata(-1);
-                let $targ = &mut *(trans_ptr as *mut ProxyTransaction);
-
-                return match inner($targ, &mut $larg) {
-                    Ok(i) => i,
-                    Err(err) => {
-                        err.serialize($larg);
-                        1
-                    }
-                } as ::libc::c_int;
-
-                unsafe fn inner($targ: &mut ProxyTransaction, $larg: &mut $typ) -> Result<i32, LuaError> $code
-            }
-        )+
-    )
-}
 
 lua_fn! {
     pub unsafe fn get_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
