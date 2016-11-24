@@ -65,15 +65,6 @@ pub fn parse_uuid_key(key: &[u8]) -> Uuid {
 	Uuid::from_bytes(key).unwrap()
 }
 
-pub fn parse_edge_key(key: &[u8]) -> (Uuid, models::Type, Uuid) {
-	assert!(key.len() >= 33);
-	let outbound_id = Uuid::from_bytes(&key[0..16]).unwrap();
-	let t_len = key[16] as usize;
-	let t = str::from_utf8(&key[17..t_len+17]).unwrap();
-	let inbound_id = Uuid::from_bytes(&key[t_len+17..key.len()]).unwrap();
-	(outbound_id, models::Type::new(t.to_string()).unwrap(), inbound_id)
-}
-
 pub fn parse_edge_range_key(key: &[u8]) -> (Uuid, models::Type, NaiveDateTime) {
 	assert!(key.len() >= 33);
 	let first_id = Uuid::from_bytes(&key[0..16]).unwrap();

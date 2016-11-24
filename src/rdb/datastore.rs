@@ -108,7 +108,7 @@ impl RocksdbTransaction {
 
 	fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let mut count: u64 = 0;
-		let edge_range_prefix_key = edge_range_manager.prefix_key(first_id, t);
+		let edge_range_prefix_key = edge_range_manager.prefix_key(first_id, t.clone());
 
 		prefix_iterate!(edge_range_manager, &edge_range_prefix_key, key, value, {
 			count += 1;

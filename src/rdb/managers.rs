@@ -87,14 +87,6 @@ impl AccountManager {
 		build_key(vec![KeyComponent::Uuid(id)])
 	}
 
-    pub fn serialize_value(&self, value: &AccountValue) -> Result<Box<[u8]>, Error> {
-        bincode_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<AccountValue, Error> {
-        bincode_deserialize_value(value)
-    }
-
 	pub fn exists(&self, id: Uuid) -> Result<bool, Error> {
         exists(&self.db, self.cf, self.key(id))
 	}
@@ -155,10 +147,6 @@ impl VertexManager {
 		build_key(vec![KeyComponent::Uuid(id)])
 	}
 
-    pub fn serialize_value(&self, value: &VertexValue) -> Result<Box<[u8]>, Error> {
-        bincode_serialize_value(value)
-    }
-
     pub fn deserialize_value(&self, value: &[u8]) -> Result<VertexValue, Error> {
         bincode_deserialize_value(value)
     }
@@ -204,7 +192,7 @@ impl VertexManager {
         });
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        let reversed_edge_range_prefix_key = edge_range_manager.prefix_key_no_type(id);
+        let reversed_edge_range_prefix_key = reversed_edge_range_manager.prefix_key_no_type(id);
         prefix_iterate!(reversed_edge_range_manager, &reversed_edge_range_prefix_key, key, value, {
             let (inbound_id, t, update_datetime) = parse_edge_range_key(&key);
             assert!(inbound_id == id);
@@ -237,18 +225,6 @@ impl EdgeManager {
         ])
 	}
 
-    pub fn prefix_key_no_type(&self, outbound_id: Uuid) -> Box<[u8]> {
-        build_key(vec![KeyComponent::Uuid(outbound_id)])
-    }
-
-    pub fn serialize_value(&self, value: &EdgeValue) -> Result<Box<[u8]>, Error> {
-        bincode_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<EdgeValue, Error> {
-        bincode_deserialize_value(value)
-    }
-
     pub fn exists(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<bool, Error> {
         exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
     }
@@ -265,7 +241,8 @@ impl EdgeManager {
         try!(edge_range_manager.update(&mut batch, outbound_id, t.clone(), inbound_id, old_update_datetime, new_update_datetime, weight));
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        edge_range_manager.update(&mut batch, inbound_id, t, outbound_id, old_update_datetime, new_update_datetime, weight)
+        try!(reversed_edge_range_manager.update(&mut batch, inbound_id, t, outbound_id, old_update_datetime, new_update_datetime, weight));
+        Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, update_datetime: NaiveDateTime) -> Result<(), Error> {
@@ -336,10 +313,6 @@ impl EdgeRangeManager {
         ])
     }
 
-    pub fn serialize_value(&self, value: &EdgeRangeValue) -> Result<Box<[u8]>, Error> {
-        bincode_serialize_value(value)
-    }
-
     pub fn deserialize_value(&self, value: &[u8]) -> Result<EdgeRangeValue, Error> {
         bincode_deserialize_value(value)
     }
@@ -377,14 +350,6 @@ impl GlobalMetadataManager {
 		build_key(vec![ KeyComponent::UnsizedString(name) ])
 	}
 
-    pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        json_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        json_deserialize_value(value)
-    }
-
     pub fn get(&self, name: String) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(name))
     }
@@ -421,14 +386,6 @@ impl AccountMetadataManager {
 
     pub fn prefix_key(&self, account_id: Uuid) -> Box<[u8]> {
         build_key(vec![ KeyComponent::Uuid(account_id) ])
-    }
-
-    pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        json_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        json_deserialize_value(value)
     }
 
     pub fn get(&self, account_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
@@ -472,14 +429,6 @@ impl VertexMetadataManager {
 
     pub fn prefix_key(&self, vertex_id: Uuid) -> Box<[u8]> {
         build_key(vec![ KeyComponent::Uuid(vertex_id) ])
-    }
-
-    pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        json_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        json_deserialize_value(value)
     }
 
     pub fn get(&self, vertex_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
@@ -529,14 +478,6 @@ impl EdgeMetadataManager {
             KeyComponent::ShortSizedString(t.0),
             KeyComponent::Uuid(inbound_id)
         ])
-    }
-
-    pub fn serialize_value(&self, value: &JsonValue) -> Result<Box<[u8]>, Error> {
-        json_serialize_value(value)
-    }
-
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<JsonValue, Error> {
-        json_deserialize_value(value)
     }
 
     pub fn get(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
