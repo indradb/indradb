@@ -171,7 +171,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn set_edge(&self, edge: models::Edge<Uuid>) -> Result<(), Error> {
 		// Verify that the vertices exist and that we own the vertex with the outbound ID
-		try!(self.check_write_permissions(edge.outbound_id, Error::EdgeNotFound));
+		try!(self.check_write_permissions(edge.outbound_id, Error::VertexNotFound));
 		if !try!(VertexManager::new(self.db.clone()).exists(edge.inbound_id)) {
 			return Err(Error::VertexNotFound);
 		}
