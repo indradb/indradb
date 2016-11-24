@@ -194,8 +194,9 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		match try!(edge_manager.get(outbound_id, t.clone(), inbound_id)) {
 			Some(value) => {
 				try!(self.check_write_permissions(outbound_id, Error::EdgeNotFound));
+				let update_datetime = NaiveDateTime::from_timestamp(value.update_timestamp, 0);
 				let mut batch = WriteBatch::default();
-				try!(edge_manager.delete(&mut batch, outbound_id, t, inbound_id, &value));
+				try!(edge_manager.delete(&mut batch, outbound_id, t, inbound_id, update_datetime));
 				try!(self.db.write(batch));
 				Ok(())
 			},

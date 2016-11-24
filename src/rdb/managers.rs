@@ -193,11 +193,23 @@ impl VertexManager {
         });
 
         let edge_manager = EdgeManager::new(self.db.clone());
-        let edge_prefix_key = edge_manager.prefix_key_no_type(id);
-        prefix_iterate!(edge_manager, &edge_prefix_key, key, value, {
-            let (outbound_id, t, inbound_id) = parse_edge_key(&key);
-            let edge_value = try!(edge_manager.deserialize_value(&value));
-            try!(edge_manager.delete(&mut batch, outbound_id, t, inbound_id, &edge_value));
+
+        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+        let edge_range_prefix_key = edge_range_manager.prefix_key_no_type(id);
+        prefix_iterate!(edge_range_manager, &edge_range_prefix_key, key, value, {
+            let (outbound_id, t, update_datetime) = parse_edge_range_key(&key);
+            assert!(outbound_id == id);
+            let edge_value = try!(edge_range_manager.deserialize_value(&value));
+            try!(edge_manager.delete(&mut batch, outbound_id, t.clone(), edge_value.other_id, update_datetime));
+        });
+
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+        let reversed_edge_range_prefix_key = edge_range_manager.prefix_key_no_type(id);
+        prefix_iterate!(reversed_edge_range_manager, &reversed_edge_range_prefix_key, key, value, {
+            let (inbound_id, t, update_datetime) = parse_edge_range_key(&key);
+            assert!(inbound_id == id);
+            let edge_value = try!(reversed_edge_range_manager.deserialize_value(&value));
+            try!(edge_manager.delete(&mut batch, edge_value.other_id, t, inbound_id, update_datetime));
         });
 
         Ok(())
@@ -256,9 +268,7 @@ impl EdgeManager {
         edge_range_manager.update(&mut batch, inbound_id, t, outbound_id, old_update_datetime, new_update_datetime, weight)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, value: &EdgeValue) -> Result<(), Error> {
-        let update_datetime = NaiveDateTime::from_timestamp(value.update_timestamp, 0);
-
+    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, update_datetime: NaiveDateTime) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(outbound_id, t.clone(), inbound_id)));
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
@@ -311,6 +321,10 @@ impl EdgeRangeManager {
             KeyComponent::ShortSizedString(t.0)
         ])
 	}
+
+    pub fn prefix_key_no_type(&self, first_id: Uuid) -> Box<[u8]> {
+        build_key(vec![ KeyComponent::Uuid(first_id) ])
+    }
 
     pub fn max_key_in_range(&self, first_id: Uuid, t: models::Type) -> Box<[u8]> {
         build_key(vec![
