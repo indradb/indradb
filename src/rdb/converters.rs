@@ -2,10 +2,11 @@ use errors::Error;
 use bincode::serde::{SerializeError, DeserializeError};
 use std::str::Utf8Error;
 use serde_json;
+use rocksdb::Error as RocksdbError;
 
-impl From<String> for Error {
-	fn from(message: String) -> Error {
-		Error::Unexpected(message)
+impl From<RocksdbError> for Error {
+	fn from(err: RocksdbError) -> Error {
+		Error::Unexpected(err.to_string())
 	}
 }
 

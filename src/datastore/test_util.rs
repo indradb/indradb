@@ -29,10 +29,10 @@ pub fn create_edges<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut 
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let weight = models::Weight::new(1.0).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_1, weight.clone())).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_2, weight.clone())).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_3, weight.clone())).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_4, weight.clone())).unwrap();
+    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_1, weight)).unwrap();
+    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_2, weight)).unwrap();
+    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_3, weight)).unwrap();
+    trans.set_edge(models::Edge::new(outbound_id, edge_t.clone(), inbound_id_4, weight)).unwrap();
     trans.set_edge(models::Edge::new(outbound_id, edge_t, inbound_id_5, weight)).unwrap();
     trans.commit().unwrap();
     (outbound_id, [inbound_id_1, inbound_id_2, inbound_id_3, inbound_id_4, inbound_id_5])

@@ -1,5 +1,5 @@
 use r2d2_postgres::{SslMode, PostgresConnectionManager};
-use r2d2::{Config, Pool, GetTimeout, PooledConnection};
+use r2d2::{Config, Pool, PooledConnection};
 use std::mem;
 use datastore::{Datastore, Transaction};
 use models;
@@ -13,7 +13,6 @@ use num_cpus;
 use uuid::Uuid;
 use std::i64;
 use postgres::error as pg_error;
-use super::util::*;
 
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {

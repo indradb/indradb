@@ -35,14 +35,29 @@ impl VertexValue {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeValue {
-    pub update_date: i64,
+    pub update_timestamp: i64,
     pub weight: models::Weight
 }
 
 impl EdgeValue {
-    pub fn new(update_date: i64, weight: models::Weight) -> Self {
+    pub fn new(update_timestamp: i64, weight: models::Weight) -> Self {
         EdgeValue {
-            update_date: update_date,
+            update_timestamp: update_timestamp,
+            weight: weight
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EdgeRangeValue {
+    pub other_id: Uuid,
+    pub weight: models::Weight
+}
+
+impl EdgeRangeValue {
+    pub fn new(other_id: Uuid, weight: models::Weight) -> Self {
+        EdgeRangeValue {
+            other_id: other_id,
             weight: weight
         }
     }

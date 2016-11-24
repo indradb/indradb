@@ -2,92 +2,18 @@ use datastore::{Datastore, Transaction};
 use models;
 use uuid::Uuid;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash};
+use util::get_salted_hash;
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::offset::utc::UTC;
-use rocksdb::{DB, Writable, Options, IteratorMode, Direction, WriteBatch, DBVector, DBCompactionStyle};
-use super::models::{AccountValue, EdgeValue, VertexValue};
-use bincode::SizeLimit;
-use bincode::serde as bincode_serde;
-use std::io::Write;
-use bincode::serde::{SerializeError, DeserializeError};
+use rocksdb::{DB, Options, IteratorMode, Direction, WriteBatch, DBCompactionStyle};
+use super::models::VertexValue;
 use std::sync::Arc;
-use std::str;
 use std::usize;
 use std::i32;
 use std::u64;
-use std::u8;
-use std::str::Utf8Error;
-use std::io::Cursor;
-use serde_json;
 use super::keys::*;
-
-// We use a macro to avoid take_while, and the overhead that closure callbacks would cause
-macro_rules! prefix_iterate {
-	($db:expr, $prefix:expr, $key:ident, $value:ident, $code:block) => {
-		for ($key, $value) in $db.iterator(IteratorMode::From($prefix, Direction::Forward)) {
-			if !$key.starts_with($prefix) {
-				break;
-			}
-
-			$code;
-		}
-	}
-}
-
-// Abstracted out so we can use it both for `RocksdbDatastore::has_account`,
-// and for account metadata sanity checks
-fn has_account(db: &DB, id: Uuid) -> Result<bool, Error> {
-	match try!(db.get(&account_key(id))) {
-		Some(_) => Ok(true),
-		None => Ok(false)
-	}
-}
-
-fn delete_vertex<W: Writable>(id: Uuid, db: &DB, mut w: &mut W) -> Result<(), Error> {
-	try!(w.delete(&vertex_key(id)));
-
-	let vertex_metadata_key_prefix = build_key(vec![
-		KeyComponent::Byte(VERTEX_METADATA_PRELUDE),
-		KeyComponent::Uuid(id)
-	]);
-
-	prefix_iterate!(db, &vertex_metadata_key_prefix, key, value, {
-		try!(w.delete(&key));
-	});
-
-	let edge_key_prefix = build_key(vec![
-		KeyComponent::Byte(EDGE_PRELUDE),
-		KeyComponent::Uuid(id)
-	]);
-
-	prefix_iterate!(db, &edge_key_prefix, key, value, {
-		let (outbound_id, t, inbound_id) = parse_edge_key(&key);
-		try!(delete_edge(outbound_id, t, inbound_id, db, w));
-	});
-
-	Ok(())
-}
-
-fn delete_edge<W: Writable>(outbound_id: Uuid, t: models::Type, inbound_id: Uuid, db: &DB, w: &mut W) -> Result<(), Error> {
-	try!(w.delete(&try!(edge_key(outbound_id, t.clone(), inbound_id))));
-	try!(w.delete(&try!(reversed_edge_key(inbound_id, t.clone(), outbound_id))));
-
-	let edge_metadata_key_prefix = build_key(vec![
-		KeyComponent::Byte(EDGE_METADATA_PRELUDE),
-		KeyComponent::Uuid(outbound_id),
-		KeyComponent::Byte(t.0.len() as u8),
-		KeyComponent::String(t.0),
-		KeyComponent::Uuid(inbound_id)
-	]);
-
-	prefix_iterate!(db, &edge_metadata_key_prefix, key, value, {
-		try!(w.delete(&key));
-	});
-
-	Ok(())
-}
+use super::managers::*;
 
 pub struct RocksdbDatastore {
 	db: Arc<DB>
@@ -95,13 +21,10 @@ pub struct RocksdbDatastore {
 
 impl RocksdbDatastore {
 	pub fn new(path: String, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
-		// NOTE: the rocksdb lib currently doesn't support prefix databases.
-		// Once it does, we could use that to speed things up quite a bit.
 		// Current tuning based off of the total ordered example, flash
 		// storage example on
 		// https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
 		// Some of the options for it were not available 
-
 		let mut opts = Options::default();
 		opts.create_if_missing(true);
 		opts.set_compaction_style(DBCompactionStyle::Level);
@@ -116,7 +39,16 @@ impl RocksdbDatastore {
 			opts.set_max_open_files(max_open_files.unwrap());
 		}
 
-		let db = try!(DB::open(&opts, &path[..]));
+		let mut db = try!(DB::open(&opts, &path[..]));
+		try!(db.create_cf("accounts:v1", &opts));
+		try!(db.create_cf("vertices:v1", &opts));
+		try!(db.create_cf("edges:v1", &opts));
+		try!(db.create_cf("edge_ranges:v1", &opts));
+		try!(db.create_cf("reversed_edge_ranges:v1", &opts));
+		try!(db.create_cf("global_metadata:v1", &opts));
+		try!(db.create_cf("account_metadata:v1", &opts));
+		try!(db.create_cf("vertex_metadata:v1", &opts));
+		try!(db.create_cf("edge_metadata:v1", &opts));
 
 		Ok(RocksdbDatastore{
 			db: Arc::new(db)
@@ -126,60 +58,31 @@ impl RocksdbDatastore {
 
 impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 	fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-		has_account(&self.db, account_id)
+		AccountManager::new(self.db.clone()).exists(account_id)
 	}
 
 	fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-		let account_id = Uuid::new_v4();
-		let salt = generate_random_secret();
-		let secret = generate_random_secret();
-		let hash = get_salted_hash(&salt[..], None, &secret[..]);
-		let account = AccountValue::new(email, salt, hash);
-		let account_bytes = try!(bincode_serde::serialize(&account, SizeLimit::Infinite));
-		try!(self.db.put(&account_key(account_id), &account_bytes[..]));
-		Ok((account_id, secret))
+		AccountManager::new(self.db.clone()).create(email)
 	}
 
 	fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-		if !try!(self.has_account(account_id)) {
+		let manager = AccountManager::new(self.db.clone());
+
+		if !try!(manager.exists(account_id)) {
 			return Err(Error::AccountNotFound);
 		}
 
 		let mut batch = WriteBatch::default();
-		try!(batch.delete(&account_key(account_id)));
-
-		// NOTE: This currently does a sequential scan through all keys to
-		// find which vertices to delete. This could be more efficient.
-		prefix_iterate!(self.db, "v1:".as_bytes(), key, value, {
-			let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&value.to_owned()[..]));
-
-			if vertex_value.owner_id == account_id {
-				try!(batch.delete(&key));
-			}
-
-			let vertex_id = parse_vertex_key(&key);
-			try!(delete_vertex(vertex_id, &self.db, &mut batch));
-		});
-
-		let account_metadata_key_prefix = build_key(vec![
-			KeyComponent::Byte(ACCOUNT_METADATA_PRELUDE),
-			KeyComponent::Uuid(account_id)
-		]);
-
-		prefix_iterate!(self.db, &account_metadata_key_prefix, key, value, {
-			try!(batch.delete(&key));
-		});
-
+		try!(manager.delete(&mut batch, account_id));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-		match try!(self.db.get(&account_key(account_id))) {
-			Some(account_bytes) => {
-				let account = try!(bincode_serde::deserialize::<AccountValue>(&account_bytes.to_owned()[..]));
-				let expected_hash = get_salted_hash(&account.salt[..], None, &secret[..]);
-				Ok(expected_hash == account.hash)
+		match try!(AccountManager::new(self.db.clone()).get(account_id)) {
+			Some(value) => {
+				let expected_hash = get_salted_hash(&value.salt[..], None, &secret[..]);
+				Ok(expected_hash == value.hash)
 			},
 			_ => Ok(false)
 		}
@@ -203,36 +106,11 @@ impl RocksdbTransaction {
 		})
 	}
 
-	fn handle_get_metadata(&self, result: Option<DBVector>) -> Result<JsonValue, Error> {
-		match result {
-			Some(json_bytes) => {
-				let json = try!(serde_json::from_slice::<JsonValue>(&json_bytes.to_owned()[..]));
-				Ok(json)
-			},
-			None => Err(Error::MetadataNotFound)
-		}
-	}
-
-	fn handle_set_metadata(&self, key: Box<[u8]>, value: JsonValue) -> Result<(), Error> {
-		let json_bytes = try!(serde_json::to_vec(&value));
-		try!(self.db.put(&key, &json_bytes[..]));
-		Ok(())
-	}
-
-	fn get_vertex_value(&self, id: Uuid) -> Result<VertexValue, Error> {
-		match try!(self.db.get(&vertex_key(id))) {
-			Some(vertex_bytes) => {
-				let vertex_value = try!(bincode_serde::deserialize::<VertexValue>(&vertex_bytes.to_owned()[..]));
-				Ok(vertex_value)
-			},
-			None => Err(Error::VertexNotFound)
-		}
-	}
-
-	fn handle_get_edge_count(&self, edge_key_prefix: Box<[u8]>) -> Result<u64, Error> {
+	fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
 		let mut count: u64 = 0;
+		let edge_range_prefix_key = edge_range_manager.prefix_key(first_id, t);
 
-		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
+		prefix_iterate!(edge_range_manager, &edge_range_prefix_key, key, value, {
 			count += 1;
 
 			if count == u64::MAX {
@@ -243,241 +121,289 @@ impl RocksdbTransaction {
 		Ok(count)
 	}
 
-	fn handle_get_edge_range(&self, edge_key_prefix: Box<[u8]>, offset: usize, limit: usize, parser: &Fn(&[u8]) -> (Uuid, models::Type, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-		let mut i = 0;
+	fn check_write_permissions(&self, id: Uuid, err: Error) -> Result<(), Error> {
+		let vertex_manager = VertexManager::new(self.db.clone());
+		let vertex_value = try!(vertex_manager.get(id));
 
-		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
-			i += 1;
-
-			if i <= offset {
-				continue;
-			} else if edges.len() >= limit {
-				break;
-			}
-
-			let (edge_outbound_id, edge_type, edge_inbound_id) = parser(&key);
-			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
-			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_inbound_id, edge_value.weight);
-			edges.push(edge);
-		});
-
-		Ok(edges)
-	}
-
-	fn handle_get_edge_time_range(&self, edge_key_prefix: Box<[u8]>, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: usize, parser: &Fn(&[u8]) -> (Uuid, models::Type, Uuid)) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-
-		prefix_iterate!(self.db, &edge_key_prefix, key, value, {
-			if edges.len() >= limit as usize {
-				break;
-			}
-
-			let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&value.to_owned()[..]));
-
-			// Filter out items out of the date range
-			// NOTE: This currently involves a sequential scan through all
-			// relevant edges, and could be made more efficient by indexing
-			// the edge update date.
-			let update_date = NaiveDateTime::from_timestamp(edge_value.update_date, 0);
-			if high.is_some() && update_date > high.unwrap() {
-				continue;
-			}
-			if low.is_some() && update_date < low.unwrap() {
-				continue;
-			}
-
-			let (edge_outbound_id, edge_type, edge_inbound_id) = parser(&key);
-			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_inbound_id, edge_value.weight);
-			edges.push(edge);
-		});
-
-		Ok(edges)
+		if vertex_value.is_none() || vertex_value.unwrap().owner_id != self.account_id {
+			Err(err)
+		} else {
+			Ok(())
+		}
 	}
 }
 
 impl Transaction<Uuid> for RocksdbTransaction {
 	fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
-		let vertex_value = try!(self.get_vertex_value(id));
-		let vertex = models::Vertex::new(id, vertex_value.t);
-		Ok(vertex)
+		match try!(VertexManager::new(self.db.clone()).get(id)) {
+			Some(value) => {
+				let vertex = models::Vertex::new(id, value.t);
+				Ok(vertex)
+			},
+			None => Err(Error::VertexNotFound)
+		}
 	}
 
 	fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-		let id = Uuid::new_v4();
-		let vertex_value = VertexValue::new(self.account_id.clone(), t);
-		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
-		try!(self.db.put(&vertex_key(id), &vertex_value_bytes[..]));
-		Ok(id)
+		VertexManager::new(self.db.clone()).create(t, self.account_id.clone())
 	}
 
 	fn set_vertex(&self, vertex: models::Vertex<Uuid>) -> Result<(), Error> {
-		let mut vertex_value = try!(self.get_vertex_value(vertex.id));
-		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexNotFound);
-		}
-
-		vertex_value.t = vertex.t;
-		let vertex_value_bytes = try!(bincode_serde::serialize(&vertex_value, SizeLimit::Infinite));
-		try!(self.db.put(&vertex_key(vertex.id), &vertex_value_bytes[..]));
-		Ok(())
+		try!(self.check_write_permissions(vertex.id, Error::VertexNotFound));
+		let value = VertexValue::new(self.account_id, vertex.t);
+		VertexManager::new(self.db.clone()).update(vertex.id, &value)
 	}
 
 	fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-		let vertex_value = try!(self.get_vertex_value(id));
-
-		if vertex_value.owner_id != self.account_id {
-			return Err(Error::VertexNotFound);
-		}
-
+		try!(self.check_write_permissions(id, Error::VertexNotFound));
 		let mut batch = WriteBatch::default();
-		try!(delete_vertex(id, &self.db, &mut batch));
+		try!(VertexManager::new(self.db.clone()).delete(&mut batch, id));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
-		match try!(self.db.get(&try!(edge_key(outbound_id, t.clone(), inbound_id)))) {
-			Some(edge_value_bytes) => {
-				let edge_value = try!(bincode_serde::deserialize::<EdgeValue>(&edge_value_bytes.to_owned()[..]));
-				Ok(models::Edge::new(outbound_id, t, inbound_id, edge_value.weight))
-			},
+		match try!(EdgeManager::new(self.db.clone()).get(outbound_id, t.clone(), inbound_id)) {
+			Some(value) => Ok(models::Edge::new(outbound_id, t, inbound_id, value.weight)),
 			None => Err(Error::EdgeNotFound)
 		}
 	}
 
 	fn set_edge(&self, edge: models::Edge<Uuid>) -> Result<(), Error> {
 		// Verify that the vertices exist and that we own the vertex with the outbound ID
-		try!(self.get_vertex_value(edge.inbound_id));
-		let outbound_vertex_value = try!(self.get_vertex_value(edge.outbound_id));
-		if outbound_vertex_value.owner_id != self.account_id {
+		try!(self.check_write_permissions(edge.outbound_id, Error::EdgeNotFound));
+		if !try!(VertexManager::new(self.db.clone()).exists(edge.inbound_id)) {
 			return Err(Error::VertexNotFound);
 		}
 
+		let edge_manager = EdgeManager::new(self.db.clone());
+		let old_edge = try!(edge_manager.get(edge.outbound_id, edge.t.clone(), edge.inbound_id));
+		let old_update_datetime = old_edge.and_then(|edge| Some(NaiveDateTime::from_timestamp(edge.update_timestamp, 0)));
+
 		let mut batch = WriteBatch::default();
-		let edge_value = EdgeValue::new(UTC::now().timestamp(), edge.weight);
-		let edge_value_bytes = try!(bincode_serde::serialize(&edge_value, SizeLimit::Infinite));
-		try!(batch.put(&try!(edge_key(edge.outbound_id, edge.t.clone(), edge.inbound_id)), &edge_value_bytes[..]));
-		try!(batch.put(&try!(reversed_edge_key(edge.inbound_id, edge.t, edge.outbound_id)), &edge_value_bytes[..]));
+		let new_update_datetime = UTC::now().naive_utc();
+		try!(edge_manager.set(&mut batch, edge.outbound_id, edge.t, edge.inbound_id, old_update_datetime, new_update_datetime, edge.weight));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
 		// Verify that the edge exists and that we own it
-		try!(self.get_edge(outbound_id, t.clone(), inbound_id));
-		let outbound_vertex_value = try!(self.get_vertex_value(outbound_id));
-		if outbound_vertex_value.owner_id != self.account_id {
-			return Err(Error::EdgeNotFound);
-		}
+		let edge_manager = EdgeManager::new(self.db.clone());
 
-		let mut batch = WriteBatch::default();
-		try!(delete_edge(outbound_id, t, inbound_id, &self.db, &mut batch));
-		try!(self.db.write(batch));
-		Ok(())
+		match try!(edge_manager.get(outbound_id, t.clone(), inbound_id)) {
+			Some(value) => {
+				try!(self.check_write_permissions(outbound_id, Error::EdgeNotFound));
+				let mut batch = WriteBatch::default();
+				try!(edge_manager.delete(&mut batch, outbound_id, t, inbound_id, &value));
+				try!(self.db.write(batch));
+				Ok(())
+			},
+			None => Err(Error::EdgeNotFound)
+		}
 	}
 
 	fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
-		self.handle_get_edge_count(edge_key_prefix)
+		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+		self.handle_get_edge_count(edge_range_manager, outbound_id, t)
 	}
 
 	fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if offset > usize::MAX as u64 {
-			return Err(Error::Unexpected("Offset out of range".to_string()));
-		}
+		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
+		let edge_range_max_key = edge_range_manager.max_key_in_range(outbound_id, t);
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+		let mut i = 0;
 
-		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
-		self.handle_get_edge_range(edge_key_prefix, offset as usize, limit as usize, &parse_edge_key)
+		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
+			i += 1;
+
+			if i <= offset {
+				continue;
+			} else if edges.len() >= limit as usize {
+				break;
+			}
+
+			let (edge_outbound_id, edge_type, _) = parse_edge_range_key(&key);
+			let edge_value = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_value.other_id, edge_value.weight);
+			edges.push(edge);
+		});
+
+		Ok(edges)
 	}
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let edge_key_prefix = try!(edge_without_inbound_id_key_pattern(outbound_id, t));
-		self.handle_get_edge_time_range(edge_key_prefix, high, low, limit as usize, &parse_edge_key)
+		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
+
+		let edge_range_max_key = match high {
+			Some(high) => edge_range_manager.key(outbound_id, t, high),
+			None => edge_range_manager.max_key_in_range(outbound_id, t)
+		};
+
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+
+		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
+			if edges.len() >= limit as usize {
+				break;
+			}
+
+			let (edge_outbound_id, edge_type, update_datetime) = parse_edge_range_key(&key);
+
+			if let Some(low) = low {
+				if low > update_datetime {
+					break;
+				}
+			}
+
+			let edge_value = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_value.other_id, edge_value.weight);
+			edges.push(edge);
+		});
+
+		Ok(edges)
 	}
 
 	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
-		self.handle_get_edge_count(edge_key_prefix)
+		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+		self.handle_get_edge_count(edge_range_manager, inbound_id, t)
 	}
 
 	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		if offset > usize::MAX as u64 {
-			return Err(Error::Unexpected("Offset out of range".to_string()));
-		}
+		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
+		let edge_range_max_key = edge_range_manager.max_key_in_range(inbound_id, t);
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+		let mut i = 0;
 
-		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
-		self.handle_get_edge_range(edge_key_prefix, offset as usize, limit as usize, &parse_reversed_edge_key)
+		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
+			i += 1;
+
+			if i <= offset {
+				continue;
+			} else if edges.len() >= limit as usize {
+				break;
+			}
+
+			let (edge_inbound_id, edge_type, _) = parse_edge_range_key(&key);
+			let edge_value = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_value.other_id, edge_type, edge_inbound_id, edge_value.weight);
+			edges.push(edge);
+		});
+
+		Ok(edges)
 	}
 
 	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let edge_key_prefix = try!(reversed_edge_without_outbound_id_key_pattern(inbound_id, t));
-		self.handle_get_edge_time_range(edge_key_prefix, high, low, limit as usize, &parse_reversed_edge_key)
+		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
+
+		let edge_range_max_key = match high {
+			Some(high) => edge_range_manager.key(inbound_id, t.clone(), high),
+			None => edge_range_manager.max_key_in_range(inbound_id, t)
+		};
+
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+
+		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
+			if edges.len() >= limit as usize {
+				break;
+			}
+
+			let (edge_inbound_id, edge_type, update_datetime) = parse_edge_range_key(&key);
+
+			if let Some(low) = low {
+				if low > update_datetime {
+					break;
+				}
+			}
+
+			let edge_value = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_value.other_id, edge_type, edge_inbound_id, edge_value.weight);
+			edges.push(edge);
+		});
+
+		Ok(edges)
 	}
 
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(&global_metadata_key(key)));
-		self.handle_get_metadata(result)
+		let manager = GlobalMetadataManager::new(self.db.clone());
+		try!(manager.get(key)).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
-		self.handle_set_metadata(global_metadata_key(key), value)
+		let manager = GlobalMetadataManager::new(self.db.clone());
+		manager.set(key, &value)
 	}
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
-		try!(self.get_global_metadata(key.clone()));
-		try!(self.db.delete(&global_metadata_key(key)));
+		let mut batch = WriteBatch::default();
+		try!(GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, key));		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(&account_metadata_key(owner_id, key)));
-		self.handle_get_metadata(result)
+		let manager = AccountMetadataManager::new(self.db.clone());
+		try!(manager.get(owner_id, key)).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-		if !try!(has_account(&self.db, owner_id)) {
+		if !try!(AccountManager::new(self.db.clone()).exists(owner_id)) {
 			return Err(Error::AccountNotFound);
 		}
 
-		self.handle_set_metadata(account_metadata_key(owner_id, key), value)
+		let manager = AccountMetadataManager::new(self.db.clone());
+		try!(manager.set(owner_id, key, &value));
+		Ok(())
 	}
 
 	fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-		try!(self.get_account_metadata(owner_id, key.clone()));
-		try!(self.db.delete(&account_metadata_key(owner_id, key)));
+		let mut batch = WriteBatch::default();
+		try!(AccountMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, key));
+		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(&vertex_metadata_key(owner_id, key)));
-		self.handle_get_metadata(result)
+		let manager = VertexMetadataManager::new(self.db.clone());
+		try!(manager.get(owner_id, key)).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-		try!(self.get_vertex(owner_id));
-		self.handle_set_metadata(vertex_metadata_key(owner_id, key), value)
+		if !try!(VertexManager::new(self.db.clone()).exists(owner_id)) {
+			return Err(Error::VertexNotFound);
+		}
+
+		let manager = VertexMetadataManager::new(self.db.clone());
+		manager.set(owner_id, key, &value)
 	}
 
 	fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-		try!(self.get_vertex_metadata(owner_id, key.clone()));
-		try!(self.db.delete(&vertex_metadata_key(owner_id, key)));
+		let mut batch = WriteBatch::default();
+		try!(VertexMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, key));
+		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
-		let result = try!(self.db.get(&edge_metadata_key(outbound_id, t, inbound_id, key)));
-		self.handle_get_metadata(result)
+		let manager = EdgeMetadataManager::new(self.db.clone());
+		try!(manager.get(outbound_id, t, inbound_id, key)).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-		try!(self.get_edge(outbound_id, t.clone(), inbound_id));
-		self.handle_set_metadata(edge_metadata_key(outbound_id, t, inbound_id, key), value)
+		if !try!(EdgeManager::new(self.db.clone()).exists(outbound_id, t.clone(), inbound_id)) {
+			return Err(Error::EdgeNotFound);
+		}
+
+		let manager = EdgeMetadataManager::new(self.db.clone());
+		manager.set(outbound_id, t, inbound_id, key, &value)
 	}
 
 	fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
-		try!(self.get_edge_metadata(outbound_id, t.clone(), inbound_id, key.clone()));
-		try!(self.db.delete(&edge_metadata_key(outbound_id, t, inbound_id, key)));
+		let mut batch = WriteBatch::default();
+		try!(EdgeMetadataManager::new(self.db.clone()).delete(&mut batch, outbound_id, t, inbound_id, key));
+		try!(self.db.write(batch));
 		Ok(())
 	}
 

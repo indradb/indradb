@@ -1,6 +1,8 @@
+#[macro_use] mod macros;
 mod converters;
-mod datastore;
 mod keys;
+mod managers;
+mod datastore;
 mod models;
 mod tests;
 

@@ -20,7 +20,9 @@ extern crate regex;
 #[cfg(feature="postgres-datastore")] extern crate num_cpus;
 #[cfg(feature="rocksdb-datastore")] #[macro_use] extern crate lazy_static;
 #[cfg(feature="rocksdb-datastore")] extern crate rocksdb;
+#[cfg(feature="rocksdb-datastore")] extern crate librocksdb_sys;
 #[cfg(feature="rocksdb-datastore")] extern crate bincode;
+#[cfg(feature="rocksdb-datastore")] extern crate byteorder;
 
 #[macro_use] mod datastore;
 mod errors;

@@ -1,11 +1,10 @@
 use traits::Id;
-use util;
 use regex::Regex;
 use errors::ValidationError;
 use core::str::FromStr;
 
 lazy_static! {
-	static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]${0,255}").unwrap();
+	static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,7 +60,7 @@ impl<I: Id> PartialEq for Edge<I> {
 
 impl<I: Id> Eq for Edge<I>{}
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Copy)]
 pub struct Weight(pub f32);
 
 impl Weight {
@@ -79,7 +78,9 @@ pub struct Type(pub String);
 
 impl Type {
 	pub fn new(t: String) -> Result<Self, ValidationError> {
-		if !TYPE_VALIDATOR.is_match(&t[..]) {
+		if t.len() > 255 {
+			Err(ValidationError::new("Type is too long".to_string()))
+		} else if !TYPE_VALIDATOR.is_match(&t[..]) {
 			Err(ValidationError::new("Invalid type".to_string()))
 		} else {
 			Ok(Type(t))
