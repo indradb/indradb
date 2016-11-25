@@ -32,13 +32,13 @@ impl KeyComponent {
 				try!(cursor.write(s.as_bytes()));
 			},
 			KeyComponent::ShortSizedString(ref s) => {
-				assert!(s.len() <= u8::MAX as usize);
+				debug_assert!(s.len() <= u8::MAX as usize);
 				try!(cursor.write(&[s.len() as u8]));
 				try!(cursor.write(s.as_bytes()));
 			},
 			KeyComponent::NaiveDateTime(ref datetime) => {
 				let timestamp = datetime.timestamp();
-				assert!(timestamp >= 0);
+				debug_assert!(timestamp >= 0);
 				try!(cursor.write_i64::<BigEndian>(timestamp));
 			}
 		};
@@ -61,17 +61,26 @@ pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
 }
 
 pub fn parse_uuid_key(key: &[u8]) -> Uuid {
-	assert!(key.len() == 16);
+	debug_assert_eq!(key.len(), 16);
 	Uuid::from_bytes(key).unwrap()
 }
 
-pub fn parse_edge_range_key(key: &[u8]) -> (Uuid, models::Type, NaiveDateTime) {
-	assert!(key.len() >= 33);
+pub fn parse_edge_range_key(key: &[u8]) -> (Uuid, models::Type, NaiveDateTime, Uuid) {
+	debug_assert!(key.len() >= 33);
+
 	let first_id = Uuid::from_bytes(&key[0..16]).unwrap();
+	
 	let t_len = key[16] as usize;
-	let t = str::from_utf8(&key[17..t_len+17]).unwrap();
-	let mut reader = Cursor::new(&key[t_len+17..]);
-	let timestamp = reader.read_i64::<BigEndian>().unwrap();
+	let t_str = str::from_utf8(&key[17..t_len+17]).unwrap();
+	let t = models::Type::new(t_str.to_string()).unwrap();
+	
+	let timestamp = Cursor::new(&key[t_len+17..t_len+25]).read_i64::<BigEndian>().unwrap();
 	let datetime = NaiveDateTime::from_timestamp(timestamp, 0);
-	(first_id, models::Type::new(t.to_string()).unwrap(), datetime)
+	let second_id = Uuid::from_bytes(&key[t_len+25..]).unwrap();
+	
+	(first_id, t, datetime, second_id)
+}
+
+pub fn max_uuid() -> Uuid {
+	Uuid::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]).unwrap()
 }

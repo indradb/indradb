@@ -47,18 +47,3 @@ impl EdgeValue {
         }
     }
 }
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EdgeRangeValue {
-    pub other_id: Uuid,
-    pub weight: models::Weight
-}
-
-impl EdgeRangeValue {
-    pub fn new(other_id: Uuid, weight: models::Weight) -> Self {
-        EdgeRangeValue {
-            other_id: other_id,
-            weight: weight
-        }
-    }
-}

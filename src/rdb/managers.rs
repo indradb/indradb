@@ -5,7 +5,7 @@ use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch};
-use super::models::{AccountValue, EdgeValue, VertexValue, EdgeRangeValue};
+use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
 use bincode::serde as bincode_serde;
 use std::sync::Arc;
@@ -181,23 +181,12 @@ impl VertexManager {
         });
 
         let edge_manager = EdgeManager::new(self.db.clone());
-
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let edge_range_prefix_key = edge_range_manager.prefix_key_no_type(id);
         prefix_iterate!(edge_range_manager, &edge_range_prefix_key, key, value, {
-            let (outbound_id, t, update_datetime) = parse_edge_range_key(&key);
-            assert!(outbound_id == id);
-            let edge_value = try!(edge_range_manager.deserialize_value(&value));
-            try!(edge_manager.delete(&mut batch, outbound_id, t.clone(), edge_value.other_id, update_datetime));
-        });
-
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        let reversed_edge_range_prefix_key = reversed_edge_range_manager.prefix_key_no_type(id);
-        prefix_iterate!(reversed_edge_range_manager, &reversed_edge_range_prefix_key, key, value, {
-            let (inbound_id, t, update_datetime) = parse_edge_range_key(&key);
-            assert!(inbound_id == id);
-            let edge_value = try!(reversed_edge_range_manager.deserialize_value(&value));
-            try!(edge_manager.delete(&mut batch, edge_value.other_id, t, inbound_id, update_datetime));
+            let (edge_outbound_id, edge_t, edge_update_datetime, edge_inbound_id) = parse_edge_range_key(&key);
+            debug_assert_eq!(edge_outbound_id, id);
+            try!(edge_manager.delete(&mut batch, edge_outbound_id, edge_t, edge_inbound_id, edge_update_datetime));
         });
 
         Ok(())
@@ -249,10 +238,10 @@ impl EdgeManager {
         try!(batch.delete_cf(self.cf, &self.key(outbound_id, t.clone(), inbound_id)));
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        try!(edge_range_manager.delete(&mut batch, outbound_id, t.clone(), update_datetime));
+        try!(edge_range_manager.delete(&mut batch, outbound_id, t.clone(), inbound_id, update_datetime));
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        try!(reversed_edge_range_manager.delete(&mut batch, inbound_id, t.clone(), update_datetime));
+        try!(reversed_edge_range_manager.delete(&mut batch, inbound_id, t.clone(), inbound_id, update_datetime));
 
         let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
         let edge_metadata_prefix_key = edge_metadata_manager.prefix_key(outbound_id, t, inbound_id);
@@ -284,11 +273,12 @@ impl EdgeRangeManager {
         }
     }
 
-	pub fn key(&self, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime) -> Box<[u8]> {
+	pub fn key(&self, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(first_id),
             KeyComponent::ShortSizedString(t.0),
-            KeyComponent::NaiveDateTime(update_datetime)
+            KeyComponent::NaiveDateTime(update_datetime),
+            KeyComponent::Uuid(second_id)
         ])
 	}
 
@@ -307,28 +297,28 @@ impl EdgeRangeManager {
         build_key(vec![
             KeyComponent::Uuid(first_id),
             KeyComponent::ShortSizedString(t.0),
+            KeyComponent::Uuid(max_uuid()),
             // NOTE: this suffers from the year 2038 problem, but we can't use
             // i64::MAX because chrono sees it as an invalid time
             KeyComponent::NaiveDateTime(NaiveDateTime::from_timestamp(i32::MAX as i64, 0))
         ])
     }
 
-    pub fn deserialize_value(&self, value: &[u8]) -> Result<EdgeRangeValue, Error> {
+    pub fn deserialize_value(&self, value: &[u8]) -> Result<models::Weight, Error> {
         bincode_deserialize_value(value)
     }
 
     pub fn update(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, second_id: Uuid, old_update_datetime: Option<NaiveDateTime>, new_update_datetime: NaiveDateTime, weight: models::Weight) -> Result<(), Error> {
         if let Some(old_update_datetime) = old_update_datetime {
-            try!(self.delete(&mut batch, first_id, t.clone(), old_update_datetime));
+            try!(self.delete(&mut batch, first_id, t.clone(), second_id, old_update_datetime));
         }
 
-        let value = EdgeRangeValue::new(second_id, weight);
-        try!(set_bincode(&self.db, self.cf, self.key(first_id, t, new_update_datetime), &value));
+        try!(set_bincode(&self.db, self.cf, self.key(first_id, t, new_update_datetime, second_id), &weight));
         Ok(())
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime) -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime)));
+    pub fn delete(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, second_id: Uuid, update_datetime: NaiveDateTime) -> Result<(), Error> {
+        try!(batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id)));
         Ok(())
     }
 }

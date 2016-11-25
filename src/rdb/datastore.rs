@@ -212,7 +212,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
 		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
-		let edge_range_max_key = edge_range_manager.max_key_in_range(outbound_id, t);
+		let edge_range_max_key = edge_range_manager.max_key_in_range(outbound_id, t.clone());
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 		let mut i = 0;
 
@@ -225,9 +225,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				break;
 			}
 
-			let (edge_outbound_id, edge_type, _) = parse_edge_range_key(&key);
-			let edge_value = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_value.other_id, edge_value.weight);
+			let (edge_outbound_id, edge_t, _, edge_inbound_id) = parse_edge_range_key(&key);
+			debug_assert_eq!(edge_outbound_id, outbound_id);
+			debug_assert_eq!(edge_t, t);
+			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
 			edges.push(edge);
 		});
 
@@ -239,8 +241,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
 
 		let edge_range_max_key = match high {
-			Some(high) => edge_range_manager.key(outbound_id, t, high),
-			None => edge_range_manager.max_key_in_range(outbound_id, t)
+			Some(high) => edge_range_manager.key(outbound_id, t.clone(), high, max_uuid()),
+			None => edge_range_manager.max_key_in_range(outbound_id, t.clone())
 		};
 
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
@@ -250,7 +252,9 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				break;
 			}
 
-			let (edge_outbound_id, edge_type, update_datetime) = parse_edge_range_key(&key);
+			let (edge_outbound_id, edge_t, update_datetime, edge_inbound_id) = parse_edge_range_key(&key);
+			debug_assert_eq!(edge_outbound_id, outbound_id);
+			debug_assert_eq!(edge_t, t);
 
 			if let Some(low) = low {
 				if low > update_datetime {
@@ -258,8 +262,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				}
 			}
 
-			let edge_value = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_type, edge_value.other_id, edge_value.weight);
+			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
 			edges.push(edge);
 		});
 
@@ -274,7 +278,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
-		let edge_range_max_key = edge_range_manager.max_key_in_range(inbound_id, t);
+		let edge_range_max_key = edge_range_manager.max_key_in_range(inbound_id, t.clone());
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 		let mut i = 0;
 
@@ -287,9 +291,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				break;
 			}
 
-			let (edge_inbound_id, edge_type, _) = parse_edge_range_key(&key);
-			let edge_value = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_value.other_id, edge_type, edge_inbound_id, edge_value.weight);
+			let (edge_inbound_id, edge_t, _, edge_outbound_id) = parse_edge_range_key(&key);
+			debug_assert_eq!(edge_inbound_id, inbound_id);
+			debug_assert_eq!(edge_t, t);
+			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
 			edges.push(edge);
 		});
 
@@ -301,8 +307,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
 
 		let edge_range_max_key = match high {
-			Some(high) => edge_range_manager.key(inbound_id, t.clone(), high),
-			None => edge_range_manager.max_key_in_range(inbound_id, t)
+			Some(high) => edge_range_manager.key(inbound_id, t.clone(), high, max_uuid()),
+			None => edge_range_manager.max_key_in_range(inbound_id, t.clone())
 		};
 
 		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
@@ -312,7 +318,9 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				break;
 			}
 
-			let (edge_inbound_id, edge_type, update_datetime) = parse_edge_range_key(&key);
+			let (edge_inbound_id, edge_t, update_datetime, edge_outbound_id) = parse_edge_range_key(&key);
+			debug_assert_eq!(edge_inbound_id, inbound_id);
+			debug_assert_eq!(edge_t, t);
 
 			if let Some(low) = low {
 				if low > update_datetime {
@@ -320,8 +328,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 				}
 			}
 
-			let edge_value = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_value.other_id, edge_type, edge_inbound_id, edge_value.weight);
+			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
+			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
 			edges.push(edge);
 		});
 
