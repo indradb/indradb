@@ -107,18 +107,27 @@ impl RocksdbTransaction {
 	}
 
 	fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
-		let mut count: u64 = 0;
-		let edge_range_prefix_key = edge_range_manager.prefix_key(first_id, t.clone());
+		let iterator = try!(edge_range_manager.iterate_for_range(first_id, t));
+		Ok(iterator.count() as u64)
+	}
 
-		prefix_iterate!(edge_range_manager, &edge_range_prefix_key, key, value, {
-			count += 1;
+	fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=(models::Edge<Uuid>, NaiveDateTime)>>, low: Option<NaiveDateTime>) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		let filtered: Box<Iterator<Item=(models::Edge<Uuid>, NaiveDateTime)>> = match low {
+			Some(low) => {
+				Box::new(iterator.take_while(move |item| {
+					let (_, update_datetime) = *item;
+					update_datetime >= low
+				}))
+			},
+			None => Box::new(iterator)
+		};
 
-			if count == u64::MAX {
-				break;
-			}
+		let edges = filtered.map(move |item| {
+			let (edge, _) = item;
+			edge
 		});
 
-		Ok(count)
+		Ok(edges.collect())
 	}
 
 	fn check_write_permissions(&self, id: Uuid, err: Error) -> Result<(), Error> {
@@ -176,13 +185,9 @@ impl Transaction<Uuid> for RocksdbTransaction {
 			return Err(Error::VertexNotFound);
 		}
 
-		let edge_manager = EdgeManager::new(self.db.clone());
-		let old_edge = try!(edge_manager.get(edge.outbound_id, edge.t.clone(), edge.inbound_id));
-		let old_update_datetime = old_edge.and_then(|edge| Some(NaiveDateTime::from_timestamp(edge.update_timestamp, 0)));
-
-		let mut batch = WriteBatch::default();
 		let new_update_datetime = UTC::now().naive_utc();
-		try!(edge_manager.set(&mut batch, edge.outbound_id, edge.t, edge.inbound_id, old_update_datetime, new_update_datetime, edge.weight));
+		let mut batch = WriteBatch::default();
+		try!(EdgeManager::new(self.db.clone()).set(&mut batch, edge.outbound_id, edge.t, edge.inbound_id, new_update_datetime, edge.weight));
 		try!(self.db.write(batch));
 		Ok(())
 	}
@@ -210,64 +215,35 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		if offset > usize::MAX as u64 {
+			return Err(Error::Unexpected("Offset out of range".to_string()));
+		}
+
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
-		let edge_range_max_key = edge_range_manager.max_key_in_range(outbound_id, t.clone());
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-		let mut i = 0;
+		let iterator = try!(edge_range_manager.reverse_iterate_for_range(outbound_id, t.clone(), max_datetime()));
 
-		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
-			i += 1;
-
-			if i <= offset {
-				continue;
-			} else if edges.len() >= limit as usize {
-				break;
-			}
-
-			let (edge_outbound_id, edge_t, _, edge_inbound_id) = parse_edge_range_key(&key);
-			debug_assert_eq!(edge_outbound_id, outbound_id);
-			debug_assert_eq!(edge_t, t);
-			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
-			edges.push(edge);
+		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
+			let ((edge_range_outbound_id, edge_range_t, _, edge_range_inbound_id), edge_range_weight) = item.unwrap();
+			debug_assert_eq!(edge_range_outbound_id, outbound_id);
+			debug_assert_eq!(edge_range_t, t);
+			models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight)
 		});
 
-		Ok(edges)
+		Ok(mapped.collect())
 	}
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let edge_range_prefix_key = edge_range_manager.prefix_key(outbound_id, t.clone());
+		let iterator = try!(edge_range_manager.reverse_iterate_for_range(outbound_id, t.clone(), high.unwrap_or(max_datetime())));
 
-		let edge_range_max_key = match high {
-			Some(high) => edge_range_manager.key(outbound_id, t.clone(), high, max_uuid()),
-			None => edge_range_manager.max_key_in_range(outbound_id, t.clone())
-		};
-
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-
-		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
-			if edges.len() >= limit as usize {
-				break;
-			}
-
-			let (edge_outbound_id, edge_t, update_datetime, edge_inbound_id) = parse_edge_range_key(&key);
-			debug_assert_eq!(edge_outbound_id, outbound_id);
-			debug_assert_eq!(edge_t, t);
-
-			if let Some(low) = low {
-				if low > update_datetime {
-					break;
-				}
-			}
-
-			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
-			edges.push(edge);
+		let mapped = iterator.take(limit as usize).map(move |item| {
+			let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), edge_range_weight) = item.unwrap();
+			debug_assert_eq!(edge_range_outbound_id, outbound_id);
+			debug_assert_eq!(edge_range_t, t);
+			(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime) 
 		});
 
-		Ok(edges)
+		self.handle_get_edge_time_range(Box::new(mapped), low)
 	}
 
 	fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
@@ -276,64 +252,35 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
-		let edge_range_max_key = edge_range_manager.max_key_in_range(inbound_id, t.clone());
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-		let mut i = 0;
+		if offset > usize::MAX as u64 {
+			return Err(Error::Unexpected("Offset out of range".to_string()));
+		}
 
-		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
-			i += 1;
+		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+		let iterator = try!(reversed_edge_range_manager.reverse_iterate_for_range(inbound_id, t.clone(), max_datetime()));
 
-			if i <= offset {
-				continue;
-			} else if edges.len() >= limit as usize {
-				break;
-			}
-
-			let (edge_inbound_id, edge_t, _, edge_outbound_id) = parse_edge_range_key(&key);
-			debug_assert_eq!(edge_inbound_id, inbound_id);
-			debug_assert_eq!(edge_t, t);
-			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
-			edges.push(edge);
+		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
+			let ((edge_range_inbound_id, edge_range_t, _, edge_range_outbound_id), edge_range_weight) = item.unwrap();
+			debug_assert_eq!(edge_range_inbound_id, inbound_id);
+			debug_assert_eq!(edge_range_t, t);
+			models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight)
 		});
 
-		Ok(edges)
+		Ok(mapped.collect())
 	}
 
 	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let edge_range_prefix_key = edge_range_manager.prefix_key(inbound_id, t.clone());
+		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+		let iterator = try!(reversed_edge_range_manager.reverse_iterate_for_range(inbound_id, t.clone(), high.unwrap_or(max_datetime())));
 
-		let edge_range_max_key = match high {
-			Some(high) => edge_range_manager.key(inbound_id, t.clone(), high, max_uuid()),
-			None => edge_range_manager.max_key_in_range(inbound_id, t.clone())
-		};
-
-		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
-
-		reverse_iterate!(edge_range_manager, &edge_range_max_key, &edge_range_prefix_key, key, value, {
-			if edges.len() >= limit as usize {
-				break;
-			}
-
-			let (edge_inbound_id, edge_t, update_datetime, edge_outbound_id) = parse_edge_range_key(&key);
-			debug_assert_eq!(edge_inbound_id, inbound_id);
-			debug_assert_eq!(edge_t, t);
-
-			if let Some(low) = low {
-				if low > update_datetime {
-					break;
-				}
-			}
-
-			let edge_weight = try!(edge_range_manager.deserialize_value(&value));
-			let edge = models::Edge::new(edge_outbound_id, edge_t, edge_inbound_id, edge_weight);
-			edges.push(edge);
+		let mapped = iterator.take(limit as usize).map(move |item| {
+			let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id), edge_range_weight) = item.unwrap();
+			debug_assert_eq!(edge_range_inbound_id, inbound_id);
+			debug_assert_eq!(edge_range_t, t);
+			(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime) 
 		});
 
-		Ok(edges)
+		self.handle_get_edge_time_range(Box::new(mapped), low)
 	}
 
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

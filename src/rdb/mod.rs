@@ -1,4 +1,3 @@
-#[macro_use] mod macros;
 mod converters;
 mod keys;
 mod managers;
