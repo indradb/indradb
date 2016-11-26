@@ -60,8 +60,6 @@ impl BatchTransaction {
 		let mut payload = String::new();
 		res.read_to_string(&mut payload).unwrap();
 
-		println!("XXX {} => {}", body, payload);
-
 		match res.status {
 			StatusCode::Ok => {
 				let mut v: Vec<T> = serde_json::from_str(&payload[..]).unwrap();
