@@ -295,7 +295,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
 		let mut batch = WriteBatch::default();
-		try!(GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, key));		try!(self.db.write(batch));
+		try!(GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, key));
+		try!(self.db.write(batch));
 		Ok(())
 	}
 

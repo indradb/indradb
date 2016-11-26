@@ -70,7 +70,7 @@ fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Res
     Ok(())
 }
 
-fn filter_for_prefix<'a>(iterator: DBIterator, prefix: Box<[u8]>) -> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a> {
+fn take_while_prefixed<'a>(iterator: DBIterator, prefix: Box<[u8]>) -> Box<Iterator<Item=(Box<[u8]>, Box<[u8]>)> + 'a> {
     let filtered = iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;
         k.starts_with(&prefix)
@@ -82,7 +82,7 @@ fn filter_for_prefix<'a>(iterator: DBIterator, prefix: Box<[u8]>) -> Box<Iterato
 fn iterate_metadata_for_owner<'a>(db: &DB, cf: ColumnFamily, id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, String), JsonValue), Error>> + 'a>, Error> {
     let prefix = build_key(vec![ KeyComponent::Uuid(id) ]);
     let iterator = try!(db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward)));
-    let filtered = filter_for_prefix(iterator, prefix);
+    let filtered = take_while_prefixed(iterator, prefix);
 
     let mapped = filtered.map(move |item| -> Result<((Uuid, String), JsonValue), Error> {
         let (k, v) = item;
@@ -337,7 +337,7 @@ impl EdgeRangeManager {
 	}
 
     fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
-        let filtered = filter_for_prefix(iterator, prefix);
+        let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error> {
             let (k, v) = item;
@@ -362,7 +362,8 @@ impl EdgeRangeManager {
         let high_key = build_key(vec![
             KeyComponent::Uuid(id),
             KeyComponent::ShortSizedString(t.0),
-            KeyComponent::NaiveDateTime(high)
+            KeyComponent::NaiveDateTime(high),
+            KeyComponent::Uuid(max_uuid())
         ]);
 
         let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&high_key, Direction::Reverse)));
@@ -531,7 +532,7 @@ impl EdgeMetadataManager {
         ]);
 
         let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward)));
-        let filtered = filter_for_prefix(iterator, prefix);
+        let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> Result<((Uuid, models::Type, Uuid, String), JsonValue), Error> {
             let (k, v) = item;
