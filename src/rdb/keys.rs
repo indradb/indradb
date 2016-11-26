@@ -39,9 +39,9 @@ impl KeyComponent {
 				try!(cursor.write(s.as_bytes()));
 			},
 			KeyComponent::NaiveDateTime(ref datetime) => {
-				let timestamp = datetime.timestamp();
-				debug_assert!(timestamp >= 0);
-				try!(cursor.write_i64::<BigEndian>(timestamp));
+				let time_to_end = max_datetime().timestamp() - datetime.timestamp(); 
+				debug_assert!(time_to_end >= 0);
+				try!(cursor.write_i64::<BigEndian>(time_to_end));
 			}
 		};
 
@@ -98,7 +98,8 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 }
 
 pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> NaiveDateTime {
-	let timestamp = cursor.read_i64::<BigEndian>().unwrap();
+	let time_to_end = cursor.read_i64::<BigEndian>().unwrap();
+	let timestamp = max_datetime().timestamp() - time_to_end; 
     NaiveDateTime::from_timestamp(timestamp, 0)
 }
 

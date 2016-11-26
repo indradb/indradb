@@ -107,7 +107,7 @@ impl RocksdbTransaction {
 	}
 
 	fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
-		let iterator = try!(edge_range_manager.iterate_for_range(first_id, t));
+		let iterator = try!(edge_range_manager.iterate_for_range(first_id, t, None));
 		Ok(iterator.count() as u64)
 	}
 
@@ -220,7 +220,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let iterator = try!(edge_range_manager.reverse_iterate_for_range(outbound_id, t.clone(), max_datetime()));
+		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, t.clone(), None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
 			let ((edge_range_outbound_id, edge_range_t, _, edge_range_inbound_id), edge_range_weight) = item.unwrap();
@@ -234,7 +234,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let iterator = try!(edge_range_manager.reverse_iterate_for_range(outbound_id, t.clone(), high.unwrap_or(max_datetime())));
+		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, t.clone(), high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
 			let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), edge_range_weight) = item.unwrap();
@@ -257,7 +257,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let iterator = try!(reversed_edge_range_manager.reverse_iterate_for_range(inbound_id, t.clone(), max_datetime()));
+		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, t.clone(), None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
 			let ((edge_range_inbound_id, edge_range_t, _, edge_range_outbound_id), edge_range_weight) = item.unwrap();
@@ -271,7 +271,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let iterator = try!(reversed_edge_range_manager.reverse_iterate_for_range(inbound_id, t.clone(), high.unwrap_or(max_datetime())));
+		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, t.clone(), high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
 			let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id), edge_range_weight) = item.unwrap();

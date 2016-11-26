@@ -353,25 +353,9 @@ impl EdgeRangeManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn reverse_iterate_for_range<'a>(&self, id: Uuid, t: models::Type, high: NaiveDateTime) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
-        let prefix = build_key(vec![
-            KeyComponent::Uuid(id),
-            KeyComponent::ShortSizedString(t.0.clone())
-        ]);
-
-        let high_key = build_key(vec![
-            KeyComponent::Uuid(id),
-            KeyComponent::ShortSizedString(t.0),
-            KeyComponent::NaiveDateTime(high),
-            KeyComponent::Uuid(max_uuid())
-        ]);
-
-        let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&high_key, Direction::Reverse)));
-        self.iterate(iterator, prefix)
-    }
-
-    pub fn iterate_for_range<'a>(&self, id: Uuid, t: models::Type) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
-        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0) ]);
+    pub fn iterate_for_range<'a>(&self, id: Uuid, t: models::Type, high: Option<NaiveDateTime>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
+        let high = high.unwrap_or(max_datetime());        
+        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0), KeyComponent::NaiveDateTime(high) ]);
         let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward)));
         self.iterate(iterator, prefix)
     }
