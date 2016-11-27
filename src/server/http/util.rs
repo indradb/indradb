@@ -23,7 +23,7 @@ use serde::ser::Serialize;
 use std::collections::HashMap;
 use std::cmp::min;
 use std::u16;
-use datastore::DATASTORE;
+use statics;
 use uuid::Uuid;
 
 const MAX_RETURNABLE_EDGES: u16 = 1000;
@@ -203,7 +203,7 @@ pub fn get_account_id(req: &Request) -> Uuid {
 
 pub fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
 	let account_id = get_account_id(req);
-	match DATASTORE.transaction(account_id) {
+	match statics::DATASTORE.transaction(account_id) {
 		Ok(val) => Ok(val),
 		Err(err) => Err(create_iron_error(status::InternalServerError, format!("Could not create datastore transaction: {}", err)))
 	}

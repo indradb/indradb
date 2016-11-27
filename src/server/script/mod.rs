@@ -10,6 +10,7 @@ use common::ProxyTransaction;
 use nutrino::Transaction;
 use uuid::Uuid;
 use self::errors::ScriptError;
+use statics;
 
 pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
@@ -49,19 +50,32 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
         return Err(ScriptError::new_from_loaderror(&mut l, err));
     }
 
-    let trans_ptr: *mut libc::c_void = &mut trans as *mut _ as *mut libc::c_void;
-
-    l.pushlightuserdata(trans_ptr);
-    l.setglobal("trans");
-
-    l.pushstring(&account_id.to_string()[..]);
-    l.setglobal("account_id");
-
-    unsafe {
-        util::serialize_json(l.as_extern(), arg);
+    {
+        l.getglobal("package");
+        l.getfield(-1, "path");
+        let old_path = l.checkstring(-1).unwrap().to_string();
+        let new_path = format!("{};{}", old_path, &statics::SCRIPT_ROOT[..]);
+        l.pop(1);
+        l.pushstring(&new_path[..]);
+        l.setfield(-2, "path");
+        l.pop(1);
     }
 
-    l.setglobal("arg");
+    {
+        let trans_ptr: *mut libc::c_void = &mut trans as *mut _ as *mut libc::c_void;
+        l.pushlightuserdata(trans_ptr);
+        l.setglobal("trans");
+    }
+
+    {
+        l.pushstring(&account_id.to_string()[..]);
+        l.setglobal("account_id");
+    }
+
+    {
+        unsafe { util::serialize_json(l.as_extern(), arg); }
+        l.setglobal("arg");
+    }
 
     if let Err(err) = l.pcall(0, lua::MULTRET, 0) {
         return Err(ScriptError::new_from_pcallerror(&mut l, err));

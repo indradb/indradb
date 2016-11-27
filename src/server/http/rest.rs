@@ -5,20 +5,16 @@ use nutrino::{Vertex, Edge, Transaction, Type};
 use std::io::Read;
 use serde_json::value::Value as JsonValue;
 use script;
-use std::env;
 use std::path::Path;
 use regex;
 use std::fs::File;
 use std::u16;
 use uuid::Uuid;
 use super::util::*;
+use statics;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
-	static ref SCRIPT_ROOT: String = match env::var("NUTRINO_SCRIPT_ROOT") {
-		Ok(s) => s,
-		Err(_) => Path::new(".").join("scripts").to_str().unwrap().to_string()
-	};
 }
 
 pub fn get_vertex(req: &mut Request) -> IronResult<Response> {
@@ -172,7 +168,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
 		None => JsonValue::Null
 	};
 
-	let path = Path::new(&SCRIPT_ROOT[..]).join(script_name);
+	let path = Path::new(&statics::SCRIPT_ROOT[..]).join(script_name);
 
 	let mut f = match File::open(path) {
 		Ok(f) => f,

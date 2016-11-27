@@ -20,7 +20,7 @@ extern crate uuid;
 mod http;
 mod script;
 mod util;
-mod datastore;
+mod statics;
 
 use std::env;
 

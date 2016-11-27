@@ -3,7 +3,7 @@ use iron::headers::{Authorization, Basic};
 use nutrino::Datastore;
 use std::collections::BTreeMap;
 use iron::modifiers::Header as HeaderModifier;
-use datastore::DATASTORE;
+use statics;
 use uuid::Uuid;
 use iron::middleware::{BeforeMiddleware, AfterMiddleware};
 use serde_json;
@@ -49,7 +49,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 		let account_id = self.get_account_id(auth);
 		let secret = self.get_secret(auth);
 
-		if account_id.is_some() && secret.is_some() && DATASTORE.auth(account_id.unwrap(), secret.unwrap()).unwrap_or(false) {
+		if account_id.is_some() && secret.is_some() && statics::DATASTORE.auth(account_id.unwrap(), secret.unwrap()).unwrap_or(false) {
 			req.extensions.insert::<AccountKey>(AccountKey {
 				account_id: account_id.unwrap()
 			});
