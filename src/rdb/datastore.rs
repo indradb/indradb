@@ -14,31 +14,36 @@ use std::i32;
 use std::u64;
 use super::managers::*;
 
+fn get_options(max_open_files: Option<i32>) -> Options {
+	// Current tuning based off of the total ordered example, flash
+	// storage example on
+	// https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
+	// Some of the options for it were not available 
+	let mut opts = Options::default();
+	opts.create_if_missing(true);
+	opts.set_compaction_style(DBCompactionStyle::Level);
+	opts.set_write_buffer_size(67108864); //64mb
+	opts.set_max_write_buffer_number(3);
+	opts.set_target_file_size_base(67108864); //64mb
+	opts.set_max_background_compactions(4);
+	opts.set_level_zero_slowdown_writes_trigger(17);
+	opts.set_level_zero_stop_writes_trigger(24);
+
+	if let Some(max_open_files) = max_open_files {
+		opts.set_max_open_files(max_open_files);
+	}
+
+	opts
+}
+
 pub struct RocksdbDatastore {
 	db: Arc<DB>
 }
 
 impl RocksdbDatastore {
-	pub fn new(path: String, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
-		// Current tuning based off of the total ordered example, flash
-		// storage example on
-		// https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-		// Some of the options for it were not available 
-		let mut opts = Options::default();
-		opts.create_if_missing(true);
-		opts.set_compaction_style(DBCompactionStyle::Level);
-		opts.set_write_buffer_size(67108864); //64mb
-		opts.set_max_write_buffer_number(3);
-		opts.set_target_file_size_base(67108864); //64mb
-		opts.set_max_background_compactions(4);
-		opts.set_level_zero_slowdown_writes_trigger(17);
-		opts.set_level_zero_stop_writes_trigger(24);
-
-		if let Some(max_open_files) = max_open_files {
-			opts.set_max_open_files(max_open_files);
-		}
-
-		let mut db = try!(DB::open(&opts, &path[..]));
+	pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
+		let opts = get_options(max_open_files);
+		let mut db = try!(DB::open(&opts, path));
 		try!(AccountManager::create_index(&mut db, &opts));
 		try!(VertexManager::create_index(&mut db, &opts));
 		try!(EdgeManager::create_index(&mut db, &opts));
@@ -51,6 +56,12 @@ impl RocksdbDatastore {
 		Ok(RocksdbDatastore{
 			db: Arc::new(db)
 		})
+	}
+
+	pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<(), Error> {
+		let opts = get_options(max_open_files);
+		try!(DB::repair(opts, path));
+		Ok(())
 	}
 }
 
