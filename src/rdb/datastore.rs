@@ -39,15 +39,14 @@ impl RocksdbDatastore {
 		}
 
 		let mut db = try!(DB::open(&opts, &path[..]));
-		try!(db.create_cf("accounts:v1", &opts));
-		try!(db.create_cf("vertices:v1", &opts));
-		try!(db.create_cf("edges:v1", &opts));
-		try!(db.create_cf("edge_ranges:v1", &opts));
-		try!(db.create_cf("reversed_edge_ranges:v1", &opts));
-		try!(db.create_cf("global_metadata:v1", &opts));
-		try!(db.create_cf("account_metadata:v1", &opts));
-		try!(db.create_cf("vertex_metadata:v1", &opts));
-		try!(db.create_cf("edge_metadata:v1", &opts));
+		try!(AccountManager::create_index(&mut db, &opts));
+		try!(VertexManager::create_index(&mut db, &opts));
+		try!(EdgeManager::create_index(&mut db, &opts));
+		try!(EdgeRangeManager::create_index(&mut db, &opts));
+		try!(GlobalMetadataManager::create_index(&mut db, &opts));
+		try!(AccountMetadataManager::create_index(&mut db, &opts));
+		try!(VertexMetadataManager::create_index(&mut db, &opts));
+		try!(EdgeMetadataManager::create_index(&mut db, &opts));
 
 		Ok(RocksdbDatastore{
 			db: Arc::new(db)
