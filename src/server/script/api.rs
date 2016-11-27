@@ -1,3 +1,6 @@
+#![allow(unreachable_code)]
+// Above ignore is there because otherwise the macro is noisy
+
 use lua;
 use common::ProxyTransaction;
 use nutrino::{Vertex, Edge, Transaction};

@@ -1,6 +1,3 @@
-#![allow(unreachable_code)]
-// Above ignore is there because otherwise the macro is noisy
-
 macro_rules! lua_fn {
     ($(pub unsafe fn $name:ident($targ:ident: &mut ProxyTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
         $(

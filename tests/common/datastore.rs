@@ -22,6 +22,9 @@ pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction<Uuid>> {
 }
 
 impl<H: HttpTransaction<T>, T: Transaction<Uuid>> HttpDatastore<H, T> {
+    // Ignore is here because otherwise we get noisy results - it's used in
+    // macros which the compiler doesn't seem to pick up on
+    #[allow(dead_code)]
 	pub fn new(port: i32) -> HttpDatastore<H, T> {
 		HttpDatastore {
 			port: port,
