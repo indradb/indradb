@@ -149,7 +149,7 @@ impl AccountManager {
 
         for item in try!(account_metadata_manager.iterate_for_owner(id)) {
             let ((account_metadata_owner_id, account_metadata_name), _) = try!(item);
-            try!(account_metadata_manager.delete(&mut batch, account_metadata_owner_id, account_metadata_name));
+            try!(account_metadata_manager.delete(&mut batch, account_metadata_owner_id, &account_metadata_name[..]));
         }
 
 		Ok(())
@@ -212,7 +212,7 @@ impl VertexManager {
         let vertex_metadata_manager = VertexMetadataManager::new(self.db.clone());
         for item in try!(vertex_metadata_manager.iterate_for_owner(id)) {
             let ((vertex_metadata_owner_id, vertex_metadata_name), _) = try!(item);
-            try!(vertex_metadata_manager.delete(&mut batch, vertex_metadata_owner_id, vertex_metadata_name));
+            try!(vertex_metadata_manager.delete(&mut batch, vertex_metadata_owner_id, &vertex_metadata_name[..]));
         }
 
         let edge_manager = EdgeManager::new(self.db.clone());
@@ -222,7 +222,7 @@ impl VertexManager {
             for item in try!(edge_range_manager.iterate_for_owner(id)) {
                 let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), _) = try!(item);
                 debug_assert_eq!(edge_range_outbound_id, id);
-                try!(edge_manager.delete(&mut batch, edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_update_datetime));
+                try!(edge_manager.delete(&mut batch, edge_range_outbound_id, &edge_range_t, edge_range_inbound_id, edge_range_update_datetime));
             }
         }
 
@@ -231,7 +231,7 @@ impl VertexManager {
             for item in try!(reversed_edge_range_manager.iterate_for_owner(id)) {
                 let ((reversed_edge_range_inbound_id, reversed_edge_range_t, reversed_edge_range_update_datetime, reversed_edge_range_outbound_id), _) = try!(item);
                 debug_assert_eq!(reversed_edge_range_inbound_id, id);
-                try!(edge_manager.delete(&mut batch, reversed_edge_range_outbound_id, reversed_edge_range_t, reversed_edge_range_inbound_id, reversed_edge_range_update_datetime));
+                try!(edge_manager.delete(&mut batch, reversed_edge_range_outbound_id, &reversed_edge_range_t, reversed_edge_range_inbound_id, reversed_edge_range_update_datetime));
             }
         }
 
@@ -252,52 +252,52 @@ impl EdgeManager {
         }
 	}
 
-	fn key(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Box<[u8]> {
+	fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(outbound_id),
-            KeyComponent::ShortSizedString(t.0),
+            KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id)
         ])
 	}
 
-    pub fn exists(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<bool, Error> {
+    pub fn exists(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<bool, Error> {
         exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
     }
 
-    pub fn get(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<Option<EdgeValue>, Error> {
+    pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<Option<EdgeValue>, Error> {
         get_bincode(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
     }
 
-    pub fn set(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, new_update_datetime: NaiveDateTime, weight: models::Weight) -> Result<(), Error> {
+    pub fn set(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, new_update_datetime: NaiveDateTime, weight: models::Weight) -> Result<(), Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
-        if let Some(existing_edge_value) = try!(self.get(outbound_id, t.clone(), inbound_id)) {
+        if let Some(existing_edge_value) = try!(self.get(outbound_id, t, inbound_id)) {
             let old_update_datetime = NaiveDateTime::from_timestamp(existing_edge_value.update_timestamp, 0);
-            try!(edge_range_manager.delete(&mut batch, outbound_id, t.clone(), old_update_datetime, inbound_id));
-            try!(reversed_edge_range_manager.delete(&mut batch, outbound_id, t.clone(), old_update_datetime, inbound_id));
+            try!(edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id));
+            try!(reversed_edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id));
         }
 
         let new_edge_value = EdgeValue::new(new_update_datetime.timestamp(), weight);
-        try!(set_bincode(&self.db, self.cf, self.key(outbound_id, t.clone(), inbound_id), &new_edge_value));
-        try!(edge_range_manager.set(&mut batch, outbound_id, t.clone(), new_update_datetime, inbound_id, weight));
+        try!(set_bincode(&self.db, self.cf, self.key(outbound_id, t, inbound_id), &new_edge_value));
+        try!(edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id, weight));
         try!(reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id, weight));
         Ok(())
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, update_datetime: NaiveDateTime) -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(outbound_id, t.clone(), inbound_id)));
+    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, update_datetime: NaiveDateTime) -> Result<(), Error> {
+        try!(batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id)));
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        try!(edge_range_manager.delete(&mut batch, outbound_id, t.clone(), update_datetime, inbound_id));
+        try!(edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id));
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        try!(reversed_edge_range_manager.delete(&mut batch, inbound_id, t.clone(), update_datetime, inbound_id));
+        try!(reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, inbound_id));
 
         let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
         for item in try!(edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)) {
             let ((edge_metadata_outbound_id, edge_metadata_t, edge_metadata_inbound_id, edge_metadata_name), _) = try!(item);
-            try!(edge_metadata_manager.delete(&mut batch, edge_metadata_outbound_id, edge_metadata_t, edge_metadata_inbound_id, edge_metadata_name));
+            try!(edge_metadata_manager.delete(&mut batch, edge_metadata_outbound_id, &edge_metadata_t, edge_metadata_inbound_id, &edge_metadata_name[..]));
         }
 
         Ok(())
@@ -324,10 +324,10 @@ impl EdgeRangeManager {
         }
     }
 
-	fn key(&self, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Box<[u8]> {
+	fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(first_id),
-            KeyComponent::ShortSizedString(t.0),
+            KeyComponent::Type(t),
             KeyComponent::NaiveDateTime(update_datetime),
             KeyComponent::Uuid(second_id)
         ])
@@ -350,10 +350,10 @@ impl EdgeRangeManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(&self, id: Uuid, t: models::Type, high: Option<NaiveDateTime>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
+    pub fn iterate_for_range<'a>(&self, id: Uuid, t: &models::Type, high: Option<NaiveDateTime>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
         let high = high.unwrap_or(max_datetime());        
-        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0.clone()) ]);
-        let low_key = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0), KeyComponent::NaiveDateTime(high) ]);
+        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::Type(t) ]);
+        let low_key = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::Type(t), KeyComponent::NaiveDateTime(high) ]);
         let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward)));
         self.iterate(iterator, prefix)
     }
@@ -364,14 +364,14 @@ impl EdgeRangeManager {
         self.iterate(iterator, prefix)
     }
 
-    pub fn set(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime, second_id: Uuid, weight: models::Weight) -> Result<(), Error> {
+    pub fn set(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, update_datetime: NaiveDateTime, second_id: Uuid, weight: models::Weight) -> Result<(), Error> {
         let key = self.key(first_id, t, update_datetime, second_id);
         let value = try!(bincode_serialize_value(&weight));
         try!(batch.put_cf(self.cf, &key, &value));
         Ok(())
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id)));
         Ok(())
     }
@@ -390,19 +390,19 @@ impl GlobalMetadataManager {
         }
 	}
 
-	fn key(&self, name: String) -> Box<[u8]> {
+	fn key(&self, name: &str) -> Box<[u8]> {
 		build_key(vec![ KeyComponent::UnsizedString(name) ])
 	}
 
-    pub fn get(&self, name: String) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(name))
     }
 
-    pub fn set(&self, name: String, value: &JsonValue) -> Result<(), Error> {
+    pub fn set(&self, name: &str, value: &JsonValue) -> Result<(), Error> {
         set_json(&self.db, self.cf, self.key(name), value)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, name: String) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, name: &str) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(name)));
         Ok(())
     }
@@ -421,7 +421,7 @@ impl AccountMetadataManager {
         }
 	}
 
-	fn key(&self, account_id: Uuid, name: String) -> Box<[u8]> {
+	fn key(&self, account_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(account_id),
             KeyComponent::UnsizedString(name)
@@ -432,15 +432,15 @@ impl AccountMetadataManager {
         iterate_metadata_for_owner(&self.db, self.cf, account_id)
     }
 
-    pub fn get(&self, account_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, account_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(account_id, name))
     }
 
-    pub fn set(&self, account_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
+    pub fn set(&self, account_id: Uuid, name: &str, value: &JsonValue) -> Result<(), Error> {
         set_json(&self.db, self.cf, self.key(account_id, name), value)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, account_id: Uuid, name: String) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, account_id: Uuid, name: &str) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(account_id, name)));
         Ok(())
     }
@@ -459,7 +459,7 @@ impl VertexMetadataManager {
         }
 	}
 
-	fn key(&self, vertex_id: Uuid, name: String) -> Box<[u8]> {
+	fn key(&self, vertex_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(vertex_id),
             KeyComponent::UnsizedString(name)
@@ -470,15 +470,15 @@ impl VertexMetadataManager {
         iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(vertex_id, name))
     }
 
-    pub fn set(&self, vertex_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
+    pub fn set(&self, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<(), Error> {
         set_json(&self.db, self.cf, self.key(vertex_id, name), value)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, vertex_id: Uuid, name: String) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(vertex_id, name)));
         Ok(())
     }
@@ -497,19 +497,19 @@ impl EdgeMetadataManager {
         }
 	}
 
-	fn key(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Box<[u8]> {
+	fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(outbound_id),
-            KeyComponent::ShortSizedString(t.0),
+            KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id),
             KeyComponent::UnsizedString(name)
         ])
 	}
 
-    pub fn iterate_for_owner<'a>(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>> + 'a>, Error> {
+    pub fn iterate_for_owner<'a>(&self, outbound_id: Uuid, t: &'a models::Type, inbound_id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>> + 'a>, Error> {
         let prefix = build_key(vec![
             KeyComponent::Uuid(outbound_id),
-            KeyComponent::ShortSizedString(t.0.clone()),
+            KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id)
         ]);
 
@@ -524,7 +524,7 @@ impl EdgeMetadataManager {
             debug_assert_eq!(edge_metadata_outbound_id, outbound_id);
             
             let edge_metadata_t = read_type(&mut cursor);
-            debug_assert_eq!(edge_metadata_t, t);
+            debug_assert_eq!(&edge_metadata_t, t);
 
             let edge_metadata_inbound_id = read_uuid(&mut cursor);
             debug_assert_eq!(edge_metadata_inbound_id, inbound_id);
@@ -538,15 +538,15 @@ impl EdgeMetadataManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name))
     }
 
-    pub fn set(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String, value: &JsonValue) -> Result<(), Error> {
+    pub fn set(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str, value: &JsonValue) -> Result<(), Error> {
         set_json(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name), value)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<(), Error> {
         try!(batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name)));
         Ok(())
     }

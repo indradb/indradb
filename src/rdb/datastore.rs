@@ -106,7 +106,7 @@ impl RocksdbTransaction {
 	}
 
 	fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
-		let iterator = try!(edge_range_manager.iterate_for_range(first_id, t, None));
+		let iterator = try!(edge_range_manager.iterate_for_range(first_id, &t, None));
 		Ok(iterator.count() as u64)
 	}
 
@@ -171,7 +171,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
-		match try!(EdgeManager::new(self.db.clone()).get(outbound_id, t.clone(), inbound_id)) {
+		match try!(EdgeManager::new(self.db.clone()).get(outbound_id, &t, inbound_id)) {
 			Some(value) => Ok(models::Edge::new(outbound_id, t, inbound_id, value.weight)),
 			None => Err(Error::EdgeNotFound)
 		}
@@ -186,7 +186,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 		let new_update_datetime = UTC::now().naive_utc();
 		let mut batch = WriteBatch::default();
-		try!(EdgeManager::new(self.db.clone()).set(&mut batch, edge.outbound_id, edge.t, edge.inbound_id, new_update_datetime, edge.weight));
+		try!(EdgeManager::new(self.db.clone()).set(&mut batch, edge.outbound_id, &edge.t, edge.inbound_id, new_update_datetime, edge.weight));
 		try!(self.db.write(batch));
 		Ok(())
 	}
@@ -195,12 +195,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		// Verify that the edge exists and that we own it
 		let edge_manager = EdgeManager::new(self.db.clone());
 
-		match try!(edge_manager.get(outbound_id, t.clone(), inbound_id)) {
+		match try!(edge_manager.get(outbound_id, &t, inbound_id)) {
 			Some(value) => {
 				try!(self.check_write_permissions(outbound_id, Error::EdgeNotFound));
 				let update_datetime = NaiveDateTime::from_timestamp(value.update_timestamp, 0);
 				let mut batch = WriteBatch::default();
-				try!(edge_manager.delete(&mut batch, outbound_id, t, inbound_id, update_datetime));
+				try!(edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime));
 				try!(self.db.write(batch));
 				Ok(())
 			},
@@ -219,7 +219,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, t.clone(), None));
+		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, &t, None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
 			let ((edge_range_outbound_id, edge_range_t, _, edge_range_inbound_id), edge_range_weight) = item.unwrap();
@@ -233,7 +233,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, t.clone(), high));
+		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, &t, high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
 			let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), edge_range_weight) = item.unwrap();
@@ -256,7 +256,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, t.clone(), None));
+		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, &t, None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
 			let ((edge_range_inbound_id, edge_range_t, _, edge_range_outbound_id), edge_range_weight) = item.unwrap();
@@ -270,7 +270,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
 		let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, t.clone(), high));
+		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
 			let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id), edge_range_weight) = item.unwrap();
@@ -284,24 +284,24 @@ impl Transaction<Uuid> for RocksdbTransaction {
 
 	fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
 		let manager = GlobalMetadataManager::new(self.db.clone());
-		try!(manager.get(key)).ok_or_else(|| Error::MetadataNotFound)
+		try!(manager.get(&key[..])).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
 		let manager = GlobalMetadataManager::new(self.db.clone());
-		manager.set(key, &value)
+		manager.set(&key[..], &value)
 	}
 
 	fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
 		let mut batch = WriteBatch::default();
-		try!(GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, key));
+		try!(GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, &key[..]));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let manager = AccountMetadataManager::new(self.db.clone());
-		try!(manager.get(owner_id, key)).ok_or_else(|| Error::MetadataNotFound)
+		try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
@@ -310,20 +310,20 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let manager = AccountMetadataManager::new(self.db.clone());
-		try!(manager.set(owner_id, key, &value));
+		try!(manager.set(owner_id, &key[..], &value));
 		Ok(())
 	}
 
 	fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		let mut batch = WriteBatch::default();
-		try!(AccountMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, key));
+		try!(AccountMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, &key[..]));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let manager = VertexMetadataManager::new(self.db.clone());
-		try!(manager.get(owner_id, key)).ok_or_else(|| Error::MetadataNotFound)
+		try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
@@ -332,33 +332,33 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		}
 
 		let manager = VertexMetadataManager::new(self.db.clone());
-		manager.set(owner_id, key, &value)
+		manager.set(owner_id, &key[..], &value)
 	}
 
 	fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
 		let mut batch = WriteBatch::default();
-		try!(VertexMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, key));
+		try!(VertexMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, &key[..]));
 		try!(self.db.write(batch));
 		Ok(())
 	}
 
 	fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
 		let manager = EdgeMetadataManager::new(self.db.clone());
-		try!(manager.get(outbound_id, t, inbound_id, key)).ok_or_else(|| Error::MetadataNotFound)
+		try!(manager.get(outbound_id, &t, inbound_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
 	}
 
 	fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-		if !try!(EdgeManager::new(self.db.clone()).exists(outbound_id, t.clone(), inbound_id)) {
+		if !try!(EdgeManager::new(self.db.clone()).exists(outbound_id, &t, inbound_id)) {
 			return Err(Error::EdgeNotFound);
 		}
 
 		let manager = EdgeMetadataManager::new(self.db.clone());
-		manager.set(outbound_id, t, inbound_id, key, &value)
+		manager.set(outbound_id, &t, inbound_id, &key[..], &value)
 	}
 
 	fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
 		let mut batch = WriteBatch::default();
-		try!(EdgeMetadataManager::new(self.db.clone()).delete(&mut batch, outbound_id, t, inbound_id, key));
+		try!(EdgeMetadataManager::new(self.db.clone()).delete(&mut batch, outbound_id, &t, inbound_id, &key[..]));
 		try!(self.db.write(batch));
 		Ok(())
 	}

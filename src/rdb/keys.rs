@@ -9,18 +9,19 @@ use models;
 use chrono::NaiveDateTime;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-pub enum KeyComponent {
+pub enum KeyComponent<'a> {
 	Uuid(Uuid),
-	UnsizedString(String),
-	ShortSizedString(String),
+	UnsizedString(&'a str),
+	Type(&'a models::Type),
 	NaiveDateTime(NaiveDateTime)
 }
 
-impl KeyComponent {
+impl<'a> KeyComponent<'a> {
 	fn len(&self) -> usize {
 		match *self {
 			KeyComponent::Uuid(_) => 16,
-			KeyComponent::UnsizedString(ref s) | KeyComponent::ShortSizedString(ref s) => s.len(),
+			KeyComponent::UnsizedString(ref s) => s.len(),
+			KeyComponent::Type(ref t) => t.0.len() + 1, 
 			KeyComponent::NaiveDateTime(_) => 8
 		}
 	}
@@ -33,10 +34,9 @@ impl KeyComponent {
 			KeyComponent::UnsizedString(ref s) => {
 				try!(cursor.write(s.as_bytes()));
 			},
-			KeyComponent::ShortSizedString(ref s) => {
-				debug_assert!(s.len() <= u8::MAX as usize);
-				try!(cursor.write(&[s.len() as u8]));
-				try!(cursor.write(s.as_bytes()));
+			KeyComponent::Type(ref t) => {
+				try!(cursor.write(&[t.0.len() as u8]));
+				try!(cursor.write(t.0.as_bytes()));
 			},
 			KeyComponent::NaiveDateTime(ref datetime) => {
 				let time_to_end = max_datetime().timestamp() - datetime.timestamp(); 
