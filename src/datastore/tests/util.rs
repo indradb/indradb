@@ -2,8 +2,8 @@ use core::ops::{Add, Sub};
 use chrono::duration::Duration;
 use chrono::UTC;
 use chrono::naive::datetime::NaiveDateTime;
-use super::{Datastore, Transaction};
-use super::test_sandbox::DatastoreTestSandbox;
+use datastore::{Datastore, Transaction};
+use super::sandbox::DatastoreTestSandbox;
 use traits::Id;
 use models;
 

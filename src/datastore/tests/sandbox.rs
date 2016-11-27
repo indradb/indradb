@@ -1,4 +1,4 @@
-use super::{Datastore, Transaction};
+use datastore::{Datastore, Transaction};
 use traits::Id;
 use std::marker::PhantomData;
 
