@@ -26,3 +26,8 @@ pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String
 	sha.input(secret.as_bytes());
 	return format!("1:{}", sha.result_str());
 }
+
+pub fn to_hex_string(bytes: Vec<u8>) -> String {
+	let strs: Vec<String> = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+	strs.join(" ")
+}

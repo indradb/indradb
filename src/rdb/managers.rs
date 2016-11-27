@@ -1,7 +1,7 @@
 use models;
 use uuid::Uuid;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash};
+use util::{generate_random_secret, get_salted_hash, to_hex_string};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
@@ -355,8 +355,9 @@ impl EdgeRangeManager {
 
     pub fn iterate_for_range<'a>(&self, id: Uuid, t: models::Type, high: Option<NaiveDateTime>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
         let high = high.unwrap_or(max_datetime());        
-        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0), KeyComponent::NaiveDateTime(high) ]);
-        let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward)));
+        let prefix = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0.clone()) ]);
+        let low_key = build_key(vec![ KeyComponent::Uuid(id), KeyComponent::ShortSizedString(t.0), KeyComponent::NaiveDateTime(high) ]);
+        let iterator = try!(self.db.iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward)));
         self.iterate(iterator, prefix)
     }
 
