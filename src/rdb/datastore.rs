@@ -109,23 +109,30 @@ impl RocksdbTransaction {
 		Ok(iterator.count() as u64)
 	}
 
-	fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=(models::Edge<Uuid>, NaiveDateTime)>>, low: Option<NaiveDateTime>) -> Result<Vec<models::Edge<Uuid>>, Error> {
-		let filtered: Box<Iterator<Item=(models::Edge<Uuid>, NaiveDateTime)>> = match low {
+	fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=Result<(models::Edge<Uuid>, NaiveDateTime), Error>>>, low: Option<NaiveDateTime>) -> Result<Vec<models::Edge<Uuid>>, Error> {
+		let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+
+		match low {
 			Some(low) => {
-				Box::new(iterator.take_while(move |item| {
-					let (_, update_datetime) = *item;
-					update_datetime >= low
-				}))
+				for item in iterator {
+					let (edge, update_datetime) = try!(item);
+
+					if update_datetime < low {
+						break;
+					}
+
+					edges.push(edge);
+				}
 			},
-			None => Box::new(iterator)
-		};
+			None => {
+				for item in iterator {
+					let (edge, _) = try!(item);
+					edges.push(edge);
+				}
+			}
+		}
 
-		let edges = filtered.map(move |item| {
-			let (edge, _) = item;
-			edge
-		});
-
-		Ok(edges.collect())
+		Ok(edges)
 	}
 
 	fn check_write_permissions(&self, id: Uuid, err: Error) -> Result<(), Error> {
@@ -221,13 +228,14 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, &t, None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
-			let ((edge_range_outbound_id, edge_range_t, _, edge_range_inbound_id), edge_range_weight) = item.unwrap();
+			let ((edge_range_outbound_id, edge_range_t, _, edge_range_inbound_id), edge_range_weight) = try!(item);
 			debug_assert_eq!(edge_range_outbound_id, outbound_id);
 			debug_assert_eq!(edge_range_t, t);
-			models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight)
+			Ok(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight))
 		});
 
-		Ok(mapped.collect())
+		let result: Result<Vec<models::Edge<Uuid>>, Error> = mapped.collect();
+		result
 	}
 
 	fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
@@ -235,10 +243,10 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, &t, high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
-			let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), edge_range_weight) = item.unwrap();
+			let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id), edge_range_weight) = try!(item);
 			debug_assert_eq!(edge_range_outbound_id, outbound_id);
 			debug_assert_eq!(edge_range_t, t);
-			(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime) 
+			Ok((models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime)) 
 		});
 
 		self.handle_get_edge_time_range(Box::new(mapped), low)
@@ -258,13 +266,14 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, &t, None));
 
 		let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
-			let ((edge_range_inbound_id, edge_range_t, _, edge_range_outbound_id), edge_range_weight) = item.unwrap();
+			let ((edge_range_inbound_id, edge_range_t, _, edge_range_outbound_id), edge_range_weight) = try!(item);
 			debug_assert_eq!(edge_range_inbound_id, inbound_id);
 			debug_assert_eq!(edge_range_t, t);
-			models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight)
+			Ok(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight))
 		});
 
-		Ok(mapped.collect())
+		let result: Result<Vec<models::Edge<Uuid>>, Error> = mapped.collect();
+		result
 	}
 
 	fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
@@ -272,10 +281,10 @@ impl Transaction<Uuid> for RocksdbTransaction {
 		let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high));
 
 		let mapped = iterator.take(limit as usize).map(move |item| {
-			let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id), edge_range_weight) = item.unwrap();
+			let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id), edge_range_weight) = try!(item);
 			debug_assert_eq!(edge_range_inbound_id, inbound_id);
 			debug_assert_eq!(edge_range_t, t);
-			(models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime) 
+			Ok((models::Edge::new(edge_range_outbound_id, edge_range_t, edge_range_inbound_id, edge_range_weight), edge_range_update_datetime)) 
 		});
 
 		self.handle_get_edge_time_range(Box::new(mapped), low)
