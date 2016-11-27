@@ -34,8 +34,8 @@ impl RocksdbDatastore {
 		opts.set_level_zero_slowdown_writes_trigger(17);
 		opts.set_level_zero_stop_writes_trigger(24);
 
-		if max_open_files.is_some() {
-			opts.set_max_open_files(max_open_files.unwrap());
+		if let Some(max_open_files) = max_open_files {
+			opts.set_max_open_files(max_open_files);
 		}
 
 		let mut db = try!(DB::open(&opts, &path[..]));

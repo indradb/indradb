@@ -36,10 +36,16 @@ impl PostgresDatastore {
 		};
 
 		let pool_config = Config::builder().pool_size(unwrapped_pool_size).build();
-		let manager = PostgresConnectionManager::new(&*connection_string, SslMode::None).unwrap();
+		let manager = match PostgresConnectionManager::new(&*connection_string, SslMode::None) {
+			Ok(manager) => manager,
+			Err(err) => panic!("Could not connect to the postgres database: {}", err)
+		};
 
 		PostgresDatastore {
-			pool: Pool::new(pool_config, manager).unwrap(),
+			pool: match Pool::new(pool_config, manager) {
+				Ok(pool) => pool,
+				Err(err) => panic!("Could not initialize postgres database pool: {}", err)
+			},
 			secret: secret
 		}
 	}
