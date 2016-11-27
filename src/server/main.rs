@@ -25,15 +25,7 @@ mod datastore;
 use std::env;
 
 fn main() {
-	let port: u16 = match env::var("PORT") {
-		Ok(s) => {
-			match s.parse::<u16>() {
-				Ok(val) => val,
-				Err(_) => panic!("Could not parse environment variable `PORT`") 
-			}
-		},
-		Err(_) => 8000
-	};
-
+	let port_str = env::var("PORT").unwrap_or("8000".to_string());
+	let port = port_str.parse::<u16>().expect("Could not parse environment variable `PORT`");
 	http::start(port);
 }

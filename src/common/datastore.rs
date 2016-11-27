@@ -190,16 +190,13 @@ impl Transaction<Uuid> for ProxyTransaction {
 
 
 pub fn datastore() -> ProxyDatastore {
-    let connection_string = match env::var("DATABASE_URL") {
-        Ok(val) => val,
-        Err(_) => "rocksdb://.rdb".to_string()
-    };
+	let connection_string = env::var("DATABASE_URL").unwrap_or("rocksdb://.rdb".to_string());
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
 		let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
-		let max_open_files = max_open_files_str.parse::<i32>().expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: should be an i32");
+		let max_open_files = max_open_files_str.parse::<i32>().expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an i32");
 
         let datastore = match RocksdbDatastore::new(path.to_string(), Some(max_open_files)) {
             Ok(datastore) => datastore,
@@ -209,7 +206,7 @@ pub fn datastore() -> ProxyDatastore {
         ProxyDatastore::Rocksdb(datastore)
     } else if connection_string.starts_with("postgres://") {
         let pool_size = match env::var("DATABASE_POOL_SIZE") {
-            Ok(str_val) => Some(str_val.parse().expect("Invalid DATABASE_POOL_SIZE: Must be an integer")),
+            Ok(str_val) => Some(str_val.parse().expect("Could not parse environment variable `DATABASE_POOL_SIZE`: must be a u32")),
             Err(_) => None
         };
 
