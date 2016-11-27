@@ -1,7 +1,7 @@
 use models;
 use uuid::Uuid;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash, to_hex_string};
+use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
@@ -9,14 +9,11 @@ use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
 use bincode::serde as bincode_serde;
 use std::sync::Arc;
-use core::iter::Map;
 use std::u8;
 use serde_json;
 use super::keys::*;
 use librocksdb_sys::rocksdb_column_family_handle_t;
-use std::i64;
 use std::io::Cursor;
-use std::i32;
 use serde::{Serialize, Deserialize};
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {

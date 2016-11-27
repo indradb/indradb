@@ -1,6 +1,5 @@
 use super::{Datastore, Transaction};
 use super::test_sandbox::DatastoreTestSandbox;
-use super::test_util::*;
 use errors::Error;
 use models;
 use traits::Id;

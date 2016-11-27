@@ -1,10 +1,8 @@
 use super::{Datastore, Transaction};
 use super::test_sandbox::DatastoreTestSandbox;
 use super::test_util::*;
-use errors::Error;
 use models;
 use traits::Id;
-use serde_json::Value as JsonValue;
 use std::collections::HashSet;
 
 pub fn should_get_an_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {

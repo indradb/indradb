@@ -6,13 +6,12 @@ use util::get_salted_hash;
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::offset::utc::UTC;
-use rocksdb::{DB, Options, IteratorMode, Direction, WriteBatch, DBCompactionStyle};
+use rocksdb::{DB, Options, WriteBatch, DBCompactionStyle};
 use super::models::VertexValue;
 use std::sync::Arc;
 use std::usize;
 use std::i32;
 use std::u64;
-use super::keys::*;
 use super::managers::*;
 
 pub struct RocksdbDatastore {

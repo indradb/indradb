@@ -1,10 +1,8 @@
 use super::{Datastore, Transaction};
 use super::test_sandbox::DatastoreTestSandbox;
-use super::test_util::*;
 use errors::Error;
 use models;
 use traits::Id;
-use serde_json::Value as JsonValue;
 
 pub fn should_get_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();

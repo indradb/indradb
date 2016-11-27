@@ -103,10 +103,6 @@ pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> NaiveDateTime {
     NaiveDateTime::from_timestamp(timestamp, 0)
 }
 
-pub fn max_uuid() -> Uuid {
-	Uuid::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]).unwrap()
-}
-
 pub fn max_datetime() -> NaiveDateTime {
 	// NOTE: this suffers from the year 2038 problem, but we can't use
 	// i64::MAX because chrono sees it as an invalid time
