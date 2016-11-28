@@ -94,13 +94,11 @@ pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
 }
 
 pub fn bench_get_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-    let (outbound_id, _) = create_edges(&mut sandbox);
-    let after = get_after();
-    let before = get_before();
+    let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    	trans.get_edge_time_range(outbound_id, t, after.clone(), before.clone(), 10).unwrap();
+    	trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
     });
 }

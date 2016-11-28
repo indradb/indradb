@@ -125,10 +125,13 @@ impl RocksdbTransaction {
 
 		match low {
 			Some(low) => {
+				// Round down since we only have second accuracy
+				let low_fixed = NaiveDateTime::from_timestamp(low.timestamp(), 0); 
+
 				for item in iterator {
 					let (edge, update_datetime) = try!(item);
 
-					if update_datetime < low {
+					if update_datetime < low_fixed {
 						break;
 					}
 

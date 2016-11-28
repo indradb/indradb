@@ -44,6 +44,14 @@ pub fn should_get_an_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mu
 	check_edge_range(range, outbound_id, 5);
 }
 
+pub fn should_get_a_partial_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+	let (outbound_id, _) = create_edges(&mut sandbox);
+	let trans = sandbox.transaction();
+	let t = models::Type::new("test_edge_type".to_string()).unwrap();
+	let range = trans.get_edge_range(outbound_id, t, 1, 3).unwrap();
+	check_edge_range(range, outbound_id, 3);
+}
+
 pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
 	let trans = sandbox.transaction();
 	let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -54,50 +62,50 @@ pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D: Datastore<T, I>, T:
 }
 
 pub fn should_get_edges_by_a_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("test_edge_type".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, get_after(), get_before(), 10).unwrap();
+	let range = trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
 	check_edge_range(range, outbound_id, 5);
 }
 
 pub fn should_get_no_edges_for_an_invalid_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("foo".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, get_after(), get_before(), 10).unwrap();
+	let range = trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
 	check_edge_range(range, outbound_id, 0);
 }
 
 pub fn should_get_edges_by_a_time_range_with_no_high<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, start_time, _, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("test_edge_type".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, Option::None, get_before(), 10).unwrap();
-	check_edge_range(range, outbound_id, 5);
+	let range = trans.get_edge_time_range(outbound_id, t, Option::None, Some(start_time), 15).unwrap();
+	check_edge_range(range, outbound_id, 10);
 }
 
 pub fn should_get_edges_by_a_time_range_with_no_low<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, _, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("test_edge_type".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, get_after(), Option::None, 10).unwrap();
-	check_edge_range(range, outbound_id, 5);
+	let range = trans.get_edge_time_range(outbound_id, t, Some(end_time), None, 15).unwrap();
+	check_edge_range(range, outbound_id, 10);
 }
 
 pub fn should_get_edges_by_a_time_range_with_no_time<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, _, _, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("test_edge_type".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, Option::None, Option::None, 10).unwrap();
-	check_edge_range(range, outbound_id, 5);
+	let range = trans.get_edge_time_range(outbound_id, t, None, None, 20).unwrap();
+	check_edge_range(range, outbound_id, 15);
 }
 
 pub fn should_get_no_edges_for_a_reversed_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
-	let (outbound_id, _) = create_edges(&mut sandbox);
+	let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 	let trans = sandbox.transaction();
 	let t = models::Type::new("test_edge_type".to_string()).unwrap();
-	let range = trans.get_edge_time_range(outbound_id, t, get_before(), get_after(), 10).unwrap();
+	let range = trans.get_edge_time_range(outbound_id, t, Some(start_time), Some(end_time), 10).unwrap();
 	check_edge_range(range, outbound_id, 0);
 }
 

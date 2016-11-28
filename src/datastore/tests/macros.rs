@@ -139,6 +139,10 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get an edge range");
 				::tests::should_get_an_edge_range(&mut sandbox)
 			}
+			it "should get a partial edge range" {
+				sandbox.setup("should get a partial edge range");
+				::tests::should_get_a_partial_edge_range(&mut sandbox)
+			}
 			it "should get an empty edge range for an invalid edge" {
 				sandbox.setup("should get an empty edge range for an invalid edge");
 				::tests::should_get_an_empty_edge_range_for_an_invalid_edge(&mut sandbox)
@@ -167,53 +171,56 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get no edges for a reversed time range");
 				::tests::should_get_no_edges_for_a_reversed_time_range(&mut sandbox)
 			}
-
 			it "should get a reversed edge count" {
-				sandbox.setup("should get a reversed edge count");
+				sandbox.setup("should_get_a_reversed_edge_count");
 				::tests::should_get_a_reversed_edge_count(&mut sandbox)
 			}
 			it "should get a reversed edge count for an invalid edge" {
-				sandbox.setup("should get a reversed edge count for an invalid edge");
+				sandbox.setup("should_get_a_reversed_edge_count_for_an_invalid_edge");
 				::tests::should_get_a_reversed_edge_count_for_an_invalid_edge(&mut sandbox)
 			}
 			it "should get an empty reversed edge range with zero limit" {
-				sandbox.setup("should get an empty reversed edge range with zero limit");
+				sandbox.setup("should_get_an_empty_reversed_edge_range_with_zero_limit");
 				::tests::should_get_an_empty_reversed_edge_range_with_zero_limit(&mut sandbox)
 			}
 			it "should get an empty reversed edge range" {
-				sandbox.setup("should get an empty reversed edge range");
+				sandbox.setup("should_get_an_empty_reversed_edge_range");
 				::tests::should_get_an_empty_reversed_edge_range(&mut sandbox)
 			}
 			it "should get a reversed edge range" {
-				sandbox.setup("should get a reversed edge range");
+				sandbox.setup("should_get_a_reversed_edge_range");
 				::tests::should_get_a_reversed_edge_range(&mut sandbox)
 			}
+			it "should get a partial reversed edge range" {
+				sandbox.setup("should_get_a_partial_reversed_edge_range");
+				::tests::should_get_a_partial_reversed_edge_range(&mut sandbox)
+			}
 			it "should get an empty reversed edge range for an invalid edge" {
-				sandbox.setup("should get an empty reversed edge range for an invalid edge");
+				sandbox.setup("should_get_an_empty_reversed_edge_range_for_an_invalid_edge");
 				::tests::should_get_an_empty_reversed_edge_range_for_an_invalid_edge(&mut sandbox)
 			}
 			it "should get reversed edges by a time range" {
-				sandbox.setup("should get reversed edges by a time range");
+				sandbox.setup("should_get_reversed_edges_by_a_time_range");
 				::tests::should_get_reversed_edges_by_a_time_range(&mut sandbox)
 			}
 			it "should get no reversed edges for an invalid time range" {
-				sandbox.setup("should get no reversed edges for an invalid time range");
+				sandbox.setup("should_get_no_reversed_edges_for_an_invalid_time_range");
 				::tests::should_get_no_reversed_edges_for_an_invalid_time_range(&mut sandbox)
 			}
 			it "should get reversed edges by a time range with no high" {
-				sandbox.setup("should get reversed edges by a time range with no high");
+				sandbox.setup("should_get_reversed_edges_by_a_time_range_with_no_high");
 				::tests::should_get_reversed_edges_by_a_time_range_with_no_high(&mut sandbox)
 			}
 			it "should get reversed edges by a time range with no low" {
-				sandbox.setup("should get reversed edges by a time range with no low");
+				sandbox.setup("should_get_reversed_edges_by_a_time_range_with_no_low");
 				::tests::should_get_reversed_edges_by_a_time_range_with_no_low(&mut sandbox)
 			}
 			it "should get reversed edges by a time range with no time" {
-				sandbox.setup("should get reversed edges by a time range with no time");
+				sandbox.setup("should_get_reversed_edges_by_a_time_range_with_no_time");
 				::tests::should_get_reversed_edges_by_a_time_range_with_no_time(&mut sandbox)
 			}
 			it "should get no reversed edges for a reversed time range" {
-				sandbox.setup("should get no reversed edges for a reversed time range");
+				sandbox.setup("should_get_no_reversed_edges_for_a_reversed_time_range");
 				::tests::should_get_no_reversed_edges_for_a_reversed_time_range(&mut sandbox)
 			}
 		}

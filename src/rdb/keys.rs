@@ -39,7 +39,7 @@ impl<'a> KeyComponent<'a> {
 				try!(cursor.write(t.0.as_bytes()));
 			},
 			KeyComponent::NaiveDateTime(ref datetime) => {
-				let time_to_end = max_datetime().timestamp() - datetime.timestamp(); 
+				let time_to_end = max_datetime().timestamp() - datetime.timestamp();
 				debug_assert!(time_to_end >= 0);
 				try!(cursor.write_i64::<BigEndian>(time_to_end));
 			}
