@@ -14,6 +14,18 @@ use std::i32;
 use std::u64;
 use super::managers::*;
 
+const CF_NAMES: [&'static str; 9] = [
+	"accounts:v1",
+	"vertices:v1",
+	"edges:v1",
+	"edge_ranges:v1",
+	"reversed_edge_ranges:v1",
+	"global_metadata:v1",
+	"account_metadata:v1",
+	"vertex_metadata:v1",
+	"edge_metadata:v1",
+];
+
 fn get_options(max_open_files: Option<i32>) -> Options {
 	// Current tuning based off of the total ordered example, flash
 	// storage example on
@@ -43,15 +55,19 @@ pub struct RocksdbDatastore {
 impl RocksdbDatastore {
 	pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
 		let opts = get_options(max_open_files);
-		let mut db = try!(DB::open(&opts, path));
-		try!(AccountManager::create_index(&mut db, &opts));
-		try!(VertexManager::create_index(&mut db, &opts));
-		try!(EdgeManager::create_index(&mut db, &opts));
-		try!(EdgeRangeManager::create_index(&mut db, &opts));
-		try!(GlobalMetadataManager::create_index(&mut db, &opts));
-		try!(AccountMetadataManager::create_index(&mut db, &opts));
-		try!(VertexMetadataManager::create_index(&mut db, &opts));
-		try!(EdgeMetadataManager::create_index(&mut db, &opts));
+
+		let db = match DB::open_cf(&opts, path, &CF_NAMES) {
+			Ok(db) => db,
+			Err(_) => {
+				let mut db = try!(DB::open(&opts, path));
+
+				for cf_name in CF_NAMES.iter() {
+					try!(db.create_cf(cf_name, &opts));
+				}
+
+				db
+			}
+		};
 
 		Ok(RocksdbDatastore{
 			db: Arc::new(db)

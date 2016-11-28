@@ -4,7 +4,7 @@ use errors::Error;
 use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::naive::datetime::NaiveDateTime;
-use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, Options};
+use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
 use bincode::serde as bincode_serde;
@@ -109,11 +109,6 @@ impl AccountManager {
         }
 	}
 
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("accounts:v1", opts));
-        Ok(())
-    } 
-
 	pub fn key(&self, id: Uuid) -> Box<[u8]> {
 		build_key(vec![KeyComponent::Uuid(id)])
 	}
@@ -173,11 +168,6 @@ impl VertexManager {
             db: db
         }
 	}
-
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("vertices:v1", opts));
-        Ok(())
-    } 
 
 	fn key(&self, id: Uuid) -> Box<[u8]> {
 		build_key(vec![KeyComponent::Uuid(id)])
@@ -262,11 +252,6 @@ impl EdgeManager {
         }
 	}
 
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("edges:v1", opts));
-        Ok(())
-    } 
-
 	fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(outbound_id),
@@ -339,12 +324,6 @@ impl EdgeRangeManager {
         }
     }
 
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("edge_ranges:v1", opts));
-        try!(db.create_cf("reversed_edge_ranges:v1", opts));
-        Ok(())
-    } 
-
 	fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: NaiveDateTime, second_id: Uuid) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(first_id),
@@ -411,11 +390,6 @@ impl GlobalMetadataManager {
         }
 	}
 
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("global_metadata:v1", opts));
-        Ok(())
-    } 
-
 	fn key(&self, name: &str) -> Box<[u8]> {
 		build_key(vec![ KeyComponent::UnsizedString(name) ])
 	}
@@ -446,11 +420,6 @@ impl AccountMetadataManager {
             db: db
         }
 	}
-
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("account_metadata:v1", opts));
-        Ok(())
-    } 
 
 	fn key(&self, account_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
@@ -490,11 +459,6 @@ impl VertexMetadataManager {
         }
 	}
 
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("vertex_metadata:v1", opts));
-        Ok(())
-    } 
-
 	fn key(&self, vertex_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
             KeyComponent::Uuid(vertex_id),
@@ -532,11 +496,6 @@ impl EdgeMetadataManager {
             db: db
         }
 	}
-
-    pub fn create_index(db: &mut DB, opts: &Options) -> Result<(), Error> {
-        try!(db.create_cf("edge_metadata:v1", opts));
-        Ok(())
-    } 
 
 	fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Box<[u8]> {
 		build_key(vec![
