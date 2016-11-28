@@ -245,8 +245,8 @@ impl Transaction<Uuid> for PostgresTransaction {
 
 		let results = trans.query("
 			INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_date)
-			VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, NOW())
-			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$6, update_date=NOW()
+			VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
+			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$6, update_date=CLOCK_TIMESTAMP()
 			RETURNING 1
 		", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
 
