@@ -198,7 +198,7 @@ pub fn datastore() -> ProxyDatastore {
 		let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
 		let max_open_files = max_open_files_str.parse::<i32>().expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an i32");
 
-        let datastore = match RocksdbDatastore::new(path.to_string(), Some(max_open_files)) {
+        let datastore = match RocksdbDatastore::new(path, Some(max_open_files)) {
             Ok(datastore) => datastore,
             Err(err) => panic!("Could not instantiate a rocksdb datastore: {:?}", err)
         };
