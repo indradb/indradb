@@ -188,6 +188,7 @@ pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 			let status = match err {
 				Error::AccountNotFound | Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
 				Error::OutOfRange(_) => status::BadRequest,
+				Error::Unauthorized => status::Unauthorized,
 				Error::Unexpected(_) => status::InternalServerError
 			};
 
