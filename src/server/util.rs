@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
+/// `SimpleError`s are just errors with string contents.
 #[derive(Debug)]
 pub struct SimpleError {
 	description: String

@@ -9,8 +9,8 @@ use common::datastore;
 use nutrino::Datastore;
 use uuid::Uuid;
 
+/// App for managing accounts
 fn main() {
-    // Parse command line arguments
     let matches = App::new("nutrino-user")
         .version("0.1")
         .about("User management for Nutrino")

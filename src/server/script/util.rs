@@ -8,6 +8,7 @@ use uuid::Uuid;
 use core::str::FromStr;
 use super::errors::LuaError;
 
+/// Deserializes a lua value into a JSON value. 
 pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
         Some(lua::Type::Nil) | None => JsonValue::Null,
@@ -50,6 +51,7 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
     })
 }
 
+/// Serializes a JSON value into a lua value.
 pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
     match json {
         JsonValue::Null => l.pushnil(),
@@ -79,6 +81,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
     }
 }
 
+/// Serializes an edge range into a lua table.
 pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) {
     l.newtable();
 
@@ -89,6 +92,7 @@ pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) 
     }
 }
 
+/// Serializes an edge into a lua table.
 pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<Uuid>) {
     l.newtable();
     add_string_field_to_table(l, "outbound_id", &edge.outbound_id.to_string()[..]);

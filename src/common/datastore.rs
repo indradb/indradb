@@ -1,7 +1,7 @@
-// This module a proxy datastore and transaction that in turn call actual
-// atastore/transaction implementations. Ideally this would not be necessary,
-// and we'd rely on something like trait objects to get the job done. However,
-// rust is not flexible enough (yet) to support that. 
+/// This module exposes a proxy datastore and transaction that in turn call
+/// actual datastore/transaction implementations. Ideally this would not be
+/// necessary, and we'd rely on something like trait objects to get the job
+/// done. However, rust is not flexible enough (yet) to support that. 
 
 use std::env;
 use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction, Type};
@@ -9,6 +9,7 @@ use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use chrono::NaiveDateTime;
 
+/// This macro is used to proxy most methods.  
 macro_rules! proxy_datastore {
     ($this: expr, $name:ident, $($arg:tt)*) => (
         {
@@ -188,7 +189,16 @@ impl Transaction<Uuid> for ProxyTransaction {
 	}
 }
 
-
+/// Creates a new datastore.
+///
+/// This looks at the `DATABASE_URL` environment variable to figure out which
+/// datastore to use. If it starts with `rocksdb://`, the rocksdb
+/// implementation is used. If it starts with `postgres://`, the postgres
+/// implementation is used.
+///
+/// # Errors
+/// Returns an error if we are unable to figure out what kind of datastore to
+/// use. 
 pub fn datastore() -> ProxyDatastore {
 	let connection_string = env::var("DATABASE_URL").unwrap_or("rocksdb://.rdb".to_string());
 

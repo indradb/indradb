@@ -15,7 +15,7 @@ use core::str::FromStr;
 
 header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
 
-// -- Basic http auth middleware
+/// Basic HTTP auth middleware.
 pub struct BasicAuthMiddleware {
 }
 
@@ -72,7 +72,10 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 	}
 }
 
-// -- Error middleware
+/// Error middleware
+///
+/// This produces a standard JSON body if an error occurred, and no JSON
+/// body has been specified yet.
 pub struct ErrorMiddleware {
 }
 

@@ -7,6 +7,7 @@ use iron::prelude::*;
 use router::Router;
 use std::u16;
 
+/// Starts a new server on the given port.
 pub fn start(port: u16) {
 	let mut router = Router::new();
 

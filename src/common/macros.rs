@@ -1,4 +1,6 @@
-// Based off of https://github.com/rust-lang/rfcs/issues/1078
+/// Prints to stderr, and then exits the process with a return code of 1.
+///
+/// Based off of https://github.com/rust-lang/rfcs/issues/1078.
 #[macro_export]
 macro_rules! exit_with_err {
     ($($arg:tt)*) => (
