@@ -1,6 +1,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
+/// The error returned by datastore and transaction implementation methods.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Error {
 	AccountNotFound,
@@ -13,6 +14,8 @@ pub enum Error {
 }
 
 impl Error {
+	/// A utility method that converts an error message back to an error
+	/// object.
 	pub fn description_to_error(message: &str) -> Self {
 		match &message[..] {
 	        "Account not found" => Error::AccountNotFound,
@@ -59,6 +62,8 @@ impl fmt::Display for Error {
 	}
 }
 
+/// The error returned when there is an attempt to instantiate a model with an
+/// invalid value.
 #[derive(Debug)]
 pub struct ValidationError {
 	description: String

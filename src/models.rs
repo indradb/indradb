@@ -60,10 +60,17 @@ impl<I: Id> PartialEq for Edge<I> {
 
 impl<I: Id> Eq for Edge<I>{}
 
+/// An edge weight.
+///
+/// Edge weights must be between -1.0 and 1.0.
 #[derive(Clone, Debug, Serialize, Deserialize, Copy)]
 pub struct Weight(pub f32);
 
 impl Weight {
+	/// Constructs a new edge weight.
+	///
+	/// # Errors
+	/// Returns a `ValidationError` if the weight is below -1.0 or above 1.0.
 	pub fn new(w: f32) -> Result<Self, ValidationError> {
 		if w < -1.0 || w > 1.0 {
 			Err(ValidationError::new("Weight out of range".to_string()))
@@ -73,10 +80,19 @@ impl Weight {
 	}
 }
 
+/// An edge or vertex type.
+///
+/// Types must be less than 256 characters long, and can only contain letters,
+/// numbers, dashes and underscores.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Type(pub String);
 
 impl Type {
+	/// Constructs a new type.
+	///
+	/// # Errors
+	/// Returns a `ValidationError` if the type is longer than 255 characters,
+	/// or has invalid characters. 
 	pub fn new(t: String) -> Result<Self, ValidationError> {
 		if t.len() > 255 {
 			Err(ValidationError::new("Type is too long".to_string()))
