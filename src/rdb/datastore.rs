@@ -109,7 +109,11 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
 				let expected_hash = get_salted_hash(&value.salt[..], None, &secret[..]);
 				Ok(expected_hash == value.hash)
 			},
-			_ => Ok(false)
+			_ => {
+				// Calculate the hash anyways to prevent a timing attack
+				get_salted_hash("", None, &secret[..]);
+				Ok(false)
+			}
 		}
 	}
 

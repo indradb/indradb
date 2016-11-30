@@ -86,21 +86,18 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 
 	fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
 		let conn = try!(self.pool.get());
-		let get_salt_results = try!(conn.query("SELECT salt FROM accounts WHERE id=$1", &[&account_id]));
+		let get_salt_results = try!(conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1", &[&account_id]));
 
 		for row in &get_salt_results {
 			let salt: String = row.get(0);
-			let expected_hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
-			let auth_results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1 AND api_secret_hash=$2", &[&account_id, &expected_hash]));
-
-			for _ in &auth_results {
-				return Result::Ok(true);
-			}
-
-			return Result::Ok(false);
+			let expected_hash: String = row.get(1);
+			let actual_hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
+			return Ok(expected_hash == actual_hash);
 		}
 
-		Result::Ok(false)
+		// Calculate the hash anyways to prevent timing attacks
+		get_salted_hash("", Some(&self.secret[..]), &secret[..]);
+		Ok(false)
 	}
 
 	fn transaction(&self, account_id: Uuid) -> Result<PostgresTransaction, Error> {
