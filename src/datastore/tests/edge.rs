@@ -83,7 +83,7 @@ pub fn should_not_set_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Transa
 	let trans = sandbox.datastore.transaction(id).unwrap();
 	let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
 	let result = trans.set_edge(models::Edge::new(outbound_id, edge_t, inbound_id, models::Weight::new(0.5).unwrap()));
-	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
+	assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
 
 pub fn should_delete_a_valid_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(sandbox: &mut DatastoreTestSandbox<D, T, I>) {
@@ -125,5 +125,5 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D: Datastore<T, I>, T: Tra
 	let (id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(id).unwrap();
 	let result = trans.delete_edge(outbound_id, edge_t, inbound_id);
-	assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
+	assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }

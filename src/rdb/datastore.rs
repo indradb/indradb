@@ -169,14 +169,19 @@ impl RocksdbTransaction {
 		Ok(edges)
 	}
 
-	fn check_write_permissions(&self, id: Uuid, err: Error) -> Result<(), Error> {
+	fn check_write_permissions(&self, id: Uuid, not_found_err: Error) -> Result<(), Error> {
 		let vertex_manager = VertexManager::new(self.db.clone());
 		let vertex_value = try!(vertex_manager.get(id));
 
-		if vertex_value.is_none() || vertex_value.unwrap().owner_id != self.account_id {
-			Err(err)
-		} else {
-			Ok(())
+		match vertex_value {
+			None => Err(not_found_err),
+			Some(vertex_value) => {
+				if vertex_value.owner_id != self.account_id {
+					Err(Error::Unauthorized)
+				} else {
+					Ok(())
+				}
+			}
 		}
 	}
 }

@@ -7,6 +7,7 @@ pub enum Error {
 	VertexNotFound,
 	EdgeNotFound,
 	MetadataNotFound,
+	Unauthorized,
 	OutOfRange(String),
 	Unexpected(String),
 }
@@ -18,6 +19,7 @@ impl Error {
 	        "Vertex does not exist" => Error::VertexNotFound,
 	        "Edge does not exist" => Error::EdgeNotFound,
 	        "Metadata does not exist" => Error::MetadataNotFound,
+			"Unauthorized" => Error::Unauthorized,
 	        _ => {
 				if message.starts_with("Value out of range: ") {
 					Error::OutOfRange(message[20..message.len()].to_string())
@@ -36,6 +38,7 @@ impl StdError for Error {
 			Error::VertexNotFound => "Vertex does not exist",
 			Error::EdgeNotFound => "Edge does not exist",
 			Error::MetadataNotFound => "Metadata does not exist",
+			Error::Unauthorized => "Unauthorized",
 			Error::OutOfRange(_) => "Value out of range",
 			Error::Unexpected(_) => "Unexpected error"
 		}

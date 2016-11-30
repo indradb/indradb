@@ -215,7 +215,11 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::VertexNotFound)
+		// We couldn't delete the vertex - it either doesn't exist, or we're
+		// unauthorized to delete it. Check if it exists first, and if that
+		// doesn't give back a VertexNotFound, we must be unauthorized.
+		try!(self.get_vertex(id));
+		Err(Error::Unauthorized)
 	}
 
 	fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
@@ -238,53 +242,45 @@ impl Transaction<Uuid> for PostgresTransaction {
 
 		// Because this command could fail, we need to set a savepoint to roll
 		// back to, rather than spoiling the entire transaction
-		let trans = try!(self.trans.savepoint("set_edge"));
+		let results = {
+			let trans = try!(self.trans.savepoint("set_edge"));
 
-		let results = trans.query("
-			INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_date)
-			VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
-			ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$6, update_date=CLOCK_TIMESTAMP()
-			RETURNING 1
-		", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
+			let results = trans.query("
+				INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_date)
+				VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
+				ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey DO UPDATE SET weight=$6, update_date=CLOCK_TIMESTAMP()
+			", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
 
-		let returnable = match results {
-			Ok(results) => {
-				if results.len() > 0 {
+			match results {
+				Err(err) => {
+					trans.set_rollback();
+					Err(err)
+				},
+				Ok(_) => {
+					trans.set_commit();
 					Ok(())
-				} else {
-					Err(Error::VertexNotFound)
 				}
-			},
-			Err(pg_error::Error::Db(ref db_err)) => {
-				match db_err.code {
-					// This should only happen when the inner select fails
-					pg_error::SqlState::NotNullViolation => Err(Error::VertexNotFound),
-
-					// This should only happen when there is no vertex with id=inbound_id
-					pg_error::SqlState::ForeignKeyViolation => Err(Error::VertexNotFound),
-
-					// Other db error
-					_ => Err(Error::Unexpected(format!("Unknown database error: {}", db_err.message.clone())))
-				}
-			},
-			Err(pg_error::Error::Io(_)) => {
-				Err(Error::Unexpected("Database I/O error".to_string()))
-			},
-			Err(pg_error::Error::Conversion(err)) => panic!(err)
+			}
 		};
 
-		if returnable.is_err() {
-			trans.set_rollback();
-		} else {
-			trans.set_commit();
+		if let Err(pg_error::Error::Db(ref err)) = results {
+			if err.code == pg_error::SqlState::NotNullViolation {
+				// This should only happen when the inner select fails
+				try!(self.get_vertex(e.outbound_id));
+				return Err(Error::Unauthorized);
+			} else if err.code == pg_error::SqlState::ForeignKeyViolation {
+				// This should only happen when there is no vertex with id=inbound_id
+				return Err(Error::VertexNotFound);
+			}
 		}
 
-		returnable
+		try!(results);
+		Ok(())
 	}
 
 	fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
 		let results = try!(self.trans.query("
-			DELETE FROM EDGES
+			DELETE FROM edges
 			WHERE outbound_id=(SELECT id FROM vertices WHERE id=$1 AND owner_id=$2) AND type=$3 AND inbound_id=$4
 			RETURNING 1
 		", &[&outbound_id, &self.account_id, &t.0, &inbound_id]));
@@ -293,7 +289,8 @@ impl Transaction<Uuid> for PostgresTransaction {
 			return Ok(())
 		}
 
-		Err(Error::EdgeNotFound)
+		try!(self.get_edge(outbound_id, t, inbound_id));
+		Err(Error::Unauthorized)
 	}
 
 	fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {

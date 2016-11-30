@@ -65,5 +65,5 @@ pub fn should_not_delete_an_unowned_vertex<D: Datastore<T, I>, T: Transaction<I>
 	let (account_id, _) = sandbox.register_account(&email[..]);
 	let trans = sandbox.datastore.transaction(account_id).unwrap();
 	let result = trans.delete_vertex(vertex_id);
-	assert_eq!(result.unwrap_err(), Error::VertexNotFound);
+	assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
