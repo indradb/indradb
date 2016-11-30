@@ -8,6 +8,7 @@ use libc;
 use serde_json::value::Value as JsonValue;
 use common::ProxyTransaction;
 use nutrino::Transaction;
+use std::path::Path;
 use uuid::Uuid;
 use self::errors::ScriptError;
 use statics;
@@ -54,7 +55,8 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
         l.getglobal("package");
         l.getfield(-1, "path");
         let old_path = l.checkstring(-1).unwrap().to_string();
-        let new_path = format!("{};{}", old_path, &statics::SCRIPT_ROOT[..]);
+        let script_path = Path::new(&statics::SCRIPT_ROOT[..]).join("?.lua").to_str().unwrap().to_string();
+        let new_path = format!("{};{}", old_path, script_path);
         l.pop(1);
         l.pushstring(&new_path[..]);
         l.setfield(-2, "path");
