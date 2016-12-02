@@ -7,6 +7,10 @@ lazy_static! {
 	static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
 }
 
+/// A vertex.
+///
+/// Vertices are how you would represent nouns in the datastore. An example
+/// might be a user, or a movie. All vertices have a unique ID and a type.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex<I: Id> {
 	pub id: I,
@@ -31,7 +35,11 @@ impl<I: Id> PartialEq for Vertex<I> {
 
 impl<I: Id> Eq for Vertex<I>{}
 
-
+/// An edge.
+///
+/// Edges are how you would represent a verb or a relationship in the
+/// datastore. An example might be "liked" or "reviewed". Edges are typed,
+/// weighted and directed.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edge<I: Id> {
 	pub outbound_id: I,

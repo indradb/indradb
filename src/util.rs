@@ -2,6 +2,8 @@ use rand::{Rng, OsRng};
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
 
+/// Generates a securely random string consisting of letters (uppercase and
+/// lowercase) and digits.
 pub fn generate_random_secret() -> String {
     let mut chars = vec![];
 	let options = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -15,6 +17,8 @@ pub fn generate_random_secret() -> String {
     String::from_utf8(chars).unwrap()
 }
 
+/// Generates a SHA256 hash, based off of a salt, an optional pepper, and a
+/// secret value.
 pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String {
 	let mut sha = Sha256::new();
 	sha.input(salt.as_bytes());
