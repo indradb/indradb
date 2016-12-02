@@ -2,6 +2,10 @@ use lua;
 use nutrino::{Error, ValidationError};
 use std::i32;
 
+/// Error that is returnable from lua-exposed functions.
+///
+/// The lua_fn! macro takes these errors and serializes them appropriately to
+/// lua.
 #[derive(Debug)]
 pub enum LuaError {
     Arg(i32, String),
@@ -29,6 +33,7 @@ impl From<ValidationError> for LuaError {
 	}
 }
 
+/// Error that may be returned when calling a script.
 #[derive(Debug)]
 pub enum ScriptError {
     Syntax(String),

@@ -101,16 +101,19 @@ pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<Uuid>) {
     add_number_field_to_table(l, "weight", edge.weight.0 as f64);
 }
 
+/// Adds a field to a table with a string value
 pub unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &str) {
     l.pushstring(v);
     l.setfield(-2, k);
 }
 
+/// Adds a field to a table with a numeric value
 pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f64) {
     l.pushnumber(v);
     l.setfield(-2, k);
 }
 
+/// Gets a string value from lua by its offset
 pub unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<String, LuaError> {
     match l.checkstring(narg) {
         Some(s) => Ok(s.to_string()),
@@ -118,11 +121,13 @@ pub unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<St
     }
 }
 
+/// Gets a type value from lua by its offset
 pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type, LuaError> {
     let s = try!(get_string_param(l, narg));
     Ok(try!(Type::new(s)))
 }
 
+/// Gets either a string value that represents an i64 or a nil from lua by its offset
 pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
     let s = try!(get_string_param(l, narg));
 
@@ -136,6 +141,7 @@ pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Res
     }
 }
 
+/// Gets a string value that represents a uuid from lua by its offset
 pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid, LuaError> {
     let s = try!(get_string_param(l, narg));
 
@@ -145,6 +151,7 @@ pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid
     }
 }
 
+/// Gets either a string value that represents a timestamp or a nil from lua
 pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<NaiveDateTime>, LuaError> {
     match try!(get_optional_i64_param(l, narg)) {
         Some(i) => Ok(Some(NaiveDateTime::from_timestamp(i, 0))),
@@ -152,6 +159,7 @@ pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -
     }
 }
 
+/// Gets a limit value from lua by its offset
 pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16, LuaError> {
     match l.checkinteger(narg) {
         i if i > u16::MAX as isize => Ok(u16::MAX),
@@ -160,6 +168,7 @@ pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16
     }
 }
 
+/// Gets an offset value from lua by its offset
 pub unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u64, LuaError> {
     match l.checkinteger(narg) {
         i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
@@ -167,11 +176,13 @@ pub unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u6
     }
 }
 
+/// Gets a weight value from lua by its offset
 pub unsafe fn get_weight_param(l: &mut lua::ExternState, narg: i32) -> Result<Weight, LuaError> {
     let w = l.checknumber(narg);
     Ok(try!(Weight::new(w as f32)))
 }
 
+/// Serializes a u64 to lua
 pub unsafe fn serialize_u64(l: &mut lua::ExternState, val: u64) {
     l.pushinteger(match val {
         i if i > isize::MAX as u64 => isize::MAX,
