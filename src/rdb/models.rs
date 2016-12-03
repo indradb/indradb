@@ -5,7 +5,7 @@ use models;
 pub struct AccountValue {
     pub email: String,
     pub salt: String,
-    pub hash: String
+    pub hash: String,
 }
 
 impl AccountValue {
@@ -13,7 +13,7 @@ impl AccountValue {
         AccountValue {
             email: email,
             salt: salt,
-            hash: hash
+            hash: hash,
         }
     }
 }
@@ -21,14 +21,14 @@ impl AccountValue {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VertexValue {
     pub owner_id: Uuid,
-    pub t: models::Type
+    pub t: models::Type,
 }
 
 impl VertexValue {
     pub fn new(owner_id: Uuid, t: models::Type) -> Self {
         VertexValue {
             owner_id: owner_id,
-            t: t
+            t: t,
         }
     }
 }
@@ -36,14 +36,14 @@ impl VertexValue {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeValue {
     pub update_timestamp: i64,
-    pub weight: models::Weight
+    pub weight: models::Weight,
 }
 
 impl EdgeValue {
     pub fn new(update_timestamp: i64, weight: models::Weight) -> Self {
         EdgeValue {
             update_timestamp: update_timestamp,
-            weight: weight
+            weight: weight,
         }
     }
 }

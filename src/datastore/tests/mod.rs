@@ -2,7 +2,8 @@ mod account;
 mod benchmarks;
 mod edge;
 mod edge_range;
-#[macro_use] mod macros;
+#[macro_use]
+mod macros;
 mod metadata;
 mod reversed_edge_range;
 mod sandbox;

@@ -5,7 +5,11 @@ use models;
 use traits::Id;
 use test::Bencher;
 
-pub fn bench_get_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_get_vertex<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let trans = sandbox.transaction();
     let t = models::Type::new("test_name".to_string()).unwrap();
     let id = trans.create_vertex(t).unwrap();
@@ -17,20 +21,28 @@ pub fn bench_get_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Be
     });
 }
 
-pub fn bench_create_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_create_vertex<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("user".to_string()).unwrap();
-    	trans.create_vertex(t).unwrap();
+        trans.create_vertex(t).unwrap();
     });
 }
 
-pub fn bench_set_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_set_vertex<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let trans = sandbox.transaction();
     let t = models::Type::new("test_name".to_string()).unwrap();
     let id = trans.create_vertex(t).unwrap();
     trans.commit().unwrap();
-    
+
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_vertex".to_string()).unwrap();
@@ -39,16 +51,23 @@ pub fn bench_set_vertex<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Be
     });
 }
 
-pub fn bench_get_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_get_edge<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let trans = sandbox.transaction();
 
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
-    
+
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id, edge_t, inbound_id, models::Weight::new(0.5).unwrap());
-	trans.set_edge(e).unwrap();
+    let e = models::Edge::new(outbound_id,
+                              edge_t,
+                              inbound_id,
+                              models::Weight::new(0.5).unwrap());
+    trans.set_edge(e).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
@@ -58,7 +77,11 @@ pub fn bench_get_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Benc
     });
 }
 
-pub fn bench_set_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_set_edge<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
@@ -68,22 +91,35 @@ pub fn bench_set_edge<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Benc
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-        let e = models::Edge::new(outbound_id, t, inbound_id, models::Weight::new(1.0).unwrap());
+        let e = models::Edge::new(outbound_id,
+                                  t,
+                                  inbound_id,
+                                  models::Weight::new(1.0).unwrap());
         trans.set_edge(e).unwrap();
     });
 }
 
-pub fn bench_get_edge_count<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_get_edge_count<D, T, I>(b: &mut Bencher,
+                                     mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let (outbound_id, _) = create_edges(&mut sandbox);
 
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    	trans.get_edge_count(outbound_id, t).unwrap();
+        trans.get_edge_count(outbound_id, t).unwrap();
     });
 }
 
-pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_get_edge_range<D, T, I>(b: &mut Bencher,
+                                     mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let (outbound_id, _) = create_edges(&mut sandbox);
 
     b.iter(|| {
@@ -93,12 +129,17 @@ pub fn bench_get_edge_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mu
     });
 }
 
-pub fn bench_get_edge_time_range<D: Datastore<T, I>, T: Transaction<I>, I: Id>(b: &mut Bencher, mut sandbox: &mut DatastoreTestSandbox<D, T, I>) {
+pub fn bench_get_edge_time_range<D, T, I>(b: &mut Bencher,
+                                          mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
 
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    	trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
+        trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
     });
 }
