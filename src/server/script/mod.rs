@@ -1,4 +1,5 @@
-#[macro_use] mod macros;
+#[macro_use]
+mod macros;
 mod api;
 mod errors;
 mod util;
@@ -20,7 +21,11 @@ use statics;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: JsonValue) -> Result<JsonValue, ScriptError> {
+pub fn run(mut trans: ProxyTransaction,
+           account_id: Uuid,
+           source: &str,
+           arg: JsonValue)
+           -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 
@@ -32,14 +37,15 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
     l.register("get_edge", api::get_edge);
     l.register("set_edge", api::set_edge);
     l.register("delete_edge", api::delete_edge);
-    
+
     l.register("get_edge_count", api::get_edge_count);
     l.register("get_edge_range", api::get_edge_range);
     l.register("get_edge_time_range", api::get_edge_time_range);
 
     l.register("get_reversed_edge_count", api::get_reversed_edge_count);
     l.register("get_reversed_edge_range", api::get_reversed_edge_range);
-    l.register("get_reversed_edge_time_range", api::get_reversed_edge_time_range);
+    l.register("get_reversed_edge_time_range",
+               api::get_reversed_edge_time_range);
 
     l.register("get_global_metadata", api::get_global_metadata);
     l.register("set_global_metadata", api::set_global_metadata);
@@ -64,7 +70,8 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
         l.getglobal("package");
         l.getfield(-1, "path");
         let old_path = l.checkstring(-1).unwrap().to_string();
-        let script_path = Path::new(&statics::SCRIPT_ROOT[..]).join("?.lua").to_str().unwrap().to_string();
+        let script_path =
+            Path::new(&statics::SCRIPT_ROOT[..]).join("?.lua").to_str().unwrap().to_string();
         let new_path = format!("{};{}", old_path, script_path);
         l.pop(1);
         l.pushstring(&new_path[..]);
@@ -87,7 +94,9 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
 
     // Add the input arg as a global variable.
     {
-        unsafe { util::serialize_json(l.as_extern(), arg); }
+        unsafe {
+            util::serialize_json(l.as_extern(), arg);
+        }
         l.setglobal("arg");
     }
 
@@ -96,14 +105,12 @@ pub fn run(mut trans: ProxyTransaction, account_id: Uuid, source: &str, arg: Jso
     }
 
     if let Err(err) = trans.commit() {
-        return Err(ScriptError::Runtime(format!("Could not commit script transaction: {}", err)))
+        return Err(ScriptError::Runtime(format!("Could not commit script transaction: {}", err)));
     }
 
     if l.gettop() == 0 {
         Ok(JsonValue::Null)
     } else {
-        unsafe {
-            Ok(try!(util::deserialize_json(l.as_extern(), -1)))
-        }
+        unsafe { Ok(try!(util::deserialize_json(l.as_extern(), -1))) }
     }
 }

@@ -3,8 +3,10 @@
 #![feature(plugin)]
 #![cfg_attr(test, plugin(stainless))]
 
-#[macro_use] extern crate nutrino;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate nutrino;
+#[macro_use]
+extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 extern crate chrono;
@@ -146,25 +148,32 @@ describe! script_tests {
 }
 
 pub fn run_script(account_id: Uuid, secret: String, name: &str) {
-	let mut file = File::open(format!("test_scripts/{}.lua", name)).unwrap();
-	let mut contents = String::new();
-	file.read_to_string(&mut contents).unwrap();
+    let mut file = File::open(format!("test_scripts/{}.lua", name)).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
 
-	let client = Client::new();
-	let req = request(&client, 8000, account_id, secret, "POST", format!("/script/{}.lua", name));
-	let mut res = req.send().unwrap();
+    let client = Client::new();
+    let req = request(&client,
+                      8000,
+                      account_id,
+                      secret,
+                      "POST",
+                      format!("/script/{}.lua", name));
+    let mut res = req.send().unwrap();
 
-	let mut payload = String::new();
-	res.read_to_string(&mut payload).unwrap();
+    let mut payload = String::new();
+    res.read_to_string(&mut payload).unwrap();
 
-	if res.status == StatusCode::Ok {
-		if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
-			let s = cap.at(1).unwrap();
-			let expected_result: JsonValue = serde_json::from_str(&s[..]).unwrap();
-			let actual_result: JsonValue = serde_json::from_str(&payload[..]).unwrap();
-			assert_eq!(expected_result, actual_result)
-		}
-	} else {
-		panic!("Unexpected status code: {} - payload: {}", res.status, payload)
-	}
+    if res.status == StatusCode::Ok {
+        if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
+            let s = cap.at(1).unwrap();
+            let expected_result: JsonValue = serde_json::from_str(&s[..]).unwrap();
+            let actual_result: JsonValue = serde_json::from_str(&payload[..]).unwrap();
+            assert_eq!(expected_result, actual_result)
+        }
+    } else {
+        panic!("Unexpected status code: {} - payload: {}",
+               res.status,
+               payload)
+    }
 }

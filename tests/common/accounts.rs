@@ -19,18 +19,19 @@ pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
     match create_user_output {
         Ok(output) => {
             if !output.status.success() {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user add`: {}", output.status)))
+                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user \
+                                               add`: {}",
+                                              output.status)))
             } else {
                 let stdout = str::from_utf8(&output.stdout).unwrap();
                 let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().at(1).unwrap();
                 let account_id = Uuid::from_str(account_id_str).unwrap();
-                let secret = ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().at(1).unwrap().to_string();
+                let secret =
+                    ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().at(1).unwrap().to_string();
                 Ok((account_id, secret))
             }
-        },
-        Err(err) => {
-            Err(Error::Unexpected(format!("Could not run `nutrino-user`: {}", err)))
         }
+        Err(err) => Err(Error::Unexpected(format!("Could not run `nutrino-user`: {}", err))),
     }
 }
 
@@ -45,9 +46,11 @@ pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
             if status.success() {
                 Ok(())
             } else {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user remove`: {}", status.code().unwrap())))
+                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user \
+                                               remove`: {}",
+                                              status.code().unwrap())))
             }
-        },
+        }
         Err(err) => {
             Err(Error::Unexpected(format!("Unexpected error running `nutrino-user`: {}", err)))
         }

@@ -16,30 +16,30 @@ thread_local! {
 
 #[derive(Clone, Debug)]
 pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction<Uuid>> {
-	port: i32,
+    port: i32,
     phantom_http_transaction: PhantomData<H>,
-    phantom_transaction: PhantomData<T>
+    phantom_transaction: PhantomData<T>,
 }
 
 impl<H: HttpTransaction<T>, T: Transaction<Uuid>> HttpDatastore<H, T> {
     // Ignore is here because otherwise we get noisy results - it's used in
     // macros which the compiler doesn't seem to pick up on
     #[allow(dead_code)]
-	pub fn new(port: i32) -> HttpDatastore<H, T> {
-		HttpDatastore {
-			port: port,
+    pub fn new(port: i32) -> HttpDatastore<H, T> {
+        HttpDatastore {
+            port: port,
             phantom_http_transaction: PhantomData,
-            phantom_transaction: PhantomData
-		}
-	}
+            phantom_transaction: PhantomData,
+        }
+    }
 }
 
 impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDatastore<H, T> {
-	fn has_account(&self, _: Uuid) -> Result<bool, Error> {
+    fn has_account(&self, _: Uuid) -> Result<bool, Error> {
         panic!("Unimplemented")
-	}
+    }
 
-	fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
+    fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
         let (account_id, secret) = try!(create_account(email));
 
         ACCOUNT_IDS.with(|account_ids| {
@@ -48,24 +48,24 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDat
         });
 
         Ok((account_id, secret))
-	}
+    }
 
-	fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
+    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
         delete_account(account_id)
-	}
+    }
 
-	fn auth(&self, _: Uuid, _: String) -> Result<bool, Error> {
+    fn auth(&self, _: Uuid, _: String) -> Result<bool, Error> {
         panic!("Unimplemented")
-	}
+    }
 
-	fn transaction(&self, account_id: Uuid) -> Result<T, Error> {
+    fn transaction(&self, account_id: Uuid) -> Result<T, Error> {
         let secret = ACCOUNT_IDS.with(|account_ids| {
             let ref account_ids: BTreeMap<Uuid, String> = *account_ids.borrow();
             account_ids.get(&account_id).unwrap().clone()
         });
 
         Ok(H::new(self.port, account_id, secret))
-	}
+    }
 }
 
 pub trait HttpTransaction<T: Transaction<Uuid>> {

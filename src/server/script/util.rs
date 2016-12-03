@@ -8,13 +8,18 @@ use uuid::Uuid;
 use core::str::FromStr;
 use super::errors::LuaError;
 
-/// Deserializes a lua value into a JSON value. 
-pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
+/// Deserializes a lua value into a JSON value.
+pub unsafe fn deserialize_json(l: &mut lua::ExternState,
+                               offset: i32)
+                               -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
-        Some(lua::Type::Nil) | None => JsonValue::Null,
+        Some(lua::Type::Nil) |
+        None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
         Some(lua::Type::Number) => JsonValue::F64(l.tonumber(-1)),
-        Some(lua::Type::String) => JsonValue::String(l.checkstring(-1).unwrap().to_string().clone()),
+        Some(lua::Type::String) => {
+            JsonValue::String(l.checkstring(-1).unwrap().to_string().clone())
+        }
         Some(lua::Type::Table) => {
             l.pushvalue(offset);
             l.pushnil();
@@ -25,12 +30,8 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 // or an array-shaped table. We can't rely on `l.tostring` because we're in the
                 // middle of a next() loop.
                 let k = match l.type_(-2) {
-                    Some(lua::Type::String) => {
-                        l.checkstring(-2).unwrap().to_string().clone()
-                    },
-                    Some(lua::Type::Number) => {
-                        l.checknumber(-2).to_string()
-                    },
+                    Some(lua::Type::String) => l.checkstring(-2).unwrap().to_string().clone(),
+                    Some(lua::Type::Number) => l.checknumber(-2).to_string(),
                     k_type => {
                         panic!("Unknown key type: {:?}", k_type);
                     }
@@ -44,10 +45,8 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
             l.pop(1);
 
             JsonValue::Object(d)
-        },
-        _ => {
-            return Err(LuaError::Generic("Could not deserialize return value".to_string()))
         }
+        _ => return Err(LuaError::Generic("Could not deserialize return value".to_string())),
     })
 }
 
@@ -68,7 +67,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
                 serialize_json(l, iv.clone());
                 l.settable(-3);
             }
-        },
+        }
         JsonValue::Object(v) => {
             l.newtable();
 
@@ -117,7 +116,7 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
 pub unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<String, LuaError> {
     match l.checkstring(narg) {
         Some(s) => Ok(s.to_string()),
-        None => Err(LuaError::Arg(narg, "Expected string".to_string()))
+        None => Err(LuaError::Arg(narg, "Expected string".to_string())),
     }
 }
 
@@ -128,7 +127,9 @@ pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type
 }
 
 /// Gets either a string value that represents an i64 or a nil from lua by its offset
-pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
+pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState,
+                                     narg: i32)
+                                     -> Result<Option<i64>, LuaError> {
     let s = try!(get_string_param(l, narg));
 
     if s == "" {
@@ -137,7 +138,7 @@ pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Res
 
     match i64::from_str_radix(&s[..], 10) {
         Ok(i) => Ok(Some(i)),
-        Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string()))
+        Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string())),
     }
 }
 
@@ -147,15 +148,17 @@ pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid
 
     match Uuid::from_str(&s[..]) {
         Ok(u) => Ok(u),
-        Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string()))
+        Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string())),
     }
 }
 
 /// Gets either a string value that represents a timestamp or a nil from lua
-pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<NaiveDateTime>, LuaError> {
+pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState,
+                                          narg: i32)
+                                          -> Result<Option<NaiveDateTime>, LuaError> {
     match try!(get_optional_i64_param(l, narg)) {
         Some(i) => Ok(Some(NaiveDateTime::from_timestamp(i, 0))),
-        None => Ok(None)
+        None => Ok(None),
     }
 }
 
@@ -164,7 +167,7 @@ pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16
     match l.checkinteger(narg) {
         i if i > u16::MAX as isize => Ok(u16::MAX),
         i if i < 0 => Err(LuaError::Arg(narg, "Limit cannot be negative".to_string())),
-        i => Ok(i as u16)
+        i => Ok(i as u16),
     }
 }
 
@@ -172,7 +175,7 @@ pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16
 pub unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u64, LuaError> {
     match l.checkinteger(narg) {
         i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
-        i => Ok(i as u64)
+        i => Ok(i as u64),
     }
 }
 
@@ -186,6 +189,6 @@ pub unsafe fn get_weight_param(l: &mut lua::ExternState, narg: i32) -> Result<We
 pub unsafe fn serialize_u64(l: &mut lua::ExternState, val: u64) {
     l.pushinteger(match val {
         i if i > isize::MAX as u64 => isize::MAX,
-        i => i as isize
+        i => i as isize,
     })
 }

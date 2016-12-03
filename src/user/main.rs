@@ -1,6 +1,8 @@
-#[macro_use] extern crate clap;
+#[macro_use]
+extern crate clap;
 extern crate nutrino;
-#[macro_use] extern crate common;
+#[macro_use]
+extern crate common;
 extern crate uuid;
 
 use clap::{Arg, App, SubCommand};
@@ -14,8 +16,10 @@ fn main() {
     let matches = App::new("nutrino-user")
         .version("0.1")
         .about("User management for Nutrino")
-        .subcommand(SubCommand::with_name("add").arg(Arg::with_name("EMAIL").help("Email address").required(true).index(1)))
-        .subcommand(SubCommand::with_name("remove").arg(Arg::with_name("ID").help("ID of account").required(true).index(1)))
+        .subcommand(SubCommand::with_name("add")
+            .arg(Arg::with_name("EMAIL").help("Email address").required(true).index(1)))
+        .subcommand(SubCommand::with_name("remove")
+            .arg(Arg::with_name("ID").help("ID of account").required(true).index(1)))
         .get_matches();
 
     let datastore = datastore();
@@ -28,7 +32,7 @@ fn main() {
                 println!("Account ID: {}", id);
                 println!("Account secret: {}", secret);
             }
-            Err(err) => exit_with_err!("Could not create account: {}", err.description())
+            Err(err) => exit_with_err!("Could not create account: {}", err.description()),
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {
         let id = value_t!(matches, "ID", Uuid).unwrap();

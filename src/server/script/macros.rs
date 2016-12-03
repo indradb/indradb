@@ -1,6 +1,6 @@
 /// Convenience macro for exposing functions that are callable from lua. This
 /// automatically passes in the global `trans` parameter, and serializes a
-//// `Result` to lua, so that rust's error handling sugar (try!) can be used.  
+/// / `Result` to lua, so that rust's error handling sugar (try!) can be used.
 macro_rules! lua_fn {
     ($(pub unsafe fn $name:ident($targ:ident: &mut ProxyTransaction, $larg:ident: &mut $typ:ty) -> Result<i32, LuaError> $code:block)+) => (
         $(
