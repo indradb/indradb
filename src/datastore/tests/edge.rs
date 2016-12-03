@@ -102,9 +102,7 @@ pub fn should_not_update_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSan
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_set_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                          T,
-                                                                                          I>)
+pub fn should_not_set_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -161,9 +159,7 @@ pub fn should_not_delete_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSan
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                             T,
-                                                                                             I>)
+pub fn should_not_delete_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id

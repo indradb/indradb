@@ -14,15 +14,17 @@ use std::i32;
 use std::u64;
 use super::managers::*;
 
-const CF_NAMES: [&'static str; 9] = ["accounts:v1",
-                                     "vertices:v1",
-                                     "edges:v1",
-                                     "edge_ranges:v1",
-                                     "reversed_edge_ranges:v1",
-                                     "global_metadata:v1",
-                                     "account_metadata:v1",
-                                     "vertex_metadata:v1",
-                                     "edge_metadata:v1"];
+const CF_NAMES: [&'static str; 9] = [
+    "accounts:v1",
+    "vertices:v1",
+    "edges:v1",
+    "edge_ranges:v1",
+    "reversed_edge_ranges:v1",
+    "global_metadata:v1",
+    "account_metadata:v1",
+    "vertex_metadata:v1",
+    "edge_metadata:v1"
+];
 
 fn get_options(max_open_files: Option<i32>) -> Options {
     // Current tuning based off of the total ordered example, flash
@@ -131,21 +133,12 @@ impl RocksdbTransaction {
         })
     }
 
-    fn handle_get_edge_count(&self,
-                             edge_range_manager: EdgeRangeManager,
-                             first_id: Uuid,
-                             t: models::Type)
-                             -> Result<u64, Error> {
+    fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
         let iterator = try!(edge_range_manager.iterate_for_range(first_id, &t, None));
         Ok(iterator.count() as u64)
     }
 
-    fn handle_get_edge_time_range(&self,
-                                  iterator: Box<Iterator<Item = Result<(models::Edge<Uuid>,
-                                                                        NaiveDateTime),
-                                                                       Error>>>,
-                                  low: Option<NaiveDateTime>)
-                                  -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item = Result<(models::Edge<Uuid>, NaiveDateTime), Error>>>, low: Option<NaiveDateTime>) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
         match low {
@@ -250,11 +243,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         Ok(())
     }
 
-    fn delete_edge(&self,
-                   outbound_id: Uuid,
-                   t: models::Type,
-                   inbound_id: Uuid)
-                   -> Result<(), Error> {
+    fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
         // Verify that the edge exists and that we own it
         let edge_manager = EdgeManager::new(self.db.clone());
 
@@ -276,12 +265,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, outbound_id, t)
     }
 
-    fn get_edge_range(&self,
-                      outbound_id: Uuid,
-                      t: models::Type,
-                      offset: u64,
-                      limit: u16)
-                      -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > usize::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -304,13 +288,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         result
     }
 
-    fn get_edge_time_range(&self,
-                           outbound_id: Uuid,
-                           t: models::Type,
-                           high: Option<NaiveDateTime>,
-                           low: Option<NaiveDateTime>,
-                           limit: u16)
-                           -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let iterator = try!(edge_range_manager.iterate_for_range(outbound_id, &t, high));
 
@@ -337,12 +315,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self,
-                               inbound_id: Uuid,
-                               t: models::Type,
-                               offset: u64,
-                               limit: u16)
-                               -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > usize::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -365,13 +338,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         result
     }
 
-    fn get_reversed_edge_time_range(&self,
-                                    inbound_id: Uuid,
-                                    t: models::Type,
-                                    high: Option<NaiveDateTime>,
-                                    low: Option<NaiveDateTime>,
-                                    limit: u16)
-                                    -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         let iterator = try!(reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high));
 
@@ -415,11 +382,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
     }
 
-    fn set_account_metadata(&self,
-                            owner_id: Uuid,
-                            key: String,
-                            value: JsonValue)
-                            -> Result<(), Error> {
+    fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         if !try!(AccountManager::new(self.db.clone()).exists(owner_id)) {
             return Err(Error::AccountNotFound);
         }
@@ -441,11 +404,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
     }
 
-    fn set_vertex_metadata(&self,
-                           owner_id: Uuid,
-                           key: String,
-                           value: JsonValue)
-                           -> Result<(), Error> {
+    fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         if !try!(VertexManager::new(self.db.clone()).exists(owner_id)) {
             return Err(Error::VertexNotFound);
         }
@@ -461,24 +420,13 @@ impl Transaction<Uuid> for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: models::Type,
-                         inbound_id: Uuid,
-                         key: String)
-                         -> Result<JsonValue, Error> {
+    fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         try!(manager.get(outbound_id, &t, inbound_id, &key[..]))
             .ok_or_else(|| Error::MetadataNotFound)
     }
 
-    fn set_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: models::Type,
-                         inbound_id: Uuid,
-                         key: String,
-                         value: JsonValue)
-                         -> Result<(), Error> {
+    fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         if !try!(EdgeManager::new(self.db.clone()).exists(outbound_id, &t, inbound_id)) {
             return Err(Error::EdgeNotFound);
         }
@@ -487,12 +435,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         manager.set(outbound_id, &t, inbound_id, &key[..], &value)
     }
 
-    fn delete_edge_metadata(&self,
-                            outbound_id: Uuid,
-                            t: models::Type,
-                            inbound_id: Uuid,
-                            key: String)
-                            -> Result<(), Error> {
+    fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
         let mut batch = WriteBatch::default();
         try!(EdgeMetadataManager::new(self.db.clone())
             .delete(&mut batch, outbound_id, &t, inbound_id, &key[..]));
@@ -505,8 +448,8 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn rollback(self) -> Result<(), Error> {
-        Err(Error::Unexpected("Transactions cannot be rolled back in the rocksdb datastore \
-                               implementation"
-            .to_string()))
+        Err(Error::Unexpected(
+            "Transactions cannot be rolled back in the rocksdb datastore implementation"
+        .to_string()))
     }
 }

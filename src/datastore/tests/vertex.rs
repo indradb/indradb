@@ -79,9 +79,7 @@ pub fn should_not_delete_an_invalid_vertex<D, T, I>(sandbox: &mut DatastoreTestS
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_delete_an_unowned_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                           T,
-                                                                                           I>)
+pub fn should_not_delete_an_unowned_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id

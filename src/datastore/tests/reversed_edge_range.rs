@@ -17,9 +17,7 @@ pub fn should_get_a_reversed_edge_count<D, T, I>(mut sandbox: &mut DatastoreTest
     assert_eq!(count, 5);
 }
 
-pub fn should_get_a_reversed_edge_count_for_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
-                                                                                               T,
-                                                                                               I>)
+pub fn should_get_a_reversed_edge_count_for_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -41,9 +39,7 @@ pub fn should_get_an_empty_reversed_edge_range_with_zero_limit<D, T, I>(mut sand
     check_edge_range(range, inbound_id, 0);
 }
 
-pub fn should_get_an_empty_reversed_edge_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                               T,
-                                                                                               I>)
+pub fn should_get_an_empty_reversed_edge_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -170,9 +166,7 @@ pub fn should_get_no_reversed_edges_for_a_reversed_time_range<D, T, I>(mut sandb
     check_edge_range(range, inbound_id, 0);
 }
 
-fn check_edge_range<I: Id>(range: Vec<models::Edge<I>>,
-                           expected_inbound_id: I,
-                           expected_length: usize) {
+fn check_edge_range<I: Id>(range: Vec<models::Edge<I>>, expected_inbound_id: I, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
     let mut covered_ids: HashSet<I> = HashSet::new();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();

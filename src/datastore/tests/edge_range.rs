@@ -28,9 +28,7 @@ pub fn should_get_an_edge_count_for_an_invalid_edge<D, T, I>(sandbox: &mut Datas
     assert_eq!(count, 0);
 }
 
-pub fn should_get_an_empty_edge_range_with_zero_limit<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                             T,
-                                                                                             I>)
+pub fn should_get_an_empty_edge_range_with_zero_limit<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -78,9 +76,7 @@ pub fn should_get_a_partial_edge_range<D, T, I>(mut sandbox: &mut DatastoreTestS
     check_edge_range(range, outbound_id, 3);
 }
 
-pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
-                                                                                             T,
-                                                                                             I>)
+pub fn should_get_an_empty_edge_range_for_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -106,9 +102,7 @@ pub fn should_get_edges_by_a_time_range<D, T, I>(mut sandbox: &mut DatastoreTest
     check_edge_range(range, outbound_id, 5);
 }
 
-pub fn should_get_no_edges_for_an_invalid_time_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                            T,
-                                                                                            I>)
+pub fn should_get_no_edges_for_an_invalid_time_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -121,9 +115,7 @@ pub fn should_get_no_edges_for_an_invalid_time_range<D, T, I>(mut sandbox: &mut 
     check_edge_range(range, outbound_id, 0);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_high<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                            T,
-                                                                                            I>)
+pub fn should_get_edges_by_a_time_range_with_no_high<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -136,9 +128,7 @@ pub fn should_get_edges_by_a_time_range_with_no_high<D, T, I>(mut sandbox: &mut 
     check_edge_range(range, outbound_id, 10);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_low<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                           T,
-                                                                                           I>)
+pub fn should_get_edges_by_a_time_range_with_no_low<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -150,9 +140,7 @@ pub fn should_get_edges_by_a_time_range_with_no_low<D, T, I>(mut sandbox: &mut D
     check_edge_range(range, outbound_id, 10);
 }
 
-pub fn should_get_edges_by_a_time_range_with_no_time<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                            T,
-                                                                                            I>)
+pub fn should_get_edges_by_a_time_range_with_no_time<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -164,9 +152,7 @@ pub fn should_get_edges_by_a_time_range_with_no_time<D, T, I>(mut sandbox: &mut 
     check_edge_range(range, outbound_id, 15);
 }
 
-pub fn should_get_no_edges_for_a_reversed_time_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D,
-                                                                                            T,
-                                                                                            I>)
+pub fn should_get_no_edges_for_a_reversed_time_range<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -179,9 +165,7 @@ pub fn should_get_no_edges_for_a_reversed_time_range<D, T, I>(mut sandbox: &mut 
     check_edge_range(range, outbound_id, 0);
 }
 
-fn check_edge_range<I: Id>(range: Vec<models::Edge<I>>,
-                           expected_outbound_id: I,
-                           expected_length: usize) {
+fn check_edge_range<I: Id>(range: Vec<models::Edge<I>>, expected_outbound_id: I, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
     let mut covered_ids: HashSet<I> = HashSet::new();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();

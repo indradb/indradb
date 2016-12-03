@@ -39,8 +39,7 @@ pub fn create_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I,
     (outbound_id, inbound_ids)
 }
 
-pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-                                                  -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
+pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -109,9 +108,7 @@ pub fn create_reversed_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I
     (inbound_id, outbound_ids)
 }
 
-pub fn create_time_range_queryable_reversed_edges<D, T, I>
-    (sandbox: &mut DatastoreTestSandbox<D, T, I>)
-     -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
+pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id

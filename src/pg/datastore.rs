@@ -21,15 +21,11 @@ pub struct PostgresDatastore {
 }
 
 impl PostgresDatastore {
-    pub fn new(pool_size: Option<u32>,
-               connection_string: String,
-               secret: String)
-               -> PostgresDatastore {
+    pub fn new(pool_size: Option<u32>, connection_string: String, secret: String) -> PostgresDatastore {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => {
                 let cpus: usize = num_cpus::get();
-
                 if cpus > 512 { 1024 } else { cpus as u32 * 2 }
             }
         };
@@ -68,16 +64,21 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
         let conn = try!(self.pool.get());
-        try!(conn.execute("INSERT INTO accounts(id, email, salt, api_secret_hash) VALUES ($1, $2, \
-                      $3, $4)",
-                     &[&id, &email, &salt, &hash]));
+        
+        try!(conn.execute("
+            INSERT INTO accounts(id, email, salt, api_secret_hash)
+            VALUES ($1, $2, $3, $4)
+            ", &[&id, &email, &salt, &hash]
+        ));
+        
         Ok((id, secret))
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
         let conn = try!(self.pool.get());
-        let results = try!(conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1",
-                                      &[&account_id]));
+        
+        let results = try!(conn.query(
+            "DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id]));
 
         for _ in &results {
             return Result::Ok(());
@@ -88,9 +89,7 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 
     fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
         let conn = try!(self.pool.get());
-        let get_salt_results =
-            try!(conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1",
-                            &[&account_id]));
+        let get_salt_results = try!(conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1", &[&account_id]));
 
         for row in &get_salt_results {
             let salt: String = row.get(0);
@@ -119,9 +118,7 @@ pub struct PostgresTransaction {
 }
 
 impl PostgresTransaction {
-    fn new(conn: PooledConnection<PostgresConnectionManager>,
-           account_id: Uuid)
-           -> Result<Self, Error> {
+    fn new(conn: PooledConnection<PostgresConnectionManager>, account_id: Uuid) -> Result<Self, Error> {
         let conn = Box::new(conn);
         let trans = unsafe { mem::transmute(try!(conn.transaction())) };
 
@@ -132,11 +129,7 @@ impl PostgresTransaction {
         })
     }
 
-    fn fill_edges(&self,
-                  results: Rows,
-                  outbound_id: Uuid,
-                  t: models::Type)
-                  -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn fill_edges(&self, results: Rows, outbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
         for row in &results {
@@ -149,11 +142,7 @@ impl PostgresTransaction {
         Ok(edges)
     }
 
-    fn fill_reversed_edges(&self,
-                           results: Rows,
-                           inbound_id: Uuid,
-                           t: models::Type)
-                           -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
         for row in &results {
@@ -186,8 +175,7 @@ impl PostgresTransaction {
 
 impl Transaction<Uuid> for PostgresTransaction {
     fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
-        let results = try!(self.trans
-            .query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
+        let results = try!(self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
 
         for row in &results {
             let t_str: String = row.get(0);
@@ -200,13 +188,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
-
-        try!(self.trans.execute("
-			INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, \
-                                 $3)
-		",
-                                &[&id, &t.0, &self.account_id]));
-
+        try!(self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id]));
         Ok(id)
     }
 
@@ -214,11 +196,9 @@ impl Transaction<Uuid> for PostgresTransaction {
         let results = try!(self.trans.query("
 			UPDATE vertices
 			SET type=$1
-			WHERE id=$2 \
-                                             AND owner_id=$3
+			WHERE id=$2 AND owner_id=$3
 			RETURNING 1
-		",
-                                            &[&v.t.0, &v.id, &self.account_id]));
+		", &[&v.t.0, &v.id, &self.account_id]));
 
         for _ in &results {
             return Ok(());
@@ -228,9 +208,7 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-        let results = try!(self.trans
-            .query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1",
-                   &[&id, &self.account_id]));
+        let results = try!(self.trans.query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1", &[&id, &self.account_id]));
 
         for _ in &results {
             return Ok(());
@@ -243,16 +221,12 @@ impl Transaction<Uuid> for PostgresTransaction {
         Err(Error::Unauthorized)
     }
 
-    fn get_edge(&self,
-                outbound_id: Uuid,
-                t: models::Type,
-                inbound_id: Uuid)
-                -> Result<models::Edge<Uuid>, Error> {
+    fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
         let results = try!(self.trans.query("
-			SELECT weight FROM edges WHERE outbound_id=$1 \
-                                             AND type=$2 AND inbound_id=$3 LIMIT 1
-		",
-                                            &[&outbound_id, &t.0, &inbound_id]));
+            SELECT weight
+            FROM edges
+            WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
+            LIMIT 1", &[&outbound_id, &t.0, &inbound_id]));
 
         for row in &results {
             let weight_f32: f32 = row.get(0);
@@ -273,21 +247,24 @@ impl Transaction<Uuid> for PostgresTransaction {
             let trans = try!(self.trans.savepoint("set_edge"));
 
             let results = trans.query("
-				INSERT INTO edges (id, outbound_id, type, \
-                                       inbound_id, weight, update_date)
-				VALUES ($1, (SELECT \
-                                       id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, \
-                                       $6, CLOCK_TIMESTAMP())
-				ON CONFLICT ON CONSTRAINT \
-                                       edges_outbound_id_type_inbound_id_ukey DO UPDATE SET \
-                                       weight=$6, update_date=CLOCK_TIMESTAMP()
-			",
-                                      &[&id,
-                                        &e.outbound_id,
-                                        &self.account_id,
-                                        &e.t.0,
-                                        &e.inbound_id,
-                                        &e.weight.0]);
+				INSERT INTO edges (
+                    id,
+                    outbound_id,
+                    type,
+                    inbound_id,
+                    weight,
+                    update_date
+                ) VALUES (
+                    $1,
+                    (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3),
+                    $4,
+                    $5,
+                    $6,
+                    CLOCK_TIMESTAMP()
+                )
+                ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
+                DO UPDATE SET weight=$6, update_date=CLOCK_TIMESTAMP()
+			", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
 
             match results {
                 Err(err) => {
@@ -316,19 +293,16 @@ impl Transaction<Uuid> for PostgresTransaction {
         Ok(())
     }
 
-    fn delete_edge(&self,
-                   outbound_id: Uuid,
-                   t: models::Type,
-                   inbound_id: Uuid)
-                   -> Result<(), Error> {
+    fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
         let results = try!(self.trans.query("
 			DELETE FROM edges
-			WHERE outbound_id=(SELECT \
-                                             id FROM vertices WHERE id=$1 AND owner_id=$2) AND \
-                                             type=$3 AND inbound_id=$4
+			WHERE outbound_id=(
+                SELECT id
+                FROM vertices
+                WHERE id=$1 AND owner_id=$2
+            ) AND type=$3 AND inbound_id=$4
 			RETURNING 1
-		",
-                                            &[&outbound_id, &self.account_id, &t.0, &inbound_id]));
+		", &[&outbound_id, &self.account_id, &t.0, &inbound_id]));
 
         for _ in &results {
             return Ok(());
@@ -340,10 +314,8 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
         let results = try!(self.trans.query("
-			SELECT COUNT(outbound_id) FROM edges WHERE \
-                                             outbound_id=$1 AND type=$2
-		",
-                                            &[&outbound_id, &t.0]));
+			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
+		", &[&outbound_id, &t.0]));
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -353,12 +325,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_edge_range(&self,
-                      outbound_id: Uuid,
-                      t: models::Type,
-                      offset: u64,
-                      limit: u16)
-                      -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > i64::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -367,78 +334,52 @@ impl Transaction<Uuid> for PostgresTransaction {
             try!(self.trans.query("
 			SELECT inbound_id, weight
 			FROM edges
-			WHERE \
-                                   outbound_id=$1 AND type=$2
+			WHERE outbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
-			\
-                                   OFFSET $3
+			OFFSET $3
 			LIMIT $4
-		",
-                                  &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)]));
+		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)]));
 
         self.fill_edges(results, outbound_id, t)
     }
 
-    fn get_edge_time_range(&self,
-                           outbound_id: Uuid,
-                           t: models::Type,
-                           high: Option<NaiveDateTime>,
-                           low: Option<NaiveDateTime>,
-                           limit: u16)
-                           -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let results = try!(match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT inbound_id, weight
 					FROM edges
-					WHERE \
-                                  outbound_id=$1 AND type=$2 AND update_date <= $3 AND \
-                                  update_date >= $4
+					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
 					LIMIT $5
-				\
-                                  ",
-                                 &[&outbound_id,
-                                   &t.0,
-                                   &high_unboxed,
-                                   &low_unboxed,
-                                   &(limit as i64)])
+				", &[&outbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
 					SELECT inbound_id, weight
 					FROM edges
-					WHERE \
-                                  outbound_id=$1 AND type=$2 AND update_date <= $3
-					ORDER BY \
-                                  update_date DESC
+					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
+					ORDER BY update_date DESC
 					LIMIT $4
-				",
-                                 &[&outbound_id, &t.0, &high_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &high_unboxed, &(limit as i64)])
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT inbound_id, weight
 					FROM edges
-					WHERE \
-                                  outbound_id=$1 AND type=$2 AND update_date >= $3
-					ORDER BY \
-                                  update_date DESC
+					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
+					ORDER BY update_date DESC
 					LIMIT $4
-				",
-                                 &[&outbound_id, &t.0, &low_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &low_unboxed, &(limit as i64)])
             }
             _ => {
                 self.trans.query("
 					SELECT inbound_id, weight
 					FROM edges
-					WHERE \
-                                  outbound_id=$1 AND type=$2
+					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
-					\
-                                  LIMIT $3
-				",
-                                 &[&outbound_id, &t.0, &(limit as i64)])
+					LIMIT $3
+				", &[&outbound_id, &t.0, &(limit as i64)])
             }
         });
 
@@ -447,10 +388,8 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
         let results = try!(self.trans.query("
-			SELECT COUNT(inbound_id) FROM edges WHERE \
-                                             inbound_id=$1 AND type=$2
-		",
-                                            &[&inbound_id, &t.0]));
+			SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
+		", &[&inbound_id, &t.0]));
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -460,12 +399,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_reversed_edge_range(&self,
-                               inbound_id: Uuid,
-                               t: models::Type,
-                               offset: u64,
-                               limit: u16)
-                               -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > i64::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -474,73 +408,52 @@ impl Transaction<Uuid> for PostgresTransaction {
             try!(self.trans.query("
 			SELECT outbound_id, weight
 			FROM edges
-			WHERE \
-                                   inbound_id=$1 AND type=$2
+			WHERE inbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
-			\
-                                   OFFSET $3
+			OFFSET $3
 			LIMIT $4
-		",
-                                  &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)]));
+		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)]));
 
         self.fill_reversed_edges(results, inbound_id, t)
     }
 
-    fn get_reversed_edge_time_range(&self,
-                                    inbound_id: Uuid,
-                                    t: models::Type,
-                                    high: Option<NaiveDateTime>,
-                                    low: Option<NaiveDateTime>,
-                                    limit: u16)
-                                    -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let results = try!(match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT outbound_id, weight
 					FROM edges
-					WHERE \
-                                  inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date \
-                                  >= $4
+					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
 					LIMIT $5
-				",
-                                 &[&inbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
 					SELECT outbound_id, weight
 					FROM edges
-					WHERE \
-                                  inbound_id=$1 AND type=$2 AND update_date <= $3
-					ORDER BY \
-                                  update_date DESC
+					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3
+					ORDER BY update_date DESC
 					LIMIT $4
-				",
-                                 &[&inbound_id, &t.0, &high_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high_unboxed, &(limit as i64)])
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT outbound_id, weight
 					FROM edges
-					WHERE \
-                                  inbound_id=$1 AND type=$2 AND update_date >= $3
-					ORDER BY \
-                                  update_date DESC
+					WHERE inbound_id=$1 AND type=$2 AND update_date >= $3
+					ORDER BY update_date DESC
 					LIMIT $4
-				",
-                                 &[&inbound_id, &t.0, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &low_unboxed, &(limit as i64)])
             }
             _ => {
                 self.trans.query("
 					SELECT outbound_id, weight
 					FROM edges
-					WHERE \
-                                  inbound_id=$1 AND type=$2
+					WHERE inbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
-					\
-                                  LIMIT $3
-				",
-                                 &[&inbound_id, &t.0, &(limit as i64)])
+					LIMIT $3
+				", &[&inbound_id, &t.0, &(limit as i64)])
             }
         });
 
@@ -548,160 +461,126 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans
-            .query("SELECT value FROM global_metadata WHERE key=$1", &[&key]));
+        let results = try!(self.trans.query("SELECT value FROM global_metadata WHERE key=$1", &[&key]));
         self.handle_get_metadata(results)
     }
 
     fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
         let results = try!(self.trans.query("
 			INSERT INTO global_metadata (key, value)
-			\
-                                             VALUES ($1, $2)
-			ON CONFLICT ON CONSTRAINT \
-                                             global_metadata_pkey
+			VALUES ($1, $2)
+			ON CONFLICT ON CONSTRAINT global_metadata_pkey
 			DO UPDATE SET value=$2
-			\
-                                             RETURNING 1
-		",
-                                            &[&key, &value]));
+			RETURNING 1
+		", &[&key, &value]));
 
         self.handle_update_metadata(results)
     }
 
     fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
-        let results = try!(self.trans
-            .query("DELETE FROM global_metadata WHERE key=$1 RETURNING 1",
-                   &[&key]));
+        let results = try!(self.trans.query(
+            "DELETE FROM global_metadata WHERE key=$1 RETURNING 1",
+            &[&key]
+        ));
+
         self.handle_update_metadata(results)
     }
 
     fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans
-            .query("SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2",
-                   &[&owner_id, &key]));
+        let results = try!(self.trans.query(
+            "SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2",
+            &[&owner_id, &key]
+        ));
+
         self.handle_get_metadata(results)
     }
 
-    fn set_account_metadata(&self,
-                            owner_id: Uuid,
-                            key: String,
-                            value: JsonValue)
-                            -> Result<(), Error> {
+    fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         let results = try!(self.trans.query("
-			INSERT INTO account_metadata (owner_id, key, \
-                                             value)
+			INSERT INTO account_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
-			ON CONFLICT ON \
-                                             CONSTRAINT account_metadata_pkey
-			DO UPDATE SET \
-                                             value=$3
+			ON CONFLICT ON CONSTRAINT account_metadata_pkey
+			DO UPDATE SET value=$3
 			RETURNING 1
-		",
-                                            &[&owner_id, &key, &value]));
+		", &[&owner_id, &key, &value]));
 
         self.handle_update_metadata(results)
     }
 
     fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        let results = try!(self.trans
-            .query("DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
-                   &[&owner_id, &key]));
+        let results = try!(self.trans.query(
+            "DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
+            &[&owner_id, &key]
+        ));
         self.handle_update_metadata(results)
     }
 
     fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans
-            .query("SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2",
-                   &[&owner_id, &key]));
+        let results = try!(self.trans.query(
+            "SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2",
+            &[&owner_id, &key]
+        ));
+        
         self.handle_get_metadata(results)
     }
 
-    fn set_vertex_metadata(&self,
-                           owner_id: Uuid,
-                           key: String,
-                           value: JsonValue)
-                           -> Result<(), Error> {
+    fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         let results = try!(self.trans.query("
-			INSERT INTO vertex_metadata (owner_id, key, \
-                                             value)
+			INSERT INTO vertex_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
-			ON CONFLICT ON \
-                                             CONSTRAINT vertex_metadata_pkey
-			DO UPDATE SET \
-                                             value=$3
+			ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
+			DO UPDATE SET value=$3
 			RETURNING 1
-		",
-                                            &[&owner_id, &key, &value]));
+		", &[&owner_id, &key, &value]));
 
         self.handle_update_metadata(results)
     }
 
     fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        let results = try!(self.trans
-            .query("DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
-                   &[&owner_id, &key]));
+        let results = try!(self.trans.query(
+            "DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
+            &[&owner_id, &key]
+        ));
+        
         self.handle_update_metadata(results)
     }
 
-    fn get_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: models::Type,
-                         inbound_id: Uuid,
-                         key: String)
-                         -> Result<JsonValue, Error> {
+    fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
         let results = try!(self.trans.query("
 			SELECT value
 			FROM edge_metadata
-			WHERE \
-                                             owner_id=(SELECT id FROM edges WHERE \
-                                             outbound_id=$1 AND type=$2 AND inbound_id=$3) AND \
-                                             key=$4
-		",
-                                            &[&outbound_id, &t.0, &inbound_id, &key]));
+			WHERE owner_id=(
+                SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
+            ) AND key=$4
+		", &[&outbound_id, &t.0, &inbound_id, &key]));
 
         self.handle_get_metadata(results)
     }
 
-    fn set_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: models::Type,
-                         inbound_id: Uuid,
-                         key: String,
-                         value: JsonValue)
-                         -> Result<(), Error> {
+    fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         let results = try!(self.trans.query("
-			INSERT INTO edge_metadata (owner_id, key, \
-                                             value)
-			VALUES ((SELECT id FROM edges WHERE \
-                                             outbound_id=$1 AND type=$2 AND inbound_id=$3), $4, \
-                                             $5)
-			ON CONFLICT ON CONSTRAINT \
-                                             edge_metadata_pkey
+			INSERT INTO edge_metadata (owner_id, key, value)
+			VALUES (
+                (SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3),
+                $4,
+                $5
+            )
+			ON CONFLICT ON CONSTRAINT edge_metadata_pkey
 			DO UPDATE SET value=$5
-			\
-                                             RETURNING 1
-		",
-                                            &[&outbound_id, &t.0, &inbound_id, &key, &value]));
+			RETURNING 1
+		", &[&outbound_id, &t.0, &inbound_id, &key, &value]));
 
         self.handle_update_metadata(results)
     }
 
-    fn delete_edge_metadata(&self,
-                            outbound_id: Uuid,
-                            t: models::Type,
-                            inbound_id: Uuid,
-                            key: String)
-                            -> Result<(), Error> {
+    fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
         let results = try!(self.trans.query("
 			DELETE FROM edge_metadata
-			WHERE \
-                                             owner_id=(SELECT id FROM edges WHERE \
-                                             outbound_id=$1 AND type=$2 AND inbound_id=$3) AND \
-                                             key=$4
+			WHERE owner_id=(
+                SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
+            ) AND key=$4
 			RETURNING 1
-		",
-                                            &[&outbound_id, &t.0, &inbound_id, &key]));
+		", &[&outbound_id, &t.0, &inbound_id, &key]));
 
         self.handle_update_metadata(results)
     }
