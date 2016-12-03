@@ -1,4 +1,4 @@
-use r2d2_postgres::{SslMode, PostgresConnectionManager};
+use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config, Pool, PooledConnection};
 use std::mem;
 use datastore::{Datastore, Transaction};
@@ -35,7 +35,7 @@ impl PostgresDatastore {
         };
 
         let pool_config = Config::builder().pool_size(unwrapped_pool_size).build();
-        let manager = match PostgresConnectionManager::new(&*connection_string, SslMode::None) {
+        let manager = match PostgresConnectionManager::new(&*connection_string, TlsMode::None) {
             Ok(manager) => manager,
             Err(err) => panic!("Could not connect to the postgres database: {}", err),
         };
@@ -114,7 +114,7 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 #[derive(Debug)]
 pub struct PostgresTransaction {
     account_id: Uuid,
-    trans: postgres::Transaction<'static>,
+    trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
 }
 
