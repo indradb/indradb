@@ -9,9 +9,7 @@ use core::str::FromStr;
 use super::errors::LuaError;
 
 /// Deserializes a lua value into a JSON value.
-pub unsafe fn deserialize_json(l: &mut lua::ExternState,
-                               offset: i32)
-                               -> Result<JsonValue, LuaError> {
+pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
         Some(lua::Type::Nil) |
         None => JsonValue::Null,
@@ -127,9 +125,7 @@ pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type
 }
 
 /// Gets either a string value that represents an i64 or a nil from lua by its offset
-pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState,
-                                     narg: i32)
-                                     -> Result<Option<i64>, LuaError> {
+pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
     let s = try!(get_string_param(l, narg));
 
     if s == "" {
@@ -153,9 +149,7 @@ pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid
 }
 
 /// Gets either a string value that represents a timestamp or a nil from lua
-pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState,
-                                          narg: i32)
-                                          -> Result<Option<NaiveDateTime>, LuaError> {
+pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<NaiveDateTime>, LuaError> {
     match try!(get_optional_i64_param(l, narg)) {
         Some(i) => Ok(Some(NaiveDateTime::from_timestamp(i, 0))),
         None => Ok(None),

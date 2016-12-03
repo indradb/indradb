@@ -41,23 +41,18 @@ pub struct RestTransaction {
 }
 
 impl RestTransaction {
-    fn request<'a>(&self,
-                   client: &'a Client,
-                   method_str: &str,
-                   path: String)
-                   -> RequestBuilder<'a> {
-        return request(client,
-                       self.port,
-                       self.account_id,
-                       self.secret.clone(),
-                       method_str,
-                       path);
+    fn request<'a>(&self, client: &'a Client, method_str: &str, path: String) -> RequestBuilder<'a> {
+        return request(
+            client,
+            self.port,
+            self.account_id,
+            self.secret.clone(),
+            method_str,
+            path
+        );
     }
 
-    fn build_time_range_qp(&self,
-                           high: Option<NaiveDateTime>,
-                           low: Option<NaiveDateTime>)
-                           -> String {
+    fn build_time_range_qp(&self, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>) -> String {
         match (high, low) {
             (Some(high), Some(low)) => {
                 format!("&high={}&low={}", high.timestamp(), low.timestamp())
@@ -131,113 +126,90 @@ impl Transaction<Uuid> for RestTransaction {
         let body = serde_json::to_string(&d).unwrap();
 
         let client = Client::new();
-        let req = self.request(&client,
-                     "PUT",
-                     format!("/edge/{}/{}/{}", e.outbound_id, e.t.0, e.inbound_id))
-            .body(&body[..]);
+        let req = self.request(
+            &client,
+            "PUT",
+            format!("/edge/{}/{}/{}", e.outbound_id, e.t.0, e.inbound_id)
+        ).body(&body[..]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
     fn delete_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<(), Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "DELETE",
-                               format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id));
+        let req = self.request(
+            &client,
+            "DELETE",
+            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
     fn get_edge_count(&self, outbound_id: Uuid, t: Type) -> Result<u64, Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/{}/{}/_?action=count", outbound_id, t.0));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/{}/{}/_?action=count", outbound_id, t.0)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_edge_range(&self,
-                      outbound_id: Uuid,
-                      t: Type,
-                      offset: u64,
-                      limit: u16)
-                      -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/{}/{}/_?action=position&limit={}&offset={}",
-                                       outbound_id,
-                                       t.0,
-                                       limit,
-                                       offset));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/{}/{}/_?action=position&limit={}&offset={}", outbound_id, t.0, limit, offset)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_edge_time_range(&self,
-                           outbound_id: Uuid,
-                           t: Type,
-                           high: Option<NaiveDateTime>,
-                           low: Option<NaiveDateTime>,
-                           limit: u16)
-                           -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let qp = self.build_time_range_qp(high, low);
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/{}/{}/_?action=time&limit={}{}",
-                                       outbound_id,
-                                       t.0,
-                                       limit,
-                                       qp));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/{}/{}/_?action=time&limit={}{}", outbound_id, t.0, limit, qp)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
     fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Type) -> Result<u64, Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/_/{}/{}?action=count", inbound_id, t.0));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/_/{}/{}?action=count", inbound_id, t.0)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_range(&self,
-                               inbound_id: Uuid,
-                               t: Type,
-                               offset: u64,
-                               limit: u16)
-                               -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/_/{}/{}?action=position&limit={}&offset={}",
-                                       inbound_id,
-                                       t.0,
-                                       limit,
-                                       offset));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/_/{}/{}?action=position&limit={}&offset={}", inbound_id, t.0, limit, offset)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_time_range(&self,
-                                    inbound_id: Uuid,
-                                    t: Type,
-                                    high: Option<NaiveDateTime>,
-                                    low: Option<NaiveDateTime>,
-                                    limit: u16)
-                                    -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let qp = self.build_time_range_qp(high, low);
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/_/{}/{}?action=time&limit={}{}",
-                                       inbound_id,
-                                       t.0,
-                                       limit,
-                                       qp));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/_/{}/{}?action=time&limit={}{}", inbound_id, t.0, limit, qp)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -282,13 +254,7 @@ impl Transaction<Uuid> for RestTransaction {
         panic!("Unimplemented")
     }
 
-    fn set_edge_metadata(&self,
-                         _: Uuid,
-                         _: Type,
-                         _: Uuid,
-                         _: String,
-                         _: JsonValue)
-                         -> Result<(), Error> {
+    fn set_edge_metadata(&self, _: Uuid, _: Type, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
         panic!("Unimplemented")
     }
 

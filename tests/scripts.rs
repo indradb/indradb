@@ -155,13 +155,15 @@ pub fn run_script(account_id: Uuid, secret: String, name: &str) {
     file.read_to_string(&mut contents).unwrap();
 
     let client = Client::new();
-    let req = request(&client,
-                      8000,
-                      account_id,
-                      secret,
-                      "POST",
-                      format!("/script/{}.lua", name));
-    let mut res = req.send().unwrap();
+    let req = request(
+		&client,
+		8000,
+		account_id,
+		secret,
+		"POST",
+		format!("/script/{}.lua", name)
+	);
+	let mut res = req.send().unwrap();
 
     let mut payload = String::new();
     res.read_to_string(&mut payload).unwrap();
@@ -174,8 +176,6 @@ pub fn run_script(account_id: Uuid, secret: String, name: &str) {
             assert_eq!(expected_result, actual_result)
         }
     } else {
-        panic!("Unexpected status code: {} - payload: {}",
-               res.status,
-               payload)
+        panic!("Unexpected status code: {} - payload: {}", res.status, payload)
     }
 }

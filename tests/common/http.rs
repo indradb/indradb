@@ -12,13 +12,7 @@ use std::io::Read;
 use std::str;
 use std::collections::BTreeMap;
 
-pub fn request<'a>(client: &'a Client,
-                   port: i32,
-                   account_id: Uuid,
-                   secret: String,
-                   method_str: &str,
-                   path: String)
-                   -> RequestBuilder<'a> {
+pub fn request<'a>(client: &'a Client, port: i32, account_id: Uuid, secret: String, method_str: &str, path: String) -> RequestBuilder<'a> {
     let method = Method::from_str(method_str).unwrap();
     let url = format!("http://localhost:{}{}", port, path);
 

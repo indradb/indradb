@@ -107,22 +107,11 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_edge_count, outbound_id, t)
     }
 
-    fn get_edge_range(&self,
-                      outbound_id: Uuid,
-                      t: Type,
-                      offset: u64,
-                      limit: u16)
-                      -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
     }
 
-    fn get_edge_time_range(&self,
-                           outbound_id: Uuid,
-                           t: Type,
-                           high: Option<NaiveDateTime>,
-                           low: Option<NaiveDateTime>,
-                           limit: u16)
-                           -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
     }
 
@@ -130,29 +119,20 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self,
-                               inbound_id: Uuid,
-                               t: Type,
-                               offset: u64,
-                               limit: u16)
-                               -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
     }
 
-    fn get_reversed_edge_time_range(&self,
-                                    inbound_id: Uuid,
-                                    t: Type,
-                                    high: Option<NaiveDateTime>,
-                                    low: Option<NaiveDateTime>,
-                                    limit: u16)
-                                    -> Result<Vec<Edge<Uuid>>, Error> {
-        proxy_transaction!(self,
-                           get_reversed_edge_time_range,
-                           inbound_id,
-                           t,
-                           high,
-                           low,
-                           limit)
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+        proxy_transaction!(
+            self,
+            get_reversed_edge_time_range,
+            inbound_id,
+            t,
+            high,
+            low,
+            limit
+        )
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
@@ -171,11 +151,7 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_account_metadata, owner_id, key)
     }
 
-    fn set_account_metadata(&self,
-                            owner_id: Uuid,
-                            key: String,
-                            value: JsonValue)
-                            -> Result<(), Error> {
+    fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_account_metadata, owner_id, key, value)
     }
 
@@ -187,11 +163,7 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_vertex_metadata, owner_id, key)
     }
 
-    fn set_vertex_metadata(&self,
-                           owner_id: Uuid,
-                           key: String,
-                           value: JsonValue)
-                           -> Result<(), Error> {
+    fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex_metadata, owner_id, key, value)
     }
 
@@ -199,37 +171,23 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, delete_vertex_metadata, owner_id, key)
     }
 
-    fn get_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: Type,
-                         inbound_id: Uuid,
-                         key: String)
-                         -> Result<JsonValue, Error> {
+    fn get_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
         proxy_transaction!(self, get_edge_metadata, outbound_id, t, inbound_id, key)
     }
 
-    fn set_edge_metadata(&self,
-                         outbound_id: Uuid,
-                         t: Type,
-                         inbound_id: Uuid,
-                         key: String,
-                         value: JsonValue)
-                         -> Result<(), Error> {
-        proxy_transaction!(self,
-                           set_edge_metadata,
-                           outbound_id,
-                           t,
-                           inbound_id,
-                           key,
-                           value)
+    fn set_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+        proxy_transaction!(
+            self,
+            set_edge_metadata,
+            outbound_id,
+            t,
+            inbound_id,
+            key,
+            value
+        )
     }
 
-    fn delete_edge_metadata(&self,
-                            outbound_id: Uuid,
-                            t: Type,
-                            inbound_id: Uuid,
-                            key: String)
-                            -> Result<(), Error> {
+    fn delete_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
         proxy_transaction!(self, delete_edge_metadata, outbound_id, t, inbound_id, key)
     }
 

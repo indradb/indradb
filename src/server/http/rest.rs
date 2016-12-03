@@ -93,8 +93,7 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
     let t: Type = try!(get_url_param(req, "type"));
     let trans = try!(get_transaction(req));
     let query_params = try!(get_query_params(req));
-    let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true))
-        .unwrap()[..];
+    let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
 
     match action {
         "count" => {
@@ -103,25 +102,25 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
             Ok(to_response(status::Ok, &result))
         }
         "time" => {
-            let limit =
-                parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-            let high = parse_datetime(try!(get_query_param::<i64>(query_params,
-                                                                  "high".to_string(),
-                                                                  false)));
-            let low = parse_datetime(try!(get_query_param::<i64>(query_params,
-                                                                 "low".to_string(),
-                                                                 false)));
+            let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+            let high = parse_datetime(try!(get_query_param::<i64>(
+                query_params,
+                "high".to_string(),
+                false
+            )));
+            let low = parse_datetime(try!(get_query_param::<i64>(
+                query_params,
+                "low".to_string(),
+                false
+            )));
             let result = try!(datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit)));
             try!(datastore_request(trans.commit()));
             Ok(to_response(status::Ok, &result))
         }
         "position" => {
-            let limit =
-                parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-            let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false))
-                .unwrap_or(0);
-            let result =
-                try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)));
+            let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+            let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
+            let result = try!(datastore_request(trans.get_edge_range(outbound_id, t, offset, limit)));
             try!(datastore_request(trans.commit()));
             Ok(to_response(status::Ok, &result))
         }
@@ -134,8 +133,7 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
     let t: Type = try!(get_url_param(req, "type"));
     let trans = try!(get_transaction(req));
     let query_params = try!(get_query_params(req));
-    let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true))
-        .unwrap()[..];
+    let action = &try!(get_query_param::<String>(query_params, "action".to_string(), true)).unwrap()[..];
 
     match action {
         "count" => {
@@ -144,23 +142,24 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
             Ok(to_response(status::Ok, &result))
         }
         "time" => {
-            let limit =
-                parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-            let high = parse_datetime(try!(get_query_param::<i64>(query_params,
-                                                                  "high".to_string(),
-                                                                  false)));
-            let low = parse_datetime(try!(get_query_param::<i64>(query_params,
-                                                                 "low".to_string(),
-                                                                 false)));
+            let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+            let high = parse_datetime(try!(get_query_param::<i64>(
+                query_params,
+                "high".to_string(),
+                false
+            )));
+            let low = parse_datetime(try!(get_query_param::<i64>(
+                query_params,
+                "low".to_string(),
+                false
+            )));
             let result = try!(datastore_request(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit)));
             try!(datastore_request(trans.commit()));
             Ok(to_response(status::Ok, &result))
         }
         "position" => {
-            let limit =
-                parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
-            let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false))
-                .unwrap_or(0);
+            let limit = parse_limit(try!(get_query_param::<u16>(query_params, "limit".to_string(), false)));
+            let offset = try!(get_query_param::<u64>(query_params, "offset".to_string(), false)).unwrap_or(0);
             let result = try!(datastore_request(trans.get_reversed_edge_range(inbound_id, t, offset, limit)));
             try!(datastore_request(trans.commit()));
             Ok(to_response(status::Ok, &result))
