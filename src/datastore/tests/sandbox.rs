@@ -43,10 +43,10 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
     }
 
     pub fn setup(&mut self, name: &str) {
-        // Set the name first
+        // Set the test name
         self.name = name.to_string();
 
-        // Create a couple of accounts
+        // Create an account
         let owner_email = self.generate_unique_string("owner");
         let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
         self.owner_id = owner_id;
