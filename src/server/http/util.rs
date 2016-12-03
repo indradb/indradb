@@ -44,22 +44,20 @@ pub fn create_iron_error(status_code: status::Status, err: String) -> IronError 
     let mut d: BTreeMap<String, String> = BTreeMap::new();
     d.insert("error".to_string(), err.clone());
     let body = serde_json::to_string(&d).unwrap();
-    let json_content_type_modifier = HeaderModifier(get_json_content_type());
+    let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
     let modifiers = (status_code, json_content_type_modifier, body);
     IronError::new(SimpleError::new(err), modifiers)
 }
 
 /// Returns a JSON content type specification
-pub fn get_json_content_type() -> ContentType {
-    ContentType(Mime(TopLevel::Application,
-                     SubLevel::Json,
-                     vec![(Attr::Charset, Value::Utf8)]))
+pub fn get_json_mime() -> Mime {
+    Mime(TopLevel::Application, SubLevel::Json, vec![(Attr::Charset, Value::Utf8)])
 }
 
 /// Serializes a given body and status code into a response
 pub fn to_response<T: Serialize>(status_code: status::Status, body: &T) -> Response {
     let mut hs = Headers::new();
-    hs.set(get_json_content_type());
+    hs.set(ContentType(get_json_mime()));
 
     Response {
         status: Some(status_code),

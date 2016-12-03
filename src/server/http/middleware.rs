@@ -12,8 +12,10 @@ use router::NoRoute;
 use util::SimpleError;
 use super::util::*;
 use core::str::FromStr;
-
-header! { (WWWAuthenticate, "WWW-Authenticate") => [String] }
+use hyper::header::Headers;
+use iron::modifiers::Header;
+use iron::modifier::Modifier;
+use iron::headers::ContentType;
 
 /// Basic HTTP auth middleware.
 pub struct BasicAuthMiddleware {
@@ -62,13 +64,24 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         d.insert("error".to_string(), error_message.clone());
         let body = serde_json::to_string(&d).unwrap();
 
-        let www_authenticate_header = WWWAuthenticate("Basic realm=\"main\"".to_owned());
-        let www_authenticate_modifier = HeaderModifier(www_authenticate_header);
-        let json_content_type_modifier = HeaderModifier(get_json_content_type());
+        // NOTE: Right now we're manually constructing the `Response` and
+        // `IronError`. Ideally this would not happen, however otherwise we'd
+        // need to resort to the use of `Modifier`. Because we're setting a
+        // custom header, that requires a lot of plumbing at the moment. There
+        // should be a more terse way to do this - at least in future versions
+        // of iron.
+        let mut response = Response::new();
+        response.status = Some(status::Unauthorized);
+        response.headers.set(ContentType(get_json_mime()));
+        response.headers.set_raw("WWW-Authenticate", vec!("Basic realm=\"main\"".as_bytes().to_vec()));
+        response.body = Some(Box::new(body));
 
-        let modifiers =
-            (status::Unauthorized, json_content_type_modifier, www_authenticate_modifier, body);
-        Err(IronError::new(SimpleError::new(error_message), modifiers))
+        let mut error = IronError{
+            error: Box::new(SimpleError::new(error_message)),
+            response: response
+        };
+
+        Err(error)
     }
 }
 

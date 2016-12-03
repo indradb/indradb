@@ -1,8 +1,10 @@
 #![cfg(test)]
 
-#![feature(custom_derive, plugin, test)]
+#![feature(plugin, test, proc_macro)]
 #![plugin(stainless)]
 
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate nutrino;
 #[macro_use]
