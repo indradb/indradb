@@ -2,7 +2,6 @@ use iron::prelude::*;
 use iron::headers::{Authorization, Basic};
 use nutrino::Datastore;
 use std::collections::BTreeMap;
-use iron::modifiers::Header as HeaderModifier;
 use statics;
 use uuid::Uuid;
 use iron::middleware::{BeforeMiddleware, AfterMiddleware};
@@ -12,9 +11,6 @@ use router::NoRoute;
 use util::SimpleError;
 use super::util::*;
 use core::str::FromStr;
-use hyper::header::Headers;
-use iron::modifiers::Header;
-use iron::modifier::Modifier;
 use iron::headers::ContentType;
 
 /// Basic HTTP auth middleware.
@@ -76,7 +72,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         response.headers.set_raw("WWW-Authenticate", vec!("Basic realm=\"main\"".as_bytes().to_vec()));
         response.body = Some(Box::new(body));
 
-        let mut error = IronError{
+        let error = IronError{
             error: Box::new(SimpleError::new(error_message)),
             response: response
         };

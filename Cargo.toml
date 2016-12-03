@@ -16,23 +16,23 @@ name = "common"
 path = "src/common/lib.rs"
 
 [dependencies]
-iron = "0.4.0"
-hyper = "0.8.1"
-chrono = "0.2.20"
-serde = "0.8.13"
-serde_json = "0.8.3"
-serde_derive = "0.8.19"
-urlencoded = "0.4.1"
-libc = "0.2.11"
-regex = "0.1.73"
-clap = "2.11.3"
-rand = "0.3.14"
-lazy_static = "0.2.1"
-router = "0.4.0"
+iron = "~0.4.0"
+hyper = "~0.9.13"
+chrono = "~0.2.25"
+serde = "~0.8.13"
+serde_json = "~0.8.3"
+serde_derive = "~0.8.19"
+urlencoded = "~0.4.1"
+libc = "~0.2.18"
+rand = "~0.3.15"
+regex = "~0.1.80"
+clap = "^2.19.1"
+lazy_static = "~0.2.2"
+router = "~0.4.0"
 
 [dev-dependencies]
-stainless = "*"
-maplit = "0.1.4"
+stainless = "~0.1.10"
+maplit = "~0.1.4"
 
 [dependencies.rust-nutrino-lib]
 path = "../lib"
@@ -42,5 +42,5 @@ git = "https://github.com/ysimonson/rust-lua.git"
 branch = "feature/nightly"
 
 [dependencies.uuid]
-version = "0.3.1"
+version = "~0.3.1"
 features = ["serde", "v4"]
