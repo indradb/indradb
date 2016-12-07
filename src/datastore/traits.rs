@@ -12,7 +12,7 @@ use chrono::naive::datetime::NaiveDateTime;
 /// transactions.
 ///
 /// # Errors
-/// All methods may return an error if something unexpected happeneds - e.g.
+/// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore<T: Transaction<I>, I: Id> {
     /// Checks if an account exists.
@@ -165,33 +165,68 @@ pub trait Transaction<I: Id> {
     fn set_global_metadata(&self, String, JsonValue) -> Result<(), Error>;
 
     /// Deletes a global metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn delete_global_metadata(&self, String) -> Result<(), Error>;
 
     /// Gets an account metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn get_account_metadata(&self, I, String) -> Result<JsonValue, Error>;
 
     /// Sets an account metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::AccountNotFound` if the specified account ID does not
+    /// exist.
     fn set_account_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
 
     /// Deletes an account metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn delete_account_metadata(&self, I, String) -> Result<(), Error>;
 
     /// Gets a vertex metadata value.
+    ///
+    /// # Errors
+    /// Return `Error::VertexNotFound` if the specified vertex does not
+    /// exist. Returns `Error::MetadataNotFound` if the metadata does not
+    /// exist.
     fn get_vertex_metadata(&self, I, String) -> Result<JsonValue, Error>;
 
     /// Sets a vertex metadata value.
+    ///
+    /// # Errors
+    /// Return `Error::VertexNotFound` if the specified vertex does not
+    /// exist.
     fn set_vertex_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
 
     /// Deletes a vertex metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn delete_vertex_metadata(&self, I, String) -> Result<(), Error>;
 
     /// Gets an edge metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn get_edge_metadata(&self, I, models::Type, I, String) -> Result<JsonValue, Error>;
 
     /// Sets an edge metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
     fn set_edge_metadata(&self, I, models::Type, I, String, JsonValue) -> Result<(), Error>;
 
     /// Deletes an edge metadata value.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn delete_edge_metadata(&self, I, models::Type, I, String) -> Result<(), Error>;
 
     /// Commits the transaction.
