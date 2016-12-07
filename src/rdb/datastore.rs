@@ -378,6 +378,10 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
+        if !try!(AccountManager::new(self.db.clone()).exists(owner_id)) {
+            return Err(Error::AccountNotFound);
+        }
+
         let manager = AccountMetadataManager::new(self.db.clone());
         try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
     }
@@ -393,13 +397,23 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
+        let manager = AccountMetadataManager::new(self.db.clone());
+
+        if !try!(manager.exists(owner_id, &key)) {
+            return Err(Error::MetadataNotFound);
+        }
+
         let mut batch = WriteBatch::default();
-        try!(AccountMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, &key[..]));
+        try!(manager.delete(&mut batch, owner_id, &key[..]));
         try!(self.db.write(batch));
         Ok(())
     }
 
     fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
+        if !try!(VertexManager::new(self.db.clone()).exists(owner_id)) {
+            return Err(Error::VertexNotFound);
+        }
+
         let manager = VertexMetadataManager::new(self.db.clone());
         try!(manager.get(owner_id, &key[..])).ok_or_else(|| Error::MetadataNotFound)
     }
@@ -414,13 +428,23 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
+        let manager = VertexMetadataManager::new(self.db.clone());
+
+        if !try!(manager.exists(owner_id, &key)) {
+            return Err(Error::MetadataNotFound);
+        }
+
         let mut batch = WriteBatch::default();
-        try!(VertexMetadataManager::new(self.db.clone()).delete(&mut batch, owner_id, &key[..]));
+        try!(manager.delete(&mut batch, owner_id, &key[..]));
         try!(self.db.write(batch));
         Ok(())
     }
 
     fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
+        if !try!(EdgeManager::new(self.db.clone()).exists(outbound_id, &t, inbound_id)) {
+            return Err(Error::EdgeNotFound);
+        }
+
         let manager = EdgeMetadataManager::new(self.db.clone());
         try!(manager.get(outbound_id, &t, inbound_id, &key[..]))
             .ok_or_else(|| Error::MetadataNotFound)
@@ -436,9 +460,14 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
+        let manager = EdgeMetadataManager::new(self.db.clone());
+
+        if !try!(manager.exists(outbound_id, &t, inbound_id, &key)) {
+            return Err(Error::MetadataNotFound);
+        }
+
         let mut batch = WriteBatch::default();
-        try!(EdgeMetadataManager::new(self.db.clone())
-            .delete(&mut batch, outbound_id, &t, inbound_id, &key[..]));
+        try!(manager.delete(&mut batch, outbound_id, &t, inbound_id, &key[..]));
         try!(self.db.write(batch));
         Ok(())
     }

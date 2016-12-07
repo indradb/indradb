@@ -532,6 +532,10 @@ impl AccountMetadataManager {
         iterate_metadata_for_owner(&self.db, self.cf, account_id)
     }
 
+    pub fn exists(&self, account_id: Uuid, name: &str) -> Result<bool, Error> {
+        exists(&self.db, self.cf, self.key(account_id, name))
+    }
+
     pub fn get(&self, account_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(account_id, name))
     }
@@ -572,6 +576,10 @@ impl VertexMetadataManager {
          vertex_id: Uuid)
          -> Result<Box<Iterator<Item = Result<((Uuid, String), JsonValue), Error>> + 'a>, Error> {
         iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
+    }
+
+    pub fn exists(&self, vertex_id: Uuid, name: &str) -> Result<bool, Error> {
+        exists(&self.db, self.cf, self.key(vertex_id, name))
     }
 
     pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
@@ -641,6 +649,10 @@ impl EdgeMetadataManager {
         });
 
         Ok(Box::new(mapped))
+    }
+
+    pub fn exists(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<bool, Error> {
+        exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name))
     }
 
     pub fn get(&self,

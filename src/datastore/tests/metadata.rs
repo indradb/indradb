@@ -73,6 +73,28 @@ pub fn should_handle_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbo
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
+pub fn should_not_set_invalid_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.set_account_metadata(I::default(), "foo".to_string(), JsonValue::Null);
+    assert_eq!(result.unwrap_err(), Error::AccountNotFound);
+}
+
+pub fn should_not_delete_invalid_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.delete_account_metadata(I::default(), "foo".to_string());
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+    let result = trans.delete_account_metadata(sandbox.owner_id, "foo".to_string());
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+}
+
 pub fn should_handle_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
@@ -106,6 +128,30 @@ pub fn should_handle_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox
     assert!(result.is_ok());
 
     let result = trans.get_vertex_metadata(owner_id, key.clone());
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+}
+
+pub fn should_not_set_invalid_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.set_vertex_metadata(I::default(), "foo".to_string(), JsonValue::Null);
+    assert_eq!(result.unwrap_err(), Error::VertexNotFound);
+}
+
+pub fn should_not_delete_invalid_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.delete_vertex_metadata(I::default(), "foo".to_string());
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+
+    let vertex_id = trans.create_vertex(models::Type::new("foo".to_string()).unwrap()).unwrap();
+    let result = trans.delete_vertex_metadata(vertex_id, "foo".to_string());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
@@ -158,5 +204,55 @@ pub fn should_handle_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D
     assert!(result.is_ok());
 
     let result = trans.get_edge_metadata(outbound_id, edge_t, inbound_id, key.clone());
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+}
+
+pub fn should_not_set_invalid_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.set_edge_metadata(
+        I::default(),
+        models::Type::new("foo".to_string()).unwrap(),
+        I::default(),
+        "bar".to_string(),
+        JsonValue::Null
+    );
+    assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
+}
+
+pub fn should_not_delete_invalid_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
+    where D: Datastore<T, I>,
+          T: Transaction<I>,
+          I: Id
+{
+    let trans = sandbox.transaction();
+    let result = trans.delete_edge_metadata(
+        I::default(),
+        models::Type::new("foo".to_string()).unwrap(),
+        I::default(),
+        "bar".to_string()
+    );
+    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+
+    let outbound_id = trans.create_vertex(models::Type::new("foo".to_string()).unwrap()).unwrap();
+    let inbound_id = trans.create_vertex(models::Type::new("bar".to_string()).unwrap()).unwrap();
+    let edge = models::Edge::new(
+        outbound_id,
+        models::Type::new("baz".to_string()).unwrap(),
+        inbound_id,
+        models::Weight::new(1.0).unwrap()
+    );
+    trans.set_edge(edge).unwrap();
+    
+    let result = trans.delete_edge_metadata(
+        outbound_id,
+        models::Type::new("baz".to_string()).unwrap(),
+        inbound_id,
+        "bleh".to_string()
+    );
+    
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }

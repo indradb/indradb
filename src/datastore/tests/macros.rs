@@ -118,7 +118,7 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should not delete an edge with bad permissions");
 				::tests::should_not_delete_an_edge_with_bad_permissions(&mut sandbox)
 			}
-			
+
 			it "should get an edge count" {
 				sandbox.setup("should get an edge count");
 				::tests::should_get_an_edge_count(&mut sandbox)
@@ -322,14 +322,44 @@ macro_rules! test_metadata_impl {
 				::tests::should_handle_account_metadata(&mut sandbox)
 			}
 
+			it "should not set invalid account metadata" {
+				sandbox.setup("should not set invalid account metadata");
+				::tests::should_not_set_invalid_account_metadata(&mut sandbox)
+			}
+
+			it "should not delete invalid account metadata" {
+				sandbox.setup("should not delete invalid account metadata");
+				::tests::should_not_delete_invalid_account_metadata(&mut sandbox)
+			}
+
 			it "should handle vertex metadata" {
 				sandbox.setup("should handle vertex metadata");
 				::tests::should_handle_vertex_metadata(&mut sandbox)
 			}
 
+			it "should not set invalid vertex metadata" {
+				sandbox.setup("should not set invalid vertex metadata");
+				::tests::should_not_set_invalid_vertex_metadata(&mut sandbox)
+			}
+
+			it "should not delete invalid vertex metadata" {
+				sandbox.setup("should not delete invalid vertex metadata");
+				::tests::should_not_delete_invalid_vertex_metadata(&mut sandbox)
+			}
+
 			it "should handle edge metadata" {
 				sandbox.setup("should handle edge metadata");
 				::tests::should_handle_edge_metadata(&mut sandbox)
+			}
+			
+			it "should not set invalid edge metadata" {
+				sandbox.setup("should not set invalid edge metadata");
+				::tests::should_not_set_invalid_edge_metadata(&mut sandbox)
+			}
+
+			it "should not delete invalid edge metadata" {
+				sandbox.setup("should not delete invalid edge metadata");
+				::tests::should_not_delete_invalid_edge_metadata(&mut sandbox)
 			}
 		}
 	)

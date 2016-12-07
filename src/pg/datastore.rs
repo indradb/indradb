@@ -164,12 +164,38 @@ impl PostgresTransaction {
         Err(Error::MetadataNotFound)
     }
 
-    fn handle_update_metadata(&self, results: Rows) -> Result<(), Error> {
+    fn handle_delete_metadata(&self, results: Rows) -> Result<(), Error> {
         for _ in &results {
             return Ok(());
         }
 
         Err(Error::MetadataNotFound)
+    }
+
+    fn handle_set_metadata(&self, result: Result<Rows, pg_error::Error>, foreign_key_error: Error) -> Result<(), Error> {
+        match result {
+            Ok(rows) => {
+                for _ in &rows {
+                    return Ok(());
+                }
+
+                Err(Error::MetadataNotFound)
+            },
+            Err(pg_error::Error::Db(ref err)) => {
+                if err.code == pg_error::SqlState::ForeignKeyViolation || err.code == pg_error::SqlState::NotNullViolation {
+                    // This should only happen when we couldn't get the
+                    // "owning" resource for the metadata
+                    Err(foreign_key_error)
+                } else {
+                    try!(result);
+                    panic!("Unreacheable code hit")
+                }
+            },
+            _ => {
+                try!(result);
+                panic!("Unreacheable code hit")
+            }
+        }
     }
 }
 
@@ -466,15 +492,15 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			INSERT INTO global_metadata (key, value)
 			VALUES ($1, $2)
 			ON CONFLICT ON CONSTRAINT global_metadata_pkey
 			DO UPDATE SET value=$2
 			RETURNING 1
-		", &[&key, &value]));
+		", &[&key, &value]);
 
-        self.handle_update_metadata(results)
+        self.handle_set_metadata(results, Error::Unexpected("Unexpected error when setting global metadata".to_string()))
     }
 
     fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
@@ -483,7 +509,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             &[&key]
         ));
 
-        self.handle_update_metadata(results)
+        self.handle_delete_metadata(results)
     }
 
     fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
@@ -496,15 +522,15 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			INSERT INTO account_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
 			ON CONFLICT ON CONSTRAINT account_metadata_pkey
 			DO UPDATE SET value=$3
 			RETURNING 1
-		", &[&owner_id, &key, &value]));
+		", &[&owner_id, &key, &value]);
 
-        self.handle_update_metadata(results)
+        self.handle_set_metadata(results, Error::AccountNotFound)
     }
 
     fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
@@ -512,7 +538,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             "DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
             &[&owner_id, &key]
         ));
-        self.handle_update_metadata(results)
+        self.handle_delete_metadata(results)
     }
 
     fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
@@ -525,15 +551,15 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			INSERT INTO vertex_metadata (owner_id, key, value)
 			VALUES ($1, $2, $3)
 			ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
 			DO UPDATE SET value=$3
 			RETURNING 1
-		", &[&owner_id, &key, &value]));
+		", &[&owner_id, &key, &value]);
 
-        self.handle_update_metadata(results)
+        self.handle_set_metadata(results, Error::VertexNotFound)
     }
 
     fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
@@ -542,7 +568,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             &[&owner_id, &key]
         ));
         
-        self.handle_update_metadata(results)
+        self.handle_delete_metadata(results)
     }
 
     fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
@@ -558,7 +584,7 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			INSERT INTO edge_metadata (owner_id, key, value)
 			VALUES (
                 (SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3),
@@ -568,9 +594,9 @@ impl Transaction<Uuid> for PostgresTransaction {
 			ON CONFLICT ON CONSTRAINT edge_metadata_pkey
 			DO UPDATE SET value=$5
 			RETURNING 1
-		", &[&outbound_id, &t.0, &inbound_id, &key, &value]));
+		", &[&outbound_id, &t.0, &inbound_id, &key, &value]);
 
-        self.handle_update_metadata(results)
+        self.handle_set_metadata(results, Error::EdgeNotFound)
     }
 
     fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
@@ -582,7 +608,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 			RETURNING 1
 		", &[&outbound_id, &t.0, &inbound_id, &key]));
 
-        self.handle_update_metadata(results)
+        self.handle_delete_metadata(results)
     }
 
     fn commit(self) -> Result<(), Error> {
