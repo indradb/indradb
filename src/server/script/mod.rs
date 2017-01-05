@@ -111,6 +111,6 @@ pub fn run(mut trans: ProxyTransaction,
     if l.gettop() == 0 {
         Ok(JsonValue::Null)
     } else {
-        unsafe { Ok(try!(util::deserialize_json(l.as_extern(), -1))) }
+        unsafe { Ok(util::deserialize_json(l.as_extern(), -1)?) }
     }
 }

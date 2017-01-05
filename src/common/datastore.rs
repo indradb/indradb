@@ -47,11 +47,11 @@ impl Datastore<ProxyTransaction, Uuid> for ProxyDatastore {
     fn transaction(&self, account_id: Uuid) -> Result<ProxyTransaction, Error> {
         match *self {
             ProxyDatastore::Postgres(ref pg) => {
-                let transaction = try!(pg.transaction(account_id));
+                let transaction = pg.transaction(account_id)?;
                 Ok(ProxyTransaction::Postgres(transaction))
             }
             ProxyDatastore::Rocksdb(ref r) => {
-                let transaction = try!(r.transaction(account_id));
+                let transaction = r.transaction(account_id)?;
                 Ok(ProxyTransaction::Rocksdb(transaction))
             }
         }

@@ -123,7 +123,7 @@ pub fn get_required_json_f64_param(json: &BTreeMap<String, JsonValue>, name: &st
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
 pub fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Uuid, IronError> {
-    let s = try!(get_required_json_string_param(json, name));
+    let s = get_required_json_string_param(json, name)?;
 
     match Uuid::from_str(&s[..]) {
         Ok(u) => Ok(u),
@@ -140,7 +140,7 @@ pub fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &s
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
 pub fn get_required_json_type_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Type, IronError> {
-    let s = try!(get_required_json_string_param(json, name));
+    let s = get_required_json_string_param(json, name)?;
 
     match Type::from_str(&s[..]) {
         Ok(u) => Ok(u),
@@ -159,7 +159,7 @@ pub fn get_required_json_type_param(json: &BTreeMap<String, JsonValue>, name: &s
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
 pub fn get_required_json_weight_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Weight, IronError> {
-    let w = try!(get_required_json_f64_param(json, name));
+    let w = get_required_json_f64_param(json, name)?;
 
     match Weight::new(w as f32) {
         Ok(w) => Ok(w),
@@ -214,7 +214,7 @@ pub fn get_optional_json_u64_param(json: &BTreeMap<String, JsonValue>, name: &st
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
 pub fn get_optional_json_u16_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<u16>, IronError> {
-    match try!(get_optional_json_u64_param(json, name)) {
+    match get_optional_json_u64_param(json, name)? {
         Some(val) if val > u16::MAX as u64 => {
             Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
         }
@@ -320,7 +320,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or is not valid JSON.
 pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
-    match try!(read_optional_json(&mut body)) {
+    match read_optional_json(&mut body)? {
         Some(value) => Ok(value),
         None => Err(create_iron_error(status::BadRequest, "Missing JSON payload".to_string())),
     }
@@ -331,7 +331,7 @@ pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
 pub fn read_json_object(body: &mut Body) -> Result<BTreeMap<String, JsonValue>, IronError> {
-    match try!(read_required_json(body)) {
+    match read_required_json(body)? {
         JsonValue::Object(obj) => Ok(obj),
         _ => {
             Err(create_iron_error(

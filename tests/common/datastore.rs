@@ -40,7 +40,7 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDat
     }
 
     fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        let (account_id, secret) = try!(create_account(email));
+        let (account_id, secret) = create_account(email)?;
 
         ACCOUNT_IDS.with(|account_ids| {
             let ref mut account_ids: BTreeMap<Uuid, String> = *account_ids.borrow_mut();
