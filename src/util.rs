@@ -23,8 +23,8 @@ pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String
     let mut sha = Sha256::new();
     sha.input(salt.as_bytes());
 
-    if pepper.is_some() {
-        sha.input(pepper.unwrap().as_bytes());
+    if let Some(pepper) = pepper {
+        sha.input(pepper.as_bytes());
     }
 
     sha.input(secret.as_bytes());
