@@ -17,27 +17,27 @@ use std::io::Cursor;
 use serde::{Serialize, Deserialize};
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
-    let result = try!(bincode_serde::serialize(value, SizeLimit::Infinite));
+    let result = bincode_serde::serialize(value, SizeLimit::Infinite)?;
     Ok(result.into_boxed_slice())
 }
 
 fn bincode_deserialize_value<T: Deserialize>(value: &[u8]) -> Result<T, Error> {
-    let result = try!(bincode_serde::deserialize(value));
+    let result = bincode_serde::deserialize(value)?;
     Ok(result)
 }
 
 fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>, Error> {
-    let result = try!(serde_json::to_vec(value));
+    let result = serde_json::to_vec(value)?;
     Ok(result.into_boxed_slice())
 }
 
 fn json_deserialize_value(value: &[u8]) -> Result<JsonValue, Error> {
-    let result = try!(serde_json::from_slice(value));
+    let result = serde_json::from_slice(value)?;
     Ok(result)
 }
 
 fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool, Error> {
-    match try!(db.get_cf(cf, &key)) {
+    match db.get_cf(cf, &key)? {
         Some(_) => Ok(true),
         None => Ok(false),
     }
@@ -47,8 +47,8 @@ fn get_bincode<T: Deserialize>(db: &DB,
                                cf: ColumnFamily,
                                key: Box<[u8]>)
                                -> Result<Option<T>, Error> {
-    match try!(db.get_cf(cf, &key)) {
-        Some(value_bytes) => Ok(Some(try!(bincode_deserialize_value(&value_bytes)))),
+    match db.get_cf(cf, &key)? {
+        Some(value_bytes) => Ok(Some(bincode_deserialize_value(&value_bytes)?)),
         None => Ok(None),
     }
 }
@@ -58,19 +58,19 @@ fn set_bincode<T: Serialize>(db: &DB,
                              key: Box<[u8]>,
                              value: &T)
                              -> Result<(), Error> {
-    try!(db.put_cf(cf, &key, &try!(bincode_serialize_value(value))));
+    db.put_cf(cf, &key, &bincode_serialize_value(value)?)?;
     Ok(())
 }
 
 fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValue>, Error> {
-    match try!(db.get_cf(cf, &key)) {
-        Some(value_bytes) => Ok(Some(try!(json_deserialize_value(&value_bytes)))),
+    match db.get_cf(cf, &key)? {
+        Some(value_bytes) => Ok(Some(json_deserialize_value(&value_bytes)?)),
         None => Ok(None),
     }
 }
 
 fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<(), Error> {
-    try!(db.put_cf(cf, &key, &try!(json_serialize_value(value))));
+    db.put_cf(cf, &key, &json_serialize_value(value)?)?;
     Ok(())
 }
 
@@ -91,7 +91,7 @@ fn iterate_metadata_for_owner<'a>
      id: Uuid)
      -> Result<Box<Iterator<Item = Result<((Uuid, String), JsonValue), Error>> + 'a>, Error> {
     let prefix = build_key(vec![KeyComponent::Uuid(id)]);
-    let iterator = try!(db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward)));
+    let iterator = db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward))?;
     let filtered = take_while_prefixed(iterator, prefix);
 
     let mapped = filtered.map(move |item| -> Result<((Uuid, String), JsonValue), Error> {
@@ -100,7 +100,7 @@ fn iterate_metadata_for_owner<'a>
         let owner_id = read_uuid(&mut cursor);
         debug_assert_eq!(id, owner_id);
         let name = read_unsized_string(&mut cursor);
-        let value = try!(json_deserialize_value(&v.to_owned()[..]));
+        let value = json_deserialize_value(&v.to_owned()[..])?;
         Ok(((owner_id, name), value))
     });
 
@@ -140,31 +140,31 @@ impl AccountManager {
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
         let value = AccountValue::new(email, salt, hash);
-        try!(set_bincode(&self.db, self.cf, self.key(id), &value));
+        set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok((id, secret))
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(id)));
+        batch.delete_cf(self.cf, &self.key(id))?;
 
         // NOTE: This currently does a sequential scan through all keys to
         // find which vertices to delete. This could be more efficient.
         let vertex_manager = VertexManager::new(self.db.clone());
-        for item in try!(vertex_manager.iterate()) {
-            let (vertex_id, vertex_value) = try!(item);
+        for item in vertex_manager.iterate()? {
+            let (vertex_id, vertex_value) = item?;
 
             if vertex_value.owner_id == id {
-                try!(vertex_manager.delete(&mut batch, vertex_id));
+                vertex_manager.delete(&mut batch, vertex_id)?;
             }
         }
 
         let account_metadata_manager = AccountMetadataManager::new(self.db.clone());
 
-        for item in try!(account_metadata_manager.iterate_for_owner(id)) {
-            let ((account_metadata_owner_id, account_metadata_name), _) = try!(item);
-            try!(account_metadata_manager.delete(&mut batch,
+        for item in account_metadata_manager.iterate_for_owner(id)? {
+            let ((account_metadata_owner_id, account_metadata_name), _) = item?;
+            account_metadata_manager.delete(&mut batch,
                                                  account_metadata_owner_id,
-                                                 &account_metadata_name[..]));
+                                                 &account_metadata_name[..])?;
         }
 
         Ok(())
@@ -199,13 +199,13 @@ impl VertexManager {
     pub fn iterate<'a>
         (&'a self)
          -> Result<Box<Iterator<Item = Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
-        let iterator = try!(self.db
-            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward)));
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
 
         let mapped = iterator.map(|item| -> Result<(Uuid, VertexValue), Error> {
             let (k, v) = item;
             let id = parse_uuid_key(k);
-            let value = try!(bincode_deserialize_value::<VertexValue>(&v.to_owned()[..]));
+            let value = bincode_deserialize_value::<VertexValue>(&v.to_owned()[..])?;
             Ok((id, value))
         });
 
@@ -215,59 +215,59 @@ impl VertexManager {
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
         let value = VertexValue::new(account_id, t);
-        try!(set_bincode(&self.db, self.cf, self.key(id), &value));
+        set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok(id)
     }
 
     pub fn update(&self, id: Uuid, value: &VertexValue) -> Result<(), Error> {
-        try!(set_bincode(&self.db, self.cf, self.key(id), value));
+        set_bincode(&self.db, self.cf, self.key(id), value)?;
         Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(id)));
+        batch.delete_cf(self.cf, &self.key(id))?;
 
         let vertex_metadata_manager = VertexMetadataManager::new(self.db.clone());
-        for item in try!(vertex_metadata_manager.iterate_for_owner(id)) {
-            let ((vertex_metadata_owner_id, vertex_metadata_name), _) = try!(item);
-            try!(vertex_metadata_manager.delete(&mut batch,
+        for item in vertex_metadata_manager.iterate_for_owner(id)? {
+            let ((vertex_metadata_owner_id, vertex_metadata_name), _) = item?;
+            vertex_metadata_manager.delete(&mut batch,
                                                 vertex_metadata_owner_id,
-                                                &vertex_metadata_name[..]));
+                                                &vertex_metadata_name[..])?;
         }
 
         let edge_manager = EdgeManager::new(self.db.clone());
 
         {
             let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-            for item in try!(edge_range_manager.iterate_for_owner(id)) {
+            for item in edge_range_manager.iterate_for_owner(id)? {
                 let ((edge_range_outbound_id,
                       edge_range_t,
                       edge_range_update_datetime,
                       edge_range_inbound_id),
-                     _) = try!(item);
+                     _) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
-                try!(edge_manager.delete(&mut batch,
+                edge_manager.delete(&mut batch,
                                          edge_range_outbound_id,
                                          &edge_range_t,
                                          edge_range_inbound_id,
-                                         edge_range_update_datetime));
+                                         edge_range_update_datetime)?;
             }
         }
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-            for item in try!(reversed_edge_range_manager.iterate_for_owner(id)) {
+            for item in reversed_edge_range_manager.iterate_for_owner(id)? {
                 let ((reversed_edge_range_inbound_id,
                       reversed_edge_range_t,
                       reversed_edge_range_update_datetime,
                       reversed_edge_range_outbound_id),
-                     _) = try!(item);
+                     _) = item?;
                 debug_assert_eq!(reversed_edge_range_inbound_id, id);
-                try!(edge_manager.delete(&mut batch,
+                edge_manager.delete(&mut batch,
                                          reversed_edge_range_outbound_id,
                                          &reversed_edge_range_t,
                                          reversed_edge_range_inbound_id,
-                                         reversed_edge_range_update_datetime));
+                                         reversed_edge_range_update_datetime)?;
             }
         }
 
@@ -321,30 +321,30 @@ impl EdgeManager {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
-        if let Some(existing_edge_value) = try!(self.get(outbound_id, t, inbound_id)) {
+        if let Some(existing_edge_value) = self.get(outbound_id, t, inbound_id)? {
             let old_update_datetime =
                 NaiveDateTime::from_timestamp(existing_edge_value.update_timestamp, 0);
-            try!(edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id));
-            try!(reversed_edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id));
+            edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
+            reversed_edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
         }
 
         let new_edge_value = EdgeValue::new(new_update_datetime.timestamp(), weight);
-        try!(set_bincode(&self.db,
+        set_bincode(&self.db,
                          self.cf,
                          self.key(outbound_id, t, inbound_id),
-                         &new_edge_value));
-        try!(edge_range_manager.set(&mut batch,
+                         &new_edge_value)?;
+        edge_range_manager.set(&mut batch,
                                     outbound_id,
                                     t,
                                     new_update_datetime,
                                     inbound_id,
-                                    weight));
-        try!(reversed_edge_range_manager.set(&mut batch,
+                                    weight)?;
+        reversed_edge_range_manager.set(&mut batch,
                                              inbound_id,
                                              t,
                                              new_update_datetime,
                                              outbound_id,
-                                             weight));
+                                             weight)?;
         Ok(())
     }
 
@@ -355,26 +355,26 @@ impl EdgeManager {
                   inbound_id: Uuid,
                   update_datetime: NaiveDateTime)
                   -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id)));
+        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        try!(edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id));
+        edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        try!(reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, inbound_id));
+        reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, inbound_id)?;
 
         let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
-        for item in try!(edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)) {
+        for item in edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
             let ((edge_metadata_outbound_id,
                   edge_metadata_t,
                   edge_metadata_inbound_id,
                   edge_metadata_name),
-                 _) = try!(item);
-            try!(edge_metadata_manager.delete(&mut batch,
+                 _) = item?;
+            edge_metadata_manager.delete(&mut batch,
                                               edge_metadata_outbound_id,
                                               &edge_metadata_t,
                                               edge_metadata_inbound_id,
-                                              &edge_metadata_name[..]));
+                                              &edge_metadata_name[..])?;
         }
 
         Ok(())
@@ -426,7 +426,7 @@ impl EdgeRangeManager {
                 let t = read_type(&mut cursor);
                 let update_datetime = read_datetime(&mut cursor);
                 let second_id = read_uuid(&mut cursor);
-                let weight = try!(bincode_deserialize_value::<models::Weight>(&v.to_owned()[..]));
+                let weight = bincode_deserialize_value::<models::Weight>(&v.to_owned()[..])?;
                 Ok(((first_id, t, update_datetime, second_id), weight))
             });
 
@@ -439,15 +439,15 @@ impl EdgeRangeManager {
         let low_key = build_key(vec![KeyComponent::Uuid(id),
                                      KeyComponent::Type(t),
                                      KeyComponent::NaiveDateTime(high)]);
-        let iterator = try!(self.db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward)));
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
         self.iterate(iterator, prefix)
     }
 
     pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
         let prefix = build_key(vec![KeyComponent::Uuid(id)]);
-        let iterator = try!(self.db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward)));
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         self.iterate(iterator, prefix)
     }
 
@@ -460,8 +460,8 @@ impl EdgeRangeManager {
                weight: models::Weight)
                -> Result<(), Error> {
         let key = self.key(first_id, t, update_datetime, second_id);
-        let value = try!(bincode_serialize_value(&weight));
-        try!(batch.put_cf(self.cf, &key, &value));
+        let value = bincode_serialize_value(&weight)?;
+        batch.put_cf(self.cf, &key, &value)?;
         Ok(())
     }
 
@@ -472,7 +472,7 @@ impl EdgeRangeManager {
                   update_datetime: NaiveDateTime,
                   second_id: Uuid)
                   -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id)));
+        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
         Ok(())
     }
 }
@@ -503,7 +503,7 @@ impl GlobalMetadataManager {
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, name: &str) -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(name)));
+        batch.delete_cf(self.cf, &self.key(name))?;
         Ok(())
     }
 }
@@ -549,7 +549,7 @@ impl AccountMetadataManager {
                   account_id: Uuid,
                   name: &str)
                   -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(account_id, name)));
+        batch.delete_cf(self.cf, &self.key(account_id, name))?;
         Ok(())
     }
 }
@@ -595,7 +595,7 @@ impl VertexMetadataManager {
                   vertex_id: Uuid,
                   name: &str)
                   -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(vertex_id, name)));
+        batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
         Ok(())
     }
 }
@@ -625,8 +625,8 @@ impl EdgeMetadataManager {
                                     KeyComponent::Type(t),
                                     KeyComponent::Uuid(inbound_id)]);
 
-        let iterator = try!(self.db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward)));
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> Result<((Uuid, models::Type, Uuid, String), JsonValue), Error> {
@@ -644,7 +644,7 @@ impl EdgeMetadataManager {
 
             let edge_metadata_name = read_unsized_string(&mut cursor);
 
-            let value = try!(json_deserialize_value(&v.to_owned()[..]));
+            let value = json_deserialize_value(&v.to_owned()[..])?;
             Ok(((edge_metadata_outbound_id, edge_metadata_t, edge_metadata_inbound_id, edge_metadata_name), value))
         });
 
@@ -686,7 +686,7 @@ impl EdgeMetadataManager {
                   inbound_id: Uuid,
                   name: &str)
                   -> Result<(), Error> {
-        try!(batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name)));
+        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))?;
         Ok(())
     }
 }

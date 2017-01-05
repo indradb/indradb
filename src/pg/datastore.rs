@@ -48,8 +48,8 @@ impl PostgresDatastore {
 
 impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-        let conn = try!(self.pool.get());
-        let results = try!(conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&account_id]));
+        let conn = self.pool.get()?;
+        let results = conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&account_id])?;
 
         for _ in &results {
             return Result::Ok(true);
@@ -63,22 +63,22 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
-        let conn = try!(self.pool.get());
+        let conn = self.pool.get()?;
         
-        try!(conn.execute("
+        conn.execute("
             INSERT INTO accounts(id, email, salt, api_secret_hash)
             VALUES ($1, $2, $3, $4)
             ", &[&id, &email, &salt, &hash]
-        ));
+        )?;
         
         Ok((id, secret))
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        let conn = try!(self.pool.get());
+        let conn = self.pool.get()?;
         
-        let results = try!(conn.query(
-            "DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id]));
+        let results = conn.query(
+            "DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id])?;
 
         for _ in &results {
             return Result::Ok(());
@@ -88,8 +88,8 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
     }
 
     fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        let conn = try!(self.pool.get());
-        let get_salt_results = try!(conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1", &[&account_id]));
+        let conn = self.pool.get()?;
+        let get_salt_results = conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1", &[&account_id])?;
 
         for row in &get_salt_results {
             let salt: String = row.get(0);
@@ -104,8 +104,8 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
     }
 
     fn transaction(&self, account_id: Uuid) -> Result<PostgresTransaction, Error> {
-        let conn = try!(self.pool.get());
-        let trans = try!(PostgresTransaction::new(conn, account_id));
+        let conn = self.pool.get()?;
+        let trans = PostgresTransaction::new(conn, account_id)?;
         Ok(trans)
     }
 }
@@ -120,7 +120,7 @@ pub struct PostgresTransaction {
 impl PostgresTransaction {
     fn new(conn: PooledConnection<PostgresConnectionManager>, account_id: Uuid) -> Result<Self, Error> {
         let conn = Box::new(conn);
-        let trans = unsafe { mem::transmute(try!(conn.transaction())) };
+        let trans = unsafe { mem::transmute(conn.transaction()?) };
 
         Ok(PostgresTransaction {
             account_id: account_id,
@@ -201,7 +201,7 @@ impl PostgresTransaction {
 
 impl Transaction<Uuid> for PostgresTransaction {
     fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
-        let results = try!(self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id]));
+        let results = self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id])?;
 
         for row in &results {
             let t_str: String = row.get(0);
@@ -214,17 +214,17 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
-        try!(self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id]));
+        self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
         Ok(id)
     }
 
     fn set_vertex(&self, v: models::Vertex<Uuid>) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			UPDATE vertices
 			SET type=$1
 			WHERE id=$2 AND owner_id=$3
 			RETURNING 1
-		", &[&v.t.0, &v.id, &self.account_id]));
+		", &[&v.t.0, &v.id, &self.account_id])?;
 
         for _ in &results {
             return Ok(());
@@ -234,7 +234,7 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-        let results = try!(self.trans.query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1", &[&id, &self.account_id]));
+        let results = self.trans.query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1", &[&id, &self.account_id])?;
 
         for _ in &results {
             return Ok(());
@@ -243,16 +243,16 @@ impl Transaction<Uuid> for PostgresTransaction {
         // We couldn't delete the vertex - it either doesn't exist, or we're
         // unauthorized to delete it. Check if it exists first, and if that
         // doesn't give back a VertexNotFound, we must be unauthorized.
-        try!(self.get_vertex(id));
+        self.get_vertex(id)?;
         Err(Error::Unauthorized)
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
             SELECT weight
             FROM edges
             WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
-            LIMIT 1", &[&outbound_id, &t.0, &inbound_id]));
+            LIMIT 1", &[&outbound_id, &t.0, &inbound_id])?;
 
         for row in &results {
             let weight_f32: f32 = row.get(0);
@@ -270,7 +270,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction
         let results = {
-            let trans = try!(self.trans.savepoint("set_edge"));
+            let trans = self.trans.savepoint("set_edge")?;
 
             let results = trans.query("
 				INSERT INTO edges (
@@ -307,7 +307,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         if let Err(pg_error::Error::Db(ref err)) = results {
             if err.code == pg_error::SqlState::NotNullViolation {
                 // This should only happen when the inner select fails
-                try!(self.get_vertex(e.outbound_id));
+                self.get_vertex(e.outbound_id)?;
                 return Err(Error::Unauthorized);
             } else if err.code == pg_error::SqlState::ForeignKeyViolation {
                 // This should only happen when there is no vertex with id=inbound_id
@@ -315,12 +315,12 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
         }
 
-        try!(results);
+        results?;
         Ok(())
     }
 
     fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			DELETE FROM edges
 			WHERE outbound_id=(
                 SELECT id
@@ -328,20 +328,20 @@ impl Transaction<Uuid> for PostgresTransaction {
                 WHERE id=$1 AND owner_id=$2
             ) AND type=$3 AND inbound_id=$4
 			RETURNING 1
-		", &[&outbound_id, &self.account_id, &t.0, &inbound_id]));
+		", &[&outbound_id, &self.account_id, &t.0, &inbound_id])?;
 
         for _ in &results {
             return Ok(());
         }
 
-        try!(self.get_edge(outbound_id, t, inbound_id));
+        self.get_edge(outbound_id, t, inbound_id)?;
         Err(Error::Unauthorized)
     }
 
     fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
-		", &[&outbound_id, &t.0]));
+		", &[&outbound_id, &t.0])?;
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -357,20 +357,20 @@ impl Transaction<Uuid> for PostgresTransaction {
         }
 
         let results =
-            try!(self.trans.query("
+            self.trans.query("
 			SELECT inbound_id, weight
 			FROM edges
 			WHERE outbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)]));
+		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
 
         self.fill_edges(results, outbound_id, t)
     }
 
     fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let results = try!(match (high, low) {
+        let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT inbound_id, weight
@@ -407,15 +407,15 @@ impl Transaction<Uuid> for PostgresTransaction {
 					LIMIT $3
 				", &[&outbound_id, &t.0, &(limit as i64)])
             }
-        });
+        }?;
 
         self.fill_edges(results, outbound_id, t)
     }
 
     fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
-		", &[&inbound_id, &t.0]));
+		", &[&inbound_id, &t.0])?;
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -431,20 +431,20 @@ impl Transaction<Uuid> for PostgresTransaction {
         }
 
         let results =
-            try!(self.trans.query("
+            self.trans.query("
 			SELECT outbound_id, weight
 			FROM edges
 			WHERE inbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
 			OFFSET $3
 			LIMIT $4
-		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)]));
+		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
 
         self.fill_reversed_edges(results, inbound_id, t)
     }
 
     fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let results = try!(match (high, low) {
+        let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
 					SELECT outbound_id, weight
@@ -481,13 +481,13 @@ impl Transaction<Uuid> for PostgresTransaction {
 					LIMIT $3
 				", &[&inbound_id, &t.0, &(limit as i64)])
             }
-        });
+        }?;
 
         self.fill_reversed_edges(results, inbound_id, t)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans.query("SELECT value FROM global_metadata WHERE key=$1", &[&key]));
+        let results = self.trans.query("SELECT value FROM global_metadata WHERE key=$1", &[&key])?;
         self.handle_get_metadata(results)
     }
 
@@ -504,19 +504,19 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
-        let results = try!(self.trans.query(
+        let results = self.trans.query(
             "DELETE FROM global_metadata WHERE key=$1 RETURNING 1",
             &[&key]
-        ));
+        )?;
 
         self.handle_delete_metadata(results)
     }
 
     fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans.query(
+        let results = self.trans.query(
             "SELECT value FROM account_metadata WHERE owner_id=$1 AND key=$2",
             &[&owner_id, &key]
-        ));
+        )?;
 
         self.handle_get_metadata(results)
     }
@@ -534,18 +534,18 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        let results = try!(self.trans.query(
+        let results = self.trans.query(
             "DELETE FROM account_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
             &[&owner_id, &key]
-        ));
+        )?;
         self.handle_delete_metadata(results)
     }
 
     fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans.query(
+        let results = self.trans.query(
             "SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2",
             &[&owner_id, &key]
-        ));
+        )?;
         
         self.handle_get_metadata(results)
     }
@@ -563,22 +563,22 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        let results = try!(self.trans.query(
+        let results = self.trans.query(
             "DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
             &[&owner_id, &key]
-        ));
+        )?;
         
         self.handle_delete_metadata(results)
     }
 
     fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			SELECT value
 			FROM edge_metadata
 			WHERE owner_id=(
                 SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
             ) AND key=$4
-		", &[&outbound_id, &t.0, &inbound_id, &key]));
+		", &[&outbound_id, &t.0, &inbound_id, &key])?;
 
         self.handle_get_metadata(results)
     }
@@ -600,26 +600,26 @@ impl Transaction<Uuid> for PostgresTransaction {
     }
 
     fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
-        let results = try!(self.trans.query("
+        let results = self.trans.query("
 			DELETE FROM edge_metadata
 			WHERE owner_id=(
                 SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
             ) AND key=$4
 			RETURNING 1
-		", &[&outbound_id, &t.0, &inbound_id, &key]));
+		", &[&outbound_id, &t.0, &inbound_id, &key])?;
 
         self.handle_delete_metadata(results)
     }
 
     fn commit(self) -> Result<(), Error> {
         self.trans.set_commit();
-        try!(self.trans.commit());
+        self.trans.commit()?;
         Ok(())
     }
 
     fn rollback(self) -> Result<(), Error> {
         self.trans.set_rollback();
-        try!(self.trans.commit());
+        self.trans.commit()?;
         Ok(())
     }
 }

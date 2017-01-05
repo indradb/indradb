@@ -29,19 +29,19 @@ impl<'a> KeyComponent<'a> {
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
             KeyComponent::Uuid(ref uuid) => {
-                try!(cursor.write(uuid.as_bytes()));
+                cursor.write(uuid.as_bytes())?;
             }
             KeyComponent::UnsizedString(ref s) => {
-                try!(cursor.write(s.as_bytes()));
+                cursor.write(s.as_bytes())?;
             }
             KeyComponent::Type(ref t) => {
-                try!(cursor.write(&[t.0.len() as u8]));
-                try!(cursor.write(t.0.as_bytes()));
+                cursor.write(&[t.0.len() as u8])?;
+                cursor.write(t.0.as_bytes())?;
             }
             KeyComponent::NaiveDateTime(ref datetime) => {
                 let time_to_end = max_datetime().timestamp() - datetime.timestamp();
                 debug_assert!(time_to_end >= 0);
-                try!(cursor.write_i64::<BigEndian>(time_to_end));
+                cursor.write_i64::<BigEndian>(time_to_end)?;
             }
         };
 
