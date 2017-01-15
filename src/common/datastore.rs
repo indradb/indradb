@@ -9,6 +9,7 @@ use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use chrono::NaiveDateTime;
+use std::collections::HashSet;
 
 /// This macro is used to proxy most methods.
 macro_rules! proxy_datastore {
@@ -75,6 +76,10 @@ pub enum ProxyTransaction {
 }
 
 impl Transaction<Uuid> for ProxyTransaction {
+    fn get_vertex_range(&self, id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+        proxy_transaction!(self, get_vertex_range, id, limit)
+    }
+
     fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
         proxy_transaction!(self, get_vertex, id)
     }
@@ -89,6 +94,10 @@ impl Transaction<Uuid> for ProxyTransaction {
 
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
         proxy_transaction!(self, delete_vertex, id)
+    }
+
+    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
+        proxy_transaction!(self, get_edge_types, id)
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {

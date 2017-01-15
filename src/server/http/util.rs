@@ -232,6 +232,15 @@ pub fn parse_limit(val: Option<u16>) -> u16 {
     }
 }
 
+/// Parses an optional uuid - if it's none, this returns a zero uuid;
+/// otherwise returns the value.
+pub fn parse_zeroable_uuid(val: Option<Uuid>) -> Uuid {
+    match val {
+        Some(val) => val,
+        _ => Uuid::default()
+    }
+}
+
 /// Parses an optionally specified timestamp into an optional datetime
 pub fn parse_datetime(val: Option<i64>) -> Option<NaiveDateTime> {
     match val {

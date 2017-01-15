@@ -30,6 +30,7 @@ use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
 use chrono::NaiveDateTime;
 pub use regex::Regex;
+use std::collections::HashSet;
 use uuid::Uuid;
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
@@ -102,6 +103,14 @@ impl BatchTransaction {
 }
 
 impl Transaction<Uuid> for BatchTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+        self.request(btreemap!{
+			"action".to_string() => JsonValue::String("get_vertex_range".to_string()),
+			"start_id".to_string() => JsonValue::String(start_id.hyphenated().to_string()),
+			"limit".to_string() => JsonValue::U64(limit as u64)
+		})
+    }
+
     fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_vertex".to_string()),
@@ -127,6 +136,13 @@ impl Transaction<Uuid> for BatchTransaction {
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("delete_vertex".to_string()),
+			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
+		})
+    }
+
+    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
+        self.request(btreemap!{
+			"action".to_string() => JsonValue::String("get_edge_types".to_string()),
 			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
 		})
     }
