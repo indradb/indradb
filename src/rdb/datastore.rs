@@ -1,5 +1,6 @@
 use datastore::{Datastore, Transaction};
 use models;
+use std::collections::HashSet;
 use uuid::Uuid;
 use errors::Error;
 use util::get_salted_hash;
@@ -185,6 +186,20 @@ impl RocksdbTransaction {
 }
 
 impl Transaction<Uuid> for RocksdbTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let iterator = vertex_manager.iterate_for_range(start_id)?;
+
+        let mapped = iterator.take(limit as usize).map(move |item| {
+            let (id, value) = item?;
+            let vertex = models::Vertex::new(id, value.t);
+            Ok(vertex)
+        });
+
+        let result: Result<Vec<models::Vertex<Uuid>>, Error> = mapped.collect();
+        result
+    }
+
     fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
         match VertexManager::new(self.db.clone()).get(id)? {
             Some(value) => {
@@ -211,6 +226,19 @@ impl Transaction<Uuid> for RocksdbTransaction {
         VertexManager::new(self.db.clone()).delete(&mut batch, id)?;
         self.db.write(batch)?;
         Ok(())
+    }
+
+    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<models::Type>, Error> {
+        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+        let iterator = edge_range_manager.iterate_for_owner(id)?;
+        let mut result = HashSet::new();
+
+        for item in iterator {
+            let ((_, edge_t, _, _), _) = item?;
+            result.insert(edge_t);
+        }
+
+        Ok(result)
     }
 
     fn get_edge(&self,

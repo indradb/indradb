@@ -57,6 +57,10 @@ macro_rules! test_transaction_impl {
 				sandbox.teardown();
 			}
 
+			it "should get a vertex range" {
+				sandbox.setup("should get a vertex range");
+				::tests::should_get_a_vertex_range(&mut sandbox)
+			}
 			it "should get a valid vertex" {
 				sandbox.setup("should get a valid vertex");
 				::tests::should_get_a_valid_vertex(&mut sandbox)
@@ -86,6 +90,14 @@ macro_rules! test_transaction_impl {
 				::tests::should_not_delete_an_unowned_vertex(&mut sandbox)
 			}
 
+			it "should get edge types" {
+				sandbox.setup("should get edge types");
+				::tests::should_get_edge_types(&mut sandbox)
+			}
+			it "should get empty edge types" {
+				sandbox.setup("should get empty edge types");
+				::tests::should_get_empty_edge_types(&mut sandbox)
+			}
 			it "should get a valid edge" {
 				sandbox.setup("should get a valid edge");
 				::tests::should_get_a_valid_edge(&mut sandbox)
