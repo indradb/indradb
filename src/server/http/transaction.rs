@@ -109,7 +109,7 @@ fn set_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Res
     let t = get_required_json_type_param(item, "type")?;
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
     let weight = get_required_json_weight_param(item, "weight")?;
-    execute_item(trans.set_edge(Edge::new(outbound_id, t, inbound_id, weight)))
+    execute_item(trans.set_edge(Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight)))
 }
 
 fn delete_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {

@@ -53,7 +53,7 @@ lua_fn! {
         let t = get_type_param(l, 2)?;
         let inbound_id = get_uuid_param(l, 3)?;
         let weight = get_weight_param(l, 4)?;
-        let e = Edge::new(outbound_id, t, inbound_id, weight);
+        let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
         trans.set_edge(e)?;
         Ok(1)
     }

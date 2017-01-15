@@ -69,7 +69,7 @@ pub fn set_edge(req: &mut Request) -> IronResult<Response> {
     let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
     let obj = read_json_object(&mut req.body)?;
     let weight = get_required_json_weight_param(&obj, "weight")?;
-    let e = Edge::new(outbound_id, t, inbound_id, weight);
+    let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
 
     let trans = get_transaction(req)?;
     let result = datastore_request(trans.set_edge(e))?;
