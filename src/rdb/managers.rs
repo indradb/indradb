@@ -150,7 +150,7 @@ impl AccountManager {
         // NOTE: This currently does a sequential scan through all keys to
         // find which vertices to delete. This could be more efficient.
         let vertex_manager = VertexManager::new(self.db.clone());
-        for item in vertex_manager.iterate()? {
+        for item in vertex_manager.iterate_all()? {
             let (vertex_id, vertex_value) = item?;
 
             if vertex_value.owner_id == id {
@@ -196,12 +196,7 @@ impl VertexManager {
         get_bincode(&self.db, self.cf, self.key(id))
     }
 
-    pub fn iterate<'a>
-        (&'a self)
-         -> Result<Box<Iterator<Item = Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
-        let iterator = self.db
-            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
-
+    fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item=Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
         let mapped = iterator.map(|item| -> Result<(Uuid, VertexValue), Error> {
             let (k, v) = item;
             let id = parse_uuid_key(k);
@@ -210,6 +205,19 @@ impl VertexManager {
         });
 
         Ok(Box::new(mapped))
+    }
+
+    fn iterate_all<'a>(&'a self) -> Result<Box<Iterator<Item=Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
+        self.iterate(iterator)
+    }
+
+    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
+        let low_key = build_key(vec![KeyComponent::Uuid(id)]);
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+        self.iterate(iterator)
     }
 
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {

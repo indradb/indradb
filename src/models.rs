@@ -90,7 +90,7 @@ impl Weight {
 ///
 /// Types must be less than 256 characters long, and can only contain letters,
 /// numbers, dashes and underscores.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Type(pub String);
 
 impl Type {

@@ -10,6 +10,7 @@ use postgres::rows::Rows;
 use chrono::naive::datetime::NaiveDateTime;
 use serde_json::Value as JsonValue;
 use num_cpus;
+use std::collections::HashSet;
 use uuid::Uuid;
 use std::i64;
 use postgres::error as pg_error;
@@ -200,6 +201,26 @@ impl PostgresTransaction {
 }
 
 impl Transaction<Uuid> for PostgresTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
+        let results = self.trans.query("
+            SELECT id, type FROM vertices
+            WHERE id >= $1
+            ORDER BY id
+            LIMIT $2
+        ", &[&start_id, &(limit as i64)])?;
+
+        let mut vertices: Vec<models::Vertex<Uuid>> = Vec::new();
+
+        for row in &results {
+            let id: Uuid = row.get(0);
+            let t_str: String = row.get(1);
+            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
+            vertices.push(v);
+        }
+
+        Ok(vertices)
+    }
+
     fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
         let results = self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id])?;
 
@@ -245,6 +266,23 @@ impl Transaction<Uuid> for PostgresTransaction {
         // doesn't give back a VertexNotFound, we must be unauthorized.
         self.get_vertex(id)?;
         Err(Error::Unauthorized)
+    }
+
+    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<models::Type>, Error> {
+        let results = self.trans.query("
+            SELECT DISTINCT type
+            FROM edges
+            WHERE outbound_id=$1
+        ", &[&id])?;
+
+        let mut types: HashSet<models::Type> = HashSet::new();
+
+        for row in &results {
+            let t_str: String = row.get(0);
+            types.insert(models::Type::new(t_str).unwrap());
+        }
+
+        Ok(types)
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {

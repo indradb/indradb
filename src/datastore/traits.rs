@@ -5,6 +5,7 @@ use serde_json::value::Value as JsonValue;
 use models;
 use std::option::Option;
 use chrono::naive::datetime::NaiveDateTime;
+use std::collections::HashSet;
 
 /// Specifies a datastore implementation.
 ///
@@ -47,6 +48,9 @@ pub trait Datastore<T: Transaction<I>, I: Id> {
 /// 6. Edge metadata: metadata that is owned by an edge, and will be
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction<I: Id> {
+    /// Gets a range of vertices.
+    fn get_vertex_range(&self, I, u16) -> Result<Vec<models::Vertex<I>>, Error>;
+
     /// Gets a vertex.
     ///
     /// # Errors
@@ -71,6 +75,9 @@ pub trait Transaction<I: Id> {
     /// `Error::Unauthorized` if the vertex is not owned by the current
     /// transaction's account.
     fn delete_vertex(&self, I) -> Result<(), Error>;
+    
+    /// Gets the unique edge types for a given vertex.
+    fn get_edge_types(&self, I) -> Result<HashSet<models::Type>, Error>;
 
     /// Gets an edge.
     ///
