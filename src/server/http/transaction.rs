@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::ser::Serialize;
+use uuid::Uuid;
 use std::u16;
 use super::util::*;
 
@@ -22,11 +23,13 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                         let action = get_required_json_string_param(&obj, "action")?;
 
                         let result: Result<JsonValue, IronError> = match &action[..] {
+                            "get_vertex_range" => get_vertex_range(&trans, &obj),
                             "get_vertex" => get_vertex(&trans, &obj),
                             "create_vertex" => create_vertex(&trans, &obj),
                             "set_vertex" => set_vertex(&trans, &obj),
                             "delete_vertex" => delete_vertex(&trans, &obj),
-
+                            
+                            "get_edge_types" => get_edge_types(&trans, &obj),
                             "get_edge" => get_edge(&trans, &obj),
                             "set_edge" => set_edge(&trans, &obj),
                             "delete_edge" => delete_edge(&trans, &obj),
@@ -76,6 +79,12 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &jsonable_res))
 }
 
+fn get_vertex_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let start_id = get_optional_json_uuid_param(item, "start_id")?.unwrap_or(Uuid::default());
+    let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
+    execute_item(trans.get_vertex_range(start_id, limit))
+}
+
 fn get_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_required_json_uuid_param(item, "id")?;
     execute_item(trans.get_vertex(id))
@@ -95,6 +104,11 @@ fn set_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> R
 fn delete_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_required_json_uuid_param(item, "id")?;
     execute_item(trans.delete_vertex(id))
+}
+
+fn get_edge_types(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let id = get_required_json_uuid_param(item, "id")?;
+    execute_item(trans.get_edge_types(id))
 }
 
 fn get_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {

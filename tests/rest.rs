@@ -30,6 +30,7 @@ use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use uuid::Uuid;
+use std::collections::HashSet;
 
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
@@ -75,6 +76,17 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 }
 
 impl Transaction<Uuid> for RestTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+        let client = Client::new();
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/vertex?start_id={}&limit={}", start_id, limit)
+        );
+        let mut res = req.send().unwrap();
+        response_to_obj(&mut res)
+    }
+
     fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
         let client = Client::new();
         let req = self.request(&client, "GET", format!("/vertex/{}", id));
@@ -107,6 +119,17 @@ impl Transaction<Uuid> for RestTransaction {
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
         let client = Client::new();
         let req = self.request(&client, "DELETE", format!("/vertex/{}", id));
+        let mut res = req.send().unwrap();
+        response_to_obj(&mut res)
+    }
+
+    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
+        let client = Client::new();
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/{}", id)
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }

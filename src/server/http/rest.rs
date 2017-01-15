@@ -17,6 +17,16 @@ lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
 }
 
+pub fn get_vertex_range(req: &mut Request) -> IronResult<Response> {
+    let trans = get_transaction(req)?;
+    let query_params = get_query_params(req)?;
+    let start_id: Uuid = parse_zeroable_uuid(get_query_param::<Uuid>(query_params, "start_id".to_string(), false)?);
+    let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
+    let result = datastore_request(trans.get_vertex_range(start_id, limit))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &result))
+}
+
 pub fn get_vertex(req: &mut Request) -> IronResult<Response> {
     let id: Uuid = get_url_param(req, "id")?;
     let trans = get_transaction(req)?;
@@ -30,6 +40,14 @@ pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
     let t = get_required_json_type_param(&obj, "type")?;
     let trans = get_transaction(req)?;
     let result = datastore_request(trans.create_vertex(t))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &result))
+}
+
+pub fn get_edge_types(req: &mut Request) -> IronResult<Response> {
+    let id: Uuid = get_url_param(req, "id")?;
+    let trans = get_transaction(req)?;
+    let result = datastore_request(trans.get_edge_types(id))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &result))
 }

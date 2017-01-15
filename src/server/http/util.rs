@@ -85,6 +85,18 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     }
 }
 
+/// Gets a JSON string value, or a null value
+///
+/// # Errors
+/// Returns an `IronError` if the value has an unexpected type.
+pub fn get_optional_json_string_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<String>, IronError> {
+    match json.get(name) {
+        Some(&JsonValue::String(ref val)) => Ok(Some(val.clone())),
+        None | Some(&JsonValue::Null) => Ok(None),
+        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
+    }
+}
+
 /// Gets a JSON string value
 ///
 /// # Errors
@@ -131,6 +143,22 @@ pub fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &s
             Err(create_iron_error(status::BadRequest,
                                   format!("Invalid uuid format for `{}`", name)))
         }
+    }
+}
+
+/// Gets a JSON string value that represents a UUID or a null value
+///
+/// # Errors
+/// Returns an `IronError` if the value has an unexpected type.
+pub fn get_optional_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<Uuid>, IronError> {
+    match get_optional_json_string_param(json, name)? {
+        Some(val) => match Uuid::from_str(&val[..]) {
+            Ok(u) => Ok(Some(u)),
+            Err(_) => {
+                Err(create_iron_error(status::BadRequest, format!("Invalid uuid format for `{}`", name)))
+            }
+        },
+        None => Ok(None)
     }
 }
 
@@ -229,6 +257,15 @@ pub fn parse_limit(val: Option<u16>) -> u16 {
     match val {
         Some(val) => min(val, MAX_RETURNABLE_EDGES),
         _ => MAX_RETURNABLE_EDGES,
+    }
+}
+
+/// Parses an optional uuid - if it's none, this returns a zero uuid;
+/// otherwise returns the value.
+pub fn parse_zeroable_uuid(val: Option<Uuid>) -> Uuid {
+    match val {
+        Some(val) => val,
+        _ => Uuid::default()
     }
 }
 
