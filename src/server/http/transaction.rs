@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::ser::Serialize;
+use uuid::Uuid;
 use std::u16;
 use super::util::*;
 
@@ -79,7 +80,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_vertex_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let start_id = get_required_json_uuid_param(item, "start_id")?;
+    let start_id = get_optional_json_uuid_param(item, "start_id")?.unwrap_or(Uuid::default());
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     execute_item(trans.get_vertex_range(start_id, limit))
 }
