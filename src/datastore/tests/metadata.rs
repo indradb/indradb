@@ -165,10 +165,12 @@ pub fn should_handle_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id,
-                              edge_t.clone(),
-                              inbound_id,
-                              models::Weight::new(0.5).unwrap());
+    let e = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e).unwrap();
 
     let key = sandbox.generate_unique_string("edge-metadata");
@@ -239,7 +241,7 @@ pub fn should_not_delete_invalid_edge_metadata<D, T, I>(sandbox: &mut DatastoreT
 
     let outbound_id = trans.create_vertex(models::Type::new("foo".to_string()).unwrap()).unwrap();
     let inbound_id = trans.create_vertex(models::Type::new("bar".to_string()).unwrap()).unwrap();
-    let edge = models::Edge::new(
+    let edge = models::Edge::new_with_current_datetime(
         outbound_id,
         models::Type::new("baz".to_string()).unwrap(),
         inbound_id,

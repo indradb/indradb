@@ -16,7 +16,7 @@ pub fn create_edge_from<D, T, I>(trans: &T, outbound_id: I) -> I
     let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let weight = models::Weight::new(1.0).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t, inbound_id, weight)).unwrap();
+    trans.set_edge(models::Edge::new_with_current_datetime(outbound_id, edge_t, inbound_id, weight)).unwrap();
     inbound_id
 }
 
@@ -85,7 +85,7 @@ pub fn create_edge_to<D, T, I>(trans: &T, inbound_id: I) -> I
     let outbound_id = trans.create_vertex(outbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let weight = models::Weight::new(1.0).unwrap();
-    trans.set_edge(models::Edge::new(outbound_id, edge_t, inbound_id, weight)).unwrap();
+    trans.set_edge(models::Edge::new_with_current_datetime(outbound_id, edge_t, inbound_id, weight)).unwrap();
     inbound_id
 }
 

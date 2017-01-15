@@ -63,10 +63,12 @@ pub fn bench_get_edge<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandb
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id,
-                              edge_t,
-                              inbound_id,
-                              models::Weight::new(0.5).unwrap());
+    let e = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t,
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e).unwrap();
     trans.commit().unwrap();
 
@@ -91,10 +93,12 @@ pub fn bench_set_edge<D, T, I>(b: &mut Bencher, sandbox: &mut DatastoreTestSandb
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-        let e = models::Edge::new(outbound_id,
-                                  t,
-                                  inbound_id,
-                                  models::Weight::new(1.0).unwrap());
+        let e = models::Edge::new_with_current_datetime(
+            outbound_id,
+            t,
+            inbound_id,
+            models::Weight::new(1.0).unwrap()
+        );
         trans.set_edge(e).unwrap();
     });
 }

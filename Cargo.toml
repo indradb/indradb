@@ -14,7 +14,6 @@ rocksdb-datastore = ["rocksdb", "librocksdb-sys", "bincode", "lazy_static", "byt
 
 [dependencies]
 rust-crypto = "~0.2.36"
-chrono = "~0.2.25"
 serde = "~0.8.13"
 serde_json = "~0.8.3"
 serde_derive = "~0.8.19"
@@ -35,6 +34,10 @@ byteorder = { version = "~0.5.3", optional = true }
 
 [dev-dependencies]
 stainless = "~0.1.10"
+
+[dependencies.chrono]
+version = "~0.2.25"
+features = ["serde"]
 
 [dependencies.bincode]
 version = "~0.6.0"

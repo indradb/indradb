@@ -16,10 +16,12 @@ pub fn should_get_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T,
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id,
-                              edge_t.clone(),
-                              inbound_id,
-                              models::Weight::new(0.5).unwrap());
+    let e = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e).unwrap();
 
     let e = trans.get_edge(outbound_id, edge_t.clone(), inbound_id).unwrap();
@@ -62,19 +64,23 @@ pub fn should_update_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 
     // Set the edge and check
-    let e1 = models::Edge::new(outbound_id,
-                               edge_t.clone(),
-                               inbound_id,
-                               models::Weight::new(0.5).unwrap());
+    let e1 = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e1.clone()).unwrap();
     let e = trans.get_edge(outbound_id, edge_t.clone(), inbound_id).unwrap();
     assert_eq!(e1, e);
 
     // Update the edge and check
-    let e2 = models::Edge::new(outbound_id,
-                               edge_t.clone(),
-                               inbound_id,
-                               models::Weight::new(-0.5).unwrap());
+    let e2 = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(-0.5).unwrap()
+    );
     trans.set_edge(e2.clone()).unwrap();
     let e = trans.get_edge(outbound_id, edge_t, inbound_id).unwrap();
     assert_eq!(e2, e);
@@ -90,15 +96,19 @@ pub fn should_not_update_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSan
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let result = trans.set_edge(models::Edge::new(outbound_id,
-                                                  edge_t.clone(),
-                                                  I::default(),
-                                                  models::Weight::new(0.5).unwrap()));
+    let result = trans.set_edge(models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        I::default(),
+        models::Weight::new(0.5).unwrap()
+    ));
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
-    let result = trans.set_edge(models::Edge::new(I::default(),
-                                                  edge_t,
-                                                  inbound_id,
-                                                  models::Weight::new(0.5).unwrap()));
+    let result = trans.set_edge(models::Edge::new_with_current_datetime(
+        I::default(),
+        edge_t,
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    ));
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
@@ -117,10 +127,12 @@ pub fn should_not_set_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut Da
     let (id, _) = sandbox.register_account(&email[..]);
     let trans = sandbox.datastore.transaction(id).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let result = trans.set_edge(models::Edge::new(outbound_id,
-                                                  edge_t,
-                                                  inbound_id,
-                                                  models::Weight::new(0.5).unwrap()));
+    let result = trans.set_edge(models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t,
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    ));
     assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
 
@@ -135,10 +147,12 @@ pub fn should_delete_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id,
-                              edge_t.clone(),
-                              inbound_id,
-                              models::Weight::new(0.5).unwrap());
+    let e = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e).unwrap();
     trans.get_edge(outbound_id, edge_t.clone(), inbound_id).unwrap();
     trans.delete_edge(outbound_id, edge_t.clone(), inbound_id).unwrap();
@@ -170,10 +184,12 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let e = models::Edge::new(outbound_id,
-                              edge_t.clone(),
-                              inbound_id,
-                              models::Weight::new(0.5).unwrap());
+    let e = models::Edge::new_with_current_datetime(
+        outbound_id,
+        edge_t.clone(),
+        inbound_id,
+        models::Weight::new(0.5).unwrap()
+    );
     trans.set_edge(e).unwrap();
     trans.commit().unwrap();
 

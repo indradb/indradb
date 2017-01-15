@@ -136,7 +136,8 @@ impl PostgresTransaction {
             let inbound_id: Uuid = row.get(0);
             let weight_f32: f32 = row.get(1);
             let weight = models::Weight::new(weight_f32).unwrap();
-            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
+            let update_datetime: NaiveDateTime = row.get(2);
+            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
         }
 
         Ok(edges)
@@ -149,7 +150,8 @@ impl PostgresTransaction {
             let outbound_id: Uuid = row.get(0);
             let weight_f32: f32 = row.get(1);
             let weight = models::Weight::new(weight_f32).unwrap();
-            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight));
+            let update_datetime: NaiveDateTime = row.get(2);
+            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
         }
 
         Ok(edges)
@@ -249,7 +251,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
         let results = self.trans.query("
-            SELECT weight
+            SELECT weight, update_date
             FROM edges
             WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
             LIMIT 1", &[&outbound_id, &t.0, &inbound_id])?;
@@ -257,7 +259,8 @@ impl Transaction<Uuid> for PostgresTransaction {
         for row in &results {
             let weight_f32: f32 = row.get(0);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let e = models::Edge::new(outbound_id, t, inbound_id, weight);
+            let update_datetime: NaiveDateTime = row.get(1);
+            let e = models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime);
             return Ok(e);
         }
 
@@ -358,7 +361,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 
         let results =
             self.trans.query("
-			SELECT inbound_id, weight
+			SELECT inbound_id, weight, update_date
 			FROM edges
 			WHERE outbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
@@ -373,7 +376,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT inbound_id, weight
+					SELECT inbound_id, weight, update_date
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
@@ -382,7 +385,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
-					SELECT inbound_id, weight
+					SELECT inbound_id, weight, update_date
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
@@ -391,7 +394,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT inbound_id, weight
+					SELECT inbound_id, weight, update_date
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
@@ -400,7 +403,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             _ => {
                 self.trans.query("
-					SELECT inbound_id, weight
+					SELECT inbound_id, weight, update_date
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
@@ -432,7 +435,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 
         let results =
             self.trans.query("
-			SELECT outbound_id, weight
+			SELECT outbound_id, weight, update_date
 			FROM edges
 			WHERE inbound_id=$1 AND type=$2
 			ORDER BY update_date DESC
@@ -447,7 +450,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT outbound_id, weight
+					SELECT outbound_id, weight, update_date
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
 					ORDER BY update_date DESC
@@ -456,7 +459,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
-					SELECT outbound_id, weight
+					SELECT outbound_id, weight, update_date
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3
 					ORDER BY update_date DESC
@@ -465,7 +468,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT outbound_id, weight
+					SELECT outbound_id, weight, update_date
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_date >= $3
 					ORDER BY update_date DESC
@@ -474,7 +477,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             }
             _ => {
                 self.trans.query("
-					SELECT outbound_id, weight
+					SELECT outbound_id, weight, update_date
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2
 					ORDER BY update_date DESC
