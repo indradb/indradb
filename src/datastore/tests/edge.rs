@@ -18,10 +18,12 @@ pub fn should_get_edge_types<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I
     for i in 1..6 {
         let edge_t = models::Type::new(format!("test_edge_type_{}", i)).unwrap();
 
-        let e = models::Edge::new(outbound_id,
-                                  edge_t,
-                                  inbound_id,
-                                  models::Weight::new(0.5).unwrap());
+        let e = models::Edge::new_with_current_datetime(
+            outbound_id,
+            edge_t,
+            inbound_id,
+            models::Weight::new(0.5).unwrap()
+        );
 
         trans.set_edge(e).unwrap();
     }
