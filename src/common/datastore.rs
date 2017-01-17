@@ -8,7 +8,7 @@ use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error
               PostgresTransaction, RocksdbTransaction, Type};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, UTC};
 
 /// This macro is used to proxy most methods.
 macro_rules! proxy_datastore {
@@ -111,7 +111,7 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
     }
 
@@ -123,7 +123,7 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(
             self,
             get_reversed_edge_time_range,

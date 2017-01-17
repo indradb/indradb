@@ -137,8 +137,8 @@ fn get_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonVal
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
     let t = get_required_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    let high = parse_datetime(get_optional_json_i64_param(item, "high")?);
-    let low = parse_datetime(get_optional_json_i64_param(item, "low")?);
+    let high = get_optional_json_datetime_param(item, "high")?;
+    let low = get_optional_json_datetime_param(item, "low")?;
     execute_item(trans.get_edge_time_range(outbound_id, t, high, low, limit))
 }
 
@@ -160,8 +160,8 @@ fn get_reversed_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
     let t = get_required_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    let high = parse_datetime(get_optional_json_i64_param(item, "high")?);
-    let low = parse_datetime(get_optional_json_i64_param(item, "low")?);
+    let high = get_optional_json_datetime_param(item, "high")?;
+    let low = get_optional_json_datetime_param(item, "low")?;
     execute_item(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit))
 }
 

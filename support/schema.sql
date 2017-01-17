@@ -27,7 +27,7 @@ CREATE TABLE edges (
     outbound_id UUID NOT NULL,
     type VARCHAR(1000) NOT NULL,
     inbound_id UUID NOT NULL,
-    update_timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    update_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     weight REAL NOT NULL
 );
 

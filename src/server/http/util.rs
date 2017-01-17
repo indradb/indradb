@@ -1,5 +1,4 @@
 use iron::prelude::*;
-use std::i64;
 use iron::status;
 use iron::headers::{Headers, ContentType};
 use iron::typemap::{Key, TypeMap};
@@ -15,7 +14,7 @@ use iron::mime::{Mime, TopLevel, SubLevel, Attr, Value};
 use iron::request::Body;
 use std::io;
 use std::io::Read;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{DateTime, UTC};
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use urlencoded::UrlEncodedQuery;
@@ -172,20 +171,31 @@ pub fn get_required_json_weight_param(json: &BTreeMap<String, JsonValue>, name: 
     }
 }
 
-// Gets a JSON i64 or a null value
+// Gets a JSON string value or a null value
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_i64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<i64>, IronError> {
+pub fn get_optional_json_string_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<String>, IronError> {
     match json.get(name) {
-        Some(&JsonValue::I64(ref val)) => Ok(Some(val.clone())),
-        Some(&JsonValue::U64(ref val)) if *val > i64::MAX as u64 => {
-            Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-        }
-        Some(&JsonValue::U64(ref val)) => Ok(Some(*val as i64)),
-        None |
-        Some(&JsonValue::Null) => Ok(None),
-        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
+        Some(&JsonValue::String(ref val)) => Ok(Some(val.clone())),
+        None | Some(&JsonValue::Null) => Ok(None),
+        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+    }
+}
+
+// Gets a JSON RFC3339-formatted datetime or a null value
+///
+/// # Errors
+/// Returns an `IronError` if the value has an unexpected type.
+pub fn get_optional_json_datetime_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<DateTime<UTC>>, IronError> {
+    match get_optional_json_string_param(json, name)? {
+        Some(val) => {
+            match DateTime::parse_from_rfc3339(&val[..]) {
+                Ok(val) => Ok(Some(val.with_timezone(&UTC))),
+                Err(_) => Err(create_iron_error(status::BadRequest, format!("Could not parse RFC3339-formatted datetime string for `{}`", name)))
+            }
+        },
+        None => Ok(None)
     }
 }
 
@@ -229,14 +239,6 @@ pub fn parse_limit(val: Option<u16>) -> u16 {
     match val {
         Some(val) => min(val, MAX_RETURNABLE_EDGES),
         _ => MAX_RETURNABLE_EDGES,
-    }
-}
-
-/// Parses an optionally specified timestamp into an optional datetime
-pub fn parse_datetime(val: Option<i64>) -> Option<NaiveDateTime> {
-    match val {
-        Some(val) => Some(NaiveDateTime::from_timestamp(val, 0)),
-        _ => None,
     }
 }
 

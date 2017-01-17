@@ -25,7 +25,7 @@ use std::io::Read;
 
 use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, UTC};
 use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
@@ -52,13 +52,13 @@ impl RestTransaction {
         );
     }
 
-    fn build_time_range_qp(&self, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>) -> String {
+    fn build_time_range_qp(&self, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>) -> String {
         match (high, low) {
             (Some(high), Some(low)) => {
-                format!("&high={}&low={}", high.timestamp(), low.timestamp())
+                format!("&high={}&low={}", high.to_rfc3339(), low.to_rfc3339())
             }
-            (Some(high), None) => format!("&high={}", high.timestamp()),
-            (None, Some(low)) => format!("&low={}", low.timestamp()),
+            (Some(high), None) => format!("&high={}", high.to_rfc3339()),
+            (None, Some(low)) => format!("&low={}", low.to_rfc3339()),
             (None, None) => "".to_string(),
         }
     }
@@ -168,7 +168,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let qp = self.build_time_range_qp(high, low);
         let req = self.request(
@@ -202,7 +202,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let qp = self.build_time_range_qp(high, low);
         let req = self.request(
