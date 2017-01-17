@@ -2,8 +2,7 @@ use traits::Id;
 use regex::Regex;
 use errors::ValidationError;
 use core::str::FromStr;
-use chrono::naive::datetime::NaiveDateTime;
-use chrono::offset::utc::UTC;
+use chrono::{UTC, DateTime};
 
 lazy_static! {
 	static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
@@ -46,15 +45,15 @@ pub struct Edge<I: Id> {
     pub t: Type,
     pub inbound_id: I,
     pub weight: Weight,
-    pub update_datetime: NaiveDateTime
+    pub update_datetime: DateTime<UTC>
 }
 
 impl<I: Id> Edge<I> {
     pub fn new_with_current_datetime(outbound_id: I, t: Type, inbound_id: I, weight: Weight) -> Edge<I> {
-        return Self::new(outbound_id, t, inbound_id, weight, UTC::now().naive_utc())
+        return Self::new(outbound_id, t, inbound_id, weight, UTC::now())
     }
 
-    pub fn new(outbound_id: I, t: Type, inbound_id: I, weight: Weight, update_datetime: NaiveDateTime) -> Edge<I> {
+    pub fn new(outbound_id: I, t: Type, inbound_id: I, weight: Weight, update_datetime: DateTime<UTC>) -> Edge<I> {
         Edge {
             outbound_id: outbound_id,
             t: t,

@@ -7,7 +7,7 @@ use errors::Error;
 use util::{generate_random_secret, get_salted_hash};
 use postgres;
 use postgres::rows::Rows;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{UTC, DateTime};
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
@@ -136,7 +136,7 @@ impl PostgresTransaction {
             let inbound_id: Uuid = row.get(0);
             let weight_f32: f32 = row.get(1);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: NaiveDateTime = row.get(2);
+            let update_datetime: DateTime<UTC> = row.get(2);
             edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
         }
 
@@ -150,7 +150,7 @@ impl PostgresTransaction {
             let outbound_id: Uuid = row.get(0);
             let weight_f32: f32 = row.get(1);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: NaiveDateTime = row.get(2);
+            let update_datetime: DateTime<UTC> = row.get(2);
             edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
         }
 
@@ -259,7 +259,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         for row in &results {
             let weight_f32: f32 = row.get(0);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: NaiveDateTime = row.get(1);
+            let update_datetime: DateTime<UTC> = row.get(1);
             let e = models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime);
             return Ok(e);
         }
@@ -372,7 +372,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         self.fill_edges(results, outbound_id, t)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
@@ -446,7 +446,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         self.fill_reversed_edges(results, inbound_id, t)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("

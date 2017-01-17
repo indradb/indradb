@@ -4,7 +4,7 @@ use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
 use std::option::Option;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{DateTime, UTC};
 
 /// Specifies a datastore implementation.
 ///
@@ -116,8 +116,8 @@ pub trait Transaction<I: Id> {
     fn get_edge_time_range(&self,
                            I,
                            models::Type,
-                           Option<NaiveDateTime>,
-                           Option<NaiveDateTime>,
+                           Option<DateTime<UTC>>,
+                           Option<DateTime<UTC>>,
                            u16)
                            -> Result<Vec<models::Edge<I>>, Error>;
 
@@ -150,8 +150,8 @@ pub trait Transaction<I: Id> {
     fn get_reversed_edge_time_range(&self,
                                     I,
                                     models::Type,
-                                    Option<NaiveDateTime>,
-                                    Option<NaiveDateTime>,
+                                    Option<DateTime<UTC>>,
+                                    Option<DateTime<UTC>>,
                                     u16)
                                     -> Result<Vec<models::Edge<I>>, Error>;
 

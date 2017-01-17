@@ -3,7 +3,7 @@ use uuid::Uuid;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime, UTC};
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
@@ -315,7 +315,7 @@ impl EdgeManager {
                outbound_id: Uuid,
                t: &models::Type,
                inbound_id: Uuid,
-               new_update_datetime: NaiveDateTime,
+               new_update_datetime: DateTime<UTC>,
                weight: models::Weight)
                -> Result<(), Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
@@ -323,7 +323,7 @@ impl EdgeManager {
 
         if let Some(existing_edge_value) = self.get(outbound_id, t, inbound_id)? {
             let old_update_datetime =
-                NaiveDateTime::from_timestamp(existing_edge_value.update_timestamp, 0);
+                DateTime::from_utc(NaiveDateTime::from_timestamp(existing_edge_value.update_timestamp, 0), UTC);
             edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
             reversed_edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
         }
@@ -353,7 +353,7 @@ impl EdgeManager {
                   outbound_id: Uuid,
                   t: &models::Type,
                   inbound_id: Uuid,
-                  update_datetime: NaiveDateTime)
+                  update_datetime: DateTime<UTC>)
                   -> Result<(), Error> {
         batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
 
@@ -404,20 +404,20 @@ impl EdgeRangeManager {
     fn key(&self,
            first_id: Uuid,
            t: &models::Type,
-           update_datetime: NaiveDateTime,
+           update_datetime: DateTime<UTC>,
            second_id: Uuid)
            -> Box<[u8]> {
         build_key(vec![KeyComponent::Uuid(first_id),
                        KeyComponent::Type(t),
-                       KeyComponent::NaiveDateTime(update_datetime),
+                       KeyComponent::DateTime(update_datetime),
                        KeyComponent::Uuid(second_id)])
     }
 
-    fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
+    fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {
         let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped =
-            filtered.map(move |item| -> Result<((Uuid, models::Type, NaiveDateTime, Uuid),
+            filtered.map(move |item| -> Result<((Uuid, models::Type, DateTime<UTC>, Uuid),
                                           models::Weight),
                                          Error> {
                 let (k, v) = item;
@@ -433,18 +433,18 @@ impl EdgeRangeManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(&self, id: Uuid, t: &models::Type, high: Option<NaiveDateTime>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
+    pub fn iterate_for_range<'a>(&self, id: Uuid, t: &models::Type, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {
         let high = high.unwrap_or(max_datetime());
         let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
         let low_key = build_key(vec![KeyComponent::Uuid(id),
                                      KeyComponent::Type(t),
-                                     KeyComponent::NaiveDateTime(high)]);
+                                     KeyComponent::DateTime(high)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
         self.iterate(iterator, prefix)
     }
 
-    pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, NaiveDateTime, Uuid), models::Weight), Error>> + 'a>, Error> {
+    pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {
         let prefix = build_key(vec![KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -455,7 +455,7 @@ impl EdgeRangeManager {
                mut batch: &mut WriteBatch,
                first_id: Uuid,
                t: &models::Type,
-               update_datetime: NaiveDateTime,
+               update_datetime: DateTime<UTC>,
                second_id: Uuid,
                weight: models::Weight)
                -> Result<(), Error> {
@@ -469,7 +469,7 @@ impl EdgeRangeManager {
                   mut batch: &mut WriteBatch,
                   first_id: Uuid,
                   t: &models::Type,
-                  update_datetime: NaiveDateTime,
+                  update_datetime: DateTime<UTC>,
                   second_id: Uuid)
                   -> Result<(), Error> {
         batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
