@@ -27,7 +27,7 @@ CREATE TABLE edges (
     outbound_id UUID NOT NULL,
     type VARCHAR(1000) NOT NULL,
     inbound_id UUID NOT NULL,
-    update_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    update_timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     weight REAL NOT NULL
 );
 
@@ -37,7 +37,7 @@ ALTER TABLE edges
     ADD CONSTRAINT edges_outbound_id_fkey FOREIGN KEY (outbound_id) REFERENCES vertices (id) ON DELETE CASCADE,
     ADD CONSTRAINT edges_inbound_id_fkey FOREIGN KEY (inbound_id) REFERENCES vertices (id) ON DELETE CASCADE;
 
-CREATE INDEX ix_edges_update_date ON edges USING btree (update_date);
+CREATE INDEX ix_edges_update_timestamp ON edges USING btree (update_timestamp);
 CREATE INDEX ix_edges_inbound_id ON edges USING btree (inbound_id);
 
 /* Global metadata */
