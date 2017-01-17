@@ -251,7 +251,7 @@ impl Transaction<Uuid> for PostgresTransaction {
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
         let results = self.trans.query("
-            SELECT weight, update_date
+            SELECT weight, update_timestamp
             FROM edges
             WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
             LIMIT 1", &[&outbound_id, &t.0, &inbound_id])?;
@@ -282,7 +282,7 @@ impl Transaction<Uuid> for PostgresTransaction {
                     type,
                     inbound_id,
                     weight,
-                    update_date
+                    update_timestamp
                 ) VALUES (
                     $1,
                     (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3),
@@ -292,7 +292,7 @@ impl Transaction<Uuid> for PostgresTransaction {
                     CLOCK_TIMESTAMP()
                 )
                 ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
-                DO UPDATE SET weight=$6, update_date=CLOCK_TIMESTAMP()
+                DO UPDATE SET weight=$6, update_timestamp=CLOCK_TIMESTAMP()
 			", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
 
             match results {
@@ -361,10 +361,10 @@ impl Transaction<Uuid> for PostgresTransaction {
 
         let results =
             self.trans.query("
-			SELECT inbound_id, weight, update_date
+			SELECT inbound_id, weight, update_timestamp
 			FROM edges
 			WHERE outbound_id=$1 AND type=$2
-			ORDER BY update_date DESC
+			ORDER BY update_timestamp DESC
 			OFFSET $3
 			LIMIT $4
 		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
@@ -376,37 +376,37 @@ impl Transaction<Uuid> for PostgresTransaction {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_date
+					SELECT inbound_id, weight, update_timestamp
 					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
-					ORDER BY update_date DESC
+					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
+					ORDER BY update_timestamp DESC
 					LIMIT $5
 				", &[&outbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_date
+					SELECT inbound_id, weight, update_timestamp
 					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_date <= $3
-					ORDER BY update_date DESC
+					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3
+					ORDER BY update_timestamp DESC
 					LIMIT $4
 				", &[&outbound_id, &t.0, &high_unboxed, &(limit as i64)])
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_date
+					SELECT inbound_id, weight, update_timestamp
 					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_date >= $3
-					ORDER BY update_date DESC
+					WHERE outbound_id=$1 AND type=$2 AND update_timestamp >= $3
+					ORDER BY update_timestamp DESC
 					LIMIT $4
 				", &[&outbound_id, &t.0, &low_unboxed, &(limit as i64)])
             }
             _ => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_date
+					SELECT inbound_id, weight, update_timestamp
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2
-					ORDER BY update_date DESC
+					ORDER BY update_timestamp DESC
 					LIMIT $3
 				", &[&outbound_id, &t.0, &(limit as i64)])
             }
@@ -435,10 +435,10 @@ impl Transaction<Uuid> for PostgresTransaction {
 
         let results =
             self.trans.query("
-			SELECT outbound_id, weight, update_date
+			SELECT outbound_id, weight, update_timestamp
 			FROM edges
 			WHERE inbound_id=$1 AND type=$2
-			ORDER BY update_date DESC
+			ORDER BY update_timestamp DESC
 			OFFSET $3
 			LIMIT $4
 		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
@@ -450,37 +450,37 @@ impl Transaction<Uuid> for PostgresTransaction {
         let results = match (high, low) {
             (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_date
+					SELECT outbound_id, weight, update_timestamp
 					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3 AND update_date >= $4
-					ORDER BY update_date DESC
+					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
+					ORDER BY update_timestamp DESC
 					LIMIT $5
 				", &[&inbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
             }
             (Option::Some(high_unboxed), Option::None) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_date
+					SELECT outbound_id, weight, update_timestamp
 					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_date <= $3
-					ORDER BY update_date DESC
+					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3
+					ORDER BY update_timestamp DESC
 					LIMIT $4
 				", &[&inbound_id, &t.0, &high_unboxed, &(limit as i64)])
             }
             (Option::None, Option::Some(low_unboxed)) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_date
+					SELECT outbound_id, weight, update_timestamp
 					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_date >= $3
-					ORDER BY update_date DESC
+					WHERE inbound_id=$1 AND type=$2 AND update_timestamp >= $3
+					ORDER BY update_timestamp DESC
 					LIMIT $4
 				", &[&inbound_id, &t.0, &low_unboxed, &(limit as i64)])
             }
             _ => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_date
+					SELECT outbound_id, weight, update_timestamp
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2
-					ORDER BY update_date DESC
+					ORDER BY update_timestamp DESC
 					LIMIT $3
 				", &[&inbound_id, &t.0, &(limit as i64)])
             }
