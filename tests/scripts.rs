@@ -161,7 +161,8 @@ pub fn run_script(account_id: Uuid, secret: String, name: &str) {
 		account_id,
 		secret,
 		"POST",
-		format!("/script/{}.lua", name)
+		format!("/script/{}.lua", name),
+		vec![]
 	);
 	let mut res = req.send().unwrap();
 

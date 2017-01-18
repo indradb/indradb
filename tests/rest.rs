@@ -25,7 +25,7 @@ use std::io::Read;
 
 use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, UTC};
 use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
@@ -42,26 +42,30 @@ pub struct RestTransaction {
 }
 
 impl RestTransaction {
-    fn request<'a>(&self, client: &'a Client, method_str: &str, path: String) -> RequestBuilder<'a> {
+    fn request<'a>(&self, client: &'a Client, method_str: &str, path: String, query_pairs: Vec<(&str, String)>) -> RequestBuilder<'a> {
         return request(
             client,
             self.port,
             self.account_id,
             self.secret.clone(),
             method_str,
-            path
+            path,
+            query_pairs
         );
     }
 
-    fn build_time_range_qp(&self, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>) -> String {
-        match (high, low) {
-            (Some(high), Some(low)) => {
-                format!("&high={}&low={}", high.timestamp(), low.timestamp())
-            }
-            (Some(high), None) => format!("&high={}", high.timestamp()),
-            (None, Some(low)) => format!("&low={}", low.timestamp()),
-            (None, None) => "".to_string(),
+    fn build_time_range_query_pairs(&self, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>) -> Vec<(&str, String)> {
+        let mut query_pairs = vec![];
+
+        if let Some(high) = high {
+            query_pairs.push(("high", high.to_rfc3339()));
         }
+
+        if let Some(low) = low {
+            query_pairs.push(("low", low.to_rfc3339()));
+        }
+
+        query_pairs
     }
 }
 
@@ -81,7 +85,11 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/vertex?start_id={}&limit={}", start_id, limit)
+            format!("/vertex"),
+            vec![
+                ("start_id", format!("{}", start_id)),
+                ("limit", format!("{}", limit))
+            ]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -89,7 +97,7 @@ impl Transaction<Uuid> for RestTransaction {
 
     fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
         let client = Client::new();
-        let req = self.request(&client, "GET", format!("/vertex/{}", id));
+        let req = self.request(&client, "GET", format!("/vertex/{}", id), vec![]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -100,7 +108,7 @@ impl Transaction<Uuid> for RestTransaction {
         let body = serde_json::to_string(&d).unwrap();
 
         let client = Client::new();
-        let req = self.request(&client, "POST", "/vertex".to_string()).body(&body[..]);
+        let req = self.request(&client, "POST", "/vertex".to_string(), vec![]).body(&body[..]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -111,14 +119,14 @@ impl Transaction<Uuid> for RestTransaction {
         let body = serde_json::to_string(&d).unwrap();
 
         let client = Client::new();
-        let req = self.request(&client, "PUT", format!("/vertex/{}", v.id)).body(&body[..]);
+        let req = self.request(&client, "PUT", format!("/vertex/{}", v.id), vec![]).body(&body[..]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
     fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
         let client = Client::new();
-        let req = self.request(&client, "DELETE", format!("/vertex/{}", id));
+        let req = self.request(&client, "DELETE", format!("/vertex/{}", id), vec![]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -128,7 +136,8 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}", id)
+            format!("/edge/{}", id),
+            vec![]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -136,9 +145,12 @@ impl Transaction<Uuid> for RestTransaction {
 
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
         let client = Client::new();
-        let req = self.request(&client,
-                               "GET",
-                               format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id));
+        let req = self.request(
+            &client,
+            "GET",
+            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id),
+            vec![]
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -152,7 +164,8 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "PUT",
-            format!("/edge/{}/{}/{}", e.outbound_id, e.t.0, e.inbound_id)
+            format!("/edge/{}/{}/{}", e.outbound_id, e.t.0, e.inbound_id),
+            vec![]
         ).body(&body[..]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -163,7 +176,8 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "DELETE",
-            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id)
+            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id),
+            vec![]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -174,7 +188,8 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_?action=count", outbound_id, t.0)
+            format!("/edge/{}/{}/_", outbound_id, t.0),
+            vec![("action", "count".to_string())]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -185,19 +200,31 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_?action=position&limit={}&offset={}", outbound_id, t.0, limit, offset)
+            format!("/edge/{}/{}/_", outbound_id, t.0),
+            vec![
+                ("action", "position".to_string()),
+                ("limit", format!("{}", limit)),
+                ("offset", format!("{}", offset)),
+            ]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+        let mut query_pairs = vec![
+            ("action", "time".to_string()),
+            ("limit", format!("{}", limit))
+        ];
+
+        query_pairs.extend(self.build_time_range_query_pairs(high, low));
+
         let client = Client::new();
-        let qp = self.build_time_range_qp(high, low);
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_?action=time&limit={}{}", outbound_id, t.0, limit, qp)
+            format!("/edge/{}/{}/_", outbound_id, t.0),
+            query_pairs
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -208,7 +235,8 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}?action=count", inbound_id, t.0)
+            format!("/edge/_/{}/{}", inbound_id, t.0),
+            vec![("action", "count".to_string())]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
@@ -219,19 +247,31 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}?action=position&limit={}&offset={}", inbound_id, t.0, limit, offset)
+            format!("/edge/_/{}/{}", inbound_id, t.0),
+            vec![
+                ("action", "position".to_string()),
+                ("limit", format!("{}", limit)),
+                ("offset", format!("{}", offset))
+            ]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<NaiveDateTime>, low: Option<NaiveDateTime>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+        let mut query_pairs = vec![
+            ("action", "time".to_string()),
+            ("limit", format!("{}", limit))
+        ];
+
+        query_pairs.extend(self.build_time_range_query_pairs(high, low));
+
         let client = Client::new();
-        let qp = self.build_time_range_qp(high, low);
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}?action=time&limit={}{}", inbound_id, t.0, limit, qp)
+            format!("/edge/_/{}/{}", inbound_id, t.0),
+            query_pairs
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)

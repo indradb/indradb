@@ -1,11 +1,11 @@
 use iron::prelude::*;
-use std::i64;
 use iron::status;
 use nutrino::{Vertex, Edge, Transaction, Type};
 use std::io::Read;
 use serde_json::value::Value as JsonValue;
 use script;
 use std::path::Path;
+use chrono::{DateTime, UTC};
 use regex;
 use std::fs::File;
 use std::u16;
@@ -121,16 +121,16 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
         }
         "time" => {
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let high = parse_datetime(get_query_param::<i64>(
+            let high = get_query_param::<DateTime<UTC>>(
                 query_params,
                 "high".to_string(),
                 false
-            )?);
-            let low = parse_datetime(get_query_param::<i64>(
+            )?;
+            let low = get_query_param::<DateTime<UTC>>(
                 query_params,
                 "low".to_string(),
                 false
-            )?);
+            )?;
             let result = datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &result))
@@ -161,16 +161,16 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
         }
         "time" => {
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let high = parse_datetime(get_query_param::<i64>(
+            let high = get_query_param::<DateTime<UTC>>(
                 query_params,
                 "high".to_string(),
                 false
-            )?);
-            let low = parse_datetime(get_query_param::<i64>(
+            )?;
+            let low = get_query_param::<DateTime<UTC>>(
                 query_params,
                 "low".to_string(),
                 false
-            )?);
+            )?;
             let result = datastore_request(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &result))

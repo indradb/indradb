@@ -2,7 +2,7 @@ use lua;
 use serde_json::value::Value as JsonValue;
 use std::collections::BTreeMap;
 use nutrino::{Edge, Type, Weight};
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
 use uuid::Uuid;
 use core::str::FromStr;
@@ -149,9 +149,9 @@ pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid
 }
 
 /// Gets either a string value that represents a timestamp or a nil from lua
-pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<NaiveDateTime>, LuaError> {
+pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<DateTime<UTC>>, LuaError> {
     match get_optional_i64_param(l, narg)? {
-        Some(i) => Ok(Some(NaiveDateTime::from_timestamp(i, 0))),
+        Some(i) => Ok(Some(DateTime::from_utc(NaiveDateTime::from_timestamp(i, 0), UTC))),
         None => Ok(None),
     }
 }
