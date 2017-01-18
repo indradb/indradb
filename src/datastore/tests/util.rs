@@ -1,5 +1,4 @@
-use chrono::UTC;
-use chrono::naive::datetime::NaiveDateTime;
+use chrono::{UTC, DateTime, Duration as ChronoDuration};
 use datastore::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use traits::Id;
@@ -39,7 +38,7 @@ pub fn create_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I,
     (outbound_id, inbound_ids)
 }
 
-pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
+pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, DateTime<UTC>, DateTime<UTC>, [I; 5])
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -55,14 +54,13 @@ pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSan
     create_edge_from::<D, T, I>(&trans, outbound_id);
 
     sleep(Duration::new(2, 0));
-    let start_time = NaiveDateTime::from_timestamp(UTC::now().timestamp() - 1, 0);
+    let start_time = UTC::now().checked_sub(ChronoDuration::seconds(1)).unwrap();
     let inbound_ids = [create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id)];
-
-    let end_time = NaiveDateTime::from_timestamp(UTC::now().timestamp() + 1, 0);
+    let end_time = UTC::now().checked_add(ChronoDuration::seconds(1)).unwrap();
     sleep(Duration::new(2, 0));
 
     create_edge_from::<D, T, I>(&trans, outbound_id);
@@ -108,7 +106,7 @@ pub fn create_reversed_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I
     (inbound_id, outbound_ids)
 }
 
-pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, NaiveDateTime, NaiveDateTime, [I; 5])
+pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>) -> (I, DateTime<UTC>, DateTime<UTC>, [I; 5])
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -116,7 +114,7 @@ pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut Datasto
     let trans = sandbox.transaction();
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type".to_string()).unwrap();
     let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
-
+    
     create_edge_to::<D, T, I>(&trans, inbound_id);
     create_edge_to::<D, T, I>(&trans, inbound_id);
     create_edge_to::<D, T, I>(&trans, inbound_id);
@@ -124,7 +122,7 @@ pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut Datasto
     create_edge_to::<D, T, I>(&trans, inbound_id);
 
     sleep(Duration::new(2, 0));
-    let start_time = UTC::now().naive_utc();
+    let start_time = UTC::now();
     let outbound_ids = [create_edge_to::<D, T, I>(&trans, inbound_id),
                         create_edge_to::<D, T, I>(&trans, inbound_id),
                         create_edge_to::<D, T, I>(&trans, inbound_id),
@@ -133,7 +131,7 @@ pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut Datasto
 
     // We add some padding to the end time because some implementations only
     // have second-level accuracy, in which case we'd get errors
-    let end_time = NaiveDateTime::from_timestamp(UTC::now().timestamp() + 1, 0);
+    let end_time = UTC::now().checked_add(ChronoDuration::seconds(1)).unwrap();
     sleep(Duration::new(2, 0));
 
     create_edge_to::<D, T, I>(&trans, inbound_id);

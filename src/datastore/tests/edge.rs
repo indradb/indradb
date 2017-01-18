@@ -3,7 +3,8 @@ use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
 use traits::Id;
-use chrono::{NaiveDateTime, UTC};
+use chrono::UTC;
+use chrono::Timelike;
 
 pub fn should_get_edge_types<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
@@ -73,9 +74,9 @@ pub fn should_get_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T,
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
     // accuracy.
-    let start_time = NaiveDateTime::from_timestamp(UTC::now().naive_utc().timestamp(), 0);
+    let start_time = UTC::now().with_nanosecond(0).unwrap();
     trans.set_edge(e).unwrap();
-    let end_time = UTC::now().naive_utc();
+    let end_time = UTC::now();
 
     let e = trans.get_edge(outbound_id, edge_t.clone(), inbound_id).unwrap();
     assert_eq!(e.outbound_id, outbound_id);

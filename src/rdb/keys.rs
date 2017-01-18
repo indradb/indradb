@@ -6,14 +6,14 @@ use std::u8;
 use std::io::Read;
 use std::io::{Cursor, Error as IoError};
 use models;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime, UTC};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 pub enum KeyComponent<'a> {
     Uuid(Uuid),
     UnsizedString(&'a str),
     Type(&'a models::Type),
-    NaiveDateTime(NaiveDateTime),
+    DateTime(DateTime<UTC>),
 }
 
 impl<'a> KeyComponent<'a> {
@@ -22,7 +22,7 @@ impl<'a> KeyComponent<'a> {
             KeyComponent::Uuid(_) => 16,
             KeyComponent::UnsizedString(ref s) => s.len(),
             KeyComponent::Type(ref t) => t.0.len() + 1, 
-            KeyComponent::NaiveDateTime(_) => 8,
+            KeyComponent::DateTime(_) => 8,
         }
     }
 
@@ -38,7 +38,7 @@ impl<'a> KeyComponent<'a> {
                 cursor.write(&[t.0.len() as u8])?;
                 cursor.write(t.0.as_bytes())?;
             }
-            KeyComponent::NaiveDateTime(ref datetime) => {
+            KeyComponent::DateTime(ref datetime) => {
                 let time_to_end = max_datetime().timestamp() - datetime.timestamp();
                 debug_assert!(time_to_end >= 0);
                 cursor.write_i64::<BigEndian>(time_to_end)?;
@@ -97,14 +97,14 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 
 }
 
-pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> NaiveDateTime {
+pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<UTC> {
     let time_to_end = cursor.read_i64::<BigEndian>().unwrap();
     let timestamp = max_datetime().timestamp() - time_to_end;
-    NaiveDateTime::from_timestamp(timestamp, 0)
+    DateTime::from_utc(NaiveDateTime::from_timestamp(timestamp, 0), UTC)
 }
 
-pub fn max_datetime() -> NaiveDateTime {
+pub fn max_datetime() -> DateTime<UTC> {
     // NOTE: this suffers from the year 2038 problem, but we can't use
     // i64::MAX because chrono sees it as an invalid time
-    NaiveDateTime::from_timestamp(i32::MAX as i64, 0)
+    DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), UTC)
 }
