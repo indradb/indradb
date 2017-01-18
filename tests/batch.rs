@@ -72,7 +72,8 @@ impl BatchTransaction {
             self.account_id,
             self.secret.clone(),
             "POST",
-            "/transaction".to_string()
+            "/transaction".to_string(),
+            vec![]
         ).body(&body[..]);
         let mut res = req.send().unwrap();
 
