@@ -30,10 +30,16 @@ use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use uuid::Uuid;
-use std::collections::HashSet;
 
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
+
+fn serialize_type(t: Option<Type>) -> String {
+    match t {
+        Some(t) => t.0,
+        None => "_".to_string()
+    }
+}
 
 pub struct RestTransaction {
     port: i32,
@@ -131,18 +137,6 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/{}", id),
-            vec![]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
         let client = Client::new();
         let req = self.request(
@@ -183,24 +177,24 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_", outbound_id, t.0),
+            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
             vec![("action", "count".to_string())]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_", outbound_id, t.0),
+            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
             vec![
                 ("action", "position".to_string()),
                 ("limit", format!("{}", limit)),
@@ -211,7 +205,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let mut query_pairs = vec![
             ("action", "time".to_string()),
             ("limit", format!("{}", limit))
@@ -223,31 +217,31 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/{}/{}/_", outbound_id, t.0),
+            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
             query_pairs
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}", inbound_id, t.0),
+            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
             vec![("action", "count".to_string())]
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}", inbound_id, t.0),
+            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
             vec![
                 ("action", "position".to_string()),
                 ("limit", format!("{}", limit)),
@@ -258,7 +252,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         let mut query_pairs = vec![
             ("action", "time".to_string()),
             ("limit", format!("{}", limit))
@@ -270,7 +264,7 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/edge/_/{}/{}", inbound_id, t.0),
+            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
             query_pairs
         );
         let mut res = req.send().unwrap();

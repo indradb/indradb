@@ -84,6 +84,29 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     }
 }
 
+/// Converts a URL parameter to a given type, or a null value
+///
+/// # Errors
+/// Returns an error if the parameter could not be serialized to the given type
+pub fn get_optional_url_param<T: FromStr>(req: &Request, name: &str) -> Result<Option<T>, IronError> {
+    let s = req.extensions.get::<Router>().unwrap().find(name).unwrap();
+
+    match s {
+        "_" => Ok(None),
+        s => {
+            match T::from_str(s) {
+                Ok(val) => Ok(Some(val)),
+                Err(_) => {
+                    Err(create_iron_error(
+                        status::BadRequest,
+                        format!("Invalid value for URL param {}", name)
+                    ))
+                }
+            }
+        }
+    }
+}
+
 /// Gets a JSON string value, or a null value
 ///
 /// # Errors
@@ -176,6 +199,30 @@ pub fn get_required_json_type_param(json: &BTreeMap<String, JsonValue>, name: &s
                 status::BadRequest,
                 format!("Invalid type format for `{}`", name)
             ))
+        }
+    }
+}
+
+/// Gets a JSON string value that represents a type, or null
+///
+/// # Errors
+/// Returns an `IronError` if the value is missing from the JSON object, or
+/// has an unexpected type.
+pub fn get_optional_json_type_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<Type>, IronError> {
+    let s = get_optional_json_string_param(json, name)?;
+
+    match s {
+        None => Ok(None),
+        Some(s) => {
+            match Type::from_str(&s[..]) {
+                Ok(u) => Ok(Some(u)),
+                Err(_) => {
+                    Err(create_iron_error(
+                        status::BadRequest,
+                        format!("Invalid type format for `{}`", name)
+                    ))
+                }
+            }
         }
     }
 }

@@ -7,3 +7,9 @@ assert(table.getn(edges) == 1);
 assert(edges[1].outbound_id == outbound_id);
 assert(edges[1].type == "baz");
 assert(edges[1].inbound_id == inbound_id);
+
+local edges = get_reversed_edge_time_range(inbound_id, "", "", "", 10);
+assert(table.getn(edges) == 1);
+assert(edges[1].outbound_id == outbound_id);
+assert(edges[1].type == "baz");
+assert(edges[1].inbound_id == inbound_id);

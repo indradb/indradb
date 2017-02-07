@@ -44,14 +44,6 @@ pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &result))
 }
 
-pub fn get_edge_types(req: &mut Request) -> IronResult<Response> {
-    let id: Uuid = get_url_param(req, "id")?;
-    let trans = get_transaction(req)?;
-    let result = datastore_request(trans.get_edge_types(id))?;
-    datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &result))
-}
-
 pub fn set_vertex(req: &mut Request) -> IronResult<Response> {
     let id: Uuid = get_url_param(req, "id")?;
     let obj = read_json_object(&mut req.body)?;
@@ -108,7 +100,7 @@ pub fn delete_edge(req: &mut Request) -> IronResult<Response> {
 
 pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
     let outbound_id: Uuid = get_url_param(req, "outbound_id")?;
-    let t: Type = get_url_param(req, "type")?;
+    let t: Option<Type> = get_optional_url_param(req, "type")?;
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
     let action = &get_query_param::<String>(query_params, "action".to_string(), true)?.unwrap()[..];
@@ -148,7 +140,7 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
 
 pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
     let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
-    let t: Type = get_url_param(req, "type")?;
+    let t: Option<Type> = get_optional_url_param(req, "type")?;
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
     let action = &get_query_param::<String>(query_params, "action".to_string(), true)?.unwrap()[..];

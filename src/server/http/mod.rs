@@ -15,7 +15,6 @@ pub fn start(port: u16) {
     router.post("/vertex", rest::create_vertex, "create_vertex");
     router.post("/transaction", transaction::transaction, "transaction");
 
-    router.get("/edge/:id", rest::get_edge_types, "get_edge_types");
     router.get("/edge/_/:inbound_id/:type", rest::get_reversed_edge_range, "get_reversed_edge_range");
     router.get("/edge/:outbound_id/:type/:inbound_id", rest::get_edge, "get_edge");
     router.put("/edge/:outbound_id/:type/:inbound_id", rest::set_edge, "set_edge");

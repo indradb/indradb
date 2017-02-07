@@ -29,7 +29,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                             "set_vertex" => set_vertex(&trans, &obj),
                             "delete_vertex" => delete_vertex(&trans, &obj),
                             
-                            "get_edge_types" => get_edge_types(&trans, &obj),
                             "get_edge" => get_edge(&trans, &obj),
                             "set_edge" => set_edge(&trans, &obj),
                             "delete_edge" => delete_edge(&trans, &obj),
@@ -106,11 +105,6 @@ fn delete_vertex(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -
     execute_item(trans.delete_vertex(id))
 }
 
-fn get_edge_types(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let id = get_required_json_uuid_param(item, "id")?;
-    execute_item(trans.get_edge_types(id))
-}
-
 fn get_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
     let t = get_required_json_type_param(item, "type")?;
@@ -135,13 +129,13 @@ fn delete_edge(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> 
 
 fn get_edge_count(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     execute_item(trans.get_edge_count(outbound_id, t))
 }
 
 fn get_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let offset = get_optional_json_u64_param(item, "offset")?.unwrap_or(0);
     execute_item(trans.get_edge_range(outbound_id, t, offset, limit))
@@ -149,7 +143,7 @@ fn get_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) 
 
 fn get_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let high = get_optional_json_datetime_param(item, "high")?;
     let low = get_optional_json_datetime_param(item, "low")?;
@@ -158,13 +152,13 @@ fn get_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonVal
 
 fn get_reversed_edge_count(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     execute_item(trans.get_reversed_edge_count(inbound_id, t))
 }
 
 fn get_reversed_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let offset = get_optional_json_u64_param(item, "offset")?.unwrap_or(0);
     execute_item(trans.get_reversed_edge_range(inbound_id, t, offset, limit))
@@ -172,7 +166,7 @@ fn get_reversed_edge_range(trans: &ProxyTransaction, item: &BTreeMap<String, Jso
 
 fn get_reversed_edge_time_range(trans: &ProxyTransaction, item: &BTreeMap<String, JsonValue>) -> Result<JsonValue, IronError> {
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let high = get_optional_json_datetime_param(item, "high")?;
     let low = get_optional_json_datetime_param(item, "low")?;

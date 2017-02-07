@@ -68,7 +68,7 @@ lua_fn! {
 
     pub unsafe fn get_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let result = trans.get_edge_count(outbound_id, t)?;
         serialize_u64(l, result);
         Ok(1)
@@ -76,7 +76,7 @@ lua_fn! {
 
     pub unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let offset = get_offset_param(l, 3)?;
         let limit = get_limit_param(l, 4)?;
         let result = trans.get_edge_range(outbound_id, t, offset, limit)?;
@@ -86,7 +86,7 @@ lua_fn! {
 
     pub unsafe fn get_edge_time_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let high = get_optional_datetime_param(l, 3)?;
         let low = get_optional_datetime_param(l, 4)?;
         let limit = get_limit_param(l, 5)?;
@@ -97,7 +97,7 @@ lua_fn! {
 
     pub unsafe fn get_reversed_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let inbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let result = trans.get_reversed_edge_count(inbound_id, t)?;
         serialize_u64(l, result);
         Ok(1)
@@ -105,7 +105,7 @@ lua_fn! {
 
     pub unsafe fn get_reversed_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let inbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let offset = get_offset_param(l, 3)?;
         let limit = get_limit_param(l, 4)?;
         let result = trans.get_reversed_edge_range(inbound_id, t, offset, limit)?;
@@ -115,7 +115,7 @@ lua_fn! {
 
     pub unsafe fn get_reversed_edge_time_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let inbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
+        let t = get_optional_type_param(l, 2)?;
         let high = get_optional_datetime_param(l, 3)?;
         let low = get_optional_datetime_param(l, 4)?;
         let limit = get_limit_param(l, 5)?;

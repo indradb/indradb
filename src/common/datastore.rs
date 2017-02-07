@@ -8,7 +8,6 @@ use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error
               PostgresTransaction, RocksdbTransaction, Type};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
-use std::collections::HashSet;
 use chrono::{DateTime, UTC};
 
 /// This macro is used to proxy most methods.
@@ -96,10 +95,6 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, delete_vertex, id)
     }
 
-    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
-        proxy_transaction!(self, get_edge_types, id)
-    }
-
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
         proxy_transaction!(self, get_edge, outbound_id, t, inbound_id)
     }
@@ -112,27 +107,27 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, delete_edge, outbound_id, t, inbound_id)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         proxy_transaction!(self, get_edge_count, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
     }
 
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         proxy_transaction!(
             self,
             get_reversed_edge_time_range,

@@ -29,7 +29,6 @@ use hyper::client::Client;
 use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
-use std::collections::HashSet;
 use uuid::Uuid;
 pub use nutrino::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
@@ -43,6 +42,13 @@ lazy_static! {
 fn format_datetime(datetime: Option<DateTime<UTC>>) -> JsonValue {
     match datetime {
         Some(val) => JsonValue::String(val.to_rfc3339()),
+        None => JsonValue::Null
+    }
+}
+
+fn serialize_type(t: Option<Type>) -> JsonValue {
+    match t {
+        Some(t) => JsonValue::String(t.0),
         None => JsonValue::Null
     }
 }
@@ -140,14 +146,7 @@ impl Transaction<Uuid> for BatchTransaction {
 			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
 		})
     }
-
-    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<Type>, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_edge_types".to_string()),
-			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
-		})
-    }
-
+    
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge".to_string()),
@@ -176,58 +175,58 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_count".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0)
+			"type".to_string() => serialize_type(t)
 		})
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
+			"type".to_string() => serialize_type(t),
 			"offset".to_string() => JsonValue::U64(offset),
 			"limit".to_string() => JsonValue::U64(limit as u64)
 		})
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_time_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
+			"type".to_string() => serialize_type(t),
             "high".to_string() => format_datetime(high),
             "low".to_string() => format_datetime(low),
 			"limit".to_string() => JsonValue::I64(limit as i64)
 		})
     }
 
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Type) -> Result<u64, Error> {
+    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_reversed_edge_count".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0)
+			"type".to_string() => serialize_type(t)
 		})
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Type, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_reversed_edge_range".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
+			"type".to_string() => serialize_type(t),
 			"offset".to_string() => JsonValue::U64(offset),
 			"limit".to_string() => JsonValue::U64(limit as u64)
 		})
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_reversed_edge_time_range".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
+			"type".to_string() => serialize_type(t),
             "high".to_string() => format_datetime(high),
             "low".to_string() => format_datetime(low),
 			"limit".to_string() => JsonValue::I64(limit as i64)

@@ -8,6 +8,10 @@ use uuid::Uuid;
 use core::str::FromStr;
 use super::errors::LuaError;
 
+// NOTE: `l.checkstring` doesn't seem to properly handle `nil` values, so in
+// functions that accept optional lua strings, we take empty strings instead
+// of nil values.
+
 /// Deserializes a lua value into a JSON value.
 pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
@@ -124,17 +128,28 @@ pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type
     Ok(Type::new(s)?)
 }
 
+/// Gets an optional type value from lua by its offset
+pub unsafe fn get_optional_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<Type>, LuaError> {
+    let s = get_string_param(l, narg)?;
+
+    if s == "" {
+        Ok(None)
+    } else {
+        Ok(Some(Type::new(s)?))
+    }
+}
+
 /// Gets either a string value that represents an i64 or a nil from lua by its offset
 pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
     let s = get_string_param(l, narg)?;
 
     if s == "" {
-        return Ok(None);
-    }
-
-    match i64::from_str_radix(&s[..], 10) {
-        Ok(i) => Ok(Some(i)),
-        Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string())),
+        Ok(None)
+    } else {
+        match i64::from_str_radix(&s[..], 10) {
+            Ok(i) => Ok(Some(i)),
+            Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string())),
+        }
     }
 }
 
