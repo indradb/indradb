@@ -1,6 +1,5 @@
 use datastore::{Datastore, Transaction};
 use models;
-use std::collections::HashSet;
 use chrono::Timelike;
 use uuid::Uuid;
 use errors::Error;
@@ -134,7 +133,7 @@ impl RocksdbTransaction {
         })
     }
 
-    fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: models::Type) -> Result<u64, Error> {
+    fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
         let iterator = edge_range_manager.iterate_for_range(first_id, &t, None)?;
         Ok(iterator.count() as u64)
     }
@@ -228,19 +227,6 @@ impl Transaction<Uuid> for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<models::Type>, Error> {
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        let iterator = edge_range_manager.iterate_for_owner(id)?;
-        let mut result = HashSet::new();
-
-        for item in iterator {
-            let ((_, edge_t, _, _), _) = item?;
-            result.insert(edge_t);
-        }
-
-        Ok(result)
-    }
-
     fn get_edge(&self,
                 outbound_id: Uuid,
                 t: models::Type,
@@ -291,12 +277,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
         }
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
+    fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         self.handle_get_edge_count(edge_range_manager, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > usize::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -308,7 +294,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
             let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_outbound_id, outbound_id);
-            debug_assert_eq!(edge_range_t, t);
+
+            if let Some(ref t) = t {
+                debug_assert_eq!(edge_range_t, *t);
+            }
+
             Ok(models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,
@@ -322,7 +312,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         result
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let iterator = edge_range_manager.iterate_for_range(outbound_id, &t, high)?;
 
@@ -333,7 +323,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
                   edge_range_inbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_outbound_id, outbound_id);
-            debug_assert_eq!(edge_range_t, t);
+            
+            if let Some(ref t) = t {
+                debug_assert_eq!(edge_range_t, *t);
+            }
+
             Ok((models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,
@@ -346,12 +340,12 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_time_range(Box::new(mapped), low)
     }
 
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
+    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
         let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         self.handle_get_edge_count(edge_range_manager, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > usize::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
@@ -363,7 +357,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
             let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_inbound_id, inbound_id);
-            debug_assert_eq!(edge_range_t, t);
+            
+            if let Some(ref t) = t {
+                debug_assert_eq!(edge_range_t, *t);
+            }
+
             Ok(models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,
@@ -377,7 +375,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         result
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         let iterator = reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high)?;
 
@@ -388,7 +386,11 @@ impl Transaction<Uuid> for RocksdbTransaction {
                   edge_range_outbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_inbound_id, inbound_id);
-            debug_assert_eq!(edge_range_t, t);
+            
+            if let Some(ref t) = t {
+                debug_assert_eq!(edge_range_t, *t);
+            }
+
             Ok((models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,

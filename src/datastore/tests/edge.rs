@@ -6,52 +6,6 @@ use traits::Id;
 use chrono::UTC;
 use chrono::Timelike;
 
-pub fn should_get_edge_types<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
-{
-    let trans = sandbox.transaction();
-
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
-    let inbound_id = trans.create_vertex(vertex_t).unwrap();
-
-    for i in 1..6 {
-        let edge_t = models::Type::new(format!("test_edge_type_{}", i)).unwrap();
-
-        let e = models::Edge::new_with_current_datetime(
-            outbound_id,
-            edge_t,
-            inbound_id,
-            models::Weight::new(0.5).unwrap()
-        );
-
-        trans.set_edge(e).unwrap();
-    }
-
-    let edge_types = trans.get_edge_types(outbound_id).unwrap();
-    assert_eq!(edge_types.len(), 5);
-
-    for i in 1..6 {
-        let edge_t = models::Type::new(format!("test_edge_type_{}", i)).unwrap();
-        assert!(edge_types.contains(&edge_t))
-    }
-}
-
-pub fn should_get_empty_edge_types<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
-{
-    let trans = sandbox.transaction();
-
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
-    let edge_types = trans.get_edge_types(outbound_id).unwrap();
-    assert_eq!(edge_types.len(), 0);
-}
-
 pub fn should_get_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,

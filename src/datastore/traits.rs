@@ -4,7 +4,6 @@ use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
 use std::option::Option;
-use std::collections::HashSet;
 use chrono::{DateTime, UTC};
 
 /// Specifies a datastore implementation.
@@ -76,9 +75,6 @@ pub trait Transaction<I: Id> {
     /// transaction's account.
     fn delete_vertex(&self, I) -> Result<(), Error>;
     
-    /// Gets the unique edge types for a given vertex.
-    fn get_edge_types(&self, I) -> Result<HashSet<models::Type>, Error>;
-
     /// Gets an edge.
     ///
     /// # Errors
@@ -103,7 +99,7 @@ pub trait Transaction<I: Id> {
     ///
     /// Note that this will not error out if the vertex does not exist - it
     /// will just return 0.
-    fn get_edge_count(&self, I, models::Type) -> Result<u64, Error>;
+    fn get_edge_count(&self, I, Option<models::Type>) -> Result<u64, Error>;
 
     /// Gets a range of the outbound edges of a given type.
     ///
@@ -111,7 +107,7 @@ pub trait Transaction<I: Id> {
     /// (descending), but order may not be exact depending on the
     /// implementation. Note that this will not error out if the vertex does
     /// not exist - it will just return an empty edge range.
-    fn get_edge_range(&self, I, models::Type, u64, u16) -> Result<Vec<models::Edge<I>>, Error>;
+    fn get_edge_range(&self, I, Option<models::Type>, u64, u16) -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets a range of the outbound edges of a given type, optionally bounded
     /// by the specified update/creation datetime upper and lower bounds.
@@ -122,7 +118,7 @@ pub trait Transaction<I: Id> {
     /// not exist - it will just return an empty edge range.
     fn get_edge_time_range(&self,
                            I,
-                           models::Type,
+                           Option<models::Type>,
                            Option<DateTime<UTC>>,
                            Option<DateTime<UTC>>,
                            u16)
@@ -132,7 +128,7 @@ pub trait Transaction<I: Id> {
     ///
     /// Note that this will not error out if the vertex does not exist - it
     /// will just return 0.
-    fn get_reversed_edge_count(&self, I, models::Type) -> Result<u64, Error>;
+    fn get_reversed_edge_count(&self, I, Option<models::Type>) -> Result<u64, Error>;
 
     /// Gets a range of the inbound edges of a given type.
     ///
@@ -142,7 +138,7 @@ pub trait Transaction<I: Id> {
     /// not exist - it will just return an empty edge range.
     fn get_reversed_edge_range(&self,
                                I,
-                               models::Type,
+                               Option<models::Type>,
                                u64,
                                u16)
                                -> Result<Vec<models::Edge<I>>, Error>;
@@ -156,7 +152,7 @@ pub trait Transaction<I: Id> {
     /// not exist - it will just return an empty edge range.
     fn get_reversed_edge_time_range(&self,
                                     I,
-                                    models::Type,
+                                    Option<models::Type>,
                                     Option<DateTime<UTC>>,
                                     Option<DateTime<UTC>>,
                                     u16)

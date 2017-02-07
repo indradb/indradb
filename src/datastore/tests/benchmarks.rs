@@ -114,7 +114,7 @@ pub fn bench_get_edge_count<D, T, I>(b: &mut Bencher,
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-        trans.get_edge_count(outbound_id, t).unwrap();
+        trans.get_edge_count(outbound_id, Some(t)).unwrap();
     });
 }
 
@@ -129,7 +129,7 @@ pub fn bench_get_edge_range<D, T, I>(b: &mut Bencher,
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-        trans.get_edge_range(outbound_id, t, 0, 5).unwrap();
+        trans.get_edge_range(outbound_id, Some(t), 0, 5).unwrap();
     });
 }
 
@@ -144,6 +144,6 @@ pub fn bench_get_edge_time_range<D, T, I>(b: &mut Bencher,
     b.iter(|| {
         let trans = sandbox.transaction();
         let t = models::Type::new("test_edge_type".to_string()).unwrap();
-        trans.get_edge_time_range(outbound_id, t, Some(end_time), Some(start_time), 10).unwrap();
+        trans.get_edge_time_range(outbound_id, Some(t), Some(end_time), Some(start_time), 10).unwrap();
     });
 }

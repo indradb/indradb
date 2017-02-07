@@ -441,15 +441,26 @@ impl EdgeRangeManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(&self, id: Uuid, t: &models::Type, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {
-        let high = high.unwrap_or(max_datetime());
-        let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
-        let low_key = build_key(vec![KeyComponent::Uuid(id),
-                                     KeyComponent::Type(t),
-                                     KeyComponent::DateTime(high)]);
-        let iterator = self.db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-        self.iterate(iterator, prefix)
+    pub fn iterate_for_range<'a>(&self, id: Uuid, t: &Option<models::Type>, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {
+        match t {
+            &Some(ref t) => {
+                let high = high.unwrap_or(max_datetime());
+
+                let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
+                let low_key = build_key(vec![KeyComponent::Uuid(id),
+                                            KeyComponent::Type(t),
+                                            KeyComponent::DateTime(high)]);
+                let iterator = self.db
+                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+                self.iterate(iterator, prefix)
+            },
+            &None => {
+                let prefix = build_key(vec![KeyComponent::Uuid(id)]);
+                let iterator = self.db
+                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+                self.iterate(iterator, prefix)
+            }
+        }
     }
 
     pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item=Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>> + 'a>, Error> {

@@ -10,7 +10,6 @@ use postgres::rows::Rows;
 use chrono::{UTC, DateTime};
 use serde_json::Value as JsonValue;
 use num_cpus;
-use std::collections::HashSet;
 use uuid::Uuid;
 use std::i64;
 use postgres::error as pg_error;
@@ -130,29 +129,33 @@ impl PostgresTransaction {
         })
     }
 
-    fn fill_edges(&self, results: Rows, outbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn fill_edges(&self, results: Rows, outbound_id: Uuid) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
         for row in &results {
-            let inbound_id: Uuid = row.get(0);
-            let weight_f32: f32 = row.get(1);
+            let t_str: String = row.get(0);
+            let t = models::Type::new(t_str).unwrap();
+            let inbound_id: Uuid = row.get(1);
+            let weight_f32: f32 = row.get(2);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(2);
-            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
+            let update_datetime: DateTime<UTC> = row.get(3);
+            edges.push(models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime));
         }
 
         Ok(edges)
     }
 
-    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid, t: models::Type) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
 
         for row in &results {
-            let outbound_id: Uuid = row.get(0);
-            let weight_f32: f32 = row.get(1);
+            let t_str: String = row.get(0);
+            let t = models::Type::new(t_str).unwrap();
+            let outbound_id: Uuid = row.get(1);
+            let weight_f32: f32 = row.get(2);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(2);
-            edges.push(models::Edge::new(outbound_id, t.clone(), inbound_id, weight, update_datetime));
+            let update_datetime: DateTime<UTC> = row.get(3);
+            edges.push(models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime));
         }
 
         Ok(edges)
@@ -270,23 +273,6 @@ impl Transaction<Uuid> for PostgresTransaction {
         Err(Error::Unauthorized)
     }
 
-    fn get_edge_types(&self, id: Uuid) -> Result<HashSet<models::Type>, Error> {
-        let results = self.trans.query("
-            SELECT DISTINCT type
-            FROM edges
-            WHERE outbound_id=$1
-        ", &[&id])?;
-
-        let mut types: HashSet<models::Type> = HashSet::new();
-
-        for row in &results {
-            let t_str: String = row.get(0);
-            types.insert(models::Type::new(t_str).unwrap());
-        }
-
-        Ok(types)
-    }
-
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
         let results = self.trans.query("
             SELECT weight, update_timestamp
@@ -379,10 +365,19 @@ impl Transaction<Uuid> for PostgresTransaction {
         Err(Error::Unauthorized)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-        let results = self.trans.query("
-			SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
-		", &[&outbound_id, &t.0])?;
+    fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
+        let results = match t {
+            Some(t) => {
+                self.trans.query("
+			        SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
+		        ", &[&outbound_id, &t.0])?
+            },
+            None => {
+                self.trans.query("
+                    SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1
+                ", &[&outbound_id])?
+            }
+        };
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -392,71 +387,129 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > i64::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
 
-        let results =
-            self.trans.query("
-			SELECT inbound_id, weight, update_timestamp
-			FROM edges
-			WHERE outbound_id=$1 AND type=$2
-			ORDER BY update_timestamp DESC
-			OFFSET $3
-			LIMIT $4
-		", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
+        let results = match t {
+            Some(t) => {
+                self.trans.query("
+                    SELECT type, inbound_id, weight, update_timestamp
+                    FROM edges
+                    WHERE outbound_id=$1 AND type=$2
+                    ORDER BY update_timestamp DESC
+                    OFFSET $3
+                    LIMIT $4
+                ", &[&outbound_id, &t.0, &(offset as i64), &(limit as i64)])?
+            },
+            None => {
+                self.trans.query("
+                    SELECT type, inbound_id, weight, update_timestamp
+                    FROM edges
+                    WHERE outbound_id=$1
+                    ORDER BY update_timestamp DESC
+                    OFFSET $2
+                    LIMIT $3
+                ", &[&outbound_id, &(offset as i64), &(limit as i64)])?
+            }
+        };
 
-        self.fill_edges(results, outbound_id, t)
+        self.fill_edges(results, outbound_id)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let results = match (high, low) {
-            (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+        let results = match (t, high, low) {
+            (Some(t), Some(high), Some(low)) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_timestamp
+					SELECT type, inbound_id, weight, update_timestamp
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
 					ORDER BY update_timestamp DESC
 					LIMIT $5
-				", &[&outbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &high, &low, &(limit as i64)])
             }
-            (Option::Some(high_unboxed), Option::None) => {
+            (Some(t), Some(high), None) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_timestamp
+					SELECT type, inbound_id, weight, update_timestamp
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3
 					ORDER BY update_timestamp DESC
 					LIMIT $4
-				", &[&outbound_id, &t.0, &high_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &high, &(limit as i64)])
             }
-            (Option::None, Option::Some(low_unboxed)) => {
+            (Some(t), None, Some(low)) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_timestamp
+					SELECT type, inbound_id, weight, update_timestamp
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2 AND update_timestamp >= $3
 					ORDER BY update_timestamp DESC
 					LIMIT $4
-				", &[&outbound_id, &t.0, &low_unboxed, &(limit as i64)])
+				", &[&outbound_id, &t.0, &low, &(limit as i64)])
             }
-            _ => {
+            (Some(t), None, None) => {
                 self.trans.query("
-					SELECT inbound_id, weight, update_timestamp
+					SELECT type, inbound_id, weight, update_timestamp
 					FROM edges
 					WHERE outbound_id=$1 AND type=$2
 					ORDER BY update_timestamp DESC
 					LIMIT $3
 				", &[&outbound_id, &t.0, &(limit as i64)])
+            },
+            (None, Some(high), Some(low)) => {
+                self.trans.query("
+					SELECT type, inbound_id, weight, update_timestamp
+					FROM edges
+					WHERE outbound_id=$1 AND update_timestamp <= $2 AND update_timestamp >= $3
+					ORDER BY update_timestamp DESC
+					LIMIT $4
+				", &[&outbound_id, &high, &low, &(limit as i64)])
+            }
+            (None, Some(high), None) => {
+                self.trans.query("
+					SELECT type, inbound_id, weight, update_timestamp
+					FROM edges
+					WHERE outbound_id=$1 AND update_timestamp <= $2
+					ORDER BY update_timestamp DESC
+					LIMIT $3
+				", &[&outbound_id, &high, &(limit as i64)])
+            }
+            (None, None, Some(low)) => {
+                self.trans.query("
+					SELECT type, inbound_id, weight, update_timestamp
+					FROM edges
+					WHERE outbound_id=$1 AND update_timestamp >= $2
+					ORDER BY update_timestamp DESC
+					LIMIT $3
+				", &[&outbound_id, &low, &(limit as i64)])
+            }
+            (None, None, None) => {
+                self.trans.query("
+					SELECT type, inbound_id, weight, update_timestamp
+					FROM edges
+					WHERE outbound_id=$1
+					ORDER BY update_timestamp DESC
+					LIMIT $2
+				", &[&outbound_id, &(limit as i64)])
             }
         }?;
 
-        self.fill_edges(results, outbound_id, t)
+        self.fill_edges(results, outbound_id)
     }
 
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: models::Type) -> Result<u64, Error> {
-        let results = self.trans.query("
-			SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
-		", &[&inbound_id, &t.0])?;
+    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
+        let results = match t {
+            Some(t) => {
+                self.trans.query("
+                    SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
+                ", &[&inbound_id, &t.0])?
+            },
+            None => {
+                self.trans.query("
+                    SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1
+                ", &[&inbound_id])?
+            }
+        };
 
         for row in &results {
             let count: i64 = row.get(0);
@@ -466,65 +519,114 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: models::Type, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         if offset > i64::MAX as u64 {
             return Err(Error::Unexpected("Offset out of range".to_string()));
         }
 
-        let results =
-            self.trans.query("
-			SELECT outbound_id, weight, update_timestamp
-			FROM edges
-			WHERE inbound_id=$1 AND type=$2
-			ORDER BY update_timestamp DESC
-			OFFSET $3
-			LIMIT $4
-		", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)])?;
+        let results = match t {
+            Some(t) => {
+                self.trans.query("
+                    SELECT type, outbound_id, weight, update_timestamp
+                    FROM edges
+                    WHERE inbound_id=$1 AND type=$2
+                    ORDER BY update_timestamp DESC
+                    OFFSET $3
+                    LIMIT $4
+                ", &[&inbound_id, &t.0, &(offset as i64), &(limit as i64)])?
+            },
+            None => {
+                self.trans.query("
+                    SELECT type, outbound_id, weight, update_timestamp
+                    FROM edges
+                    WHERE inbound_id=$1
+                    ORDER BY update_timestamp DESC
+                    OFFSET $2
+                    LIMIT $3
+                ", &[&inbound_id, &(offset as i64), &(limit as i64)])?
+            }
+        };
 
-        self.fill_reversed_edges(results, inbound_id, t)
+        self.fill_reversed_edges(results, inbound_id)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: models::Type, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let results = match (high, low) {
-            (Option::Some(high_unboxed), Option::Some(low_unboxed)) => {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+        let results = match (t, high, low) {
+            (Some(t), Some(high), Some(low)) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_timestamp
+					SELECT type, outbound_id, weight, update_timestamp
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
 					ORDER BY update_timestamp DESC
 					LIMIT $5
-				", &[&inbound_id, &t.0, &high_unboxed, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high, &low, &(limit as i64)])
             }
-            (Option::Some(high_unboxed), Option::None) => {
+            (Some(t), Some(high), None) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_timestamp
+					SELECT type, outbound_id, weight, update_timestamp
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3
 					ORDER BY update_timestamp DESC
 					LIMIT $4
-				", &[&inbound_id, &t.0, &high_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &high, &(limit as i64)])
             }
-            (Option::None, Option::Some(low_unboxed)) => {
+            (Some(t), None, Some(low)) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_timestamp
+					SELECT type, outbound_id, weight, update_timestamp
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2 AND update_timestamp >= $3
 					ORDER BY update_timestamp DESC
 					LIMIT $4
-				", &[&inbound_id, &t.0, &low_unboxed, &(limit as i64)])
+				", &[&inbound_id, &t.0, &low, &(limit as i64)])
             }
-            _ => {
+            (Some(t), None, None) => {
                 self.trans.query("
-					SELECT outbound_id, weight, update_timestamp
+					SELECT type, outbound_id, weight, update_timestamp
 					FROM edges
 					WHERE inbound_id=$1 AND type=$2
 					ORDER BY update_timestamp DESC
 					LIMIT $3
 				", &[&inbound_id, &t.0, &(limit as i64)])
+            },
+            (None, Some(high), Some(low)) => {
+                self.trans.query("
+					SELECT type, outbound_id, weight, update_timestamp
+					FROM edges
+					WHERE inbound_id=$1 AND update_timestamp <= $2 AND update_timestamp >= $3
+					ORDER BY update_timestamp DESC
+					LIMIT $4
+				", &[&inbound_id, &high, &low, &(limit as i64)])
+            }
+            (None, Some(high), None) => {
+                self.trans.query("
+					SELECT type, outbound_id, weight, update_timestamp
+					FROM edges
+					WHERE inbound_id=$1 AND update_timestamp <= $2
+					ORDER BY update_timestamp DESC
+					LIMIT $3
+				", &[&inbound_id, &high, &(limit as i64)])
+            }
+            (None, None, Some(low)) => {
+                self.trans.query("
+					SELECT type, outbound_id, weight, update_timestamp
+					FROM edges
+					WHERE inbound_id=$1 AND update_timestamp >= $2
+					ORDER BY update_timestamp DESC
+					LIMIT $3
+				", &[&inbound_id, &low, &(limit as i64)])
+            }
+            (None, None, None) => {
+                self.trans.query("
+					SELECT type, outbound_id, weight, update_timestamp
+					FROM edges
+					WHERE inbound_id=$1
+					ORDER BY update_timestamp DESC
+					LIMIT $2
+				", &[&inbound_id, &(limit as i64)])
             }
         }?;
 
-        self.fill_reversed_edges(results, inbound_id, t)
+        self.fill_reversed_edges(results, inbound_id)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

@@ -65,7 +65,7 @@ pub fn should_delete_a_valid_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSand
     let result = trans.get_vertex(outbound_id);
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans.get_edge_count(outbound_id, t).unwrap();
+    let count = trans.get_edge_count(outbound_id, Some(t)).unwrap();
     assert_eq!(count, 0);
 }
 
