@@ -328,13 +328,13 @@ impl Transaction<Uuid> for RocksdbTransaction {
                 debug_assert_eq!(edge_range_t, *t);
             }
 
-            Ok((models::Edge::new(
+            Ok(models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,
                 edge_range_inbound_id,
                 edge_range_weight,
                 edge_range_update_datetime
-            )))
+            ))
         });
 
         self.handle_get_edge_time_range(Box::new(mapped), low)

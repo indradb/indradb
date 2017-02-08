@@ -445,7 +445,6 @@ impl EdgeRangeManager {
         match t {
             &Some(ref t) => {
                 let high = high.unwrap_or(max_datetime());
-
                 let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
                 let low_key = build_key(vec![KeyComponent::Uuid(id),
                                             KeyComponent::Type(t),
@@ -458,7 +457,24 @@ impl EdgeRangeManager {
                 let prefix = build_key(vec![KeyComponent::Uuid(id)]);
                 let iterator = self.db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-                self.iterate(iterator, prefix)
+                let mapped = self.iterate(iterator, prefix)?;
+
+                if let Some(high) = high {
+                    // We can filter out `update_datetime`s greater than
+                    // `high` via key prefix filtering, so instead we handle
+                    // it here - after the key has been deserialized.
+                    let filtered = mapped.filter(move |item| {
+                        if let Ok(((_, _, update_datetime, _), _)) = *item {
+                            update_datetime <= high
+                        } else {
+                            true
+                        }
+                    });
+
+                    Ok(Box::new(filtered))
+                } else {
+                    Ok(mapped)
+                }
             }
         }
     }
