@@ -1,7 +1,7 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use std::collections::BTreeMap;
-use nutrino::{Edge, Type, Weight};
+use nutrino::{Vertex, Edge, Type, Weight};
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
 use uuid::Uuid;
@@ -82,6 +82,17 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
     }
 }
 
+/// Serializes a vertex range into a lua table.
+pub unsafe fn serialize_vertices(l: &mut lua::ExternState, vertices: Vec<Vertex<Uuid>>) {
+    l.newtable();
+
+    for (i, vertex) in vertices.iter().enumerate() {
+        l.pushinteger((i + 1) as isize);
+        serialize_vertex(l, &vertex);
+        l.settable(-3);
+    }
+}
+
 /// Serializes an edge range into a lua table.
 pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) {
     l.newtable();
@@ -91,6 +102,13 @@ pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) 
         serialize_edge(l, &edge);
         l.settable(-3);
     }
+}
+
+/// Serializes a avertex into a lua table.
+pub unsafe fn serialize_vertex(l: &mut lua::ExternState, vertex: &Vertex<Uuid>) {
+    l.newtable();
+    add_string_field_to_table(l, "id", &vertex.id.to_string()[..]);
+    add_string_field_to_table(l, "type", &vertex.t.0[..]);
 }
 
 /// Serializes an edge into a lua table.

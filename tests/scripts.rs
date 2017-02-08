@@ -92,6 +92,10 @@ describe! script_tests {
 		run_script(account_id, secret, "get_vertex_bad_id")
 	}
 
+	it "should run get_vertex_range" {
+		run_script(account_id, secret, "get_vertex_range")
+	}
+
 	it "should run get_vertex" {
 		run_script(account_id, secret, "get_vertex")
 	}

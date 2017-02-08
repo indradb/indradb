@@ -9,12 +9,18 @@ use super::util::*;
 use super::errors::LuaError;
 
 lua_fn! {
+    pub unsafe fn get_vertex_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let offset = get_offset_param(l, 1)?;
+        let limit = get_limit_param(l, 2)?;
+        let result = trans.get_vertex_range(offset, limit)?;
+        serialize_vertices(l, result);
+        Ok(1)
+    }
+
     pub unsafe fn get_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = get_uuid_param(l, 1)?;
         let result = trans.get_vertex(id)?;
-        l.newtable();
-        add_string_field_to_table(l, "id", &result.id.to_string()[..]);
-        add_string_field_to_table(l, "type", &result.t.0[..]);
+        serialize_vertex(l, &result);
         Ok(1)
     }
 

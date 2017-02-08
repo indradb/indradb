@@ -29,6 +29,7 @@ pub fn run(mut trans: ProxyTransaction,
     let mut l = lua::State::new();
     l.openlibs();
 
+    l.register("get_vertex_range", api::get_vertex_range);
     l.register("get_vertex", api::get_vertex);
     l.register("create_vertex", api::create_vertex);
     l.register("set_vertex", api::set_vertex);
