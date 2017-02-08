@@ -75,8 +75,8 @@ pub enum ProxyTransaction {
 }
 
 impl Transaction<Uuid> for ProxyTransaction {
-    fn get_vertex_range(&self, id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
-        proxy_transaction!(self, get_vertex_range, id, limit)
+    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+        proxy_transaction!(self, get_vertex_range, offset, limit)
     }
 
     fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {

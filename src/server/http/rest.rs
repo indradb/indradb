@@ -20,9 +20,9 @@ lazy_static! {
 pub fn get_vertex_range(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
-    let start_id: Uuid = parse_zeroable_uuid(get_query_param::<Uuid>(query_params, "start_id".to_string(), false)?);
+    let offset = get_query_param::<u64>(query_params, "offset".to_string(), false)?.unwrap_or(0);
     let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-    let result = datastore_request(trans.get_vertex_range(start_id, limit))?;
+    let result = datastore_request(trans.get_vertex_range(offset, limit))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &result))
 }

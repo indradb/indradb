@@ -110,10 +110,10 @@ impl BatchTransaction {
 }
 
 impl Transaction<Uuid> for BatchTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_vertex_range".to_string()),
-			"start_id".to_string() => JsonValue::String(start_id.hyphenated().to_string()),
+			"offset".to_string() => JsonValue::U64(offset),
 			"limit".to_string() => JsonValue::U64(limit as u64)
 		})
     }
