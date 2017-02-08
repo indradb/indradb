@@ -207,19 +207,12 @@ impl VertexManager {
         Ok(Box::new(mapped))
     }
 
-    fn iterate_all<'a>(&'a self) -> Result<Box<Iterator<Item=Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
+    pub fn iterate_all<'a>(&'a self) -> Result<Box<Iterator<Item=Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
         self.iterate(iterator)
     }
-
-    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<(Uuid, VertexValue), Error>> + 'a>, Error> {
-        let low_key = build_key(vec![KeyComponent::Uuid(id)]);
-        let iterator = self.db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-        self.iterate(iterator)
-    }
-
+    
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
         let id = Uuid::new_v4();
         let value = VertexValue::new(account_id, t);

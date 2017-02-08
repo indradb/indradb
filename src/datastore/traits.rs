@@ -48,7 +48,7 @@ pub trait Datastore<T: Transaction<I>, I: Id> {
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction<I: Id> {
     /// Gets a range of vertices.
-    fn get_vertex_range(&self, I, u16) -> Result<Vec<models::Vertex<I>>, Error>;
+    fn get_vertex_range(&self, u64, u16) -> Result<Vec<models::Vertex<I>>, Error>;
 
     /// Gets a vertex.
     ///

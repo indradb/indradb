@@ -185,11 +185,15 @@ impl RocksdbTransaction {
 }
 
 impl Transaction<Uuid> for RocksdbTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = vertex_manager.iterate_for_range(start_id)?;
+    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
+        if offset > usize::MAX as u64 {
+            return Err(Error::Unexpected("Offset out of range".to_string()));
+        }
 
-        let mapped = iterator.take(limit as usize).map(move |item| {
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let iterator = vertex_manager.iterate_all()?;
+
+        let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
             let (id, value) = item?;
             let vertex = models::Vertex::new(id, value.t);
             Ok(vertex)
