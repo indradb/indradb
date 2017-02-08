@@ -17,7 +17,7 @@ pub fn should_get_a_reversed_edge_count<D, T, I>(mut sandbox: &mut DatastoreTest
     assert_eq!(count, 5);
 }
 
-pub fn should_get_a_reversed_edge_count_without_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+pub fn should_get_a_reversed_edge_count_with_no_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -74,7 +74,7 @@ pub fn should_get_a_reversed_edge_range<D, T, I>(mut sandbox: &mut DatastoreTest
     check_edge_range(range, inbound_id, 5);
 }
 
-pub fn should_get_a_reversed_edge_range_without_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+pub fn should_get_a_reversed_edge_range_with_no_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id
@@ -124,7 +124,7 @@ pub fn should_get_reversed_edges_by_a_time_range<D, T, I>(mut sandbox: &mut Data
     check_edge_range(range, inbound_id, 5);
 }
 
-pub fn should_get_reversed_edges_by_a_time_range_without_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
+pub fn should_get_reversed_edges_by_a_time_range_with_no_type<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
           T: Transaction<I>,
           I: Id

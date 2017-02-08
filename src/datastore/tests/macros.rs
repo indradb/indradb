@@ -127,9 +127,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get an edge count");
 				::tests::should_get_an_edge_count(&mut sandbox)
 			}
-			it "should get an edge count without type" {
-				sandbox.setup("should get an edge count without type");
-				::tests::should_get_an_edge_count_without_type(&mut sandbox)
+			it "should get an edge count with no type" {
+				sandbox.setup("should get an edge count with no type");
+				::tests::should_get_an_edge_count_with_no_type(&mut sandbox)
 			}
 			it "should get an edge count for an invalid edge" {
 				sandbox.setup("should get an edge count for an invalid edge");
@@ -147,9 +147,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get an edge range");
 				::tests::should_get_an_edge_range(&mut sandbox)
 			}
-			it "should get an edge range without type" {
-				sandbox.setup("should get an edge range without type");
-				::tests::should_get_an_edge_range_without_type(&mut sandbox)
+			it "should get an edge range with no type" {
+				sandbox.setup("should get an edge range with no type");
+				::tests::should_get_an_edge_range_with_no_type(&mut sandbox)
 			}
 			it "should get a partial edge range" {
 				sandbox.setup("should get a partial edge range");
@@ -163,9 +163,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get edges by a time range");
 				::tests::should_get_edges_by_a_time_range(&mut sandbox)
 			}
-			it "should get edges by a time range without type" {
-				sandbox.setup("should get edges by a time range without type");
-				::tests::should_get_edges_by_a_time_range_without_type(&mut sandbox)
+			it "should get edges by a time range with no type" {
+				sandbox.setup("should get edges by a time range with no type");
+				::tests::should_get_edges_by_a_time_range_with_no_type(&mut sandbox)
 			}
 			it "should get no edges for an invalid time range" {
 				sandbox.setup("should get no edges for an invalid time range");
@@ -191,9 +191,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get a reversed edge count");
 				::tests::should_get_a_reversed_edge_count(&mut sandbox)
 			}
-			it "should get a reversed edge count without type" {
-				sandbox.setup("should get a reversed edge count without type");
-				::tests::should_get_a_reversed_edge_count_without_type(&mut sandbox)
+			it "should get a reversed edge count with no type" {
+				sandbox.setup("should get a reversed edge count with no type");
+				::tests::should_get_a_reversed_edge_count_with_no_type(&mut sandbox)
 			}
 			it "should get a reversed edge count for an invalid edge" {
 				sandbox.setup("should get a reversed edge count for an invalid edge");
@@ -211,9 +211,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get a reversed edge range");
 				::tests::should_get_a_reversed_edge_range(&mut sandbox)
 			}
-			it "should get a reversed edge range without type" {
-				sandbox.setup("should get a reversed edge range without type");
-				::tests::should_get_a_reversed_edge_range_without_type(&mut sandbox)
+			it "should get a reversed edge range with no type" {
+				sandbox.setup("should get a reversed edge range with no type");
+				::tests::should_get_a_reversed_edge_range_with_no_type(&mut sandbox)
 			}
 			it "should get a partial reversed edge range" {
 				sandbox.setup("should get a partial reversed edge range");
@@ -227,9 +227,9 @@ macro_rules! test_transaction_impl {
 				sandbox.setup("should get reversed edges by a time range");
 				::tests::should_get_reversed_edges_by_a_time_range(&mut sandbox)
 			}
-			it "should get reversed edges by a time range without type" {
-				sandbox.setup("should get reversed edges by a time range without type");
-				::tests::should_get_reversed_edges_by_a_time_range_without_type(&mut sandbox)
+			it "should get reversed edges by a time range with no type" {
+				sandbox.setup("should get reversed edges by a time range with no type");
+				::tests::should_get_reversed_edges_by_a_time_range_with_no_type(&mut sandbox)
 			}
 			it "should get no reversed edges for an invalid time range" {
 				sandbox.setup("should get no reversed edges for an invalid time range");
