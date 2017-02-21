@@ -49,6 +49,7 @@ impl PostgresDatastore {
 impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
         let conn = self.pool.get()?;
+
         let results = conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&account_id])?;
 
         for _ in &results {
@@ -70,15 +71,14 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
             VALUES ($1, $2, $3, $4)
             ", &[&id, &email, &salt, &hash]
         )?;
-        
+
         Ok((id, secret))
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
         let conn = self.pool.get()?;
         
-        let results = conn.query(
-            "DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id])?;
+        let results = conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id])?;
 
         for _ in &results {
             return Result::Ok(());
@@ -89,6 +89,7 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
 
     fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
         let conn = self.pool.get()?;
+
         let get_salt_results = conn.query("SELECT salt, api_secret_hash FROM accounts WHERE id=$1", &[&account_id])?;
 
         for row in &get_salt_results {
@@ -120,7 +121,13 @@ pub struct PostgresTransaction {
 impl PostgresTransaction {
     fn new(conn: PooledConnection<PostgresConnectionManager>, account_id: Uuid) -> Result<Self, Error> {
         let conn = Box::new(conn);
-        let trans = unsafe { mem::transmute(conn.transaction()?) };
+
+        let trans = unsafe {
+            mem::transmute(match conn.transaction() {
+                Ok(trans) => trans,
+                Err(err) => return Err(Error::Unexpected(format!("Could not create transaction: {}", err)))
+            })
+        };
 
         Ok(PostgresTransaction {
             account_id: account_id,

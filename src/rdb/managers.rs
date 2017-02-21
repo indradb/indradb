@@ -7,22 +7,22 @@ use chrono::{NaiveDateTime, DateTime, UTC};
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
-use bincode::serde as bincode_serde;
 use std::sync::Arc;
 use std::u8;
 use serde_json;
 use super::keys::*;
 use librocksdb_sys::rocksdb_column_family_handle_t;
 use std::io::Cursor;
+use bincode;
 use serde::{Serialize, Deserialize};
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
-    let result = bincode_serde::serialize(value, SizeLimit::Infinite)?;
+    let result = bincode::serialize(value, SizeLimit::Infinite)?;
     Ok(result.into_boxed_slice())
 }
 
 fn bincode_deserialize_value<T: Deserialize>(value: &[u8]) -> Result<T, Error> {
-    let result = bincode_serde::deserialize(value)?;
+    let result = bincode::deserialize(value)?;
     Ok(result)
 }
 

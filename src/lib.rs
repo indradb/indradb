@@ -1,6 +1,3 @@
-#![feature(plugin, test, proc_macro)]
-#![cfg_attr(test, plugin(stainless))]
-
 extern crate uuid;
 extern crate crypto;
 extern crate chrono;
@@ -9,7 +6,6 @@ extern crate serde;
 extern crate serde_json;
 extern crate libc;
 extern crate rand;
-extern crate test;
 extern crate regex;
 #[macro_use] extern crate serde_derive;
 

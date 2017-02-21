@@ -19,10 +19,6 @@ test_transaction_impl! {
 	test_postgres_transaction datastore()
 }
 
-bench_transaction_impl! {
-	bench_postgres_transaction datastore()
-}
-
 test_metadata_impl! {
 	test_postgres_metadata datastore()
 }

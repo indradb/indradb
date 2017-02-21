@@ -1,5 +1,5 @@
 use errors::Error;
-use bincode::serde::{SerializeError, DeserializeError};
+use bincode::Error as BincodeError;
 use std::str::Utf8Error;
 use serde_json;
 use rocksdb::Error as RocksdbError;
@@ -10,15 +10,9 @@ impl From<RocksdbError> for Error {
     }
 }
 
-impl From<SerializeError> for Error {
-    fn from(err: SerializeError) -> Error {
-        Error::Unexpected(format!("Could not serialize contents: {:?}", err))
-    }
-}
-
-impl From<DeserializeError> for Error {
-    fn from(err: DeserializeError) -> Error {
-        Error::Unexpected(format!("Could not deserialize contents: {:?}", err))
+impl From<BincodeError> for Error {
+    fn from(err: BincodeError) -> Error {
+        Error::Unexpected(format!("Could not (de-)serialize contents: {:?}", err))
     }
 }
 

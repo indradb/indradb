@@ -18,22 +18,19 @@ pub fn should_handle_global_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
     // Set and get the value as true
-    let result = trans.set_global_metadata(key.clone(), JsonValue::Bool(true));
-    assert!(result.is_ok());
+    trans.set_global_metadata(key.clone(), JsonValue::Bool(true)).unwrap();
 
     let result = trans.get_global_metadata(key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
     // Set and get the value as false
-    let result = trans.set_global_metadata(key.clone(), JsonValue::Bool(false));
-    assert!(result.is_ok());
+    trans.set_global_metadata(key.clone(), JsonValue::Bool(false)).unwrap();
 
     let result = trans.get_global_metadata(key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
     // Delete & check that it's deleted
-    let result = trans.delete_global_metadata(key.clone());
-    assert!(result.is_ok());
+    trans.delete_global_metadata(key.clone()).unwrap();
 
     let result = trans.get_global_metadata(key.clone());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
@@ -52,22 +49,19 @@ pub fn should_handle_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbo
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
     // Set and get the value as true
-    let result = trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(true));
-    assert!(result.is_ok());
+    trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(true)).unwrap();
 
     let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
     // Set and get the value as false
-    let result = trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(false));
-    assert!(result.is_ok());
+    trans.set_account_metadata(sandbox.owner_id, key.clone(), JsonValue::Bool(false)).unwrap();
 
     let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
     // Delete & check that it's deleted
-    let result = trans.delete_account_metadata(sandbox.owner_id, key.clone());
-    assert!(result.is_ok());
+    trans.delete_account_metadata(sandbox.owner_id, key.clone()).unwrap();
 
     let result = trans.get_account_metadata(sandbox.owner_id, key.clone());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
@@ -110,22 +104,19 @@ pub fn should_handle_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
     // Set and get the value as true
-    let result = trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(true));
-    assert!(result.is_ok());
+    trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(true)).unwrap();
 
     let result = trans.get_vertex_metadata(owner_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
     // Set and get the value as false
-    let result = trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(false));
-    assert!(result.is_ok());
+    trans.set_vertex_metadata(owner_id, key.clone(), JsonValue::Bool(false)).unwrap();
 
     let result = trans.get_vertex_metadata(owner_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
     // Delete & check that it's deleted
-    let result = trans.delete_vertex_metadata(owner_id, key.clone());
-    assert!(result.is_ok());
+    trans.delete_vertex_metadata(owner_id, key.clone()).unwrap();
 
     let result = trans.get_vertex_metadata(owner_id, key.clone());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
@@ -180,30 +171,27 @@ pub fn should_handle_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
     // Set and get the value as true
-    let result = trans.set_edge_metadata(outbound_id,
-                                         edge_t.clone(),
-                                         inbound_id,
-                                         key.clone(),
-                                         JsonValue::Bool(true));
-    assert!(result.is_ok());
+    trans.set_edge_metadata(outbound_id,
+                            edge_t.clone(),
+                            inbound_id,
+                            key.clone(),
+                            JsonValue::Bool(true)).unwrap();
 
     let result = trans.get_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(true));
 
     // Set and get the value as false
-    let result = trans.set_edge_metadata(outbound_id,
-                                         edge_t.clone(),
-                                         inbound_id,
-                                         key.clone(),
-                                         JsonValue::Bool(false));
-    assert!(result.is_ok());
+    trans.set_edge_metadata(outbound_id,
+                            edge_t.clone(),
+                            inbound_id,
+                            key.clone(),
+                            JsonValue::Bool(false)).unwrap();
 
     let result = trans.get_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
     assert_eq!(result.unwrap(), JsonValue::Bool(false));
 
     // Delete & check that it's deleted
-    let result = trans.delete_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone());
-    assert!(result.is_ok());
+    trans.delete_edge_metadata(outbound_id, edge_t.clone(), inbound_id, key.clone()).unwrap();
 
     let result = trans.get_edge_metadata(outbound_id, edge_t, inbound_id, key.clone());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);

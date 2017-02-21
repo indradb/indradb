@@ -1,5 +1,4 @@
 mod account;
-mod benchmarks;
 mod edge;
 mod edge_range;
 #[macro_use]
@@ -12,7 +11,6 @@ mod vertex;
 mod vertex_range;
 
 pub use self::account::*;
-pub use self::benchmarks::*;
 pub use self::edge::*;
 pub use self::edge_range::*;
 pub use self::macros::*;

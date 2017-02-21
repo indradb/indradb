@@ -54,13 +54,13 @@ pub fn create_time_range_queryable_edges<D, T, I>(sandbox: &mut DatastoreTestSan
     create_edge_from::<D, T, I>(&trans, outbound_id);
 
     sleep(Duration::new(2, 0));
-    let start_time = UTC::now().checked_sub(ChronoDuration::seconds(1)).unwrap();
+    let start_time = UTC::now().checked_sub_signed(ChronoDuration::seconds(1)).unwrap();
     let inbound_ids = [create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id),
                        create_edge_from::<D, T, I>(&trans, outbound_id)];
-    let end_time = UTC::now().checked_add(ChronoDuration::seconds(1)).unwrap();
+    let end_time = UTC::now().checked_add_signed(ChronoDuration::seconds(1)).unwrap();
     sleep(Duration::new(2, 0));
 
     create_edge_from::<D, T, I>(&trans, outbound_id);
@@ -131,7 +131,7 @@ pub fn create_time_range_queryable_reversed_edges<D, T, I>(sandbox: &mut Datasto
 
     // We add some padding to the end time because some implementations only
     // have second-level accuracy, in which case we'd get errors
-    let end_time = UTC::now().checked_add(ChronoDuration::seconds(1)).unwrap();
+    let end_time = UTC::now().checked_add_signed(ChronoDuration::seconds(1)).unwrap();
     sleep(Duration::new(2, 0));
 
     create_edge_to::<D, T, I>(&trans, inbound_id);
