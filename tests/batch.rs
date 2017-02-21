@@ -1,8 +1,3 @@
-#![cfg(test)]
-
-#![feature(plugin, test, proc_macro)]
-#![plugin(stainless)]
-
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -11,7 +6,6 @@ extern crate maplit;
 extern crate nutrino;
 #[macro_use]
 extern crate lazy_static;
-extern crate test;
 extern crate serde;
 extern crate serde_json;
 extern crate chrono;
@@ -28,6 +22,7 @@ use serde::Deserialize;
 use hyper::client::Client;
 use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
+use serde_json::Number as JsonNumber;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use nutrino::*;
@@ -99,7 +94,7 @@ impl BatchTransaction {
                 match o.get("error") {
                     Some(&JsonValue::String(ref error)) => {
                         let cap = ITEM_ERROR_MESSAGE_PATTERN.captures(error).unwrap();
-                        let message = cap.at(1).unwrap();
+                        let message = cap.get(1).unwrap().as_str();
                         Err(Error::description_to_error(message))
                     }
                     _ => panic!("Could not unpack error message"),
@@ -113,8 +108,8 @@ impl Transaction<Uuid> for BatchTransaction {
     fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_vertex_range".to_string()),
-			"offset".to_string() => JsonValue::U64(offset),
-			"limit".to_string() => JsonValue::U64(limit as u64)
+			"offset".to_string() => JsonValue::Number(JsonNumber::from(offset)),
+			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
 		})
     }
 
@@ -162,7 +157,7 @@ impl Transaction<Uuid> for BatchTransaction {
 			"outbound_id".to_string() => JsonValue::String(e.outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(e.t.0),
 			"inbound_id".to_string() => JsonValue::String(e.inbound_id.hyphenated().to_string()),
-			"weight".to_string() => JsonValue::F64(e.weight.0 as f64)
+			"weight".to_string() => JsonValue::Number(JsonNumber::from_f64(e.weight.0 as f64).unwrap())
 		})
     }
 
@@ -188,8 +183,8 @@ impl Transaction<Uuid> for BatchTransaction {
 			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
 			"type".to_string() => serialize_type(t),
-			"offset".to_string() => JsonValue::U64(offset),
-			"limit".to_string() => JsonValue::U64(limit as u64)
+			"offset".to_string() => JsonValue::Number(JsonNumber::from(offset)),
+			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
 		})
     }
 
@@ -200,7 +195,7 @@ impl Transaction<Uuid> for BatchTransaction {
 			"type".to_string() => serialize_type(t),
             "high".to_string() => format_datetime(high),
             "low".to_string() => format_datetime(low),
-			"limit".to_string() => JsonValue::I64(limit as i64)
+			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
 		})
     }
 
@@ -217,8 +212,8 @@ impl Transaction<Uuid> for BatchTransaction {
 			"action".to_string() => JsonValue::String("get_reversed_edge_range".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
 			"type".to_string() => serialize_type(t),
-			"offset".to_string() => JsonValue::U64(offset),
-			"limit".to_string() => JsonValue::U64(limit as u64)
+			"offset".to_string() => JsonValue::Number(JsonNumber::from(offset)),
+			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
 		})
     }
 
@@ -229,7 +224,7 @@ impl Transaction<Uuid> for BatchTransaction {
 			"type".to_string() => serialize_type(t),
             "high".to_string() => format_datetime(high),
             "low".to_string() => format_datetime(low),
-			"limit".to_string() => JsonValue::I64(limit as i64)
+			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
 		})
     }
 
@@ -292,12 +287,6 @@ impl Transaction<Uuid> for BatchTransaction {
 
 test_transaction_impl! {
 	test_batch_transaction {
-	    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
-	}
-}
-
-bench_transaction_impl! {
-	bench_batch_transaction {
 	    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
 	}
 }

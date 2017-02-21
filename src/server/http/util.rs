@@ -6,7 +6,6 @@ use router::Router;
 use nutrino::{Datastore, Error, Type, Weight};
 use util::SimpleError;
 use common::ProxyTransaction;
-use std::collections::BTreeMap;
 use std::error::Error as StdError;
 use core::str::FromStr;
 use iron::modifiers::Header as HeaderModifier;
@@ -40,9 +39,9 @@ impl Key for AccountKey {
 
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
-    let mut d: BTreeMap<String, String> = BTreeMap::new();
-    d.insert("error".to_string(), err.clone());
-    let body = serde_json::to_string(&d).unwrap();
+    let mut o: serde_json::Map<String, JsonValue> = serde_json::Map::new();
+    o.insert("error".to_string(), JsonValue::String(err.clone()));
+    let body = serde_json::to_string(&o).unwrap();
     let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
     let modifiers = (status_code, json_content_type_modifier, body);
     IronError::new(SimpleError::new(err), modifiers)
@@ -111,7 +110,7 @@ pub fn get_optional_url_param<T: FromStr>(req: &Request, name: &str) -> Result<O
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_string_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<String>, IronError> {
+pub fn get_optional_json_string_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<String>, IronError> {
     match json.get(name) {
         Some(&JsonValue::String(ref val)) => Ok(Some(val.clone())),
         None | Some(&JsonValue::Null) => Ok(None),
@@ -124,7 +123,7 @@ pub fn get_optional_json_string_param(json: &BTreeMap<String, JsonValue>, name: 
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_string_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<String, IronError> {
+pub fn get_required_json_string_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<String, IronError> {
     match json.get(name) {
         Some(&JsonValue::String(ref val)) => Ok(val.clone()),
         None |
@@ -140,9 +139,15 @@ pub fn get_required_json_string_param(json: &BTreeMap<String, JsonValue>, name: 
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_f64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<f64, IronError> {
+pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<f64, IronError> {
     match json.get(name) {
-        Some(&JsonValue::F64(ref val)) => Ok(val.clone()),
+        Some(&JsonValue::Number(ref val)) => {
+            if val.is_f64() {
+                Ok(val.as_f64().unwrap())
+            } else {
+                Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+            }
+        },
         None |
         Some(&JsonValue::Null) => {
             Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
@@ -156,7 +161,7 @@ pub fn get_required_json_f64_param(json: &BTreeMap<String, JsonValue>, name: &st
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Uuid, IronError> {
+pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Uuid, IronError> {
     let s = get_required_json_string_param(json, name)?;
 
     match Uuid::from_str(&s[..]) {
@@ -173,7 +178,7 @@ pub fn get_required_json_uuid_param(json: &BTreeMap<String, JsonValue>, name: &s
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_type_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Type, IronError> {
+pub fn get_required_json_type_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Type, IronError> {
     let s = get_required_json_string_param(json, name)?;
 
     match Type::from_str(&s[..]) {
@@ -192,7 +197,7 @@ pub fn get_required_json_type_param(json: &BTreeMap<String, JsonValue>, name: &s
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_optional_json_type_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<Type>, IronError> {
+pub fn get_optional_json_type_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<Type>, IronError> {
     let s = get_optional_json_string_param(json, name)?;
 
     match s {
@@ -216,7 +221,7 @@ pub fn get_optional_json_type_param(json: &BTreeMap<String, JsonValue>, name: &s
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_weight_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Weight, IronError> {
+pub fn get_required_json_weight_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Weight, IronError> {
     let w = get_required_json_f64_param(json, name)?;
 
     match Weight::new(w as f32) {
@@ -234,7 +239,7 @@ pub fn get_required_json_weight_param(json: &BTreeMap<String, JsonValue>, name: 
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_datetime_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<DateTime<UTC>>, IronError> {
+pub fn get_optional_json_datetime_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<DateTime<UTC>>, IronError> {
     match get_optional_json_string_param(json, name)? {
         Some(val) => {
             match DateTime::parse_from_rfc3339(&val[..]) {
@@ -250,16 +255,15 @@ pub fn get_optional_json_datetime_param(json: &BTreeMap<String, JsonValue>, name
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_u64_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<u64>, IronError> {
+pub fn get_optional_json_u64_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<u64>, IronError> {
     match json.get(name) {
-        Some(&JsonValue::I64(ref val)) => {
-            if *val < 0 {
-                Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+        Some(&JsonValue::Number(ref val)) => {
+            if val.is_u64() {
+                Ok(val.as_u64())
             } else {
-                Ok(Some(val.clone() as u64))
+                Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
             }
-        }
-        Some(&JsonValue::U64(ref val)) => Ok(Some(val.clone())),
+        },
         None |
         Some(&JsonValue::Null) => Ok(None),
         _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
@@ -270,7 +274,7 @@ pub fn get_optional_json_u64_param(json: &BTreeMap<String, JsonValue>, name: &st
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_u16_param(json: &BTreeMap<String, JsonValue>, name: &str) -> Result<Option<u16>, IronError> {
+pub fn get_optional_json_u16_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<u16>, IronError> {
     match get_optional_json_u64_param(json, name)? {
         Some(val) if val > u16::MAX as u64 => {
             Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
@@ -379,7 +383,7 @@ pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
 ///
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn read_json_object(body: &mut Body) -> Result<BTreeMap<String, JsonValue>, IronError> {
+pub fn read_json_object(body: &mut Body) -> Result<serde_json::Map<String, JsonValue>, IronError> {
     match read_required_json(body)? {
         JsonValue::Object(obj) => Ok(obj),
         _ => {

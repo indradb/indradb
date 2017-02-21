@@ -24,11 +24,10 @@ pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
                                               output.status)))
             } else {
                 let stdout = str::from_utf8(&output.stdout).unwrap();
-                let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().at(1).unwrap();
+                let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().get(1).unwrap().as_str();
                 let account_id = Uuid::from_str(account_id_str).unwrap();
-                let secret =
-                    ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().at(1).unwrap().to_string();
-                Ok((account_id, secret))
+                let secret = ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().get(1).unwrap().as_str();
+                Ok((account_id, secret.to_string()))
             }
         }
         Err(err) => Err(Error::Unexpected(format!("Could not run `nutrino-user`: {}", err))),

@@ -1,15 +1,9 @@
-#![cfg(test)]
-
-#![feature(plugin, test, proc_macro)]
-#![plugin(stainless)]
-
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate nutrino;
 #[macro_use]
 extern crate lazy_static;
-extern crate test;
 extern crate serde;
 extern crate serde_json;
 extern crate chrono;
@@ -25,6 +19,7 @@ use std::io::Read;
 
 use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
+use serde_json::Number as JsonNumber;
 use chrono::{DateTime, UTC};
 use serde::Deserialize;
 use hyper::status::StatusCode;
@@ -151,7 +146,7 @@ impl Transaction<Uuid> for RestTransaction {
 
     fn set_edge(&self, e: Edge<Uuid>) -> Result<(), Error> {
         let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
-        d.insert("weight".to_string(), JsonValue::F64(e.weight.0 as f64));
+        d.insert("weight".to_string(), JsonValue::Number(JsonNumber::from_f64(e.weight.0 as f64).unwrap()));
         let body = serde_json::to_string(&d).unwrap();
 
         let client = Client::new();
@@ -330,12 +325,6 @@ impl Transaction<Uuid> for RestTransaction {
 
 test_transaction_impl! {
 	test_rest_transaction {
-	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
-	}
-}
-
-bench_transaction_impl! {
-	bench_rest_transaction {
 	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
 	}
 }

@@ -1,6 +1,6 @@
 use lua;
 use serde_json::value::Value as JsonValue;
-use std::collections::BTreeMap;
+use serde_json::{Map, Number};
 use nutrino::{Vertex, Edge, Type, Weight};
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
@@ -18,14 +18,14 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
         Some(lua::Type::Nil) |
         None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
-        Some(lua::Type::Number) => JsonValue::F64(l.tonumber(-1)),
+        Some(lua::Type::Number) => JsonValue::Number(Number::from_f64(l.tonumber(-1)).unwrap()),
         Some(lua::Type::String) => {
             JsonValue::String(l.checkstring(-1).unwrap().to_string().clone())
         }
         Some(lua::Type::Table) => {
             l.pushvalue(offset);
             l.pushnil();
-            let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
+            let mut o: Map<String, JsonValue> = Map::new();
 
             while l.next(-2) {
                 // Keys could be strings or numbers, depending on whether it's a map-shaped table
@@ -40,13 +40,12 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 };
 
                 let v: JsonValue = deserialize_json(l, -1)?;
-                d.insert(k, v);
+                o.insert(k, v);
                 l.pop(1);
             }
 
             l.pop(1);
-
-            JsonValue::Object(d)
+            JsonValue::Object(o)
         }
         _ => return Err(LuaError::Generic("Could not deserialize return value".to_string())),
     })
@@ -57,9 +56,13 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
     match json {
         JsonValue::Null => l.pushnil(),
         JsonValue::Bool(v) => l.pushboolean(v),
-        JsonValue::I64(v) => l.pushstring(&v.to_string()[..]),
-        JsonValue::U64(v) => l.pushstring(&v.to_string()[..]),
-        JsonValue::F64(v) => l.pushnumber(v),
+        JsonValue::Number(v) => {
+            if v.is_f64() {
+                l.pushnumber(v.as_f64().unwrap());
+            } else {
+                l.pushstring(&v.to_string()[..]);
+            }
+        },
         JsonValue::String(v) => l.pushstring(&v[..]),
         JsonValue::Array(v) => {
             l.newtable();
