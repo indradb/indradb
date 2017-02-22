@@ -1,5 +1,5 @@
 use lua;
-use nutrino::{Error, ValidationError};
+use braid::{Error, ValidationError};
 use std::i32;
 
 /// Error that is returnable from lua-exposed functions.

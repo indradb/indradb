@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
-extern crate nutrino;
+extern crate braid;
 #[macro_use]
 extern crate lazy_static;
 extern crate serde;
@@ -33,7 +33,7 @@ macro_rules! test_script {
 		#[test]
 		fn $name() {
 			let email_rand = thread_rng().gen_ascii_chars().take(10).collect::<String>();
-			let email = format!("script-tests-{}@nutrino.com", email_rand);
+			let email = format!("script-tests-{}@braid.com", email_rand);
 			let (account_id, secret) = create_account(email).unwrap();
 			run_script(account_id, secret, stringify!($name));
 		}

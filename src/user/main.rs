@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate clap;
-extern crate nutrino;
+extern crate braid;
 #[macro_use]
 extern crate common;
 extern crate uuid;
@@ -8,14 +8,14 @@ extern crate uuid;
 use clap::{Arg, App, SubCommand};
 use std::error::Error;
 use common::datastore;
-use nutrino::Datastore;
+use braid::Datastore;
 use uuid::Uuid;
 
 /// App for managing accounts
 fn main() {
-    let matches = App::new("nutrino-user")
+    let matches = App::new("braid-user")
         .version("0.1")
-        .about("User management for Nutrino")
+        .about("User management for Braid")
         .subcommand(SubCommand::with_name("add")
             .arg(Arg::with_name("EMAIL").help("Email address").required(true).index(1)))
         .subcommand(SubCommand::with_name("remove")

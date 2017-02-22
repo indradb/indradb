@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use nutrino::{Vertex, Edge, Transaction, Error};
+use braid::{Vertex, Edge, Transaction, Error};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;

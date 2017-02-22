@@ -4,7 +4,7 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use nutrino::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
+use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
               PostgresTransaction, RocksdbTransaction, Type};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;

@@ -11,7 +11,7 @@ extern crate libc;
 extern crate regex;
 extern crate uuid;
 #[macro_use]
-extern crate nutrino;
+extern crate braid;
 #[macro_use]
 extern crate lua;
 #[macro_use]

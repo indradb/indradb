@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{Headers, ContentType};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use nutrino::{Datastore, Error, Type, Weight};
+use braid::{Datastore, Error, Type, Weight};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;

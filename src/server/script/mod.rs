@@ -8,7 +8,7 @@ use lua;
 use libc;
 use serde_json::value::Value as JsonValue;
 use common::ProxyTransaction;
-use nutrino::Transaction;
+use braid::Transaction;
 use std::path::Path;
 use uuid::Uuid;
 use self::errors::ScriptError;

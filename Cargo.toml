@@ -1,14 +1,14 @@
 [package]
-name = "rust-nutrino-bin"
+name = "braid-bin"
 version = "0.1.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 
 [[bin]]
-name = "nutrino-server"
+name = "braid-server"
 path = "src/server/main.rs"
 
 [[bin]]
-name = "nutrino-user"
+name = "braid-user"
 path = "src/user/main.rs"
 
 [lib]
@@ -36,7 +36,7 @@ maplit = "~0.1.4"
 version = "~0.3.0"
 features = ["serde"]
 
-[dependencies.rust-nutrino-lib]
+[dependencies.braid]
 path = "../lib"
 
 [dependencies.lua]

@@ -3,7 +3,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate maplit;
 #[macro_use]
-extern crate nutrino;
+extern crate braid;
 #[macro_use]
 extern crate lazy_static;
 extern crate serde;
@@ -25,7 +25,7 @@ use serde_json::value::Value as JsonValue;
 use serde_json::Number as JsonNumber;
 pub use regex::Regex;
 use uuid::Uuid;
-pub use nutrino::*;
+pub use braid::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
 use std::io::Read;
 use chrono::{DateTime, UTC};

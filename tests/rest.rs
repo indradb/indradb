@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
-extern crate nutrino;
+extern crate braid;
 #[macro_use]
 extern crate lazy_static;
 extern crate serde;
@@ -26,7 +26,7 @@ use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use uuid::Uuid;
 
-pub use nutrino::*;
+pub use braid::*;
 pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
 
 fn serialize_type(t: Option<Type>) -> String {

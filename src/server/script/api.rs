@@ -3,7 +3,7 @@
 
 use lua;
 use common::ProxyTransaction;
-use nutrino::{Vertex, Edge, Transaction};
+use braid::{Vertex, Edge, Transaction};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;

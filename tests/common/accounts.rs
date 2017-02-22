@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::str;
 use std::process::Command;
-use nutrino::*;
+use braid::*;
 use uuid::Uuid;
 use std::str::FromStr;
 
@@ -11,7 +11,7 @@ lazy_static! {
 }
 
 pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
-    let create_user_output = Command::new("./target/debug/nutrino-user")
+    let create_user_output = Command::new("./target/debug/braid-user")
         .arg("add")
         .arg(email)
         .output();
@@ -19,7 +19,7 @@ pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
     match create_user_output {
         Ok(output) => {
             if !output.status.success() {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user \
+                Err(Error::Unexpected(format!("Unexpected exit status running `braid-user \
                                                add`: {}",
                                               output.status)))
             } else {
@@ -30,12 +30,12 @@ pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
                 Ok((account_id, secret.to_string()))
             }
         }
-        Err(err) => Err(Error::Unexpected(format!("Could not run `nutrino-user`: {}", err))),
+        Err(err) => Err(Error::Unexpected(format!("Could not run `braid-user`: {}", err))),
     }
 }
 
 pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
-    let remove_user_status = Command::new("./target/debug/nutrino-user")
+    let remove_user_status = Command::new("./target/debug/braid-user")
         .arg("remove")
         .arg(account_id.to_string())
         .status();
@@ -45,13 +45,13 @@ pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
             if status.success() {
                 Ok(())
             } else {
-                Err(Error::Unexpected(format!("Unexpected exit status running `nutrino-user \
+                Err(Error::Unexpected(format!("Unexpected exit status running `braid-user \
                                                remove`: {}",
                                               status.code().unwrap())))
             }
         }
         Err(err) => {
-            Err(Error::Unexpected(format!("Unexpected error running `nutrino-user`: {}", err)))
+            Err(Error::Unexpected(format!("Unexpected error running `braid-user`: {}", err)))
         }
     }
 }

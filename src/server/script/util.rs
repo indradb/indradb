@@ -1,7 +1,7 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use serde_json::{Map, Number};
-use nutrino::{Vertex, Edge, Type, Weight};
+use braid::{Vertex, Edge, Type, Weight};
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
 use uuid::Uuid;
