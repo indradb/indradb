@@ -1,10 +1,10 @@
 [package]
-name = "rust-nutrino-lib"
+name = "braid"
 version = "0.1.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 
 [lib]
-name = "nutrino"
+name = "braid"
 path = "src/lib.rs"
 
 [features]

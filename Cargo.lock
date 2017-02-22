@@ -1,5 +1,5 @@
 [root]
-name = "rust-nutrino-lib"
+name = "braid"
 version = "0.1.0"
 dependencies = [
  "bincode 1.0.0-alpha2 (registry+https://github.com/rust-lang/crates.io-index)",
