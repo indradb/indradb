@@ -48,11 +48,19 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     opts
 }
 
+/// A datastore that is backed by rocksdb.
 pub struct RocksdbDatastore {
+    /// A reference to the rocksdb database.
     db: Arc<DB>,
 }
 
 impl RocksdbDatastore {
+    /// Creates a new rocksdb datastore.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to the rocksdb database.
+    /// * `max_open_files` - The maximum number of open files to have. If
+    ///   `None`, the default will be used.
     pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
         let opts = get_options(max_open_files);
 
@@ -72,6 +80,12 @@ impl RocksdbDatastore {
         Ok(RocksdbDatastore { db: Arc::new(db) })
     }
 
+    /// Runs a repair operation on the rocksdb database.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to the rocksdb database.
+    /// * `max_open_files` - The maximum number of open files to have. If
+    ///   `None`, the default will be used.
     pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<(), Error> {
         let opts = get_options(max_open_files);
         DB::repair(opts, path)?;
@@ -120,8 +134,11 @@ impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
     }
 }
 
+/// A transaction that is backed by rocksdb.
 pub struct RocksdbTransaction {
+    /// A reference to the rocksdb database.
     db: Arc<DB>,
+    /// The ID of the account that's triggering this transaction.
     account_id: Uuid,
 }
 

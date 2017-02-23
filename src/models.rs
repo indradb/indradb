@@ -14,12 +14,21 @@ lazy_static! {
 /// might be a user, or a movie. All vertices have a unique ID and a type.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex<I: Id> {
+    /// The id of the vertex.
     pub id: I,
+
+    /// The type of the vertex.
     #[serde(rename="type")]
     pub t: Type,
 }
 
 impl<I: Id> Vertex<I> {
+    /// Creates a new vertex.
+    ///
+    /// # Arguments
+    /// 
+    /// * `id` - The id of the vertex.
+    /// * `t` - The type of the vertex.
     pub fn new(id: I, t: Type) -> Vertex<I> {
         Vertex { id: id, t: t }
     }
@@ -40,19 +49,45 @@ impl<I: Id> Eq for Vertex<I> {}
 /// weighted and directed.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edge<I: Id> {
+    /// The id of the outbound vertex.
     pub outbound_id: I,
     #[serde(rename="type")]
+
+    /// The type of the edge.
     pub t: Type,
+
+    /// The id of the inbound vertex.
     pub inbound_id: I,
+
+    /// The weight of the edge.
     pub weight: Weight,
+
+    /// When the edge was last updated.
     pub update_datetime: DateTime<UTC>
 }
 
 impl<I: Id> Edge<I> {
+    /// Creates a new edge with the current datetime in UTC.
+    ///
+    /// # Arguments
+    /// 
+    /// * `outbound_id` - The id of the outbound vertex.
+    /// * `t` - The type of the edge.
+    /// * `inbound_id` - The id of the inbound vertex.
+    /// * `weight` - The weight of the edge.
     pub fn new_with_current_datetime(outbound_id: I, t: Type, inbound_id: I, weight: Weight) -> Edge<I> {
         return Self::new(outbound_id, t, inbound_id, weight, UTC::now())
     }
 
+    /// Creates a new edge with a specified datetime.
+    ///
+    /// # Arguments
+    /// 
+    /// * `outbound_id` - The id of the outbound vertex.
+    /// * `t` - The type of the edge.
+    /// * `inbound_id` - The id of the inbound vertex.
+    /// * `weight` - The weight of the edge.
+    /// * `update_datetime` - When the edge was last updated.
     pub fn new(outbound_id: I, t: Type, inbound_id: I, weight: Weight, update_datetime: DateTime<UTC>) -> Edge<I> {
         Edge {
             outbound_id: outbound_id,
@@ -82,6 +117,10 @@ pub struct Weight(pub f32);
 impl Weight {
     /// Constructs a new edge weight.
     ///
+    /// # Arguments
+    /// 
+    /// * `weight` - The weight, between -1.0 and 1.0.
+    ///
     /// # Errors
     /// Returns a `ValidationError` if the weight is below -1.0 or above 1.0.
     pub fn new(w: f32) -> Result<Self, ValidationError> {
@@ -102,6 +141,10 @@ pub struct Type(pub String);
 
 impl Type {
     /// Constructs a new type.
+    ///
+    /// # Arguments
+    /// 
+    /// * `t` - The type, which must be less than 256 characters long.
     ///
     /// # Errors
     /// Returns a `ValidationError` if the type is longer than 255 characters,

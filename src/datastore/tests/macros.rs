@@ -1,3 +1,4 @@
+/// Defines a unit test function.
 #[macro_export]
 macro_rules! define_test {
 	($name:ident, $datastore_constructor:expr) => (
@@ -12,6 +13,8 @@ macro_rules! define_test {
 	)
 }
 
+/// Datastore test suites can use this macro to enable the standard test suite
+/// for account management.
 #[macro_export]
 macro_rules! test_account_management_impl {
 	($name:ident $code:expr) => (
@@ -24,6 +27,8 @@ macro_rules! test_account_management_impl {
 	)
 }
 
+/// Datastore test suites can use this macro to enable the standard test suite
+/// for transactions.
 #[macro_export]
 macro_rules! test_transaction_impl {
 	($name:ident $code:expr) => (
@@ -78,6 +83,8 @@ macro_rules! test_transaction_impl {
 	)
 }
 
+/// Datastore test suites can use this macro to enable the standard test suite
+/// for transaction metadata.
 #[macro_export]
 macro_rules! test_metadata_impl {
 	($name:ident $code:expr) => (

@@ -14,13 +14,25 @@ use uuid::Uuid;
 use std::i64;
 use postgres::error as pg_error;
 
+/// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
+    /// A database connection pool.
     pool: Pool<PostgresConnectionManager>,
+
+    /// A secret value, used as the pepper in hashing sensitive account data.
     secret: String,
 }
 
 impl PostgresDatastore {
+    /// Creates a new postgres-backed datastore.
+    ///
+    /// # Arguments
+    /// * `pool_size` - The maximum number of connections to maintain to
+    ///   postgres. If `None`, it defaults to twice the number of CPUs.
+    /// * `connetion_string` - The postgres database connection string.
+    /// * `secret` - A secret value. This is used as a pepper in hashing
+    ///   sensitive account data. 
     pub fn new(pool_size: Option<u32>, connection_string: String, secret: String) -> PostgresDatastore {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
@@ -111,6 +123,7 @@ impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
     }
 }
 
+/// A postgres-backed datastore transaction.
 #[derive(Debug)]
 pub struct PostgresTransaction {
     account_id: Uuid,

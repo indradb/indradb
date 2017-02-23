@@ -66,10 +66,15 @@ impl fmt::Display for Error {
 /// invalid value.
 #[derive(Debug)]
 pub struct ValidationError {
+    /// A description of the error.
     description: String,
 }
 
 impl ValidationError {
+    /// Creates a new validation error.
+    ///
+    /// # Arguments
+    /// * `description` - A description of the error.
     pub fn new(description: String) -> ValidationError {
         ValidationError { description: description }
     }

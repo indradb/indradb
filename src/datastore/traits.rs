@@ -16,26 +16,44 @@ use chrono::{DateTime, UTC};
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore<T: Transaction<I>, I: Id> {
     /// Checks if an account exists.
+    ///
+    /// # Arguments
+    /// * `account_id` - The ID of the account to check.
     fn has_account(&self, account_id: I) -> Result<bool, Error>;
 
     /// Creates a new account, returning a tuple of its ID and secret.
+    ///
+    /// # Arguments
+    /// * `email` - The email of the account.
     fn create_account(&self, email: String) -> Result<(I, String), Error>;
 
     /// Deletes an account.
+    ///
+    /// # Arguments
+    /// * `account_id` - The ID of the account to delete.
     ///
     /// # Errors
     /// Returns an error if the account does not exist.
     fn delete_account(&self, account_id: I) -> Result<(), Error>;
 
     /// Checks account authentication.
+    ///
+    /// # Arguments
+    /// * `account_id` - The ID of the account to authenticate.
+    /// * `secret` - The account's secret.
     fn auth(&self, account_id: I, secret: String) -> Result<bool, Error>;
 
     /// Creates a new transaction tied to a given account.
+    ///
+    /// # Arguments
+    /// * `account_id` - The ID of the account that's triggering the
+    /// transaction.
     fn transaction(&self, account_id: I) -> Result<T, Error>;
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
-/// Transactions are responsible for managing the following kinds of data:
+/// Transactions are responsible for managing:
+/// 
 /// 1. Vertices.
 /// 2. Edges, which connect two vertices.
 /// 3. Global metadata: metadata that is not owned by anything, and as a
@@ -48,40 +66,64 @@ pub trait Datastore<T: Transaction<I>, I: Id> {
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction<I: Id> {
     /// Gets a range of vertices.
-    fn get_vertex_range(&self, u64, u16) -> Result<Vec<models::Vertex<I>>, Error>;
+    ///
+    /// # Arguments
+    /// * `offset` - The index of the first vertex to return.
+    /// * `limit` - The number of vertices to return.
+    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<models::Vertex<I>>, Error>;
 
     /// Gets a vertex.
     ///
+    /// # Arguments
+    /// * `id` - The ID of the vertex.
+    ///
     /// # Errors
     /// Returns `Error::VertexNotFound` if the vertex does not exist.
-    fn get_vertex(&self, I) -> Result<models::Vertex<I>, Error>;
+    fn get_vertex(&self, id: I) -> Result<models::Vertex<I>, Error>;
 
     /// Creates a new vertex.
-    fn create_vertex(&self, models::Type) -> Result<I, Error>;
+    ///
+    /// # Arguments
+    /// * `t` - The type of the vertex.
+    fn create_vertex(&self, t: models::Type) -> Result<I, Error>;
 
     /// Updates an existing vertex.
     ///
+    /// # Arguments
+    /// * `vertex` - The vertex model to update.
+    ///
     /// # Errors
     /// Returns `Error::VertexNotFound` if the vertex does not exist, or
     /// `Error::Unauthorized` if the vertex is not owned by the current
     /// transaction's account.
-    fn set_vertex(&self, models::Vertex<I>) -> Result<(), Error>;
+    fn set_vertex(&self, vertex: models::Vertex<I>) -> Result<(), Error>;
 
     /// Deletes a vertex.
     ///
+    /// # Arguments
+    /// * `id` - The ID of the vertex to delete.
+    ///
     /// # Errors
     /// Returns `Error::VertexNotFound` if the vertex does not exist, or
     /// `Error::Unauthorized` if the vertex is not owned by the current
     /// transaction's account.
-    fn delete_vertex(&self, I) -> Result<(), Error>;
+    fn delete_vertex(&self, id: I) -> Result<(), Error>;
     
     /// Gets an edge.
     ///
+    /// # Arguments
+    /// * `outbound_id` - The ID of the outbound vertex.
+    /// * `t` - The edge type.
+    /// * `outbound_id` - The ID of the inbound vertex.
+    ///
     /// # Errors
     /// Returns `Error::EdgeNotFound` if the edge does not exist.
-    fn get_edge(&self, I, models::Type, I) -> Result<models::Edge<I>, Error>;
+    fn get_edge(&self, outbound_id: I, t: models::Type, inbound_id: I) -> Result<models::Edge<I>, Error>;
 
     /// Creates an edge, or updates an existing edge.
+    ///
+    /// # Arguments
+    /// * `edge` - The edge model to create or update.
     ///
     /// # Errors
     /// Returns `Errors::EdgeNotFound` if the edge does not exist, or
@@ -90,16 +132,27 @@ pub trait Transaction<I: Id> {
     fn set_edge(&self, models::Edge<I>) -> Result<(), Error>;
 
     /// Deletes an edge.
+    ///
+    /// # Arguments
+    /// * `outbound_id` - The ID of the outbound vertex.
+    /// * `t` - The edge type.
+    /// * `outbound_id` - The ID of the inbound vertex.
+    ///
+    /// # Errors
     /// Returns `Errors::EdgeNotFound` if the edge does not exist, or
     /// `Error::Unauthorized` if the edge's outbound vertex is not owned by
     /// the current transaction's account.
-    fn delete_edge(&self, I, models::Type, I) -> Result<(), Error>;
+    fn delete_edge(&self, outbound_id: I, t: models::Type, inbound_id: I) -> Result<(), Error>;
 
     /// Gets the number of outbound edges of a given type.
     ///
     /// Note that this will not error out if the vertex does not exist - it
     /// will just return 0.
-    fn get_edge_count(&self, I, Option<models::Type>) -> Result<u64, Error>;
+    ///
+    /// # Arguments
+    /// * `outbound_id` - The ID of the outbound vertex.
+    /// * `t` - The edge type.
+    fn get_edge_count(&self, outbound_id: I, t: Option<models::Type>) -> Result<u64, Error>;
 
     /// Gets a range of the outbound edges of a given type.
     ///
@@ -107,7 +160,13 @@ pub trait Transaction<I: Id> {
     /// (descending), but order may not be exact depending on the
     /// implementation. Note that this will not error out if the vertex does
     /// not exist - it will just return an empty edge range.
-    fn get_edge_range(&self, I, Option<models::Type>, u64, u16) -> Result<Vec<models::Edge<I>>, Error>;
+    ///
+    /// # Arguments
+    /// * `outbound_id` - The ID of the outbound vertex.
+    /// * `t` - The edge type.
+    /// * `offset` - The index of the first edge to return.
+    /// * `limit` - The number of edges to return.
+    fn get_edge_range(&self, outbound_id: I, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets a range of the outbound edges of a given type, optionally bounded
     /// by the specified update/creation datetime upper and lower bounds.
@@ -116,19 +175,30 @@ pub trait Transaction<I: Id> {
     /// (descending), but order may not be exact depending on the
     /// implementation. Note that this will not error out if the vertex does
     /// not exist - it will just return an empty edge range.
+    ///
+    /// # Arguments
+    /// * `outbound_id` - The ID of the outbound vertex.
+    /// * `t` - The edge type.
+    /// * `high` - The maximum allowed edge update datetime.
+    /// * `low` - The minimum allowed edge update datetime.
+    /// * `limit` - The number of edges to return.
     fn get_edge_time_range(&self,
-                           I,
-                           Option<models::Type>,
-                           Option<DateTime<UTC>>,
-                           Option<DateTime<UTC>>,
-                           u16)
+                           outbound_id: I,
+                           t: Option<models::Type>,
+                           high: Option<DateTime<UTC>>,
+                           low: Option<DateTime<UTC>>,
+                           limit: u16)
                            -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets the number of inbound edges of a given type.
     ///
     /// Note that this will not error out if the vertex does not exist - it
     /// will just return 0.
-    fn get_reversed_edge_count(&self, I, Option<models::Type>) -> Result<u64, Error>;
+    ///
+    /// # Arguments
+    /// * `inbound_id` - The ID of the inbound vertex.
+    /// * `t` - The edge type.
+    fn get_reversed_edge_count(&self, inbound_id: I, t: Option<models::Type>) -> Result<u64, Error>;
 
     /// Gets a range of the inbound edges of a given type.
     ///
@@ -136,11 +206,17 @@ pub trait Transaction<I: Id> {
     /// (descending), but order may not be exact depending on the
     /// implementation. Note that this will not error out if the vertex does
     /// not exist - it will just return an empty edge range.
+    ///
+    /// # Arguments
+    /// * `inbound_id` - The ID of the inbound vertex.
+    /// * `t` - The edge type.
+    /// * `offset` - The index of the first edge to return.
+    /// * `limit` - The number of edges to return.
     fn get_reversed_edge_range(&self,
-                               I,
-                               Option<models::Type>,
-                               u64,
-                               u16)
+                               inbound_id: I,
+                               t: Option<models::Type>,
+                               offset: u64,
+                               limit: u16)
                                -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets a range of the inbound edges of a given type, optionally bounded
@@ -150,87 +226,155 @@ pub trait Transaction<I: Id> {
     /// (descending), but order may not be exact depending on the
     /// implementation. Note that this will not error out if the vertex does
     /// not exist - it will just return an empty edge range.
+    ///
+    /// # Arguments
+    /// * `inbound_id` - The ID of the inbound vertex.
+    /// * `t` - The edge type.
+    /// * `high` - The maximum allowed edge update datetime.
+    /// * `low` - The minimum allowed edge update datetime.
+    /// * `limit` - The number of edges to return.
     fn get_reversed_edge_time_range(&self,
-                                    I,
-                                    Option<models::Type>,
-                                    Option<DateTime<UTC>>,
-                                    Option<DateTime<UTC>>,
-                                    u16)
+                                    inbound_id: I,
+                                    t: Option<models::Type>,
+                                    high: Option<DateTime<UTC>>,
+                                    low: Option<DateTime<UTC>>,
+                                    limit: u16)
                                     -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets a global metadata value.
     ///
+    /// # Arguments
+    /// * `name` - The metadata name.
+    ///
     /// # Errors
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_global_metadata(&self, String) -> Result<JsonValue, Error>;
+    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error>;
 
     /// Sets a global metadata value.
-    fn set_global_metadata(&self, String, JsonValue) -> Result<(), Error>;
+    ///
+    /// # Arguments
+    /// * `name` - The metadata name.
+    /// * `value` - The metadata value.
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes a global metadata value.
     ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_global_metadata(&self, String) -> Result<(), Error>;
-
-    /// Gets an account metadata value.
+    /// # Arguments
+    /// * `name` - The metadata name.
     ///
     /// # Errors
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_account_metadata(&self, I, String) -> Result<JsonValue, Error>;
+    fn delete_global_metadata(&self, name: String) -> Result<(), Error>;
+
+    /// Gets an account metadata value.
+    ///
+    /// # Arguments
+    /// * `account_id`: The ID of the account that the metadata is tied to.
+    /// * `name` - The metadata name.
+    ///
+    /// # Errors
+    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
+    fn get_account_metadata(&self, account_id: I, name: String) -> Result<JsonValue, Error>;
 
     /// Sets an account metadata value.
+    ///
+    /// # Arguments
+    /// * `account_id`: The ID of the account that the metadata is tied to.
+    /// * `name` - The metadata name.
+    /// * `value` - The metadata value.
     ///
     /// # Errors
     /// Returns `Error::AccountNotFound` if the specified account ID does not
     /// exist.
-    fn set_account_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
+    fn set_account_metadata(&self, account_id: I, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes an account metadata value.
     ///
+    /// # Arguments
+    /// * `account_id`: The ID of the account that the metadata is tied to.
+    /// * `name` - The metadata name.
+    ///
     /// # Errors
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_account_metadata(&self, I, String) -> Result<(), Error>;
+    fn delete_account_metadata(&self, account_id: I, name: String) -> Result<(), Error>;
 
     /// Gets a vertex metadata value.
+    ///
+    /// # Arguments
+    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `name` - The metadata name.
     ///
     /// # Errors
     /// Return `Error::VertexNotFound` if the specified vertex does not
     /// exist. Returns `Error::MetadataNotFound` if the metadata does not
     /// exist.
-    fn get_vertex_metadata(&self, I, String) -> Result<JsonValue, Error>;
+    fn get_vertex_metadata(&self, vertex_id: I, name: String) -> Result<JsonValue, Error>;
 
     /// Sets a vertex metadata value.
+    ///
+    /// # Arguments
+    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `name` - The metadata name.
+    /// * `value` - The metadata value.
     ///
     /// # Errors
     /// Return `Error::VertexNotFound` if the specified vertex does not
     /// exist.
-    fn set_vertex_metadata(&self, I, String, JsonValue) -> Result<(), Error>;
+    fn set_vertex_metadata(&self, vertex_id: I, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes a vertex metadata value.
     ///
+    /// # Arguments
+    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `name` - The metadata name.
+    ///
     /// # Errors
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_vertex_metadata(&self, I, String) -> Result<(), Error>;
+    fn delete_vertex_metadata(&self, vertex_id: I, name: String) -> Result<(), Error>;
 
     /// Gets an edge metadata value.
     ///
+    /// # Arguments
+    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `edge_t`: The type the edge that the metadata is tied to.
+    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `name` - The metadata name.
+    ///
     /// # Errors
     /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_edge_metadata(&self, I, models::Type, I, String) -> Result<JsonValue, Error>;
+    fn get_edge_metadata(&self, edge_outbound_id: I, edge_t: models::Type, edge_inbound_id: I, name: String) -> Result<JsonValue, Error>;
 
     /// Sets an edge metadata value.
     ///
+    /// # Arguments
+    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `edge_t`: The type the edge that the metadata is tied to.
+    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `name` - The metadata name.
+    /// * `value` - The metadata value.
+    ///
     /// # Errors
     /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
-    fn set_edge_metadata(&self, I, models::Type, I, String, JsonValue) -> Result<(), Error>;
+    fn set_edge_metadata(&self, outbound_id: I, t: models::Type, inbound_id: I, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes an edge metadata value.
     ///
+    /// # Arguments
+    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `edge_t`: The type the edge that the metadata is tied to.
+    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
+    ///   metadata is tied to.
+    /// * `name` - The metadata name.
+    ///
     /// # Errors
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_edge_metadata(&self, I, models::Type, I, String) -> Result<(), Error>;
+    fn delete_edge_metadata(&self, outbound_id: I, t: models::Type, inbound_id: I, name: String) -> Result<(), Error>;
 
     /// Commits the transaction.
     fn commit(self) -> Result<(), Error>;
