@@ -226,6 +226,8 @@ pub fn datastore() -> ProxyDatastore {
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
+        println!("LOADING {}", path);
+
         let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
         let max_open_files = max_open_files_str.parse::<i32>()
             .expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
