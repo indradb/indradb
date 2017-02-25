@@ -18,10 +18,10 @@ pub fn request<'a>(client: &'a Client, port: i32, account_id: Uuid, secret: Stri
 
     let mut url = Url::parse(&format!("http://localhost:{}{}", port, path)[..]).unwrap();
 
-    if query_params.len() > 0 {
+    if !query_params.is_empty() {
         let mut query_pairs_builder = url.query_pairs_mut();
 
-        for (key, value) in query_params.into_iter() {
+        for (key, value) in query_params {
             query_pairs_builder.append_pair(key, &value[..]);
         }
     }

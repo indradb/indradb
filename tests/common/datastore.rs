@@ -43,7 +43,7 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDat
         let (account_id, secret) = create_account(email)?;
 
         ACCOUNT_IDS.with(|account_ids| {
-            let ref mut account_ids: BTreeMap<Uuid, String> = *account_ids.borrow_mut();
+            let mut account_ids: &mut BTreeMap<Uuid, String> = &mut (*account_ids.borrow_mut());
             account_ids.insert(account_id, secret.clone());
         });
 
@@ -60,7 +60,7 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDat
 
     fn transaction(&self, account_id: Uuid) -> Result<T, Error> {
         let secret = ACCOUNT_IDS.with(|account_ids| {
-            let ref account_ids: BTreeMap<Uuid, String> = *account_ids.borrow();
+            let account_ids: &BTreeMap<Uuid, String> = &(*account_ids.borrow());
             account_ids.get(&account_id).unwrap().clone()
         });
 

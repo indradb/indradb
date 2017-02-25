@@ -22,7 +22,7 @@ mod statics;
 
 use std::env;
 
-/// App for exposing a RESTful API for a datastore
+/// App for exposing a `RESTful` API for a datastore
 fn main() {
     let port_str = env::var("PORT").unwrap_or("8000".to_string());
     let port = port_str.parse::<u16>().expect("Could not parse environment variable `PORT`");

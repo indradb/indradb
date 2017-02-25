@@ -42,7 +42,7 @@ pub struct RestTransaction {
 
 impl RestTransaction {
     fn request<'a>(&self, client: &'a Client, method_str: &str, path: String, query_pairs: Vec<(&str, String)>) -> RequestBuilder<'a> {
-        return request(
+        request(
             client,
             self.port,
             self.account_id,
@@ -50,7 +50,7 @@ impl RestTransaction {
             method_str,
             path,
             query_pairs
-        );
+        )
     }
 
     fn build_time_range_query_pairs(&self, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>) -> Vec<(&str, String)> {
@@ -84,7 +84,7 @@ impl Transaction<Uuid> for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            format!("/vertex"),
+            "/vertex".to_string(),
             vec![
                 ("offset", format!("{}", offset)),
                 ("limit", format!("{}", limit))

@@ -4,8 +4,8 @@ use std::i32;
 
 /// Error that is returnable from lua-exposed functions.
 ///
-/// The lua_fn! macro takes these errors and serializes them appropriately to
-/// lua.
+/// The `lua_fn!` macro takes these errors and serializes them appropriately
+/// to lua.
 #[derive(Debug)]
 pub enum LuaError {
     Arg(i32, String),

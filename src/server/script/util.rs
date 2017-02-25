@@ -91,7 +91,7 @@ pub unsafe fn serialize_vertices(l: &mut lua::ExternState, vertices: Vec<Vertex<
 
     for (i, vertex) in vertices.iter().enumerate() {
         l.pushinteger((i + 1) as isize);
-        serialize_vertex(l, &vertex);
+        serialize_vertex(l, vertex);
         l.settable(-3);
     }
 }
@@ -102,7 +102,7 @@ pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) 
 
     for (i, edge) in edges.iter().enumerate() {
         l.pushinteger((i + 1) as isize);
-        serialize_edge(l, &edge);
+        serialize_edge(l, edge);
         l.settable(-3);
     }
 }
@@ -204,7 +204,7 @@ pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16
 /// Gets an offset value from lua by its offset
 pub unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u64, LuaError> {
     match l.checkinteger(narg) {
-        i if i < 0 => return Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
+        i if i < 0 => Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
         i => Ok(i as u64),
     }
 }

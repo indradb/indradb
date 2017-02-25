@@ -353,7 +353,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
         ));
     }
 
-    if payload.len() == 0 {
+    if payload.is_empty() {
         Ok(None)
     } else {
         match serde_json::from_str(&payload[..]) {
