@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate serde_derive;
 extern crate iron;
 extern crate chrono;
 extern crate core;
@@ -10,13 +8,9 @@ extern crate urlencoded;
 extern crate libc;
 extern crate regex;
 extern crate uuid;
-#[macro_use]
 extern crate braid;
-#[macro_use]
 extern crate lua;
-#[macro_use]
 extern crate hyper;
-#[macro_use]
 extern crate common;
 #[macro_use]
 extern crate lazy_static;
