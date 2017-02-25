@@ -16,14 +16,14 @@ pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
 
 impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I> {
     pub fn new(datastore: D) -> DatastoreTestSandbox<D, T, I> {
-        return DatastoreTestSandbox {
+        DatastoreTestSandbox {
             name: "".to_string(),
             owner_id: I::default(),
             owner_secret: "".to_string(),
             datastore: datastore,
             accounts: Vec::new(),
             phantom_transaction: PhantomData,
-        };
+        }
     }
 
     pub fn generate_unique_string(&self, prefix: &str) -> String {
@@ -55,8 +55,8 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
 
     pub fn teardown(&self) {
         // Delete account data
-        for id in self.accounts.iter() {
-            self.datastore.delete_account(id.clone()).unwrap();
+        for id in &self.accounts {
+            self.datastore.delete_account(*id).unwrap();
         }
     }
 }

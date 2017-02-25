@@ -20,25 +20,25 @@ impl<'a> KeyComponent<'a> {
     fn len(&self) -> usize {
         match *self {
             KeyComponent::Uuid(_) => 16,
-            KeyComponent::UnsizedString(ref s) => s.len(),
-            KeyComponent::Type(ref t) => t.0.len() + 1, 
+            KeyComponent::UnsizedString(s) => s.len(),
+            KeyComponent::Type(t) => t.0.len() + 1, 
             KeyComponent::DateTime(_) => 8,
         }
     }
 
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            KeyComponent::Uuid(ref uuid) => {
-                cursor.write(uuid.as_bytes())?;
+            KeyComponent::Uuid(uuid) => {
+                cursor.write_all(uuid.as_bytes())?;
             }
-            KeyComponent::UnsizedString(ref s) => {
-                cursor.write(s.as_bytes())?;
+            KeyComponent::UnsizedString(s) => {
+                cursor.write_all(s.as_bytes())?;
             }
-            KeyComponent::Type(ref t) => {
-                cursor.write(&[t.0.len() as u8])?;
-                cursor.write(t.0.as_bytes())?;
+            KeyComponent::Type(t) => {
+                cursor.write_all(&[t.0.len() as u8])?;
+                cursor.write_all(t.0.as_bytes())?;
             }
-            KeyComponent::DateTime(ref datetime) => {
+            KeyComponent::DateTime(datetime) => {
                 let time_to_end = max_datetime().timestamp() - datetime.timestamp();
                 debug_assert!(time_to_end >= 0);
                 cursor.write_i64::<BigEndian>(time_to_end)?;
@@ -50,10 +50,10 @@ impl<'a> KeyComponent<'a> {
 }
 
 pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
-    let len = components.iter().fold(0, |len, ref component| len + component.len());
+    let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
-    for component in components.iter() {
+    for component in &components {
         if let Err(err) = component.write(&mut cursor) {
             panic!("Could not build key: {}", err);
         }

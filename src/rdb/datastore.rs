@@ -69,7 +69,7 @@ impl RocksdbDatastore {
             Err(_) => {
                 let mut db = DB::open(&opts, path)?;
 
-                for cf_name in CF_NAMES.iter() {
+                for cf_name in &CF_NAMES {
                     db.create_cf(cf_name, &opts)?;
                 }
 
@@ -216,8 +216,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
             Ok(vertex)
         });
 
-        let result: Result<Vec<models::Vertex<Uuid>>, Error> = mapped.collect();
-        result
+        mapped.collect()
     }
 
     fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
@@ -231,7 +230,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
     }
 
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        VertexManager::new(self.db.clone()).create(t, self.account_id.clone())
+        VertexManager::new(self.db.clone()).create(t, self.account_id)
     }
 
     fn set_vertex(&self, vertex: models::Vertex<Uuid>) -> Result<(), Error> {
@@ -329,8 +328,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
             ))
         });
 
-        let result: Result<Vec<models::Edge<Uuid>>, Error> = mapped.collect();
-        result
+        mapped.collect()
     }
 
     fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
@@ -392,8 +390,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
             ))
         });
 
-        let result: Result<Vec<models::Edge<Uuid>>, Error> = mapped.collect();
-        result
+        mapped.collect()
     }
 
     fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
@@ -412,13 +409,13 @@ impl Transaction<Uuid> for RocksdbTransaction {
                 debug_assert_eq!(edge_range_t, *t);
             }
 
-            Ok((models::Edge::new(
+            Ok(models::Edge::new(
                 edge_range_outbound_id,
                 edge_range_t,
                 edge_range_inbound_id,
                 edge_range_weight,
                 edge_range_update_datetime
-            )))
+            ))
         });
 
         self.handle_get_edge_time_range(Box::new(mapped), low)

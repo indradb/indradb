@@ -18,7 +18,7 @@ impl From<BincodeError> for Error {
 
 impl From<Utf8Error> for Error {
     fn from(_: Utf8Error) -> Error {
-        Error::Unexpected(format!("Could not parse utf-8 contents"))
+        Error::Unexpected("Could not parse utf-8 contents".to_string())
     }
 }
 

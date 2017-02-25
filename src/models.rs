@@ -76,7 +76,7 @@ impl<I: Id> Edge<I> {
     /// * `inbound_id` - The id of the inbound vertex.
     /// * `weight` - The weight of the edge.
     pub fn new_with_current_datetime(outbound_id: I, t: Type, inbound_id: I, weight: Weight) -> Edge<I> {
-        return Self::new(outbound_id, t, inbound_id, weight, UTC::now())
+        Self::new(outbound_id, t, inbound_id, weight, UTC::now())
     }
 
     /// Creates a new edge with a specified datetime.

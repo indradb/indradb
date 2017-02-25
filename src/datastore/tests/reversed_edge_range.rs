@@ -4,6 +4,7 @@ use super::util::*;
 use models;
 use traits::Id;
 use std::collections::HashSet;
+use std::f32;
 
 pub fn should_get_a_reversed_edge_count<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
     where D: Datastore<T, I>,
@@ -207,10 +208,10 @@ fn check_edge_range<I: Id>(range: Vec<models::Edge<I>>, expected_inbound_id: I, 
     let mut covered_ids: HashSet<I> = HashSet::new();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
 
-    for edge in range.iter() {
+    for edge in &range {
         assert_eq!(edge.inbound_id, expected_inbound_id);
         assert_eq!(edge.t, t);
-        assert_eq!(edge.weight.0, 1.0);
+        assert!(edge.weight.0 <= 1.0 + f32::EPSILON && edge.weight.0 >= 1.0 - f32::EPSILON);
         assert!(!covered_ids.contains(&edge.outbound_id));
         covered_ids.insert(edge.outbound_id);
     }

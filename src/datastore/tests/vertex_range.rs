@@ -32,7 +32,7 @@ pub fn should_get_a_vertex_range<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, 
 
     let mut covered_ids: HashSet<I> = HashSet::new();
 
-    for vertex in range.iter() {
+    for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
             assert_eq!(vertex.t, vertex_t.clone());
             inserted_ids.remove(index);
