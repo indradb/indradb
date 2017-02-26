@@ -58,7 +58,7 @@ impl PostgresDatastore {
     }
 }
 
-impl Datastore<PostgresTransaction, Uuid> for PostgresDatastore {
+impl Datastore<PostgresTransaction> for PostgresDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
         let conn = self.pool.get()?;
 
@@ -149,8 +149,8 @@ impl PostgresTransaction {
         })
     }
 
-    fn fill_edges(&self, results: Rows, outbound_id: Uuid) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+    fn fill_edges(&self, results: Rows, outbound_id: Uuid) -> Result<Vec<models::Edge>, Error> {
+        let mut edges: Vec<models::Edge> = Vec::new();
 
         for row in &results {
             let t_str: String = row.get(0);
@@ -165,8 +165,8 @@ impl PostgresTransaction {
         Ok(edges)
     }
 
-    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid) -> Result<Vec<models::Edge>, Error> {
+        let mut edges: Vec<models::Edge> = Vec::new();
 
         for row in &results {
             let t_str: String = row.get(0);
@@ -225,8 +225,8 @@ impl PostgresTransaction {
     }
 }
 
-impl Transaction<Uuid> for PostgresTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
+impl Transaction for PostgresTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let results = self.trans.query("
             SELECT id, type FROM vertices
             WHERE id >= $1
@@ -234,7 +234,7 @@ impl Transaction<Uuid> for PostgresTransaction {
             LIMIT $2
         ", &[&start_id, &(limit as i64)])?;
 
-        let mut vertices: Vec<models::Vertex<Uuid>> = Vec::new();
+        let mut vertices: Vec<models::Vertex> = Vec::new();
 
         for row in &results {
             let id: Uuid = row.get(0);
@@ -246,7 +246,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
+    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex, Error> {
         let results = self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id])?;
 
         for row in &results {
@@ -264,7 +264,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         Ok(id)
     }
 
-    fn set_vertex(&self, v: models::Vertex<Uuid>) -> Result<(), Error> {
+    fn set_vertex(&self, v: models::Vertex) -> Result<(), Error> {
         let results = self.trans.query("
 			UPDATE vertices
 			SET type=$1
@@ -293,7 +293,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         Err(Error::Unauthorized)
     }
 
-    fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge<Uuid>, Error> {
+    fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge, Error> {
         let results = self.trans.query("
             SELECT weight, update_timestamp
             FROM edges
@@ -311,7 +311,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         Err(Error::EdgeNotFound)
     }
 
-    fn set_edge(&self, e: models::Edge<Uuid>) -> Result<(), Error> {
+    fn set_edge(&self, e: models::Edge) -> Result<(), Error> {
         let id = Uuid::new_v4();
 
         // Because this command could fail, we need to set a savepoint to roll
@@ -407,7 +407,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match t {
             Some(t) => {
                 self.trans.query("
@@ -432,7 +432,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         self.fill_edges(results, outbound_id)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match (t, high, low) {
             (Some(t), Some(high), Some(low)) => {
                 self.trans.query("
@@ -533,7 +533,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match t {
             Some(t) => {
                 self.trans.query("
@@ -558,7 +558,7 @@ impl Transaction<Uuid> for PostgresTransaction {
         self.fill_reversed_edges(results, inbound_id)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match (t, high, low) {
             (Some(t), Some(high), Some(low)) => {
                 self.trans.query("

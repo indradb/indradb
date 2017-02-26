@@ -4,7 +4,6 @@ pub use super::datastore::*;
 pub use datastore::*;
 pub use super::super::util::generate_random_secret;
 pub use std::env;
-pub use traits::Id;
 use std::path::Path;
 
 pub fn datastore() -> RocksdbDatastore {

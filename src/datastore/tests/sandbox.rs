@@ -1,24 +1,24 @@
 use datastore::{Datastore, Transaction};
-use traits::Id;
+use uuid::Uuid;
 use std::marker::PhantomData;
 
-pub struct DatastoreTestSandbox<D: Datastore<T, I>, T: Transaction<I>, I: Id> {
+pub struct DatastoreTestSandbox<D: Datastore<T>, T: Transaction> {
     pub name: String,
 
-    pub owner_id: I,
+    pub owner_id: Uuid,
     pub owner_secret: String,
 
     pub datastore: D,
-    pub accounts: Vec<I>,
+    pub accounts: Vec<Uuid>,
 
     phantom_transaction: PhantomData<T>,
 }
 
-impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I> {
-    pub fn new(datastore: D) -> DatastoreTestSandbox<D, T, I> {
+impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
+    pub fn new(datastore: D) -> DatastoreTestSandbox<D, T> {
         DatastoreTestSandbox {
             name: "".to_string(),
-            owner_id: I::default(),
+            owner_id: Uuid::default(),
             owner_secret: "".to_string(),
             datastore: datastore,
             accounts: Vec::new(),
@@ -34,7 +34,7 @@ impl<D: Datastore<T, I>, T: Transaction<I>, I: Id> DatastoreTestSandbox<D, T, I>
         self.datastore.transaction(self.owner_id).unwrap()
     }
 
-    pub fn register_account(&mut self, email: &str) -> (I, String) {
+    pub fn register_account(&mut self, email: &str) -> (Uuid, String) {
         let (id, secret) = self.datastore
             .create_account(email.to_string())
             .expect("Expected to be able to create an account");

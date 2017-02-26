@@ -2,13 +2,12 @@ use datastore::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
-use traits::Id;
+use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
-pub fn should_handle_global_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_handle_global_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let key = sandbox.generate_unique_string("global-metadata");
     let trans = sandbox.transaction();
@@ -36,10 +35,9 @@ pub fn should_handle_global_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_handle_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_handle_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let key = sandbox.generate_unique_string("account-metadata");
     let trans = sandbox.transaction();
@@ -67,32 +65,29 @@ pub fn should_handle_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbo
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_not_set_invalid_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_set_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
-    let result = trans.set_account_metadata(I::default(), "foo".to_string(), JsonValue::Null);
+    let result = trans.set_account_metadata(Uuid::default(), "foo".to_string(), JsonValue::Null);
     assert_eq!(result.unwrap_err(), Error::AccountNotFound);
 }
 
-pub fn should_not_delete_invalid_account_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
-    let result = trans.delete_account_metadata(I::default(), "foo".to_string());
+    let result = trans.delete_account_metadata(Uuid::default(), "foo".to_string());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
     let result = trans.delete_account_metadata(sandbox.owner_id, "foo".to_string());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_handle_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_handle_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
@@ -122,23 +117,21 @@ pub fn should_handle_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_not_set_invalid_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_set_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
-    let result = trans.set_vertex_metadata(I::default(), "foo".to_string(), JsonValue::Null);
+    let result = trans.set_vertex_metadata(Uuid::default(), "foo".to_string(), JsonValue::Null);
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_delete_invalid_vertex_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
-    let result = trans.delete_vertex_metadata(I::default(), "foo".to_string());
+    let result = trans.delete_vertex_metadata(Uuid::default(), "foo".to_string());
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 
     let vertex_id = trans.create_vertex(models::Type::new("foo".to_string()).unwrap()).unwrap();
@@ -146,10 +139,9 @@ pub fn should_not_delete_invalid_vertex_metadata<D, T, I>(sandbox: &mut Datastor
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_handle_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
@@ -197,32 +189,30 @@ pub fn should_handle_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_not_set_invalid_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_set_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let result = trans.set_edge_metadata(
-        I::default(),
+        Uuid::default(),
         models::Type::new("foo".to_string()).unwrap(),
-        I::default(),
+        Uuid::default(),
         "bar".to_string(),
         JsonValue::Null
     );
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_invalid_edge_metadata<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let result = trans.delete_edge_metadata(
-        I::default(),
+        Uuid::default(),
         models::Type::new("foo".to_string()).unwrap(),
-        I::default(),
+        Uuid::default(),
         "bar".to_string()
     );
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);

@@ -93,7 +93,7 @@ impl RocksdbDatastore {
     }
 }
 
-impl Datastore<RocksdbTransaction, Uuid> for RocksdbDatastore {
+impl Datastore<RocksdbTransaction> for RocksdbDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
         AccountManager::new(self.db.clone()).exists(account_id)
     }
@@ -155,8 +155,8 @@ impl RocksdbTransaction {
         Ok(iterator.count() as u64)
     }
 
-    fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=Result<models::Edge<Uuid>, Error>>>, low: Option<DateTime<UTC>>) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        let mut edges: Vec<models::Edge<Uuid>> = Vec::new();
+    fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=Result<models::Edge, Error>>>, low: Option<DateTime<UTC>>) -> Result<Vec<models::Edge>, Error> {
+        let mut edges: Vec<models::Edge> = Vec::new();
 
         match low {
             Some(low) => {
@@ -201,8 +201,8 @@ impl RocksdbTransaction {
     }
 }
 
-impl Transaction<Uuid> for RocksdbTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
+impl Transaction for RocksdbTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let vertex_manager = VertexManager::new(self.db.clone());
         let iterator = vertex_manager.iterate_for_range(start_id)?;
 
@@ -215,7 +215,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex<Uuid>, Error> {
+    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex, Error> {
         match VertexManager::new(self.db.clone()).get(id)? {
             Some(value) => {
                 let vertex = models::Vertex::new(id, value.t);
@@ -229,7 +229,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         VertexManager::new(self.db.clone()).create(t, self.account_id)
     }
 
-    fn set_vertex(&self, vertex: models::Vertex<Uuid>) -> Result<(), Error> {
+    fn set_vertex(&self, vertex: models::Vertex) -> Result<(), Error> {
         self.check_write_permissions(vertex.id, Error::VertexNotFound)?;
         let value = VertexValue::new(self.account_id, vertex.t);
         VertexManager::new(self.db.clone()).update(vertex.id, &value)
@@ -247,7 +247,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
                 outbound_id: Uuid,
                 t: models::Type,
                 inbound_id: Uuid)
-                -> Result<models::Edge<Uuid>, Error> {
+                -> Result<models::Edge, Error> {
         match EdgeManager::new(self.db.clone()).get(outbound_id, &t, inbound_id)? {
             Some(value) => {
                 let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
@@ -257,7 +257,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         }
     }
 
-    fn set_edge(&self, edge: models::Edge<Uuid>) -> Result<(), Error> {
+    fn set_edge(&self, edge: models::Edge) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
         self.check_write_permissions(edge.outbound_id, Error::VertexNotFound)?;
         if !VertexManager::new(self.db.clone()).exists(edge.inbound_id)? {
@@ -298,7 +298,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let iterator = edge_range_manager.iterate_for_range(outbound_id, &t, None)?;
 
@@ -330,7 +330,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let iterator = edge_range_manager.iterate_for_range(outbound_id, &t, high)?;
 
@@ -363,7 +363,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         let iterator = reversed_edge_range_manager.iterate_for_range(inbound_id, &t, None)?;
 
@@ -395,7 +395,7 @@ impl Transaction<Uuid> for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         let iterator = reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high)?;
 

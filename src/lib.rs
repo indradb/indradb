@@ -34,12 +34,10 @@ mod datastore;
 mod errors;
 mod models;
 mod util;
-mod traits;
 
 pub use datastore::*;
 pub use models::{Vertex, Edge, Type, Weight};
 pub use errors::{Error, ValidationError};
-pub use traits::Id;
 
 #[cfg(feature="postgres-datastore")]
 mod pg;

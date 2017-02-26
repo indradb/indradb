@@ -1,14 +1,13 @@
 use datastore::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use super::util::*;
+use uuid::Uuid;
 use errors::Error;
 use models;
-use traits::Id;
 
-pub fn should_get_a_valid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_get_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -18,20 +17,18 @@ pub fn should_get_a_valid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, 
     assert_eq!(v.t, t);
 }
 
-pub fn should_not_get_an_invalid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_get_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
-    let result = trans.get_vertex(I::default());
+    let result = trans.get_vertex(Uuid::default());
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_update_a_valid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_update_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let original_t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -43,21 +40,19 @@ pub fn should_update_a_valid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<
     assert_eq!(v.t, updated_t);
 }
 
-pub fn should_not_update_an_invalid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_update_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let result = trans.set_vertex(models::Vertex::new(I::default(), t));
+    let result = trans.set_vertex(models::Vertex::new(Uuid::default(), t));
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_delete_a_valid_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let (outbound_id, _) = create_edges(&mut sandbox);
     let trans = sandbox.transaction();
@@ -69,20 +64,18 @@ pub fn should_delete_a_valid_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSand
     assert_eq!(count, 0);
 }
 
-pub fn should_not_delete_an_invalid_vertex<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction,
 {
     let trans = sandbox.transaction();
-    let result = trans.delete_vertex(I::default());
+    let result = trans.delete_vertex(Uuid::default());
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_delete_an_unowned_vertex<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_an_unowned_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();

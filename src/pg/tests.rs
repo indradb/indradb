@@ -3,7 +3,6 @@
 pub use super::datastore::*;
 pub use datastore::*;
 pub use std::env;
-pub use traits::Id;
 
 pub fn datastore() -> PostgresDatastore {
     let connection_string = env::var("DATABASE_URL").expect("Expected a DATABASE_URL");

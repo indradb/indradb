@@ -1,7 +1,7 @@
-use traits::Id;
 use regex::Regex;
 use errors::ValidationError;
 use core::str::FromStr;
+use uuid::Uuid;
 use chrono::{UTC, DateTime};
 
 lazy_static! {
@@ -13,34 +13,34 @@ lazy_static! {
 /// Vertices are how you would represent nouns in the datastore. An example
 /// might be a user, or a movie. All vertices have a unique ID and a type.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Vertex<I: Id> {
+pub struct Vertex {
     /// The id of the vertex.
-    pub id: I,
+    pub id: Uuid,
 
     /// The type of the vertex.
     #[serde(rename="type")]
     pub t: Type,
 }
 
-impl<I: Id> Vertex<I> {
+impl Vertex {
     /// Creates a new vertex.
     ///
     /// # Arguments
     /// 
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
-    pub fn new(id: I, t: Type) -> Vertex<I> {
+    pub fn new(id: Uuid, t: Type) -> Vertex {
         Vertex { id: id, t: t }
     }
 }
 
-impl<I: Id> PartialEq for Vertex<I> {
-    fn eq(&self, other: &Vertex<I>) -> bool {
+impl PartialEq for Vertex {
+    fn eq(&self, other: &Vertex) -> bool {
         self.id == other.id
     }
 }
 
-impl<I: Id> Eq for Vertex<I> {}
+impl Eq for Vertex {}
 
 /// An edge.
 ///
@@ -48,16 +48,16 @@ impl<I: Id> Eq for Vertex<I> {}
 /// datastore. An example might be "liked" or "reviewed". Edges are typed,
 /// weighted and directed.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Edge<I: Id> {
+pub struct Edge {
     /// The id of the outbound vertex.
-    pub outbound_id: I,
+    pub outbound_id: Uuid,
     #[serde(rename="type")]
 
     /// The type of the edge.
     pub t: Type,
 
     /// The id of the inbound vertex.
-    pub inbound_id: I,
+    pub inbound_id: Uuid,
 
     /// The weight of the edge.
     pub weight: Weight,
@@ -66,7 +66,7 @@ pub struct Edge<I: Id> {
     pub update_datetime: DateTime<UTC>
 }
 
-impl<I: Id> Edge<I> {
+impl Edge {
     /// Creates a new edge with the current datetime in UTC.
     ///
     /// # Arguments
@@ -75,7 +75,7 @@ impl<I: Id> Edge<I> {
     /// * `t` - The type of the edge.
     /// * `inbound_id` - The id of the inbound vertex.
     /// * `weight` - The weight of the edge.
-    pub fn new_with_current_datetime(outbound_id: I, t: Type, inbound_id: I, weight: Weight) -> Edge<I> {
+    pub fn new_with_current_datetime(outbound_id: Uuid, t: Type, inbound_id: Uuid, weight: Weight) -> Edge {
         Self::new(outbound_id, t, inbound_id, weight, UTC::now())
     }
 
@@ -88,7 +88,7 @@ impl<I: Id> Edge<I> {
     /// * `inbound_id` - The id of the inbound vertex.
     /// * `weight` - The weight of the edge.
     /// * `update_datetime` - When the edge was last updated.
-    pub fn new(outbound_id: I, t: Type, inbound_id: I, weight: Weight, update_datetime: DateTime<UTC>) -> Edge<I> {
+    pub fn new(outbound_id: Uuid, t: Type, inbound_id: Uuid, weight: Weight, update_datetime: DateTime<UTC>) -> Edge {
         Edge {
             outbound_id: outbound_id,
             t: t,
@@ -99,14 +99,14 @@ impl<I: Id> Edge<I> {
     }
 }
 
-impl<I: Id> PartialEq for Edge<I> {
-    fn eq(&self, other: &Edge<I>) -> bool {
+impl PartialEq for Edge {
+    fn eq(&self, other: &Edge) -> bool {
         self.outbound_id == other.outbound_id && self.t == other.t &&
         self.inbound_id == other.inbound_id
     }
 }
 
-impl<I: Id> Eq for Edge<I> {}
+impl Eq for Edge {}
 
 /// An edge weight.
 ///

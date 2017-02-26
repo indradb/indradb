@@ -1,17 +1,16 @@
 use datastore::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use models;
-use traits::Id;
+use uuid::Uuid;
 use std::collections::HashSet;
 use std::u16;
 
 // NOTE: We don't have nearly as extensive of set of tests against vertex
 // range operations, because the results from a query may include vertices
 // created in concurrently running tests.
-pub fn should_get_a_vertex_range<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_get_a_vertex_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -31,7 +30,7 @@ pub fn should_get_a_vertex_range<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, 
 
     assert!(range.len() >= 5);
 
-    let mut covered_ids: HashSet<I> = HashSet::new();
+    let mut covered_ids: HashSet<Uuid> = HashSet::new();
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {

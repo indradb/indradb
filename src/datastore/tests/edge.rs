@@ -2,14 +2,13 @@ use datastore::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
-use traits::Id;
+use uuid::Uuid;
 use chrono::UTC;
 use chrono::Timelike;
 
-pub fn should_get_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
 
@@ -40,10 +39,9 @@ pub fn should_get_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T,
     assert!(e.update_datetime <= end_time);
 }
 
-pub fn should_not_get_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
 
@@ -52,16 +50,15 @@ pub fn should_not_get_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbo
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let result = trans.get_edge(outbound_id, edge_t.clone(), I::default());
+    let result = trans.get_edge(outbound_id, edge_t.clone(), Uuid::default());
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
-    let result = trans.get_edge(I::default(), edge_t, inbound_id);
+    let result = trans.get_edge(Uuid::default(), edge_t, inbound_id);
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_update_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_update_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let trans = sandbox.transaction();
@@ -96,10 +93,9 @@ pub fn should_update_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
     assert_eq!(e2, e);
 }
 
-pub fn should_not_update_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_update_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -109,12 +105,12 @@ pub fn should_not_update_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSan
     let result = trans.set_edge(models::Edge::new_with_current_datetime(
         outbound_id,
         edge_t.clone(),
-        I::default(),
+        Uuid::default(),
         models::Weight::new(0.5).unwrap()
     ));
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
     let result = trans.set_edge(models::Edge::new_with_current_datetime(
-        I::default(),
+        Uuid::default(),
         edge_t,
         inbound_id,
         models::Weight::new(0.5).unwrap()
@@ -122,10 +118,9 @@ pub fn should_not_update_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSan
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_set_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_set_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -146,10 +141,9 @@ pub fn should_not_set_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut Da
     assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
 
-pub fn should_delete_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_delete_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
@@ -170,23 +164,21 @@ pub fn should_delete_a_valid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D,
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_an_invalid_edge<D, T, I>(sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let result = trans.delete_edge(outbound_id, edge_t, I::default());
+    let result = trans.delete_edge(outbound_id, edge_t, Uuid::default());
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_an_edge_with_bad_permissions<D, T, I>(mut sandbox: &mut DatastoreTestSandbox<D, T, I>)
-    where D: Datastore<T, I>,
-          T: Transaction<I>,
-          I: Id
+pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
