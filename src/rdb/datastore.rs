@@ -298,15 +298,18 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        if offset > usize::MAX as u64 {
-            return Err(Error::Unexpected("Offset out of range".to_string()));
-        }
-
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let iterator = edge_range_manager.iterate_for_range(outbound_id, &t, None)?;
 
-        let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
+        let filtered = iterator.filter(move |item| {
+            match *item {
+                Ok(((_, _, _, edge_range_inbound_id), _)) => edge_range_inbound_id >= start_inbound_id,
+                _ => true
+            }
+        }).take(limit as usize);
+
+        let mapped = filtered.map(move |item| {
             let ((edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_outbound_id, outbound_id);
@@ -360,15 +363,18 @@ impl Transaction<Uuid> for RocksdbTransaction {
         self.handle_get_edge_count(edge_range_manager, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
-        if offset > usize::MAX as u64 {
-            return Err(Error::Unexpected("Offset out of range".to_string()));
-        }
-
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge<Uuid>>, Error> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         let iterator = reversed_edge_range_manager.iterate_for_range(inbound_id, &t, None)?;
 
-        let mapped = iterator.skip(offset as usize).take(limit as usize).map(move |item| {
+        let filtered = iterator.filter(move |item| {
+            match *item {
+                Ok(((edge_range_outbound_id, _, _, _), _)) => edge_range_outbound_id >= start_outbound_id,
+                _ => true
+            }
+        }).take(limit as usize);
+
+        let mapped = filtered.map(move |item| {
             let ((edge_range_inbound_id, edge_range_t, edge_range_update_datetime, edge_range_outbound_id),
                  edge_range_weight) = item?;
             debug_assert_eq!(edge_range_inbound_id, inbound_id);

@@ -48,7 +48,7 @@ pub fn should_get_an_empty_edge_range_with_zero_limit<D, T, I>(mut sandbox: &mut
     let (outbound_id, _) = create_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let range = trans.get_edge_range(outbound_id, Some(t), 5, 0).unwrap();
+    let range = trans.get_edge_range(outbound_id, Some(t), I::default(), 0).unwrap();
     check_edge_range(range, outbound_id, 0);
 }
 

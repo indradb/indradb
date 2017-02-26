@@ -165,9 +165,10 @@ pub trait Transaction<I: Id> {
     /// # Arguments
     /// * `outbound_id` - The ID of the outbound vertex.
     /// * `t` - The edge type.
-    /// * `offset` - The index of the first edge to return.
+    /// * `start_inbound_id` - Only edges whose inbound ID is greater than or
+    ///   equal to this ID will be returned.
     /// * `limit` - The number of edges to return.
-    fn get_edge_range(&self, outbound_id: I, t: Option<models::Type>, offset: u64, limit: u16) -> Result<Vec<models::Edge<I>>, Error>;
+    fn get_edge_range(&self, outbound_id: I, t: Option<models::Type>, start_inbound_id: I, limit: u16) -> Result<Vec<models::Edge<I>>, Error>;
 
     /// Gets a range of the outbound edges of a given type, optionally bounded
     /// by the specified update/creation datetime upper and lower bounds.
@@ -211,12 +212,13 @@ pub trait Transaction<I: Id> {
     /// # Arguments
     /// * `inbound_id` - The ID of the inbound vertex.
     /// * `t` - The edge type.
-    /// * `offset` - The index of the first edge to return.
+    /// * `start_outbound_id` - Only edges whose outbound ID is greater than
+    ///   or equal to this ID will be returned.
     /// * `limit` - The number of edges to return.
     fn get_reversed_edge_range(&self,
                                inbound_id: I,
                                t: Option<models::Type>,
-                               offset: u64,
+                               start_outbound_id: I,
                                limit: u16)
                                -> Result<Vec<models::Edge<I>>, Error>;
 
