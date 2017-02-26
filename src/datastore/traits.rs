@@ -155,21 +155,6 @@ pub trait Transaction {
     /// * `t` - The edge type.
     fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error>;
 
-    /// Gets a range of the outbound edges of a given type.
-    ///
-    /// Edges should generally be ordered by their update/creation datetime
-    /// (descending), but order may not be exact depending on the
-    /// implementation. Note that this will not error out if the vertex does
-    /// not exist - it will just return an empty edge range.
-    ///
-    /// # Arguments
-    /// * `outbound_id` - The ID of the outbound vertex.
-    /// * `t` - The edge type.
-    /// * `start_inbound_id` - Only edges whose inbound ID is greater than or
-    ///   equal to this ID will be returned.
-    /// * `limit` - The number of edges to return.
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error>;
-
     /// Gets a range of the outbound edges of a given type, optionally bounded
     /// by the specified update/creation datetime upper and lower bounds.
     ///
@@ -184,7 +169,7 @@ pub trait Transaction {
     /// * `high` - The maximum allowed edge update datetime.
     /// * `low` - The minimum allowed edge update datetime.
     /// * `limit` - The number of edges to return.
-    fn get_edge_time_range(&self,
+    fn get_edge_range(&self,
                            outbound_id: Uuid,
                            t: Option<models::Type>,
                            high: Option<DateTime<UTC>>,
@@ -202,26 +187,6 @@ pub trait Transaction {
     /// * `t` - The edge type.
     fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error>;
 
-    /// Gets a range of the inbound edges of a given type.
-    ///
-    /// Edges should generally be ordered by their update/creation datetime
-    /// (descending), but order may not be exact depending on the
-    /// implementation. Note that this will not error out if the vertex does
-    /// not exist - it will just return an empty edge range.
-    ///
-    /// # Arguments
-    /// * `inbound_id` - The ID of the inbound vertex.
-    /// * `t` - The edge type.
-    /// * `start_outbound_id` - Only edges whose outbound ID is greater than
-    ///   or equal to this ID will be returned.
-    /// * `limit` - The number of edges to return.
-    fn get_reversed_edge_range(&self,
-                               inbound_id: Uuid,
-                               t: Option<models::Type>,
-                               start_outbound_id: Uuid,
-                               limit: u16)
-                               -> Result<Vec<models::Edge>, Error>;
-
     /// Gets a range of the inbound edges of a given type, optionally bounded
     /// by the specified update/creation datetime upper and lower bounds.
     ///
@@ -236,7 +201,7 @@ pub trait Transaction {
     /// * `high` - The maximum allowed edge update datetime.
     /// * `low` - The minimum allowed edge update datetime.
     /// * `limit` - The number of edges to return.
-    fn get_reversed_edge_time_range(&self,
+    fn get_reversed_edge_range(&self,
                                     inbound_id: Uuid,
                                     t: Option<models::Type>,
                                     high: Option<DateTime<UTC>>,

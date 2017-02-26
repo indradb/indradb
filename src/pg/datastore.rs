@@ -407,32 +407,7 @@ impl Transaction for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let results = match t {
-            Some(t) => {
-                self.trans.query("
-                    SELECT type, inbound_id, weight, update_timestamp
-                    FROM edges
-                    WHERE outbound_id=$1 AND type=$2 AND inbound_id >= $3
-                    ORDER BY update_timestamp DESC
-                    LIMIT $4
-                ", &[&outbound_id, &t.0, &start_inbound_id, &(limit as i64)])?
-            },
-            None => {
-                self.trans.query("
-                    SELECT type, inbound_id, weight, update_timestamp
-                    FROM edges
-                    WHERE outbound_id=$1 AND inbound_id >= $2
-                    ORDER BY update_timestamp DESC
-                    LIMIT $3
-                ", &[&outbound_id, &start_inbound_id, &(limit as i64)])?
-            }
-        };
-
-        self.fill_edges(results, outbound_id)
-    }
-
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match (t, high, low) {
             (Some(t), Some(high), Some(low)) => {
                 self.trans.query("
@@ -533,32 +508,7 @@ impl Transaction for PostgresTransaction {
         panic!("Unreachable point hit")
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let results = match t {
-            Some(t) => {
-                self.trans.query("
-                    SELECT type, outbound_id, weight, update_timestamp
-                    FROM edges
-                    WHERE inbound_id=$1 AND type=$2 AND outbound_id >= $3
-                    ORDER BY update_timestamp DESC
-                    LIMIT $4
-                ", &[&inbound_id, &t.0, &start_outbound_id, &(limit as i64)])?
-            },
-            None => {
-                self.trans.query("
-                    SELECT type, outbound_id, weight, update_timestamp
-                    FROM edges
-                    WHERE inbound_id=$1 AND outbound_id >= $2
-                    ORDER BY update_timestamp DESC
-                    LIMIT $3
-                ", &[&inbound_id, &start_outbound_id, &(limit as i64)])?
-            }
-        };
-
-        self.fill_reversed_edges(results, inbound_id)
-    }
-
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
         let results = match (t, high, low) {
             (Some(t), Some(high), Some(low)) => {
                 self.trans.query("
