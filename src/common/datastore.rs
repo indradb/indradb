@@ -27,7 +27,7 @@ pub enum ProxyDatastore {
     Rocksdb(RocksdbDatastore),
 }
 
-impl Datastore<ProxyTransaction, Uuid> for ProxyDatastore {
+impl Datastore<ProxyTransaction> for ProxyDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
         proxy_datastore!(self, has_account, account_id)
     }
@@ -74,12 +74,12 @@ pub enum ProxyTransaction {
     Rocksdb(RocksdbTransaction),
 }
 
-impl Transaction<Uuid> for ProxyTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+impl Transaction for ProxyTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
         proxy_transaction!(self, get_vertex_range, start_id, limit)
     }
 
-    fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
+    fn get_vertex(&self, id: Uuid) -> Result<Vertex, Error> {
         proxy_transaction!(self, get_vertex, id)
     }
 
@@ -87,7 +87,7 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, create_vertex, t)
     }
 
-    fn set_vertex(&self, vertex: Vertex<Uuid>) -> Result<(), Error> {
+    fn set_vertex(&self, vertex: Vertex) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex, vertex)
     }
 
@@ -95,11 +95,11 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, delete_vertex, id)
     }
 
-    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
+    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {
         proxy_transaction!(self, get_edge, outbound_id, t, inbound_id)
     }
 
-    fn set_edge(&self, edge: Edge<Uuid>) -> Result<(), Error> {
+    fn set_edge(&self, edge: Edge) -> Result<(), Error> {
         proxy_transaction!(self, set_edge, edge)
     }
 
@@ -111,11 +111,11 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_edge_count, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
-        proxy_transaction!(self, get_edge_range, outbound_id, t, offset, limit)
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<Edge>, Error> {
+        proxy_transaction!(self, get_edge_range, outbound_id, t, start_inbound_id, limit)
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
     }
 
@@ -123,11 +123,11 @@ impl Transaction<Uuid> for ProxyTransaction {
         proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
-        proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, offset, limit)
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<Edge>, Error> {
+        proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, start_outbound_id, limit)
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(
             self,
             get_reversed_edge_time_range,

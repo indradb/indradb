@@ -86,7 +86,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
 }
 
 /// Serializes a vertex range into a lua table.
-pub unsafe fn serialize_vertices(l: &mut lua::ExternState, vertices: Vec<Vertex<Uuid>>) {
+pub unsafe fn serialize_vertices(l: &mut lua::ExternState, vertices: Vec<Vertex>) {
     l.newtable();
 
     for (i, vertex) in vertices.iter().enumerate() {
@@ -97,7 +97,7 @@ pub unsafe fn serialize_vertices(l: &mut lua::ExternState, vertices: Vec<Vertex<
 }
 
 /// Serializes an edge range into a lua table.
-pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) {
+pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge>) {
     l.newtable();
 
     for (i, edge) in edges.iter().enumerate() {
@@ -108,14 +108,14 @@ pub unsafe fn serialize_edges(l: &mut lua::ExternState, edges: Vec<Edge<Uuid>>) 
 }
 
 /// Serializes a avertex into a lua table.
-pub unsafe fn serialize_vertex(l: &mut lua::ExternState, vertex: &Vertex<Uuid>) {
+pub unsafe fn serialize_vertex(l: &mut lua::ExternState, vertex: &Vertex) {
     l.newtable();
     add_string_field_to_table(l, "id", &vertex.id.to_string()[..]);
     add_string_field_to_table(l, "type", &vertex.t.0[..]);
 }
 
 /// Serializes an edge into a lua table.
-pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge<Uuid>) {
+pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge) {
     l.newtable();
     add_string_field_to_table(l, "outbound_id", &edge.outbound_id.to_string()[..]);
     add_string_field_to_table(l, "type", &edge.t.0[..]);
@@ -210,14 +210,6 @@ pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16
         i if i > u16::MAX as isize => Ok(u16::MAX),
         i if i < 0 => Err(LuaError::Arg(narg, "Limit cannot be negative".to_string())),
         i => Ok(i as u16),
-    }
-}
-
-/// Gets an offset value from lua by its offset
-pub unsafe fn get_offset_param(l: &mut lua::ExternState, narg: i32) -> Result<u64, LuaError> {
-    match l.checkinteger(narg) {
-        i if i < 0 => Err(LuaError::Arg(3, "Offset cannot be negative".to_string())),
-        i => Ok(i as u64),
     }
 }
 

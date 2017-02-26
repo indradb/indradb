@@ -140,7 +140,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
     
-    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge<Uuid>, Error> {
+    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
@@ -149,7 +149,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn set_edge(&self, e: Edge<Uuid>) -> Result<(), Error> {
+    fn set_edge(&self, e: Edge) -> Result<(), Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("set_edge".to_string()),
 			"outbound_id".to_string() => JsonValue::String(e.outbound_id.hyphenated().to_string()),
@@ -176,7 +176,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
@@ -186,7 +186,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_time_range".to_string()),
 			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
@@ -205,7 +205,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_reversed_edge_range".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
@@ -215,7 +215,7 @@ impl Transaction<Uuid> for BatchTransaction {
 		})
     }
 
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge<Uuid>>, Error> {
+    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_reversed_edge_time_range".to_string()),
 			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),

@@ -128,9 +128,9 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
             Ok(to_response(status::Ok, &response))
         }
         "position" => {
+            let start_inbound_id = get_query_param::<Uuid>(query_params, "start_inbound_id".to_string(), false)?.unwrap_or_else(Uuid::default);
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let offset = get_query_param::<u64>(query_params, "offset".to_string(), false)?.unwrap_or(0);
-            let response = datastore_request(trans.get_edge_range(outbound_id, t, offset, limit))?;
+            let response = datastore_request(trans.get_edge_range(outbound_id, t, start_inbound_id, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
         }
@@ -168,9 +168,9 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
             Ok(to_response(status::Ok, &response))
         }
         "position" => {
+            let start_outbound_id = get_query_param::<Uuid>(query_params, "start_outbound_id".to_string(), false)?.unwrap_or_else(Uuid::default);
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let offset = get_query_param::<u64>(query_params, "offset".to_string(), false)?.unwrap_or(0);
-            let response = datastore_request(trans.get_reversed_edge_range(inbound_id, t, offset, limit))?;
+            let response = datastore_request(trans.get_reversed_edge_range(inbound_id, t, start_outbound_id, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
         }

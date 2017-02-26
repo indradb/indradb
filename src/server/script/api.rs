@@ -84,9 +84,9 @@ lua_fn! {
     pub unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = get_uuid_param(l, 1)?;
         let t = get_optional_type_param(l, 2)?;
-        let offset = get_offset_param(l, 3)?;
+        let start_inbound_id = get_optional_uuid_param(l, 3)?.unwrap_or_else(Uuid::default);
         let limit = get_limit_param(l, 4)?;
-        let result = trans.get_edge_range(outbound_id, t, offset, limit)?;
+        let result = trans.get_edge_range(outbound_id, t, start_inbound_id, limit)?;
         serialize_edges(l, result);
         Ok(1)
     }
@@ -113,9 +113,9 @@ lua_fn! {
     pub unsafe fn get_reversed_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let inbound_id = get_uuid_param(l, 1)?;
         let t = get_optional_type_param(l, 2)?;
-        let offset = get_offset_param(l, 3)?;
+        let start_outbound_id = get_optional_uuid_param(l, 3)?.unwrap_or_else(Uuid::default);
         let limit = get_limit_param(l, 4)?;
-        let result = trans.get_reversed_edge_range(inbound_id, t, offset, limit)?;
+        let result = trans.get_reversed_edge_range(inbound_id, t, start_outbound_id, limit)?;
         serialize_edges(l, result);
         Ok(1)
     }
