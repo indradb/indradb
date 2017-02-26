@@ -161,18 +161,3 @@ pub fn max_uuid(uuids: &[Uuid]) -> Uuid {
 
     return max_uuid
 }
-
-pub fn next_uuid(uuid: Uuid) -> Uuid {
-    let mut bytes = uuid.as_bytes().clone();
-
-    for i in (0..16).rev() {
-        if bytes[i] < 255 {
-            bytes[i] += 1;
-            return Uuid::from_bytes(&bytes[..]).unwrap();
-        } else {
-            bytes[i] = 0;
-        }
-    }
-
-    panic!("Could not increment the UUID");
-}

@@ -72,7 +72,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
     }
 
     fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        let id = Uuid::new_v4();
+        let id = models::id();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
@@ -229,7 +229,7 @@ impl Transaction for PostgresTransaction {
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let results = self.trans.query("
             SELECT id, type FROM vertices
-            WHERE id >= $1
+            WHERE id > $1
             ORDER BY id
             LIMIT $2
         ", &[&start_id, &(limit as i64)])?;
@@ -259,7 +259,7 @@ impl Transaction for PostgresTransaction {
     }
 
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        let id = Uuid::new_v4();
+        let id = models::id();
         self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
         Ok(id)
     }
@@ -312,7 +312,7 @@ impl Transaction for PostgresTransaction {
     }
 
     fn set_edge(&self, e: models::Edge) -> Result<(), Error> {
-        let id = Uuid::new_v4();
+        let id = models::id();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction

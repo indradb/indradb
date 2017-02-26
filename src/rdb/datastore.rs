@@ -3,7 +3,7 @@ use models;
 use chrono::Timelike;
 use uuid::Uuid;
 use errors::Error;
-use util::get_salted_hash;
+use util::{get_salted_hash, next_uuid};
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, NaiveDateTime, UTC};
 use rocksdb::{DB, Options, WriteBatch, DBCompactionStyle};
@@ -204,7 +204,17 @@ impl RocksdbTransaction {
 impl Transaction for RocksdbTransaction {
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = vertex_manager.iterate_for_range(start_id)?;
+
+        let next_uuid = match next_uuid(start_id) {
+            Ok(uuid) => uuid,
+            // If we get an error back, it's because `start_id` is the maximum
+            // possible value. We know that no vertices exist whose ID is
+            // greater than the maximum possible value, so just return an
+            // empty list.
+            Err(_) => return Ok(vec![])
+        };
+
+        let iterator = vertex_manager.iterate_for_range(next_uuid)?;
 
         let mapped = iterator.take(limit as usize).map(move |item| {
             let (id, value) = item?;

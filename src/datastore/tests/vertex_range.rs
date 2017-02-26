@@ -24,8 +24,7 @@ pub fn should_get_a_vertex_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     ];
 
     inserted_ids.sort();
-    let first_id = inserted_ids.get(0).unwrap().clone();
-    let range = trans.get_vertex_range(first_id, u16::MAX).unwrap();
+    let range = trans.get_vertex_range(Uuid::default(), u16::MAX).unwrap();
     trans.commit().unwrap();
 
     assert!(range.len() >= 5);

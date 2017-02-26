@@ -141,7 +141,7 @@ impl AccountManager {
     }
 
     pub fn create(&self, email: String) -> Result<(Uuid, String), Error> {
-        let id = Uuid::new_v4();
+        let id = models::id();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
@@ -227,7 +227,7 @@ impl VertexManager {
     }
     
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
-        let id = Uuid::new_v4();
+        let id = models::id();
         let value = VertexValue::new(account_id, t);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok(id)

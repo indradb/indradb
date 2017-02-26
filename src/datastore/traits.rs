@@ -68,8 +68,8 @@ pub trait Transaction {
     /// Gets a range of vertices.
     ///
     /// # Arguments
-    /// * `start_id` - Only vertices whose ID is greater than or equal to
-    ///   this ID will be returned.
+    /// * `start_id` - Only vertices whose ID is greater than this ID will be
+    ///   returned.
     /// * `limit` - The number of vertices to return.
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error>;
 
