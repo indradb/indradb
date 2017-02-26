@@ -41,12 +41,9 @@ pub fn run(mut trans: ProxyTransaction,
 
     l.register("get_edge_count", api::get_edge_count);
     l.register("get_edge_range", api::get_edge_range);
-    l.register("get_edge_time_range", api::get_edge_time_range);
 
     l.register("get_reversed_edge_count", api::get_reversed_edge_count);
     l.register("get_reversed_edge_range", api::get_reversed_edge_range);
-    l.register("get_reversed_edge_time_range",
-               api::get_reversed_edge_time_range);
 
     l.register("get_global_metadata", api::get_global_metadata);
     l.register("set_global_metadata", api::set_global_metadata);

@@ -34,13 +34,9 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 
                             "get_edge_count" => get_edge_count(&trans, &obj),
                             "get_edge_range" => get_edge_range(&trans, &obj),
-                            "get_edge_time_range" => get_edge_time_range(&trans, &obj),
 
                             "get_reversed_edge_count" => get_reversed_edge_count(&trans, &obj),
                             "get_reversed_edge_range" => get_reversed_edge_range(&trans, &obj),
-                            "get_reversed_edge_time_range" => {
-                                get_reversed_edge_time_range(&trans, &obj)
-                            }
 
                             _ => {
                                 return Err(create_iron_error(status::BadRequest,
@@ -135,18 +131,10 @@ fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonV
 fn get_edge_range(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
     let t = get_optional_json_type_param(item, "type")?;
-    let start_inbound_id = get_optional_json_uuid_param(item, "start_inbound_id")?.unwrap_or(Uuid::default());
-    let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    execute_item(trans.get_edge_range(outbound_id, t, start_inbound_id, limit))
-}
-
-fn get_edge_time_range(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
-    let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let high = get_optional_json_datetime_param(item, "high")?;
     let low = get_optional_json_datetime_param(item, "low")?;
-    execute_item(trans.get_edge_time_range(outbound_id, t, high, low, limit))
+    execute_item(trans.get_edge_range(outbound_id, t, high, low, limit))
 }
 
 fn get_reversed_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
@@ -159,17 +147,9 @@ fn get_reversed_edge_range(trans: &ProxyTransaction, item: &serde_json::Map<Stri
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
     let t = get_optional_json_type_param(item, "type")?;
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    let start_outbound_id = get_optional_json_uuid_param(item, "start_outbound_id")?.unwrap_or(Uuid::default());
-    execute_item(trans.get_reversed_edge_range(inbound_id, t, start_outbound_id, limit))
-}
-
-fn get_reversed_edge_time_range(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
-    let t = get_optional_json_type_param(item, "type")?;
-    let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
     let high = get_optional_json_datetime_param(item, "high")?;
     let low = get_optional_json_datetime_param(item, "low")?;
-    execute_item(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit))
+    execute_item(trans.get_reversed_edge_range(inbound_id, t, high, low, limit))
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {

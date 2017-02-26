@@ -111,26 +111,18 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_edge_count, outbound_id, t)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, start_inbound_id: Uuid, limit: u16) -> Result<Vec<Edge>, Error> {
-        proxy_transaction!(self, get_edge_range, outbound_id, t, start_inbound_id, limit)
-    }
-
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        proxy_transaction!(self, get_edge_time_range, outbound_id, t, high, low, limit)
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
+        proxy_transaction!(self, get_edge_range, outbound_id, t, high, low, limit)
     }
 
     fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
         proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, start_outbound_id: Uuid, limit: u16) -> Result<Vec<Edge>, Error> {
-        proxy_transaction!(self, get_reversed_edge_range, inbound_id, t, start_outbound_id, limit)
-    }
-
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(
             self,
-            get_reversed_edge_time_range,
+            get_reversed_edge_range,
             inbound_id,
             t,
             high,
@@ -225,8 +217,6 @@ pub fn datastore() -> ProxyDatastore {
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
-
-        println!("LOADING {}", path);
 
         let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
         let max_open_files = max_open_files_str.parse::<i32>()

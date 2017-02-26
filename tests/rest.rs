@@ -78,8 +78,8 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
     }
 }
 
-impl Transaction<Uuid> for RestTransaction {
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+impl Transaction for RestTransaction {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
@@ -94,7 +94,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_vertex(&self, id: Uuid) -> Result<Vertex<Uuid>, Error> {
+    fn get_vertex(&self, id: Uuid) -> Result<Vertex, Error> {
         let client = Client::new();
         let req = self.request(&client, "GET", format!("/vertex/{}", id), vec![]);
         let mut res = req.send().unwrap();
@@ -112,7 +112,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn set_vertex(&self, v: Vertex<Uuid>) -> Result<(), Error> {
+    fn set_vertex(&self, v: Vertex) -> Result<(), Error> {
         let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
         d.insert("type".to_string(), JsonValue::String(v.t.0));
         let body = serde_json::to_string(&d).unwrap();
@@ -182,23 +182,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge>, Error> {
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
-            vec![
-                ("action", "position".to_string()),
-                ("limit", format!("{}", limit)),
-                ("offset", format!("{}", offset)),
-            ]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_edge_time_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
+    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         let mut query_pairs = vec![
             ("action", "time".to_string()),
             ("limit", format!("{}", limit))
@@ -229,23 +213,7 @@ impl Transaction<Uuid> for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, offset: u64, limit: u16) -> Result<Vec<Edge>, Error> {
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
-            vec![
-                ("action", "position".to_string()),
-                ("limit", format!("{}", limit)),
-                ("offset", format!("{}", offset))
-            ]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_reversed_edge_time_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
+    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
         let mut query_pairs = vec![
             ("action", "time".to_string()),
             ("limit", format!("{}", limit))

@@ -15,13 +15,13 @@ thread_local! {
 }
 
 #[derive(Clone, Debug)]
-pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction<Uuid>> {
+pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction> {
     port: i32,
     phantom_http_transaction: PhantomData<H>,
     phantom_transaction: PhantomData<T>,
 }
 
-impl<H: HttpTransaction<T>, T: Transaction<Uuid>> HttpDatastore<H, T> {
+impl<H: HttpTransaction<T>, T: Transaction> HttpDatastore<H, T> {
     // Ignore is here because otherwise we get noisy results - it's used in
     // macros which the compiler doesn't seem to pick up on
     #[allow(dead_code)]
@@ -34,7 +34,7 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> HttpDatastore<H, T> {
     }
 }
 
-impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDatastore<H, T> {
+impl<H: HttpTransaction<T>, T: Transaction> Datastore<T> for HttpDatastore<H, T> {
     fn has_account(&self, _: Uuid) -> Result<bool, Error> {
         panic!("Unimplemented")
     }
@@ -68,6 +68,6 @@ impl<H: HttpTransaction<T>, T: Transaction<Uuid>> Datastore<T, Uuid> for HttpDat
     }
 }
 
-pub trait HttpTransaction<T: Transaction<Uuid>> {
+pub trait HttpTransaction<T: Transaction> {
     fn new(i32, Uuid, String) -> T;
 }

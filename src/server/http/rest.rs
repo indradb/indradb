@@ -110,8 +110,8 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
             let response = datastore_request(trans.get_edge_count(outbound_id, t))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
-        }
-        "time" => {
+        },
+        _ => {
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
             let high = get_query_param::<DateTime<UTC>>(
                 query_params,
@@ -123,18 +123,10 @@ pub fn get_edge_range(req: &mut Request) -> IronResult<Response> {
                 "low".to_string(),
                 false
             )?;
-            let response = datastore_request(trans.get_edge_time_range(outbound_id, t, high, low, limit))?;
+            let response = datastore_request(trans.get_edge_range(outbound_id, t, high, low, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
         }
-        "position" => {
-            let start_inbound_id = get_query_param::<Uuid>(query_params, "start_inbound_id".to_string(), false)?.unwrap_or_else(Uuid::default);
-            let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let response = datastore_request(trans.get_edge_range(outbound_id, t, start_inbound_id, limit))?;
-            datastore_request(trans.commit())?;
-            Ok(to_response(status::Ok, &response))
-        }
-        _ => Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string())),
     }
 }
 
@@ -150,8 +142,8 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
             let response = datastore_request(trans.get_reversed_edge_count(inbound_id, t))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
-        }
-        "time" => {
+        },
+        _ => {
             let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
             let high = get_query_param::<DateTime<UTC>>(
                 query_params,
@@ -163,18 +155,10 @@ pub fn get_reversed_edge_range(req: &mut Request) -> IronResult<Response> {
                 "low".to_string(),
                 false
             )?;
-            let response = datastore_request(trans.get_reversed_edge_time_range(inbound_id, t, high, low, limit))?;
+            let response = datastore_request(trans.get_reversed_edge_range(inbound_id, t, high, low, limit))?;
             datastore_request(trans.commit())?;
             Ok(to_response(status::Ok, &response))
         }
-        "position" => {
-            let start_outbound_id = get_query_param::<Uuid>(query_params, "start_outbound_id".to_string(), false)?.unwrap_or_else(Uuid::default);
-            let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-            let response = datastore_request(trans.get_reversed_edge_range(inbound_id, t, start_outbound_id, limit))?;
-            datastore_request(trans.commit())?;
-            Ok(to_response(status::Ok, &response))
-        }
-        _ => Err(create_iron_error(status::BadRequest, "Invalid `action`".to_string())),
     }
 }
 
