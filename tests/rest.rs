@@ -79,14 +79,14 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 }
 
 impl Transaction<Uuid> for RestTransaction {
-    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex<Uuid>>, Error> {
         let client = Client::new();
         let req = self.request(
             &client,
             "GET",
             "/vertex".to_string(),
             vec![
-                ("offset", format!("{}", offset)),
+                ("start_id", format!("{}", start_id)),
                 ("limit", format!("{}", limit))
             ]
         );

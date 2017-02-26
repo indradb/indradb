@@ -176,11 +176,23 @@ pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Res
 
 /// Gets a string value that represents a uuid from lua by its offset
 pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid, LuaError> {
+    match get_optional_uuid_param(l, narg)? {
+        Some(val) => Ok(val),
+        None => Err(LuaError::Arg(narg, "Expected uuid as string".to_string()))
+    }
+}
+
+/// Gets a string value that represents a uuid from lua by its offset
+pub unsafe fn get_optional_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<Uuid>, LuaError> {
     let s = get_string_param(l, narg)?;
 
-    match Uuid::from_str(&s[..]) {
-        Ok(u) => Ok(u),
-        Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string())),
+    if s == "" {
+        Ok(None)
+    } else {
+        match Uuid::from_str(&s[..]) {
+            Ok(u) => Ok(Some(u)),
+            Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string())),
+        }
     }
 }
 

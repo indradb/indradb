@@ -7,6 +7,7 @@ use serde_json;
 use serde::ser::Serialize;
 use std::u16;
 use super::util::*;
+use uuid::Uuid;
 
 pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
@@ -77,9 +78,9 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_vertex_range(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let offset = get_optional_json_u64_param(item, "offset")?.unwrap_or(0);
+    let start_id = get_optional_json_uuid_param(item, "start_id")?.unwrap_or(Uuid::default());
     let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    execute_item(trans.get_vertex_range(offset, limit))
+    execute_item(trans.get_vertex_range(start_id, limit))
 }
 
 fn get_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
