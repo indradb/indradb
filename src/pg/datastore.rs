@@ -226,17 +226,13 @@ impl PostgresTransaction {
 }
 
 impl Transaction<Uuid> for PostgresTransaction {
-    fn get_vertex_range(&self, offset: u64, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
-        if offset > i64::MAX as u64 {
-            return Err(Error::Unexpected("Offset out of range".to_string()));
-        }
-
+    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex<Uuid>>, Error> {
         let results = self.trans.query("
             SELECT id, type FROM vertices
+            WHERE id >= $1
             ORDER BY id
-            OFFSET $1
             LIMIT $2
-        ", &[&(offset as i64), &(limit as i64)])?;
+        ", &[&start_id, &(limit as i64)])?;
 
         let mut vertices: Vec<models::Vertex<Uuid>> = Vec::new();
 
