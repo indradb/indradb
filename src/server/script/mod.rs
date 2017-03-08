@@ -8,7 +8,6 @@ use lua;
 use libc;
 use serde_json::value::Value as JsonValue;
 use common::ProxyTransaction;
-use braid::Transaction;
 use std::path::Path;
 use uuid::Uuid;
 use self::errors::ScriptError;
@@ -21,7 +20,7 @@ use statics;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(mut trans: ProxyTransaction,
+pub fn run(mut trans: &ProxyTransaction,
            account_id: Uuid,
            source: &str,
            arg: JsonValue)
@@ -102,13 +101,10 @@ pub fn run(mut trans: ProxyTransaction,
         return Err(ScriptError::new_from_pcallerror(&mut l, err));
     }
 
-    if let Err(err) = trans.commit() {
-        return Err(ScriptError::Runtime(format!("Could not commit script transaction: {}", err)));
-    }
-
     if l.gettop() == 0 {
         Ok(JsonValue::Null)
     } else {
-        unsafe { Ok(util::deserialize_json(l.as_extern(), -1)?) }
+        let payload = unsafe { util::deserialize_json(l.as_extern(), -1)? };
+        Ok(payload)
     }
 }

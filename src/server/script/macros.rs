@@ -15,7 +15,7 @@ macro_rules! lua_fn {
                 }
 
                 let trans_ptr = $larg.touserdata(-1);
-                let $targ = &mut *(trans_ptr as *mut ProxyTransaction);
+                let $targ = &mut **(trans_ptr as *mut &mut ProxyTransaction);
 
                 return match inner($targ, &mut $larg) {
                     Ok(i) => i,

@@ -38,6 +38,11 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                             "get_reversed_edge_count" => get_reversed_edge_count(&trans, &obj),
                             "get_reversed_edge_range" => get_reversed_edge_range(&trans, &obj),
 
+                            "run_script" => {
+                                let account_id = get_account_id(req);
+                                run_script(&trans, &obj, account_id)
+                            }
+
                             _ => {
                                 return Err(create_iron_error(status::BadRequest,
                                                              "Unknown action".to_string()))
@@ -150,6 +155,15 @@ fn get_reversed_edge_range(trans: &ProxyTransaction, item: &serde_json::Map<Stri
     let high = get_optional_json_datetime_param(item, "high")?;
     let low = get_optional_json_datetime_param(item, "low")?;
     execute_item(trans.get_reversed_edge_range(inbound_id, t, high, low, limit))
+}
+
+fn run_script(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>, account_id: Uuid) -> Result<JsonValue, IronError> {
+    let name: String = get_required_json_string_param(item, "name")?;
+    let payload: JsonValue = match item.get("payload") {
+        Some(val) => val.clone(),
+        None => JsonValue::Null
+    };
+    execute_script(name, payload, trans, account_id)
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {

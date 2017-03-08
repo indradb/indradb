@@ -23,9 +23,17 @@ use std::cmp::min;
 use std::u16;
 use statics;
 use uuid::Uuid;
+use regex;
+use std::path::Path;
+use std::fs::File;
+use script;
 
 /// The most edges that can be returned
 const MAX_RETURNABLE_EDGES: u16 = 1000;
+
+lazy_static! {
+	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+}
 
 // Need this to avoid orphan rules
 pub struct AccountKey {
@@ -35,7 +43,6 @@ pub struct AccountKey {
 impl Key for AccountKey {
     type Value = AccountKey;
 }
-
 
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
@@ -453,5 +460,40 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: S
         ))
     } else {
         Ok(None)
+    }
+}
+
+/// Executes a script, returning its json output.
+///
+/// # Errors
+/// Returns an `IronError` if the script could not be loaded, or fialed to
+/// execute.
+pub fn execute_script(name: String, payload: JsonValue, trans: &ProxyTransaction, account_id: Uuid) -> Result<JsonValue, IronError> {
+    if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
+        return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
+    }
+
+    let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
+
+    let mut f = match File::open(path) {
+        Ok(f) => f,
+        Err(_) => {
+            return Err(create_iron_error(status::NotFound, "Could not load script".to_string()))
+        }
+    };
+
+    let mut contents = String::new();
+
+    if let Err(err) = f.read_to_string(&mut contents) {
+        return Err(create_iron_error(status::InternalServerError,
+                                     format!("Could not read script contents: {}", err)));
+    }
+
+    match script::run(trans, account_id, &contents[..], payload) {
+        Ok(val) => Ok(val),
+        Err(err) => {
+            Err(create_iron_error(status::InternalServerError,
+                                  format!("Script failed: {:?}", err)))
+        }
     }
 }
