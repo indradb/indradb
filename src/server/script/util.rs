@@ -17,10 +17,10 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
     Ok(match l.type_(offset) {
         Some(lua::Type::Nil) |
         None => JsonValue::Null,
-        Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(-1)),
-        Some(lua::Type::Number) => JsonValue::Number(Number::from_f64(l.tonumber(-1)).unwrap()),
+        Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(offset)),
+        Some(lua::Type::Number) => JsonValue::Number(Number::from_f64(l.tonumber(offset)).unwrap()),
         Some(lua::Type::String) => {
-            JsonValue::String(l.checkstring(-1).unwrap().to_string().clone())
+            JsonValue::String(l.checkstring(offset).unwrap().to_string().clone())
         }
         Some(lua::Type::Table) => {
             l.pushvalue(offset);

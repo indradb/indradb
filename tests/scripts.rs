@@ -88,6 +88,7 @@ test_script!(get_vertex_bad_id);
 test_script!(get_vertex_range);
 test_script!(get_vertex);
 test_script!(global_metadata);
+test_script!(regression_float_serialization);
 test_script!(return_array);
 test_script!(return_boolean);
 test_script!(return_int);
