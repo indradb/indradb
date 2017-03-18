@@ -1,3 +1,6 @@
+mod models;
+pub use self::models::*;
+
 mod traits;
 pub use self::traits::*;
 

@@ -1,4 +1,4 @@
-use datastore::{Datastore, Transaction};
+use datastore::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter, EdgeQueryFilter};
 use models;
 use chrono::Timelike;
 use uuid::Uuid;
@@ -204,6 +204,10 @@ impl RocksdbTransaction {
 }
 
 impl Transaction for RocksdbTransaction {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
+        panic!("Unimplemented")
+    }
+
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let vertex_manager = VertexManager::new(self.db.clone());
 

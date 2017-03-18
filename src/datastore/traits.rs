@@ -5,6 +5,7 @@ use models;
 use std::option::Option;
 use chrono::{DateTime, UTC};
 use uuid::Uuid;
+use super::models::*;
 
 /// Specifies a datastore implementation.
 ///
@@ -65,6 +66,12 @@ pub trait Datastore<T: Transaction> {
 /// 6. Edge metadata: metadata that is owned by an edge, and will be
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction {
+    /// Gets a range of vertices specified by a query.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error>;
+
     /// Gets a range of vertices.
     ///
     /// # Arguments

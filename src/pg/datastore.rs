@@ -1,7 +1,7 @@
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config, Pool, PooledConnection};
 use std::mem;
-use datastore::{Datastore, Transaction};
+use datastore::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
 use models;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash};
@@ -13,6 +13,8 @@ use num_cpus;
 use uuid::Uuid;
 use std::i64;
 use postgres::error as pg_error;
+use super::util::CTEQueryBuilder;
+use postgres::types::ToSql;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
@@ -223,9 +225,153 @@ impl PostgresTransaction {
             }
         }
     }
+
+    fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
+         match q {
+            VertexQuery::All(start_id, limit) => {
+                let query_template = "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
+                sql_query_builder.push(query_template, "vertices", params);
+            },
+            VertexQuery::Vertex(id) => {
+                let query_template = "SELECT id, type FROM %t WHERE id=%p LIMIT 1";
+                let params: Vec<Box<ToSql>> = vec![Box::new(id)];
+                sql_query_builder.push(query_template, "vertices", params);
+            },
+            VertexQuery::Vertices(vertices) => {
+                let mut params_template_builder = vec![];
+                let mut params: Vec<Box<ToSql>> = vec![];
+
+                for id in vertices.iter() {
+                    params_template_builder.push("%p");
+                    params.push(Box::new(id.clone()));
+                }
+
+                let query_template = format!("SELECT id, type FROM %t WHERE id IN ({})", params_template_builder.join(", "));
+                sql_query_builder.push(&query_template[..], "vertices", params);
+            },
+            VertexQuery::Pipe(edge_query, converter, limit) => {
+                self.edge_query_to_sql(*edge_query, sql_query_builder);
+                let mut params: Vec<Box<ToSql>> = vec![];
+
+                let limit_clause = if let Some(limit) = limit {
+                    params.push(Box::new(limit));
+                    "LIMIT %p"
+                } else {
+                    ""
+                };
+
+                let query_template = match converter {
+                    QueryTypeConverter::Outbound => format!("SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) {}", limit_clause),
+                    QueryTypeConverter::Inbound => format!("SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) {}", limit_clause)
+                };
+
+                sql_query_builder.push(&query_template[..], "", params);
+            }
+        }
+    }
+
+    fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
+        match q {
+            EdgeQuery::All((t, high, low, limit)) => {
+                let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
+                let query_template = match where_clause.len() {
+                    0 => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t {}", limit_clause),
+                    _ => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE {} {}", where_clause, limit_clause)
+                };
+
+                sql_query_builder.push(&query_template[..], "edges", params);
+            },
+            EdgeQuery::Edge(outbound_id, t, inbound_id) => {
+                let params: Vec<Box<ToSql>> = vec![Box::new(outbound_id), Box::new(t.0), Box::new(inbound_id)];
+
+                sql_query_builder.push(
+                    "SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE outbound_id=%p AND type=%p AND inbound_id=%p",
+                    "edges",
+                    params
+                )
+            },
+            EdgeQuery::Edges(edges) => {
+                let mut params_template_builder = vec![];
+                let mut params: Vec<Box<ToSql>> = vec![];
+
+                for edge in edges.iter() {
+                    let (outbound_id, t, inbound_id) = edge.clone();
+                    params_template_builder.push("(%p, %p, %p)");
+                    params.push(Box::new(outbound_id));
+                    params.push(Box::new(t.0));
+                    params.push(Box::new(inbound_id));
+                }
+
+                let query_template = format!("SELECT outbound_id, type, inbound_id FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
+                sql_query_builder.push(&query_template[..], "edges", params);
+            },
+            EdgeQuery::Pipe(vertex_query, converter, (t, high, low, limit)) => {
+                self.vertex_query_to_sql(*vertex_query, sql_query_builder);
+
+                let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
+                let query_template = match (converter, where_clause.len()) {
+                    (QueryTypeConverter::Outbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) {}", limit_clause),
+                    (QueryTypeConverter::Outbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause),
+                    (QueryTypeConverter::Inbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) {}", limit_clause),
+                    (QueryTypeConverter::Inbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause)
+                };
+                
+                sql_query_builder.push(&query_template[..], "", params);
+            }
+        }
+    }
+
+    fn edge_filters_to_sql(&self, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: Option<u32>) -> (String, String, Vec<Box<ToSql>>) {
+        let mut where_clause_template_builder = vec![];
+        let mut limit_clause = "";
+        let mut params: Vec<Box<ToSql>> = vec![];
+
+        if let Some(t) = t {
+            where_clause_template_builder.push("type = %p");
+            params.push(Box::new(t.0));
+        }
+
+        if let Some(high) = high {
+            where_clause_template_builder.push("update_datetime <= %p");
+            params.push(Box::new(high));
+        }
+
+        if let Some(low) = low {
+            where_clause_template_builder.push("update_datetime ?= %p");
+            params.push(Box::new(low));
+        }
+
+        if let Some(limit) = limit {
+            limit_clause = "LIMIT %p";
+            params.push(Box::new(limit));
+        };
+
+        (where_clause_template_builder.join(" AND "), limit_clause.to_string(), params)
+    }
 }
 
 impl Transaction for PostgresTransaction {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
+        
+        let (query, params) = sql_query_builder.to_query_payload();    
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        
+        let results = self.trans.query(&query[..], &params_refs[..])?;
+        let mut vertices: Vec<models::Vertex> = Vec::new();
+
+        for row in &results {
+            let id: Uuid = row.get(0);
+            let t_str: String = row.get(1);
+            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
+            vertices.push(v);
+        }
+
+        Ok(vertices)
+    }
+
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
         let results = self.trans.query("
             SELECT id, type FROM vertices
