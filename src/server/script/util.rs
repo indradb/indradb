@@ -9,6 +9,20 @@ use core::str::FromStr;
 use super::errors::LuaError;
 use serde_json;
 
+unsafe fn debug_stack(l: &mut lua::ExternState) {
+    let top = l.gettop();
+
+    for i in 1..top+1 {
+        match l.type_(i) {
+            Some(lua::Type::Nil) => println!("{}: nil", i),
+            Some(lua::Type::Boolean) => println!("{}: boolean: {:?}", i, l.toboolean(i)),
+            Some(lua::Type::Number) => println!("{}: number: {:?}", i, l.tonumber(i)),
+            Some(lua::Type::String) => println!("{}: string: {:?}", i, l.tostring(i)),
+            _ => println!("{}: {:?}", i, l.type_(i))
+        }
+    }
+}
+
 /// Deserializes a lua value into a JSON value.
 /// NOTE: `l.checkstring` doesn't seem to properly handle `nil` values, so in
 /// functions that accept optional lua strings, we take empty strings instead
@@ -23,29 +37,55 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
             JsonValue::String(l.checkstring(offset).unwrap().to_string().clone())
         }
         Some(lua::Type::Table) => {
+            let stack_size_before = l.gettop();
             l.pushvalue(offset);
             l.pushnil();
-            let mut o: Map<String, JsonValue> = Map::new();
+            let mut is_array = false;
 
             while l.next(-2) {
-                // Keys could be strings or numbers, depending on whether it's a map-shaped table
-                // or an array-shaped table. We can't rely on `l.tostring` because we're in the
-                // middle of a next() loop.
-                let k = match l.type_(-2) {
-                    Some(lua::Type::String) => l.checkstring(-2).unwrap().to_string().clone(),
-                    Some(lua::Type::Number) => l.checknumber(-2).to_string(),
-                    k_type => {
-                        panic!("Unknown key type: {:?}", k_type);
-                    }
-                };
+                if l.type_(-2) == Some(lua::Type::Number) {
+                    is_array = true;
+                }
 
-                let v: JsonValue = deserialize_json(l, -1)?;
-                o.insert(k, v);
                 l.pop(1);
+                break;
             }
 
-            l.pop(1);
-            JsonValue::Object(o)
+            // Stack size could be 1 or 2 larger than before, depending on how
+            // many keys are in the table. This handles either.
+            let stack_size_after = l.gettop();
+            l.pop(stack_size_after - stack_size_before);
+            l.pushvalue(offset);
+            l.pushnil();
+
+            let shit = if is_array {
+                let mut v: Vec<JsonValue> = Vec::new();
+                let mut next_index = 1;
+
+                while l.next(-2) {
+                    assert_eq!(l.checkinteger(-2), next_index);
+                    next_index += 1;
+                    v.push(deserialize_json(l, -1)?);
+                    l.pop(1);
+                }
+
+                l.pop(1);
+                JsonValue::Array(v)
+            } else {
+                let mut o: Map<String, JsonValue> = Map::new();
+
+                while l.next(-2) {
+                    let k = l.checkstring(-2).unwrap_or("").to_string().clone();
+                    let v: JsonValue = deserialize_json(l, -1)?;
+                    o.insert(k, v);
+                    l.pop(1);
+                }
+
+                l.pop(1);
+                JsonValue::Object(o)
+            };
+
+            shit
         }
         _ => return Err(LuaError::Generic("Could not deserialize return value".to_string())),
     })
@@ -139,8 +179,6 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
 pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
 
-    println!("{:?}", q_json);
-    
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
         Err(err) => {
