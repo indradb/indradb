@@ -5,7 +5,7 @@
 
 use std::env;
 use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
-              PostgresTransaction, RocksdbTransaction, Type};
+              PostgresTransaction, RocksdbTransaction, Type, VertexQuery};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, UTC};
@@ -77,6 +77,10 @@ pub enum ProxyTransaction {
 }
 
 impl Transaction for ProxyTransaction {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+        proxy_transaction!(self, get_vertices, q)
+    }
+
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
         proxy_transaction!(self, get_vertex_range, start_id, limit)
     }

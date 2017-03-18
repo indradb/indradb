@@ -1,18 +1,18 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use serde_json::{Map, Number};
-use braid::{Vertex, Edge, Type, Weight};
+use braid::{Vertex, Edge, Type, Weight, VertexQuery};
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
 use uuid::Uuid;
 use core::str::FromStr;
 use super::errors::LuaError;
-
-// NOTE: `l.checkstring` doesn't seem to properly handle `nil` values, so in
-// functions that accept optional lua strings, we take empty strings instead
-// of nil values.
+use serde_json;
 
 /// Deserializes a lua value into a JSON value.
+/// NOTE: `l.checkstring` doesn't seem to properly handle `nil` values, so in
+/// functions that accept optional lua strings, we take empty strings instead
+/// of nil values.
 pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
         Some(lua::Type::Nil) |
@@ -133,6 +133,21 @@ pub unsafe fn add_string_field_to_table(l: &mut lua::ExternState, k: &str, v: &s
 pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f64) {
     l.pushnumber(v);
     l.setfield(-2, k);
+}
+
+/// Gets a string value from lua by its offset
+pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
+    let q_json = deserialize_json(l, 1)?;
+
+    println!("{:?}", q_json);
+    
+    match serde_json::from_value::<VertexQuery>(q_json) {
+        Ok(val) => Ok(val),
+        Err(err) => {
+            panic!(err);
+            //Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
+        }
+    }
 }
 
 /// Gets a string value from lua by its offset

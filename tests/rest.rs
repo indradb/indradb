@@ -79,6 +79,10 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 }
 
 impl Transaction for RestTransaction {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+        panic!("Unimplemented")
+    }
+
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
         let client = Client::new();
         let req = self.request(

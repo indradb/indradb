@@ -69,6 +69,7 @@ fn run_script(account_id: Uuid, secret: String, name: &str) {
     }
 }
 
+test_script!(get_vertices);
 test_script!(account_metadata);
 test_script!(create_vertex_bad_type);
 test_script!(create_vertex);

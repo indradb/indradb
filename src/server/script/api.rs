@@ -3,13 +3,20 @@
 
 use lua;
 use common::ProxyTransaction;
-use braid::{Vertex, Edge, Transaction};
+use braid::{Vertex, Edge, Transaction, VertexQuery};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;
 use uuid::Uuid;
 
 lua_fn! {
+    pub unsafe fn get_vertices(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_vertex_query_param(l, 1)?;
+        let result = trans.get_vertices(q)?;
+        serialize_vertices(l, result);
+        Ok(1)
+    }
+
     pub unsafe fn get_vertex_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let start_id = get_optional_uuid_param(l, 1)?;
         let limit = get_limit_param(l, 2)?;

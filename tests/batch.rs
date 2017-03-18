@@ -103,6 +103,10 @@ impl BatchTransaction {
 }
 
 impl Transaction for BatchTransaction {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+        panic!("Unimplemented")
+    }
+    
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_vertex_range".to_string()),
