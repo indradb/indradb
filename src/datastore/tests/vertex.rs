@@ -89,7 +89,7 @@ pub fn should_get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let mut inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
+    let inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans.get_vertices(VertexQuery::Vertex(inserted_id)).unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 1);
@@ -103,7 +103,7 @@ pub fn should_get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestS
 {
     let trans = sandbox.transaction();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let mut inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
+    let inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans.get_vertices(VertexQuery::Vertex(Uuid::default())).unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 0);
@@ -166,37 +166,37 @@ pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
                                     Some(models::Type::new("test_edge_type".to_string()).unwrap()),
                                     None,
                                     None,
-                                    Some(1)
+                                    1
                                 )),
                                 QueryTypeConverter::Inbound,
-                                Some(1)
+                                1
                             )),
                             QueryTypeConverter::Outbound,
                             Some(models::Type::new("test_edge_type".to_string()).unwrap()),
                             None,
                             None,
-                            None
+                            1
                         )),
                         QueryTypeConverter::Inbound,
-                        Some(1)
+                        1
                     )),
                     QueryTypeConverter::Outbound,
                     None,
                     None,
                     None,
-                    None
+                    1
                 )),
                 QueryTypeConverter::Inbound,
-                Some(1)
+                1
             )),
             QueryTypeConverter::Outbound,
             None,
             None,
             None,
-            None
+            1
         )),
         QueryTypeConverter::Inbound,
-        Some(1)
+        1
     );
 
     let range = trans.get_vertices(query).unwrap();

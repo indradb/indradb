@@ -247,26 +247,19 @@ impl PostgresTransaction {
                     params.push(Box::new(id.clone()));
                 }
 
-                let query_template = format!("SELECT id, type FROM %t WHERE id IN ({})", params_template_builder.join(", "));
+                let query_template = format!("SELECT id, type FROM %t WHERE id IN ({}) ORDER BY id", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "vertices", params);
             },
             VertexQuery::Pipe(edge_query, converter, limit) => {
                 self.edge_query_to_sql(*edge_query, sql_query_builder);
-                let mut params: Vec<Box<ToSql>> = vec![];
-
-                let limit_clause = if let Some(limit) = limit {
-                    params.push(Box::new(limit as i64));
-                    "LIMIT %p"
-                } else {
-                    ""
-                };
+                let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
 
                 let query_template = match converter {
-                    QueryTypeConverter::Outbound => format!("SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) {}", limit_clause),
-                    QueryTypeConverter::Inbound => format!("SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) {}", limit_clause)
+                    QueryTypeConverter::Outbound => "SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p",
+                    QueryTypeConverter::Inbound => "SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
                 };
 
-                sql_query_builder.push(&query_template[..], "", params);
+                sql_query_builder.push(query_template, "", params);
             }
         }
     }
@@ -276,8 +269,8 @@ impl PostgresTransaction {
             EdgeQuery::All(t, high, low, limit) => {
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match where_clause.len() {
-                    0 => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t {}", limit_clause),
-                    _ => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE {} {}", where_clause, limit_clause)
+                    0 => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t ORDER BY update_timestamp DESC {}", limit_clause),
+                    _ => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
                 };
 
                 sql_query_builder.push(&query_template[..], "edges", params);
@@ -311,10 +304,18 @@ impl PostgresTransaction {
 
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match (converter, where_clause.len()) {
-                    (QueryTypeConverter::Outbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) {}", limit_clause),
-                    (QueryTypeConverter::Outbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause),
-                    (QueryTypeConverter::Inbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) {}", limit_clause),
-                    (QueryTypeConverter::Inbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause)
+                    (QueryTypeConverter::Outbound, 0) => {
+                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                    },
+                    (QueryTypeConverter::Outbound, _) => {
+                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                    },
+                    (QueryTypeConverter::Inbound, 0) => {
+                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                    },
+                    (QueryTypeConverter::Inbound, _) => {
+                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                    }
                  };
                 
                 sql_query_builder.push(&query_template[..], "", params);
@@ -322,9 +323,8 @@ impl PostgresTransaction {
         }
     }
 
-    fn edge_filters_to_sql(&self, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: Option<u32>) -> (String, String, Vec<Box<ToSql>>) {
+    fn edge_filters_to_sql(&self, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> (String, String, Vec<Box<ToSql>>) {
         let mut where_clause_template_builder = vec![];
-        let mut limit_clause = "";
         let mut params: Vec<Box<ToSql>> = vec![];
 
         if let Some(t) = t {
@@ -338,16 +338,12 @@ impl PostgresTransaction {
         }
 
         if let Some(low) = low {
-            where_clause_template_builder.push("update_datetime ?= %p");
+            where_clause_template_builder.push("update_datetime >= %p");
             params.push(Box::new(low));
         }
 
-        if let Some(limit) = limit {
-            limit_clause = "LIMIT %p";
-            params.push(Box::new(limit as i64));
-        };
-
-        (where_clause_template_builder.join(" AND "), limit_clause.to_string(), params)
+        params.push(Box::new(limit as i64));
+        (where_clause_template_builder.join(" AND "), "LIMIT %p".to_string(), params)
     }
 }
 

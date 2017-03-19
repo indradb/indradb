@@ -19,17 +19,17 @@ pub enum VertexQuery {
     #[serde(rename="vertices")]
     Vertices(Vec<Uuid>),
     #[serde(rename="pipe")]
-    Pipe(Box<EdgeQuery>, QueryTypeConverter, Option<u32>)
+    Pipe(Box<EdgeQuery>, QueryTypeConverter, u32)
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeQuery {
     #[serde(rename="all")]
-    All(Option<models::Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, Option<u32>),
+    All(Option<models::Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, u32),
     #[serde(rename="edge")]
     Edge(Uuid, models::Type, Uuid),
     #[serde(rename="edges")]
     Edges(Vec<(Uuid, models::Type, Uuid)>),
     #[serde(rename="pipe")]
-    Pipe(Box<VertexQuery>, QueryTypeConverter, Option<models::Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, Option<u32>)
+    Pipe(Box<VertexQuery>, QueryTypeConverter, Option<models::Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, u32)
 }
