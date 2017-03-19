@@ -32,6 +32,14 @@ macro_rules! test_account_management_impl {
 #[macro_export]
 macro_rules! test_transaction_impl {
 	($name:ident $code:expr) => (
+		define_test!(should_get_all_vertices, $code);
+		define_test!(should_get_all_vertices_with_zero_limit, $code);
+		define_test!(should_get_all_vertices_out_of_range, $code);
+		define_test!(should_get_single_vertices, $code);
+		define_test!(should_get_single_vertices_nonexisting, $code);
+		define_test!(should_get_vertices, $code);
+		define_test!(should_get_vertices_piped, $code);
+		
 		define_test!(should_get_a_vertex_range, $code);
 		define_test!(should_get_a_valid_vertex, $code);
 		define_test!(should_not_get_an_invalid_vertex, $code);
