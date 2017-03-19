@@ -1,4 +1,4 @@
-use datastore::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter, EdgeQueryFilter};
+use datastore::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
 use models;
 use chrono::Timelike;
 use uuid::Uuid;

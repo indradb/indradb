@@ -255,7 +255,7 @@ impl PostgresTransaction {
                 let mut params: Vec<Box<ToSql>> = vec![];
 
                 let limit_clause = if let Some(limit) = limit {
-                    params.push(Box::new(limit));
+                    params.push(Box::new(limit as i64));
                     "LIMIT %p"
                 } else {
                     ""
@@ -273,7 +273,7 @@ impl PostgresTransaction {
 
     fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::All((t, high, low, limit)) => {
+            EdgeQuery::All(t, high, low, limit) => {
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match where_clause.len() {
                     0 => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t {}", limit_clause),
@@ -306,16 +306,16 @@ impl PostgresTransaction {
                 let query_template = format!("SELECT outbound_id, type, inbound_id FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "edges", params);
             },
-            EdgeQuery::Pipe(vertex_query, converter, (t, high, low, limit)) => {
+            EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
                 self.vertex_query_to_sql(*vertex_query, sql_query_builder);
 
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match (converter, where_clause.len()) {
-                    (QueryTypeConverter::Outbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) {}", limit_clause),
-                    (QueryTypeConverter::Outbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause),
-                    (QueryTypeConverter::Inbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) {}", limit_clause),
-                    (QueryTypeConverter::Inbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause)
-                };
+                    (QueryTypeConverter::Outbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) {}", limit_clause),
+                    (QueryTypeConverter::Outbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause),
+                    (QueryTypeConverter::Inbound, 0) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) {}", limit_clause),
+                    (QueryTypeConverter::Inbound, _) => format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} {}", where_clause, limit_clause)
+                 };
                 
                 sql_query_builder.push(&query_template[..], "", params);
             }
@@ -344,7 +344,7 @@ impl PostgresTransaction {
 
         if let Some(limit) = limit {
             limit_clause = "LIMIT %p";
-            params.push(Box::new(limit));
+            params.push(Box::new(limit as i64));
         };
 
         (where_clause_template_builder.join(" AND "), limit_clause.to_string(), params)
@@ -358,7 +358,7 @@ impl Transaction for PostgresTransaction {
         
         let (query, params) = sql_query_builder.to_query_payload();    
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
-        
+
         let results = self.trans.query(&query[..], &params_refs[..])?;
         let mut vertices: Vec<models::Vertex> = Vec::new();
 
