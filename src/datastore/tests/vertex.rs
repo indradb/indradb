@@ -153,51 +153,11 @@ pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     let inserted_id_4 = create_edge_from::<D, T>(&trans, inserted_id_3);
     let inserted_id_5 = create_edge_from::<D, T>(&trans, inserted_id_4);
 
-    let query = VertexQuery::Pipe(
-        Box::new(EdgeQuery::Pipe(
-            Box::new(VertexQuery::Pipe(
-                Box::new(EdgeQuery::Pipe(
-                    Box::new(VertexQuery::Pipe(
-                        Box::new(EdgeQuery::Pipe(
-                            Box::new(VertexQuery::Pipe(
-                                Box::new(EdgeQuery::Pipe(
-                                    Box::new(VertexQuery::Vertex(inserted_id_1)),
-                                    QueryTypeConverter::Outbound,
-                                    Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-                                    None,
-                                    None,
-                                    1
-                                )),
-                                QueryTypeConverter::Inbound,
-                                1
-                            )),
-                            QueryTypeConverter::Outbound,
-                            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-                            None,
-                            None,
-                            1
-                        )),
-                        QueryTypeConverter::Inbound,
-                        1
-                    )),
-                    QueryTypeConverter::Outbound,
-                    None,
-                    None,
-                    None,
-                    1
-                )),
-                QueryTypeConverter::Inbound,
-                1
-            )),
-            QueryTypeConverter::Outbound,
-            None,
-            None,
-            None,
-            1
-        )),
-        QueryTypeConverter::Inbound,
-        1
-    );
+    let query = VertexQuery::Vertex(inserted_id_1)
+        .outbound_edges(Some(models::Type::new("test_edge_type".to_string()).unwrap()), None, None, 1).inbound_vertices(1)
+        .outbound_edges(None, None, None, 1).inbound_vertices(1)
+        .outbound_edges(None, None, None, 1).inbound_vertices(1)
+        .outbound_edges(None, None, None, 1).inbound_vertices(1);
 
     let range = trans.get_vertices(query).unwrap();
     trans.commit().unwrap();
