@@ -356,7 +356,7 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         
-        let (query, params) = sql_query_builder.to_query_payload();    
+        let (query, params) = sql_query_builder.to_query_payload("SELECT id, type FROM %t");    
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
         let results = self.trans.query(&query[..], &params_refs[..])?;

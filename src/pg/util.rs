@@ -52,7 +52,7 @@ impl CTEQueryBuilder {
         self.params.extend(params);
     }
 
-    pub fn to_query_payload(self) -> (String, Vec<Box<ToSql>>) {
+    pub fn to_query_payload(self, final_query: &str) -> (String, Vec<Box<ToSql>>) {
         match self.queries.len() {
             0 => panic!("No queries"),
             1 => (self.queries[0].to_string(), self.params),
@@ -72,7 +72,8 @@ impl CTEQueryBuilder {
                     buffer.push(")".to_string());
                 }
 
-                buffer.push(format!(" SELECT * FROM pipe_{}", i));
+                buffer.push(" ".to_string());
+                buffer.push(final_query.replacen("%t", &format!("pipe_{}", i)[..], 1));
                 let full_query = buffer.join("");
                 (full_query, self.params)
             }
