@@ -1,13 +1,14 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use serde_json::{Map, Number};
-use braid::{Vertex, Edge, Type, Weight, VertexQuery};
+use braid::{Vertex, Edge, Type, Weight, VertexQuery, EdgeQuery, QueryTypeConverter};
+use uuid::Uuid;
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
-use uuid::Uuid;
 use core::str::FromStr;
 use super::errors::LuaError;
 use serde_json;
+use std::collections::BTreeMap;
 
 unsafe fn debug_stack(l: &mut lua::ExternState) {
     let top = l.gettop();
@@ -29,8 +30,7 @@ unsafe fn debug_stack(l: &mut lua::ExternState) {
 /// of nil values.
 pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
-        Some(lua::Type::Nil) |
-        None => JsonValue::Null,
+        Some(lua::Type::Nil) | None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(offset)),
         Some(lua::Type::Number) => JsonValue::Number(Number::from_f64(l.tonumber(offset)).unwrap()),
         Some(lua::Type::String) => {
@@ -58,18 +58,30 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
             l.pushvalue(offset);
             l.pushnil();
 
-            let shit = if is_array {
-                let mut v: Vec<JsonValue> = Vec::new();
-                let mut next_index = 1;
+            if is_array {
+                let mut o: BTreeMap<isize, JsonValue> = BTreeMap::new();
 
                 while l.next(-2) {
-                    assert_eq!(l.checkinteger(-2), next_index);
-                    next_index += 1;
-                    v.push(deserialize_json(l, -1)?);
+                    let k = l.checkinteger(-2);
+                    let v: JsonValue = deserialize_json(l, -1)?;
+                    o.insert(k, v);
                     l.pop(1);
                 }
 
                 l.pop(1);
+
+                // BTreeMap already does the sorting by key for us
+                let v: Vec<JsonValue> = o.values().map(|v| v.clone()).collect();
+
+                // Check for a special null value. We need to do this because
+                // it's not possible to put a lua nil into some places, such as
+                // inside of an array.
+                if v.len() == 1 {
+                    if v[0].is_string() && v[0].as_str().unwrap() == "__braid_json_null".to_string() {
+                        return Ok(JsonValue::Null);
+                    }
+                }
+
                 JsonValue::Array(v)
             } else {
                 let mut o: Map<String, JsonValue> = Map::new();
@@ -82,12 +94,11 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 }
 
                 l.pop(1);
-                JsonValue::Object(o)
-            };
 
-            shit
+                JsonValue::Object(o)
+            }
         }
-        _ => return Err(LuaError::Generic("Could not deserialize return value".to_string())),
+        _ => return Err(LuaError::Generic(format!("Could not deserialize value to json: unexpected type: {:?}", l.type_(offset)))),
     })
 }
 
@@ -178,13 +189,10 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
 /// Gets a string value from lua by its offset
 pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
-
+    
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(err) => {
-            panic!(err);
-            //Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
-        }
+        Err(err) => Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
     }
 }
 
