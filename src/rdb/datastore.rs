@@ -13,6 +13,7 @@ use std::usize;
 use std::i32;
 use std::u64;
 use super::managers::*;
+use core::fmt::Debug;
 
 const CF_NAMES: [&'static str; 9] = [
     "accounts:v1",
@@ -201,11 +202,222 @@ impl RocksdbTransaction {
             }
         }
     }
+
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+
+        match q {
+            VertexQuery::All(start_id, limit) => {
+                match next_uuid(start_id) {
+                    Ok(uuid) => Ok(Box::new(vertex_manager.iterate_for_range(uuid)?.take(limit as usize))),
+                    // If we get an error back, it's because `start_id` is the maximum
+                    // possible value. We know that no vertices exist whose ID is
+                    // greater than the maximum possible value, so just return an
+                    // empty list.
+                    Err(_) => Ok(Box::new(vec![].into_iter()))
+                }
+            },
+            VertexQuery::Vertex(id) => {
+                match vertex_manager.get(id)? {
+                    Some(value) => Ok(Box::new(vec![Ok((id, value))].into_iter())),
+                    None => Ok(Box::new(vec![].into_iter()))
+                }
+            },
+            VertexQuery::Vertices(vertices) => {
+                let iterator = Box::new(vertices.into_iter().map(|item| {
+                    Ok(item)
+                }));
+
+                Ok(self.handle_vertex_id_iterator(iterator))
+            },
+            VertexQuery::Pipe(edge_query, converter, limit) => {
+                let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
+
+                let vertex_id_iterator = Box::new(edge_iterator.map(move |item| {
+                    let ((outbound_id, _, _, inbound_id), _) = item?;
+
+                    match converter {
+                        QueryTypeConverter::Outbound => Ok(outbound_id),
+                        QueryTypeConverter::Inbound => Ok(inbound_id)
+                    }
+                }));
+
+                Ok(Box::new(self.handle_vertex_id_iterator(vertex_id_iterator).take(limit as usize)))
+            }
+        }
+    }
+
+    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
+        match q {
+            EdgeQuery::All(t, high, low, limit) => {
+                let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+                let iterator = edge_range_manager.iterate_all()?;
+                let filtered = iterator.filter(move |item| {
+                    if let &Ok(((_, ref edge_range_t, edge_range_update_datetime, _), _)) = item {
+                        if let Some(t) = t.clone() {
+                            if *edge_range_t != t {
+                                return false;
+                            }
+                        }
+
+                        if let Some(high) = high {
+                            if edge_range_update_datetime > high {
+                                return false;
+                            }
+                        }
+
+                        if let Some(low) = low {
+                            if edge_range_update_datetime < low {
+                                return false;
+                            }
+                        }
+                    }
+
+                    true
+                });
+
+                Ok(Box::new(filtered.take(limit as usize)))
+            },
+            EdgeQuery::Edge(outbound_id, t, inbound_id) => {
+                let edge_manager = EdgeManager::new(self.db.clone());
+
+                match edge_manager.get(outbound_id, &t, inbound_id)? {
+                    Some(value) => {
+                        let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
+                        let item = Ok(((outbound_id, t, datetime, inbound_id), value.weight));
+                        Ok(Box::new(vec![item].into_iter()))
+                    },
+                    None => Ok(Box::new(vec![].into_iter()))
+                }
+            },
+            EdgeQuery::Edges(edges) => {
+                let edge_manager = EdgeManager::new(self.db.clone());
+
+                let iterator = edges.into_iter().map(move |item| {
+                    let (outbound_id, t, inbound_id) = item;
+
+                    match edge_manager.get(outbound_id, &t, inbound_id)? {
+                        Some(value) => {
+                            let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
+                            Ok(Some(((outbound_id, t, datetime, inbound_id), value.weight)))
+                        },
+                        None => Ok(None)
+                    }
+                });
+
+                Ok(self.remove_nones_from_iterator(Box::new(iterator)))
+            },
+            EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
+                let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
+
+                let edge_range_manager = match converter {
+                    QueryTypeConverter::Outbound => EdgeRangeManager::new(self.db.clone()),
+                    QueryTypeConverter::Inbound => EdgeRangeManager::new_reversed(self.db.clone())
+                };
+
+                // Ideally we'd use iterators all the way down, but things
+                // start breaking apart due to conditional expressions not
+                // returning the same type signature, issues with `Result`s
+                // and some of the iterators, etc. So at this point, we'll
+                // just resort to building a vector.
+                let mut edges: Vec<EdgeRangeItem> = Vec::new();
+
+                if let Some(low) = low {
+                    // Round down since we only have second accuracy
+                    let fuzzy_low = low.with_nanosecond(0).unwrap();
+
+                    for item in vertex_iterator {
+                        let (id, _) = item?;
+                        let edge_iterator = edge_range_manager.iterate_for_range(id, &t, high)?;
+
+                        for item in edge_iterator {
+                            match item {
+                                Ok(((_, _, edge_range_update_datetime, _), _)) => {
+                                    if edge_range_update_datetime >= fuzzy_low {
+                                        edges.push(item);
+                                    } else {
+                                        break;
+                                    }
+                                },
+                                Err(_) => edges.push(item)
+                            }
+
+                            if edges.len() == limit as usize {
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    for item in vertex_iterator {
+                        let (id, _) = item?;
+                        let edge_iterator = edge_range_manager.iterate_for_range(id, &t, high)?;
+
+                        for edge in edge_iterator {
+                            edges.push(edge);
+
+                            if edges.len() == limit as usize {
+                                break;
+                            }
+                        }
+
+                        if edges.len() == limit as usize {
+                            break;
+                        }
+                    }
+                }
+
+                Ok(Box::new(edges.into_iter()))
+            }
+        }
+    }
+
+    fn remove_nones_from_iterator<'a, T: Debug + 'a>(&self, iterator: Box<Iterator<Item = Result<Option<T>, Error>>>) -> Box<Iterator<Item = Result<T, Error>> + 'a> {
+        let filtered = iterator.filter(|item| {
+            match item {
+                &Err(_) | &Ok(Some(_)) => true,
+                _ => false
+            }
+        });
+
+        let mapped = filtered.map(|item| {
+            match item {
+                Ok(Some(value)) => Ok(value),
+                Err(err) => Err(err),
+                _ => panic!("Unexpected item: {:?}", item)
+            }
+        });
+
+        Box::new(mapped)
+    }
+
+    fn handle_vertex_id_iterator(&self, iterator: Box<Iterator<Item = Result<Uuid, Error>>>) -> Box<Iterator<Item = VertexItem>> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+
+        let mapped = iterator.map(move |item| {
+            let id = item?;
+            let value = vertex_manager.get(id)?;
+
+            match value {
+                Some(value) => Ok(Some((id, value))),
+                None => Ok(None)
+            }
+        });
+
+        self.remove_nones_from_iterator(Box::new(mapped))
+    }
 }
 
 impl Transaction for RocksdbTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
-        panic!("Unimplemented")
+        let iterator = self.vertex_query_to_iterator(q)?;
+
+        let mapped = iterator.map(move |item| {
+            let (id, value) = item?;
+            let vertex = models::Vertex::new(id, value.t);
+            Ok(vertex)
+        });
+
+        mapped.collect()
     }
 
     fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {

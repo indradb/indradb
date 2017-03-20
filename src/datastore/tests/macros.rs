@@ -28,9 +28,9 @@ macro_rules! test_account_management_impl {
 }
 
 /// Datastore test suites can use this macro to enable the standard test suite
-/// for transactions.
+/// for vertex queries.
 #[macro_export]
-macro_rules! test_transaction_impl {
+macro_rules! test_vertex_query_impl {
 	($name:ident $code:expr) => (
 		define_test!(should_get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, $code);
@@ -39,7 +39,14 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_single_vertices_nonexisting, $code);
 		define_test!(should_get_vertices, $code);
 		define_test!(should_get_vertices_piped, $code);
-		
+	)
+}
+
+/// Datastore test suites can use this macro to enable the standard test suite
+/// for transactions.
+#[macro_export]
+macro_rules! test_transaction_impl {
+	($name:ident $code:expr) => (
 		define_test!(should_get_a_vertex_range, $code);
 		define_test!(should_get_a_valid_vertex, $code);
 		define_test!(should_not_get_an_invalid_vertex, $code);

@@ -16,11 +16,11 @@ use std::io::Cursor;
 use bincode;
 use serde::{Serialize, Deserialize};
 
-type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
-type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
-type VertexItem = Result<(Uuid, VertexValue), Error>;
-type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>;
-type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
+pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
+pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
+pub type VertexItem = Result<(Uuid, VertexValue), Error>;
+pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>;
+pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
     let result = bincode::serialize(value, SizeLimit::Infinite)?;
@@ -443,6 +443,12 @@ impl EdgeRangeManager {
             });
 
         Ok(Box::new(mapped))
+    }
+
+    pub fn iterate_all(&self) -> Result<Box<Iterator<Item=EdgeRangeItem>>, Error> {
+        let iterator = self.db
+            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
+        self.iterate(iterator, Box::new([]))
     }
 
     pub fn iterate_for_range<'a>(&self, id: Uuid, t: &Option<models::Type>, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=EdgeRangeItem> + 'a>, Error> {

@@ -14,6 +14,10 @@ test_account_management_impl! {
 	test_postgres_account_management datastore()
 }
 
+test_vertex_query_impl! {
+    test_postgres_vertex_query datastore()
+}
+
 test_transaction_impl! {
 	test_postgres_transaction datastore()
 }

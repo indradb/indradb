@@ -21,6 +21,10 @@ test_account_management_impl! {
 	test_rocksdb_account_management datastore()
 }
 
+test_vertex_query_impl! {
+    test_rocksdb_vertex_query datastore()
+}
+
 test_transaction_impl! {
 	test_rocksdb_transaction datastore()
 }
