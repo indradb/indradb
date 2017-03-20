@@ -1,7 +1,7 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use serde_json::{Map, Number};
-use braid::{Vertex, Edge, Type, Weight, VertexQuery, EdgeQuery, QueryTypeConverter};
+use braid::{Vertex, Edge, Type, Weight, VertexQuery};
 use uuid::Uuid;
 use chrono::{DateTime, UTC, NaiveDateTime};
 use std::{isize, i32, u16};
@@ -10,6 +10,7 @@ use super::errors::LuaError;
 use serde_json;
 use std::collections::BTreeMap;
 
+#[allow(dead_code)]
 unsafe fn debug_stack(l: &mut lua::ExternState) {
     let top = l.gettop();
 
@@ -189,10 +190,10 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
 /// Gets a string value from lua by its offset
 pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
-    
+
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(err) => Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
+        Err(_) => Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
     }
 }
 

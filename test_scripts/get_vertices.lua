@@ -11,12 +11,19 @@ set_edge(id_2, "bar", id_3, 1.0);
 set_edge(id_3, "bar", id_4, 1.0);
 set_edge(id_4, "bar", id_5, 1.0);
 
-function check_vertices(vertices, expected_count, allowed_vertex_ids)
-    assert(table.getn(vertices) == expected_count);
+function check_vertices(vertices, expected_count, required_vertex_ids)
+    assert(table.getn(vertices) >= expected_count);
 
     for _, vertex in pairs(vertices) do
-        assert(allowed_vertex_ids[vertex.id] ~= nil)
-        assert(vertex.type == "foo")
+        if required_vertex_ids[vertex.id] ~= nil then
+            assert(vertex.type == "foo")
+        end
+
+        required_vertex_ids[vertex.id] = nil
+    end
+
+    if table.getn(required_vertex_ids) > 0 then
+        error("Not all of the required vertex IDs were found in querying")
     end
 end
 
@@ -35,8 +42,8 @@ check_vertices(vertices, 3, {[id_1]=true, [id_2]=true, [id_3]=true});
 -- Ensure we can do a piped query
 local query = queries.VertexQuery.vertex(id_1)
     :outbound_edges("bar", queries.json_null, queries.json_null, 1):inbound_vertices(1)
-    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, queries.json_null):inbound_vertices(1)
-    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, queries.json_null):inbound_vertices(1)
-    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, queries.json_null):inbound_vertices(1);
+    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, 1):inbound_vertices(1)
+    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, 1):inbound_vertices(1)
+    :outbound_edges(queries.json_null, queries.json_null, queries.json_null, 1):inbound_vertices(1);
 local vertices = get_vertices(query.query);
 check_vertices(vertices, 1, {[id_5]=true});
