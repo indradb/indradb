@@ -1,7 +1,7 @@
 /// Defines a unit test function.
 #[macro_export]
 macro_rules! define_test {
-	($name:ident, $datastore_constructor:expr) => (
+	($name:ident, $datastore_constructor:block) => (
 		#[test]
 		fn $name() {
 			let datastore = $datastore_constructor;
@@ -13,25 +13,22 @@ macro_rules! define_test {
 	)
 }
 
-/// Datastore test suites can use this macro to enable the standard test suite
-/// for account management.
+/// Instead of copy-pasta'ing all of the test functions for each datastore
+/// implementation, datastores can just use this macro to enable the standard
+/// test suite. This has the added benefit of preventing digressions between
+/// datastores.
 #[macro_export]
-macro_rules! test_account_management_impl {
-	($name:ident $code:expr) => (
+macro_rules! test_datastore_impl {
+	($code:block) => (
+		// Account tests
 		define_test!(should_fail_auth_with_a_bad_username, $code);
 		define_test!(should_fail_auth_with_a_bad_password, $code);
 		define_test!(should_successfully_auth_with_good_credentials, $code);
 		define_test!(should_lookup_valid_accounts, $code);
 		define_test!(should_fail_to_lookup_invalid_accounts, $code);
 		define_test!(should_fail_when_attempting_to_delete_invalid_accounts, $code);
-	)
-}
 
-/// Datastore test suites can use this macro to enable the standard test suite
-/// for vertex queries.
-#[macro_export]
-macro_rules! test_vertex_query_impl {
-	($name:ident $code:expr) => (
+		// Vertex queries
 		define_test!(should_get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, $code);
 		define_test!(should_get_all_vertices_out_of_range, $code);
@@ -39,14 +36,8 @@ macro_rules! test_vertex_query_impl {
 		define_test!(should_get_single_vertices_nonexisting, $code);
 		define_test!(should_get_vertices, $code);
 		define_test!(should_get_vertices_piped, $code);
-	)
-}
 
-/// Datastore test suites can use this macro to enable the standard test suite
-/// for transactions.
-#[macro_export]
-macro_rules! test_transaction_impl {
-	($name:ident $code:expr) => (
+		// Various transaction tests
 		define_test!(should_get_a_vertex_range, $code);
 		define_test!(should_get_a_valid_vertex, $code);
 		define_test!(should_not_get_an_invalid_vertex, $code);
@@ -86,14 +77,8 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_a_reversed_edge_range_with_no_low, $code);
 		define_test!(should_get_a_reversed_edge_range_with_no_time, $code);
 		define_test!(should_get_no_reversed_edges_for_reversed_time, $code);
-	)
-}
 
-/// Datastore test suites can use this macro to enable the standard test suite
-/// for transaction metadata.
-#[macro_export]
-macro_rules! test_metadata_impl {
-	($name:ident $code:expr) => (
+		// Metadata
 		define_test!(should_handle_global_metadata, $code);
 		define_test!(should_handle_account_metadata, $code);
 		define_test!(should_not_set_invalid_account_metadata, $code);
