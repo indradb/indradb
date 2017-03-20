@@ -10,6 +10,7 @@ extern crate regex;
 extern crate hyper;
 extern crate uuid;
 
+#[macro_use]
 mod common;
 
 use std::collections::BTreeMap;
@@ -293,11 +294,9 @@ impl Transaction for RestTransaction {
     }
 }
 
-test_transaction_impl! {
-	test_rest_transaction {
-	    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
-	}
-}
+test_frontend_impl!({
+	HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
+});
 
 pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
     match res.status {

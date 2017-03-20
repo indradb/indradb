@@ -12,6 +12,7 @@ extern crate regex;
 extern crate hyper;
 extern crate uuid;
 
+#[macro_use]
 mod common;
 
 use std::collections::BTreeMap;
@@ -267,8 +268,6 @@ impl Transaction for BatchTransaction {
     }
 }
 
-test_transaction_impl! {
-	test_batch_transaction {
-	    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
-	}
-}
+test_frontend_impl!({
+	HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
+});
