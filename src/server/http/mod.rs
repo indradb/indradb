@@ -11,7 +11,6 @@ use std::u16;
 pub fn start(port: u16) {
     let mut router = Router::new();
 
-    router.get("/vertex", rest::get_vertex_range, "get_vertex_range");
     router.post("/vertex", rest::create_vertex, "create_vertex");
     router.post("/transaction", transaction::transaction, "transaction");
 

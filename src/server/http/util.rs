@@ -44,6 +44,21 @@ impl Key for AccountKey {
     type Value = AccountKey;
 }
 
+/// Converts a braid error to an `IronError`. We need to use this strategy
+/// rather than a `From` impl because both traits are implemented outside of
+/// this crate.
+pub fn convert_to_iron_error(err: Error) -> IronError {
+    let status = match err {
+        Error::AccountNotFound | Error::VertexNotFound | Error::EdgeNotFound |
+        Error::MetadataNotFound => status::NotFound,
+        Error::OutOfRange(_) => status::BadRequest,
+        Error::Unauthorized => status::Unauthorized,
+        Error::Unexpected(_) => status::InternalServerError,
+    };
+
+    create_iron_error(status, format!("{}", err))
+}
+
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
     let mut o: serde_json::Map<String, JsonValue> = serde_json::Map::new();
@@ -180,22 +195,6 @@ pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, n
     }
 }
 
-/// Gets a JSON string value that represents a UUID or a null value
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_uuid_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<Uuid>, IronError> {
-    match get_optional_json_string_param(json, name)? {
-        Some(val) => match Uuid::from_str(&val[..]) {
-            Ok(u) => Ok(Some(u)),
-            Err(_) => {
-                Err(create_iron_error(status::BadRequest, format!("Invalid uuid format for `{}`", name)))
-            }
-        },
-        None => Ok(None)
-    }
-}
-
 /// Gets a JSON string value that represents a type
 ///
 /// # Errors
@@ -323,17 +322,7 @@ pub fn parse_limit(val: Option<u16>) -> u16 {
 pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
     match result {
         Ok(result) => Ok(result),
-        Err(err) => {
-            let status = match err {
-                Error::AccountNotFound | Error::VertexNotFound | Error::EdgeNotFound |
-                Error::MetadataNotFound => status::NotFound,
-                Error::OutOfRange(_) => status::BadRequest,
-                Error::Unauthorized => status::Unauthorized,
-                Error::Unexpected(_) => status::InternalServerError,
-            };
-
-            Err(create_iron_error(status, format!("{}", err)))
-        }
+        Err(err) => Err(convert_to_iron_error(err))
     }
 }
 

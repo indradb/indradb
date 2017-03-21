@@ -25,7 +25,7 @@ use serde_json::Number as JsonNumber;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use braid::*;
-pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
+pub use common::*;
 use std::io::Read;
 use chrono::{DateTime, UTC};
 
@@ -108,21 +108,6 @@ impl Transaction for BatchTransaction {
         panic!("Unimplemented")
     }
     
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_vertex_range".to_string()),
-			"start_id".to_string() => JsonValue::String(start_id.hyphenated().to_string()),
-			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
-		})
-    }
-
-    fn get_vertex(&self, id: Uuid) -> Result<Vertex, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_vertex".to_string()),
-			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
-		})
-    }
-
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("create_vertex".to_string()),

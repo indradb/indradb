@@ -1,28 +1,26 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Vertex, Edge, Transaction, Type};
+use braid::{Vertex, Edge, Transaction, Type, VertexQuery, Error};
 use serde_json::value::Value as JsonValue;
 use chrono::{DateTime, UTC};
 use std::u16;
 use uuid::Uuid;
 use super::util::*;
 
-pub fn get_vertex_range(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
-    let query_params = get_query_params(req)?;
-    let start_id = get_query_param::<Uuid>(query_params, "start_id".to_string(), false)?.unwrap_or_else(Uuid::default);
-    let limit = parse_limit(get_query_param::<u16>(query_params, "limit".to_string(), false)?);
-    let response = datastore_request(trans.get_vertex_range(start_id, limit))?;
-    datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &response))
-}
-
 pub fn get_vertex(req: &mut Request) -> IronResult<Response> {
     let id: Uuid = get_url_param(req, "id")?;
     let trans = get_transaction(req)?;
-    let response = datastore_request(trans.get_vertex(id))?;
+    let q = VertexQuery::Vertex(id);
+    let response = datastore_request(trans.get_vertices(q))?;
     datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &response))
+
+    debug_assert!(response.len() <= 1);
+
+    if response.len() == 0 {
+        Err(convert_to_iron_error(Error::VertexNotFound))
+    } else {
+        Ok(to_response(status::Ok, &response[0]))
+    }
 }
 
 pub fn create_vertex(req: &mut Request) -> IronResult<Response> {

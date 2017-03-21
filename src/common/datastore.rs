@@ -81,14 +81,6 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_vertices, q)
     }
 
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
-        proxy_transaction!(self, get_vertex_range, start_id, limit)
-    }
-
-    fn get_vertex(&self, id: Uuid) -> Result<Vertex, Error> {
-        proxy_transaction!(self, get_vertex, id)
-    }
-
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         proxy_transaction!(self, create_vertex, t)
     }

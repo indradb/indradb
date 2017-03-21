@@ -26,7 +26,7 @@ use hyper::client::response::Response;
 use uuid::Uuid;
 
 pub use braid::*;
-pub use common::{HttpDatastore, HttpTransaction, request, response_to_error_message};
+pub use common::*;
 
 fn serialize_type(t: Option<Type>) -> String {
     match t {
@@ -81,29 +81,19 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        panic!("Unimplemented")
-    }
+        if let VertexQuery::Vertex(id) = q {
+            let client = Client::new();
+            let req = self.request(&client, "GET", format!("/vertex/{}", id), vec![]);
+            let mut res = req.send().unwrap();
 
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<Vertex>, Error> {
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            "/vertex".to_string(),
-            vec![
-                ("start_id", format!("{}", start_id)),
-                ("limit", format!("{}", limit))
-            ]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_vertex(&self, id: Uuid) -> Result<Vertex, Error> {
-        let client = Client::new();
-        let req = self.request(&client, "GET", format!("/vertex/{}", id), vec![]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+            match response_to_obj(&mut res) {
+                Ok(vertex) => Ok(vec![vertex]),
+                Err(Error::VertexNotFound) => Ok(vec![]),
+                Err(err) => Err(err)
+            }
+        } else {
+            panic!("Unimplemented")
+        }
     }
 
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
@@ -294,10 +284,6 @@ impl Transaction for RestTransaction {
     }
 }
 
-test_frontend_impl!({
-	HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
-});
-
 pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
     match res.status {
         StatusCode::Ok => {
@@ -312,3 +298,34 @@ pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
         }
     }
 }
+
+pub fn get_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
+{
+    let trans = sandbox.transaction();
+    let t = Type::new("test_vertex_type".to_string()).unwrap();
+    let id = trans.create_vertex(t.clone()).unwrap();
+    let q = VertexQuery::Vertex(id);
+    let v = trans.get_vertices(q).unwrap();
+    assert_eq!(v[0].id, id);
+    assert_eq!(v[0].t, t);
+}
+
+pub fn not_get_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
+{
+    let trans = sandbox.transaction();
+    let q = VertexQuery::Vertex(Uuid::default());
+    let v = trans.get_vertices(q).unwrap();
+    assert_eq!(v.len(), 0);
+}
+
+pub fn datastore() -> HttpDatastore<RestTransaction, RestTransaction> {
+    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
+}
+
+test_frontend_impl!(datastore());
+define_test!(should_get_a_valid_vertex, get_a_valid_vertex, datastore());
+define_test!(should_not_get_an_invalid_vertex, not_get_an_invalid_vertex, datastore());

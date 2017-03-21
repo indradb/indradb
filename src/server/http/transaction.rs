@@ -22,8 +22,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                         let action = get_required_json_string_param(&obj, "action")?;
 
                         let result: Result<JsonValue, IronError> = match &action[..] {
-                            "get_vertex_range" => get_vertex_range(&trans, &obj),
-                            "get_vertex" => get_vertex(&trans, &obj),
                             "create_vertex" => create_vertex(&trans, &obj),
                             "set_vertex" => set_vertex(&trans, &obj),
                             "delete_vertex" => delete_vertex(&trans, &obj),
@@ -76,17 +74,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &jsonable_res))
-}
-
-fn get_vertex_range(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let start_id = get_optional_json_uuid_param(item, "start_id")?.unwrap_or(Uuid::default());
-    let limit = parse_limit(get_optional_json_u16_param(item, "limit")?);
-    execute_item(trans.get_vertex_range(start_id, limit))
-}
-
-fn get_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let id = get_required_json_uuid_param(item, "id")?;
-    execute_item(trans.get_vertex(id))
 }
 
 fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
