@@ -6,7 +6,7 @@ use uuid::Uuid;
 use std::collections::HashSet;
 use std::f32;
 
-pub fn should_get_an_edge_count<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_an_edge_count<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -17,7 +17,7 @@ pub fn should_get_an_edge_count<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, 
     assert_eq!(count, 5);
 }
 
-pub fn should_get_an_edge_count_with_no_type<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_an_edge_count_with_no_type<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -27,7 +27,7 @@ pub fn should_get_an_edge_count_with_no_type<D, T>(mut sandbox: &mut DatastoreTe
     assert_eq!(count, 5);
 }
 
-pub fn should_get_an_edge_count_for_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_an_edge_count_for_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -37,7 +37,7 @@ pub fn should_get_an_edge_count_for_an_invalid_edge<D, T>(sandbox: &mut Datastor
     assert_eq!(count, 0);
 }
 
-pub fn should_get_an_edge_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_an_edge_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -49,7 +49,7 @@ pub fn should_get_an_edge_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, 
     check_edge_range(range, outbound_id, 5);
 }
 
-pub fn should_get_edge_range_with_no_type<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_edge_range_with_no_type<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -60,7 +60,7 @@ pub fn should_get_edge_range_with_no_type<D, T>(mut sandbox: &mut DatastoreTestS
     check_edge_range(range, outbound_id, 5);
 }
 
-pub fn should_get_no_edges_for_an_invalid_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_no_edges_for_an_invalid_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -72,7 +72,7 @@ pub fn should_get_no_edges_for_an_invalid_range<D, T>(mut sandbox: &mut Datastor
     check_edge_range(range, outbound_id, 0);
 }
 
-pub fn should_get_edge_range_with_no_high<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_edge_range_with_no_high<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -84,7 +84,7 @@ pub fn should_get_edge_range_with_no_high<D, T>(mut sandbox: &mut DatastoreTestS
     check_edge_range(range, outbound_id, 10);
 }
 
-pub fn should_get_edge_range_with_no_low<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_edge_range_with_no_low<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -95,7 +95,7 @@ pub fn should_get_edge_range_with_no_low<D, T>(mut sandbox: &mut DatastoreTestSa
     check_edge_range(range, outbound_id, 10);
 }
 
-pub fn should_get_edge_range_with_no_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_edge_range_with_no_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -106,7 +106,7 @@ pub fn should_get_edge_range_with_no_time<D, T>(mut sandbox: &mut DatastoreTestS
     check_edge_range(range, outbound_id, 15);
 }
 
-pub fn should_get_no_edges_for_reversed_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_no_edges_for_reversed_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {

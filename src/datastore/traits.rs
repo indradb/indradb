@@ -72,23 +72,6 @@ pub trait Transaction {
     /// * `q` - The query to run.
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error>;
 
-    /// Gets a range of vertices.
-    ///
-    /// # Arguments
-    /// * `start_id` - Only vertices whose ID is greater than this ID will be
-    ///   returned.
-    /// * `limit` - The number of vertices to return.
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error>;
-
-    /// Gets a vertex.
-    ///
-    /// # Arguments
-    /// * `id` - The ID of the vertex.
-    ///
-    /// # Errors
-    /// Returns `Error::VertexNotFound` if the vertex does not exist.
-    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex, Error>;
-
     /// Creates a new vertex.
     ///
     /// # Arguments

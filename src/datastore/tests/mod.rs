@@ -9,7 +9,6 @@ mod sandbox;
 mod util;
 mod vertex;
 mod vertex_query;
-mod vertex_range;
 
 pub use self::account::*;
 pub use self::edge::*;
@@ -21,4 +20,3 @@ pub use self::sandbox::*;
 pub use self::util::*;
 pub use self::vertex::*;
 pub use self::vertex_query::*;
-pub use self::vertex_range::*;

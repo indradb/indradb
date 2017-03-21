@@ -420,39 +420,6 @@ impl Transaction for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
-        let next_uuid = match next_uuid(start_id) {
-            Ok(uuid) => uuid,
-            // If we get an error back, it's because `start_id` is the maximum
-            // possible value. We know that no vertices exist whose ID is
-            // greater than the maximum possible value, so just return an
-            // empty list.
-            Err(_) => return Ok(vec![])
-        };
-
-        let iterator = vertex_manager.iterate_for_range(next_uuid)?;
-
-        let mapped = iterator.take(limit as usize).map(move |item| {
-            let (id, value) = item?;
-            let vertex = models::Vertex::new(id, value.t);
-            Ok(vertex)
-        });
-
-        mapped.collect()
-    }
-
-    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex, Error> {
-        match VertexManager::new(self.db.clone()).get(id)? {
-            Some(value) => {
-                let vertex = models::Vertex::new(id, value.t);
-                Ok(vertex)
-            }
-            None => Err(Error::VertexNotFound),
-        }
-    }
-
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
         VertexManager::new(self.db.clone()).create(t, self.account_id)
     }

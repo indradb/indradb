@@ -3,7 +3,7 @@ use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use uuid::Uuid;
 
-pub fn should_fail_auth_with_a_bad_username<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn fail_auth_with_a_bad_username<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -11,7 +11,7 @@ pub fn should_fail_auth_with_a_bad_username<D, T>(sandbox: &mut DatastoreTestSan
     assert!(!auth.unwrap());
 }
 
-pub fn should_fail_auth_with_a_bad_password<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn fail_auth_with_a_bad_password<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -19,7 +19,7 @@ pub fn should_fail_auth_with_a_bad_password<D, T>(sandbox: &mut DatastoreTestSan
     assert!(!auth.unwrap());
 }
 
-pub fn should_successfully_auth_with_good_credentials<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn successfully_auth_with_good_credentials<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -27,7 +27,7 @@ pub fn should_successfully_auth_with_good_credentials<D, T>(sandbox: &mut Datast
     assert!(auth.unwrap());
 }
 
-pub fn should_lookup_valid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn lookup_valid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -35,7 +35,7 @@ pub fn should_lookup_valid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, 
     assert!(results.unwrap());
 }
 
-pub fn should_fail_to_lookup_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn fail_to_lookup_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -43,7 +43,7 @@ pub fn should_fail_to_lookup_invalid_accounts<D, T>(sandbox: &mut DatastoreTestS
     assert!(!results.unwrap());
 }
 
-pub fn should_fail_when_attempting_to_delete_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn fail_when_attempting_to_delete_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
 	where D: Datastore<T>,
           T: Transaction
 {

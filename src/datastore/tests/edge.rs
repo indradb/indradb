@@ -6,7 +6,7 @@ use uuid::Uuid;
 use chrono::UTC;
 use chrono::Timelike;
 
-pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -39,7 +39,7 @@ pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert!(e.update_datetime <= end_time);
 }
 
-pub fn should_not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -56,7 +56,7 @@ pub fn should_not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_update_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn update_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -93,7 +93,7 @@ pub fn should_update_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     assert_eq!(e2, e);
 }
 
-pub fn should_not_update_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn not_update_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -118,7 +118,7 @@ pub fn should_not_update_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbo
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_set_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn not_set_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -141,7 +141,7 @@ pub fn should_not_set_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Datas
     assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
 
-pub fn should_delete_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn delete_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -164,7 +164,7 @@ pub fn should_delete_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn not_delete_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -176,7 +176,7 @@ pub fn should_not_delete_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbo
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {

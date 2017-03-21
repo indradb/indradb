@@ -368,38 +368,6 @@ impl Transaction for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn get_vertex_range(&self, start_id: Uuid, limit: u16) -> Result<Vec<models::Vertex>, Error> {
-        let results = self.trans.query("
-            SELECT id, type FROM vertices
-            WHERE id > $1
-            ORDER BY id
-            LIMIT $2
-        ", &[&start_id, &(limit as i64)])?;
-
-        let mut vertices: Vec<models::Vertex> = Vec::new();
-
-        for row in &results {
-            let id: Uuid = row.get(0);
-            let t_str: String = row.get(1);
-            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
-            vertices.push(v);
-        }
-
-        Ok(vertices)
-    }
-
-    fn get_vertex(&self, id: Uuid) -> Result<models::Vertex, Error> {
-        let results = self.trans.query("SELECT type FROM vertices WHERE id=$1 LIMIT 1", &[&id])?;
-
-        for row in &results {
-            let t_str: String = row.get(0);
-            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
-            return Ok(v);
-        }
-
-        Err(Error::VertexNotFound)
-    }
-
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
         let id = models::id();
         self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
@@ -431,8 +399,13 @@ impl Transaction for PostgresTransaction {
         // We couldn't delete the vertex - it either doesn't exist, or we're
         // unauthorized to delete it. Check if it exists first, and if that
         // doesn't give back a VertexNotFound, we must be unauthorized.
-        self.get_vertex(id)?;
-        Err(Error::Unauthorized)
+        let v = self.get_vertices(VertexQuery::Vertex(id))?;
+
+        if v.len() == 0 {
+            Err(Error::VertexNotFound)
+        } else {
+            Err(Error::Unauthorized)
+        }
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge, Error> {
@@ -496,8 +469,13 @@ impl Transaction for PostgresTransaction {
         if let Err(pg_error::Error::Db(ref err)) = results {
             if err.code == pg_error::SqlState::NotNullViolation {
                 // This should only happen when the inner select fails
-                self.get_vertex(e.outbound_id)?;
-                return Err(Error::Unauthorized);
+                let v = self.get_vertices(VertexQuery::Vertex(e.outbound_id))?;
+
+                if v.len() == 0 {
+                    return Err(Error::VertexNotFound);
+                } else {
+                    return Err(Error::Unauthorized);
+                }
             } else if err.code == pg_error::SqlState::ForeignKeyViolation {
                 // This should only happen when there is no vertex with id=inbound_id
                 return Err(Error::VertexNotFound);

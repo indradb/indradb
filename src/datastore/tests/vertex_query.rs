@@ -6,7 +6,7 @@ use models;
 use std::collections::HashSet;
 use std::u32;
 
-pub fn should_get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -40,7 +40,7 @@ pub fn should_get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     }
 }
 
-pub fn should_get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -61,7 +61,7 @@ pub fn should_get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTest
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -82,7 +82,7 @@ pub fn should_get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSan
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -96,7 +96,7 @@ pub fn should_get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     assert_eq!(range[0].t.0, "test_vertex_type");
 }
 
-pub fn should_get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -108,7 +108,7 @@ pub fn should_get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestS
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -139,7 +139,7 @@ pub fn should_get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     }
 }
 
-pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
