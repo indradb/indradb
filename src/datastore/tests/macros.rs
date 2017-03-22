@@ -13,21 +13,23 @@ macro_rules! define_test {
 	)
 }
 
-/// Instead of copy-pasta'ing all of the test functions for each datastore
-/// implementation, datastores can just use this macro to enable the standard
-/// test suite. This has the added benefit of preventing digressions between
-/// datastores.
+/// Use this macro to enable the standard test suite for accounts.
 #[macro_export]
-macro_rules! test_datastore_impl {
+macro_rules! test_account_impl {
 	($code:expr) => (
-		// Account tests
 		define_test!(should_fail_auth_with_a_bad_username, ::fail_auth_with_a_bad_username, $code);
 		define_test!(should_fail_auth_with_a_bad_password, ::fail_auth_with_a_bad_password, $code);
 		define_test!(should_successfully_auth_with_good_credentials, ::successfully_auth_with_good_credentials, $code);
 		define_test!(should_lookup_valid_accounts, ::lookup_valid_accounts, $code);
 		define_test!(should_fail_to_lookup_invalid_accounts, ::fail_to_lookup_invalid_accounts, $code);
 		define_test!(should_fail_when_attempting_to_delete_invalid_accounts, ::fail_when_attempting_to_delete_invalid_accounts, $code);
+	)
+}
 
+/// Use this macro to enable the standard test suite for transactions.
+#[macro_export]
+macro_rules! test_transaction_impl {
+	($code:expr) => (
 		// Vertex queries
 		define_test!(should_get_all_vertices, ::get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, ::get_all_vertices_with_zero_limit, $code);
@@ -77,7 +79,13 @@ macro_rules! test_datastore_impl {
 		define_test!(should_get_a_reversed_edge_range_with_no_low, ::get_a_reversed_edge_range_with_no_low, $code);
 		define_test!(should_get_a_reversed_edge_range_with_no_time, ::get_a_reversed_edge_range_with_no_time, $code);
 		define_test!(should_get_no_reversed_edges_for_reversed_time, ::get_no_reversed_edges_for_reversed_time, $code);
+	)
+}
 
+/// Use this macro to enable the standard test suite for metadata.
+#[macro_export]
+macro_rules! test_metadata_impl {
+	($code:expr) => (
 		// Metadata
 		define_test!(should_handle_global_metadata, ::handle_global_metadata, $code);
 		define_test!(should_handle_account_metadata, ::handle_account_metadata, $code);

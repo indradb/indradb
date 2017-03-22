@@ -2,10 +2,15 @@
 
 pub use super::datastore::*;
 pub use datastore::*;
+pub use datastore::tests::*;
 pub use std::env;
 
-test_datastore_impl!({
-	let connection_string = env::var("DATABASE_URL").expect("Expected a DATABASE_URL");
+fn datastore() -> PostgresDatastore {
+    let connection_string = env::var("DATABASE_URL").expect("Expected a DATABASE_URL");
     let secret = "OME88YorohonzPNWEFsi0dIsouXWqeO$".to_string();
     PostgresDatastore::new(Some(1), connection_string, secret)
-});
+}
+
+test_account_impl!(datastore());
+test_transaction_impl!(datastore());
+test_metadata_impl!(datastore());
