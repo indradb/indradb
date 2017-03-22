@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{Headers, ContentType};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use braid::{Datastore, Error, Type, Weight};
+use braid::{Datastore, Error, Type, Weight, VertexQuery};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -16,7 +16,7 @@ use std::io::Read;
 use chrono::{DateTime, UTC};
 use serde_json::value::Value as JsonValue;
 use serde_json;
-use urlencoded::UrlEncodedQuery;
+use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use serde::ser::Serialize;
 use std::collections::HashMap;
 use std::cmp::min;
@@ -33,6 +33,7 @@ const MAX_RETURNABLE_EDGES: u16 = 1000;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+    static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
 }
 
 // Need this to avoid orphan rules
@@ -170,8 +171,7 @@ pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, na
                 Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
             }
         },
-        None |
-        Some(&JsonValue::Null) => {
+        None | Some(&JsonValue::Null) => {
             Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
         }
         _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
@@ -192,6 +192,22 @@ pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, n
             Err(create_iron_error(status::BadRequest,
                                   format!("Invalid uuid format for `{}`", name)))
         }
+    }
+}
+
+/// Gets a JSON string value that represents a vertex query
+///
+/// # Errors
+/// Returns an `IronError` if the value is missing from the JSON object, or
+/// has an unexpected type.
+pub fn get_required_json_vertex_query_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<VertexQuery, IronError> {
+    if let Some(obj) = json.get(name) {
+        match serde_json::from_value::<VertexQuery>(obj.clone()) {
+            Ok(val) => Ok(val),
+            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+        }
+    } else {
+        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
     }
 }
 
@@ -407,13 +423,14 @@ pub fn read_json_object(body: &mut Body) -> Result<serde_json::Map<String, JsonV
     }
 }
 
-/// Parses the request query parameters.
+/// Parses the and returns the request query parameters.
 ///
 /// # Errors
 /// Returns an `IronError` if the query parameters could not be parsed.
 pub fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, Vec<String>>, IronError> {
     match req.get_ref::<UrlEncodedQuery>() {
         Ok(map) => Ok(map),
+        Err(UrlDecodingError::EmptyQuery) => Ok(&DEFAULT_QUERY_PARAMS),
         Err(_) => {
             Err(create_iron_error(
                 status::BadRequest,

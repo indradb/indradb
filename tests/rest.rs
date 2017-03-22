@@ -81,19 +81,11 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        if let VertexQuery::Vertex(id) = q {
-            let client = Client::new();
-            let req = self.request(&client, "GET", format!("/vertex/{}", id), vec![]);
-            let mut res = req.send().unwrap();
-
-            match response_to_obj(&mut res) {
-                Ok(vertex) => Ok(vec![vertex]),
-                Err(Error::VertexNotFound) => Ok(vec![]),
-                Err(err) => Err(err)
-            }
-        } else {
-            panic!("Unimplemented")
-        }
+        let body = serde_json::to_string(&q).unwrap();
+        let client = Client::new();
+        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", body)]);
+        let mut res = req.send().unwrap();
+        response_to_obj(&mut res)
     }
 
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
@@ -299,33 +291,8 @@ pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
     }
 }
 
-pub fn get_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-    where D: Datastore<T>,
-          T: Transaction
-{
-    let trans = sandbox.transaction();
-    let t = Type::new("test_vertex_type".to_string()).unwrap();
-    let id = trans.create_vertex(t.clone()).unwrap();
-    let q = VertexQuery::Vertex(id);
-    let v = trans.get_vertices(q).unwrap();
-    assert_eq!(v[0].id, id);
-    assert_eq!(v[0].t, t);
-}
-
-pub fn not_get_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-    where D: Datastore<T>,
-          T: Transaction
-{
-    let trans = sandbox.transaction();
-    let q = VertexQuery::Vertex(Uuid::default());
-    let v = trans.get_vertices(q).unwrap();
-    assert_eq!(v.len(), 0);
-}
-
 pub fn datastore() -> HttpDatastore<RestTransaction, RestTransaction> {
     HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
 }
 
-test_frontend_impl!(datastore());
-define_test!(should_get_a_valid_vertex, get_a_valid_vertex, datastore());
-define_test!(should_not_get_an_invalid_vertex, not_get_an_invalid_vertex, datastore());
+test_transaction_impl!(datastore());

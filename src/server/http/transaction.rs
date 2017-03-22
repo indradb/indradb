@@ -14,66 +14,69 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let mut idx: u16 = 0;
     let mut jsonable_res: Vec<JsonValue> = Vec::new();
 
-    match read_required_json(&mut req.body) {
-        Ok(JsonValue::Array(items)) => {
-            for item in items {
-                match item {
-                    JsonValue::Object(obj) => {
-                        let action = get_required_json_string_param(&obj, "action")?;
-
-                        let result: Result<JsonValue, IronError> = match &action[..] {
-                            "create_vertex" => create_vertex(&trans, &obj),
-                            "set_vertex" => set_vertex(&trans, &obj),
-                            "delete_vertex" => delete_vertex(&trans, &obj),
-                            
-                            "get_edge" => get_edge(&trans, &obj),
-                            "set_edge" => set_edge(&trans, &obj),
-                            "delete_edge" => delete_edge(&trans, &obj),
-
-                            "get_edge_count" => get_edge_count(&trans, &obj),
-                            "get_edge_range" => get_edge_range(&trans, &obj),
-
-                            "get_reversed_edge_count" => get_reversed_edge_count(&trans, &obj),
-                            "get_reversed_edge_range" => get_reversed_edge_range(&trans, &obj),
-
-                            "run_script" => {
-                                let account_id = get_account_id(req);
-                                run_script(&trans, &obj, account_id)
-                            }
-
-                            _ => {
-                                return Err(create_iron_error(status::BadRequest,
-                                                             "Unknown action".to_string()))
-                            }
-                        };
-
-                        match result {
-                            Err(err) => {
-                                let message = format!("Item #{}: {}", idx, err);
-                                return Err(create_iron_error(status::BadRequest, message));
-                            }
-                            Ok(value) => {
-                                jsonable_res.push(value);
-                            }
-                        }
-
-                        idx += 1;
+    if let JsonValue::Array(items) = read_required_json(&mut req.body)? {
+        for item in items {
+            if let JsonValue::Object(obj) = item {
+                let action = match get_required_json_string_param(&obj, "action") {
+                    Ok(value) => value,
+                    Err(err) => {
+                        let message = format!("Item #{}: {}", idx, err);
+                        return Err(create_iron_error(status::BadRequest, message));
                     }
+                };
+
+                let result: Result<JsonValue, IronError> = match &action[..] {
+                    "get_vertices" => get_vertices(&trans, &obj),
+                    "create_vertex" => create_vertex(&trans, &obj),
+                    "set_vertex" => set_vertex(&trans, &obj),
+                    "delete_vertex" => delete_vertex(&trans, &obj),
+                    
+                    "get_edge" => get_edge(&trans, &obj),
+                    "set_edge" => set_edge(&trans, &obj),
+                    "delete_edge" => delete_edge(&trans, &obj),
+
+                    "get_edge_count" => get_edge_count(&trans, &obj),
+                    "get_edge_range" => get_edge_range(&trans, &obj),
+
+                    "get_reversed_edge_count" => get_reversed_edge_count(&trans, &obj),
+                    "get_reversed_edge_range" => get_reversed_edge_range(&trans, &obj),
+
+                    "run_script" => {
+                        let account_id = get_account_id(req);
+                        run_script(&trans, &obj, account_id)
+                    },
+
                     _ => {
-                        return Err(create_iron_error(status::BadRequest,
-                                                     format!("Item #{}: Invalid type", idx)))
+                        return Err(create_iron_error(status::BadRequest, "Unknown action".to_string()))
+                    }
+                };
+
+                match result {
+                    Err(err) => {
+                        let message = format!("Item #{}: {}", idx, err);
+                        return Err(create_iron_error(status::BadRequest, message));
+                    }
+                    Ok(value) => {
+                        jsonable_res.push(value);
                     }
                 }
+            } else {
+                return Err(create_iron_error(status::BadRequest, format!("Item #{}: Invalid type", idx)))
             }
+
+            idx += 1;
         }
-        _ => {
-            return Err(create_iron_error(status::BadRequest,
-                                         "Request body should be an array".to_string()))
-        }
+    } else {
+        return Err(create_iron_error(status::BadRequest, "Request body should be an array".to_string()))
     }
 
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &jsonable_res))
+}
+
+fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let q = get_required_json_vertex_query_param(item, "query")?;
+    execute_item(trans.get_vertices(q))
 }
 
 fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {

@@ -2,10 +2,28 @@ use iron::prelude::*;
 use iron::status;
 use braid::{Vertex, Edge, Transaction, Type, VertexQuery, Error};
 use serde_json::value::Value as JsonValue;
+use serde_json;
 use chrono::{DateTime, UTC};
 use std::u16;
 use uuid::Uuid;
 use super::util::*;
+
+pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
+    let trans = get_transaction(req)?;
+    let query_params = get_query_params(req)?;
+    let q_json = get_query_param::<JsonValue>(query_params, "q".to_string(), true)?.unwrap_or_else(|| JsonValue::Null);
+    
+    let q = match serde_json::from_value::<VertexQuery>(q_json) {
+        Ok(q) => q,
+        Err(_) => {
+            return Err(create_iron_error(status::BadRequest, "Bad payload: expected vertex query".to_string()))
+        }
+    };
+
+    let response = datastore_request(trans.get_vertices(q))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &response))
+}
 
 pub fn get_vertex(req: &mut Request) -> IronResult<Response> {
     let id: Uuid = get_url_param(req, "id")?;

@@ -105,7 +105,10 @@ impl BatchTransaction {
 
 impl Transaction for BatchTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        panic!("Unimplemented")
+        self.request(btreemap!{
+            "action".to_string() => JsonValue::String("get_vertices".to_string()),
+            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
+        })
     }
     
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
@@ -253,6 +256,8 @@ impl Transaction for BatchTransaction {
     }
 }
 
-test_frontend_impl!({
-	HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
-});
+pub fn datastore() -> HttpDatastore<BatchTransaction, BatchTransaction> {
+    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
+}
+
+test_transaction_impl!(datastore());

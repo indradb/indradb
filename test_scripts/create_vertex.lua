@@ -1,4 +1,5 @@
+local queries = require("queries");
 local id = create_vertex("foo");
-local v = get_vertex(id);
-assert(v.id == id);
-assert(v.type == "foo");
+local vertices = get_vertices(queries.VertexQuery.vertex(id).query);
+assert(vertices[1].id == id);
+assert(vertices[1].type == "foo");
