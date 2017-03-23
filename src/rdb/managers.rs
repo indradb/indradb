@@ -233,8 +233,8 @@ impl VertexManager {
         Ok(id)
     }
 
-    pub fn update(&self, id: Uuid, value: &VertexValue) -> Result<(), Error> {
-        set_bincode(&self.db, self.cf, self.key(id), value)?;
+    pub fn update(&self, mut batch: &mut WriteBatch, id: Uuid, value: &VertexValue) -> Result<(), Error> {
+        batch.put_cf(self.cf, &self.key(id), &bincode_serialize_value(value)?)?;
         Ok(())
     }
 

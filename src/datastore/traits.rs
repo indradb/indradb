@@ -66,39 +66,30 @@ pub trait Datastore<T: Transaction> {
 /// 6. Edge metadata: metadata that is owned by an edge, and will be
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction {
-    /// Gets a range of vertices specified by a query.
-    ///
-    /// # Arguments
-    /// * `q` - The query to run.
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error>;
-
     /// Creates a new vertex.
     ///
     /// # Arguments
     /// * `t` - The type of the vertex.
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error>;
 
-    /// Updates an existing vertex.
+    /// Gets a range of vertices specified by a query.
     ///
     /// # Arguments
-    /// * `vertex` - The vertex model to update.
-    ///
-    /// # Errors
-    /// Returns `Error::VertexNotFound` if the vertex does not exist, or
-    /// `Error::Unauthorized` if the vertex is not owned by the current
-    /// transaction's account.
-    fn set_vertex(&self, vertex: models::Vertex) -> Result<(), Error>;
+    /// * `q` - The query to run.
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error>;
 
-    /// Deletes a vertex.
+    /// Sets the type of existing vertices specified by a query.
     ///
     /// # Arguments
-    /// * `id` - The ID of the vertex to delete.
+    /// * `q` - The query to run.
+    /// * `t` - The type to set.
+    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error>;
+
+    /// Deletes existing vertices specified by a query.
     ///
-    /// # Errors
-    /// Returns `Error::VertexNotFound` if the vertex does not exist, or
-    /// `Error::Unauthorized` if the vertex is not owned by the current
-    /// transaction's account.
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error>;
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error>;
     
     /// Gets an edge.
     ///

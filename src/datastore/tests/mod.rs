@@ -8,7 +8,6 @@ mod reversed_edge_range;
 mod sandbox;
 mod util;
 mod vertex;
-mod vertex_query;
 
 pub use self::account::*;
 pub use self::edge::*;
@@ -19,4 +18,3 @@ pub use self::reversed_edge_range::*;
 pub use self::sandbox::*;
 pub use self::util::*;
 pub use self::vertex::*;
-pub use self::vertex_query::*;

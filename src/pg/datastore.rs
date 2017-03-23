@@ -229,12 +229,12 @@ impl PostgresTransaction {
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
          match q {
             VertexQuery::All(start_id, limit) => {
-                let query_template = "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                let query_template = "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
                 let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
                 sql_query_builder.push(query_template, "vertices", params);
             },
             VertexQuery::Vertex(id) => {
-                let query_template = "SELECT id, type FROM %t WHERE id=%p LIMIT 1";
+                let query_template = "SELECT id, owner_id, type FROM %t WHERE id=%p LIMIT 1";
                 let params: Vec<Box<ToSql>> = vec![Box::new(id)];
                 sql_query_builder.push(query_template, "vertices", params);
             },
@@ -247,7 +247,7 @@ impl PostgresTransaction {
                     params.push(Box::new(id.clone()));
                 }
 
-                let query_template = format!("SELECT id, type FROM %t WHERE id IN ({}) ORDER BY id", params_template_builder.join(", "));
+                let query_template = format!("SELECT id, owner_id, type FROM %t WHERE id IN ({}) ORDER BY id", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "vertices", params);
             },
             VertexQuery::Pipe(edge_query, converter, limit) => {
@@ -255,8 +255,8 @@ impl PostgresTransaction {
                 let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
 
                 let query_template = match converter {
-                    QueryTypeConverter::Outbound => "SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p",
-                    QueryTypeConverter::Inbound => "SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
+                    QueryTypeConverter::Outbound => "SELECT id, owner_id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p",
+                    QueryTypeConverter::Inbound => "SELECT id, owner_id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
                 };
 
                 sql_query_builder.push(query_template, "", params);
@@ -269,8 +269,8 @@ impl PostgresTransaction {
             EdgeQuery::All(t, high, low, limit) => {
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match where_clause.len() {
-                    0 => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t ORDER BY update_timestamp DESC {}", limit_clause),
-                    _ => format!("SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                    0 => format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t ORDER BY update_timestamp DESC {}", limit_clause),
+                    _ => format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
                 };
 
                 sql_query_builder.push(&query_template[..], "edges", params);
@@ -279,7 +279,7 @@ impl PostgresTransaction {
                 let params: Vec<Box<ToSql>> = vec![Box::new(outbound_id), Box::new(t.0), Box::new(inbound_id)];
 
                 sql_query_builder.push(
-                    "SELECT outbound_id, type, inbound_id, weight, update_datetime FROM %t WHERE outbound_id=%p AND type=%p AND inbound_id=%p",
+                    "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE outbound_id=%p AND type=%p AND inbound_id=%p",
                     "edges",
                     params
                 )
@@ -296,7 +296,7 @@ impl PostgresTransaction {
                     params.push(Box::new(inbound_id));
                 }
 
-                let query_template = format!("SELECT outbound_id, type, inbound_id FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
+                let query_template = format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "edges", params);
             },
             EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
@@ -305,16 +305,16 @@ impl PostgresTransaction {
                 let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
                 let query_template = match (converter, where_clause.len()) {
                     (QueryTypeConverter::Outbound, 0) => {
-                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
                     },
                     (QueryTypeConverter::Outbound, _) => {
-                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
                     },
                     (QueryTypeConverter::Inbound, 0) => {
-                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
                     },
                     (QueryTypeConverter::Inbound, _) => {
-                        format!("SELECT outbound_id, type, inbound_id FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
                     }
                  };
                 
@@ -333,12 +333,12 @@ impl PostgresTransaction {
         }
 
         if let Some(high) = high {
-            where_clause_template_builder.push("update_datetime <= %p");
+            where_clause_template_builder.push("update_timestamp <= %p");
             params.push(Box::new(high));
         }
 
         if let Some(low) = low {
-            where_clause_template_builder.push("update_datetime >= %p");
+            where_clause_template_builder.push("update_timestamp >= %p");
             params.push(Box::new(low));
         }
 
@@ -348,11 +348,17 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
+    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
+        let id = models::id();
+        self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
+        Ok(id)
+    }
+
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         
-        let (query, params) = sql_query_builder.to_query_payload("SELECT id, type FROM %t");    
+        let (query, params) = sql_query_builder.to_query_payload("SELECT id, type FROM %t", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
         let results = self.trans.query(&query[..], &params_refs[..])?;
@@ -368,44 +374,29 @@ impl Transaction for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        let id = models::id();
-        self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
-        Ok(id)
+    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
+
+        let (query, params) = sql_query_builder.to_query_payload(
+            "UPDATE vertices SET type=%p WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)",
+            vec![Box::new(t.0), Box::new(self.account_id)]
+        );
+
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
     }
 
-    fn set_vertex(&self, v: models::Vertex) -> Result<(), Error> {
-        let results = self.trans.query("
-			UPDATE vertices
-			SET type=$1
-			WHERE id=$2 AND owner_id=$3
-			RETURNING 1
-		", &[&v.t.0, &v.id, &self.account_id])?;
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
 
-        for _ in &results {
-            return Ok(());
-        }
+        let (query, params) = sql_query_builder.to_query_payload("DELETE FROM vertices WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)", vec![Box::new(self.account_id)]);
 
-        Err(Error::VertexNotFound)
-    }
-
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-        let results = self.trans.query("DELETE FROM vertices WHERE id=$1 AND owner_id=$2 RETURNING 1", &[&id, &self.account_id])?;
-
-        for _ in &results {
-            return Ok(());
-        }
-
-        // We couldn't delete the vertex - it either doesn't exist, or we're
-        // unauthorized to delete it. Check if it exists first, and if that
-        // doesn't give back a VertexNotFound, we must be unauthorized.
-        let v = self.get_vertices(VertexQuery::Vertex(id))?;
-
-        if v.len() == 0 {
-            Err(Error::VertexNotFound)
-        } else {
-            Err(Error::Unauthorized)
-        }
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge, Error> {

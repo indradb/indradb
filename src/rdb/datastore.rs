@@ -408,6 +408,10 @@ impl RocksdbTransaction {
 }
 
 impl Transaction for RocksdbTransaction {
+    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
+        VertexManager::new(self.db.clone()).create(t, self.account_id)
+    }
+
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
 
@@ -420,20 +424,41 @@ impl Transaction for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        VertexManager::new(self.db.clone()).create(t, self.account_id)
-    }
-
-    fn set_vertex(&self, vertex: models::Vertex) -> Result<(), Error> {
-        self.check_write_permissions(vertex.id, Error::VertexNotFound)?;
-        let value = VertexValue::new(self.account_id, vertex.t);
-        VertexManager::new(self.db.clone()).update(vertex.id, &value)
-    }
-
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-        self.check_write_permissions(id, Error::VertexNotFound)?;
+    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
+        let iterator = self.vertex_query_to_iterator(q)?;
+        let vertex_manager = VertexManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
-        VertexManager::new(self.db.clone()).delete(&mut batch, id)?;
+        let new_value = VertexValue::new(self.account_id, t);
+
+        for item in iterator {
+            let (id, old_value) = item?;
+
+            if old_value.owner_id != self.account_id {
+                continue;
+            }
+
+            vertex_manager.update(&mut batch, id, &new_value)?;
+        }
+
+        self.db.write(batch)?;
+        Ok(())
+    }
+
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+        let iterator = self.vertex_query_to_iterator(q)?;
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let mut batch = WriteBatch::default();
+
+        for item in iterator {
+            let (id, old_value) = item?;
+
+            if old_value.owner_id != self.account_id {
+                continue;
+            }
+
+            vertex_manager.delete(&mut batch, id)?;
+        }
+
         self.db.write(batch)?;
         Ok(())
     }
