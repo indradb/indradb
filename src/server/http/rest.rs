@@ -56,7 +56,7 @@ pub fn set_vertex(req: &mut Request) -> IronResult<Response> {
     let t = get_required_json_type_param(&obj, "type")?;
     let v = Vertex::new(id, t);
     let trans = get_transaction(req)?;
-    datastore_request(trans.set_vertex(v))?;
+    datastore_request(trans.set_vertices(VertexQuery::Vertex(v.id), v.t))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &()))
 }
@@ -64,7 +64,7 @@ pub fn set_vertex(req: &mut Request) -> IronResult<Response> {
 pub fn delete_vertex(req: &mut Request) -> IronResult<Response> {
     let id: Uuid = get_url_param(req, "id")?;
     let trans = get_transaction(req)?;
-    datastore_request(trans.delete_vertex(id))?;
+    datastore_request(trans.delete_vertices(VertexQuery::Vertex(id)))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &()))
 }

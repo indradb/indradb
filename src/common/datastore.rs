@@ -85,12 +85,12 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, create_vertex, t)
     }
 
-    fn set_vertex(&self, vertex: Vertex) -> Result<(), Error> {
-        proxy_transaction!(self, set_vertex, vertex)
+    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
+        proxy_transaction!(self, set_vertices, q, t)
     }
 
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
-        proxy_transaction!(self, delete_vertex, id)
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+        proxy_transaction!(self, delete_vertices, q)
     }
 
     fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {

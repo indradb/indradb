@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Vertex, Edge, Transaction, Error};
+use braid::{Edge, Transaction, Error, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -87,12 +87,12 @@ fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonVa
 fn set_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_required_json_uuid_param(item, "id")?;
     let t = get_required_json_type_param(item, "type")?;
-    execute_item(trans.set_vertex(Vertex::new(id, t)))
+    execute_item(trans.set_vertices(VertexQuery::Vertex(id), t))
 }
 
 fn delete_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_required_json_uuid_param(item, "id")?;
-    execute_item(trans.delete_vertex(id))
+    execute_item(trans.delete_vertices(VertexQuery::Vertex(id)))
 }
 
 fn get_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {

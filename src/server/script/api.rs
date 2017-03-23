@@ -3,7 +3,7 @@
 
 use lua;
 use common::ProxyTransaction;
-use braid::{Vertex, Edge, Transaction};
+use braid::{Edge, Transaction, VertexQuery};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;
@@ -26,14 +26,13 @@ lua_fn! {
     pub unsafe fn set_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = get_uuid_param(l, 1)?;
         let t = get_type_param(l, 2)?;
-        let v = Vertex::new(id, t);
-        trans.set_vertex(v)?;
+        trans.set_vertices(VertexQuery::Vertex(id), t)?;
         Ok(0)
     }
 
     pub unsafe fn delete_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let id = get_uuid_param(l, 1)?;
-        trans.delete_vertex(id)?;
+        trans.delete_vertices(VertexQuery::Vertex(id))?;
         Ok(0)
     }
 
