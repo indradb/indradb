@@ -1,8 +1,7 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Vertex, Edge, Transaction, Type, VertexQuery, Error};
+use braid::{Edge, Transaction, Type};
 use serde_json::value::Value as JsonValue;
-use serde_json;
 use chrono::{DateTime, UTC};
 use std::u16;
 use uuid::Uuid;
@@ -11,34 +10,10 @@ use super::util::*;
 pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
-    let q_json = get_query_param::<JsonValue>(query_params, "q".to_string(), true)?.unwrap_or_else(|| JsonValue::Null);
-    
-    let q = match serde_json::from_value::<VertexQuery>(q_json) {
-        Ok(q) => q,
-        Err(_) => {
-            return Err(create_iron_error(status::BadRequest, "Bad payload: expected vertex query".to_string()))
-        }
-    };
-
+    let q = get_vertex_query_param(query_params)?;
     let response = datastore_request(trans.get_vertices(q))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &response))
-}
-
-pub fn get_vertex(req: &mut Request) -> IronResult<Response> {
-    let id: Uuid = get_url_param(req, "id")?;
-    let trans = get_transaction(req)?;
-    let q = VertexQuery::Vertex(id);
-    let response = datastore_request(trans.get_vertices(q))?;
-    datastore_request(trans.commit())?;
-
-    debug_assert!(response.len() <= 1);
-
-    if response.len() == 0 {
-        Err(convert_to_iron_error(Error::VertexNotFound))
-    } else {
-        Ok(to_response(status::Ok, &response[0]))
-    }
 }
 
 pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
@@ -50,21 +25,21 @@ pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &response))
 }
 
-pub fn set_vertex(req: &mut Request) -> IronResult<Response> {
-    let id: Uuid = get_url_param(req, "id")?;
-    let obj = read_json_object(&mut req.body)?;
-    let t = get_required_json_type_param(&obj, "type")?;
-    let v = Vertex::new(id, t);
+pub fn set_vertices(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
-    datastore_request(trans.set_vertices(VertexQuery::Vertex(v.id), v.t))?;
+    let query_params = get_query_params(req)?;
+    let q = get_vertex_query_param(query_params)?;
+    let t = get_query_param::<Type>(query_params, "type".to_string(), true)?.unwrap();
+    datastore_request(trans.set_vertices(q, t))?;
     datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &()))
+    Ok(to_response(status::Ok, &()))    
 }
 
-pub fn delete_vertex(req: &mut Request) -> IronResult<Response> {
-    let id: Uuid = get_url_param(req, "id")?;
+pub fn delete_vertices(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
-    datastore_request(trans.delete_vertices(VertexQuery::Vertex(id)))?;
+    let query_params = get_query_params(req)?;
+    let q = get_vertex_query_param(query_params)?;
+    datastore_request(trans.delete_vertices(q))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &()))
 }

@@ -118,18 +118,18 @@ impl Transaction for BatchTransaction {
 		})
     }
 
-    fn set_vertex(&self, v: Vertex) -> Result<(), Error> {
+    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("set_vertex".to_string()),
-			"id".to_string() => JsonValue::String(v.id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(v.t.0)
+			"action".to_string() => JsonValue::String("set_vertices".to_string()),
+			"query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
+			"type".to_string() => JsonValue::String(t.0)
 		})
     }
 
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("delete_vertex".to_string()),
-			"id".to_string() => JsonValue::String(id.hyphenated().to_string())
+			"action".to_string() => JsonValue::String("delete_vertices".to_string()),
+			"query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
 		})
     }
     

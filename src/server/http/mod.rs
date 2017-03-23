@@ -21,10 +21,8 @@ pub fn start(port: u16) {
 
     router.get("/vertex", rest::get_vertices, "get_vertices");
     router.post("/vertex", rest::create_vertex, "create_vertex");
-
-    router.get("/vertex/:id", rest::get_vertex, "get_vertex");
-    router.put("/vertex/:id", rest::set_vertex, "set_vertex");
-    router.delete("/vertex/:id", rest::delete_vertex, "delete_vertex");
+    router.put("/vertex", rest::set_vertices, "set_vertices");
+    router.delete("/vertex", rest::delete_vertices, "delete_vertices");
 
     router.post("/script/:name", rest::script, "script");
 

@@ -469,6 +469,17 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: S
     }
 }
 
+pub fn get_vertex_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<VertexQuery, IronError> {
+    let q_json = get_query_param::<JsonValue>(query_params, "q".to_string(), true)?.unwrap_or_else(|| JsonValue::Null);
+    
+    match serde_json::from_value::<VertexQuery>(q_json) {
+        Ok(q) => Ok(q),
+        Err(_) => {
+            return Err(create_iron_error(status::BadRequest, "Bad payload: expected vertex query".to_string()))
+        }
+    }
+}
+
 /// Executes a script, returning its json output.
 ///
 /// # Errors

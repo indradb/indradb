@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Edge, Transaction, Error, VertexQuery};
+use braid::{Edge, Transaction, Error};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -28,8 +28,8 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 let result: Result<JsonValue, IronError> = match &action[..] {
                     "get_vertices" => get_vertices(&trans, &obj),
                     "create_vertex" => create_vertex(&trans, &obj),
-                    "set_vertex" => set_vertex(&trans, &obj),
-                    "delete_vertex" => delete_vertex(&trans, &obj),
+                    "set_vertices" => set_vertices(&trans, &obj),
+                    "delete_vertices" => delete_vertices(&trans, &obj),
                     
                     "get_edge" => get_edge(&trans, &obj),
                     "set_edge" => set_edge(&trans, &obj),
@@ -47,7 +47,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                     },
 
                     _ => {
-                        return Err(create_iron_error(status::BadRequest, "Unknown action".to_string()))
+                        Err(create_iron_error(status::BadRequest, "Unknown action".to_string()))
                     }
                 };
 
@@ -84,15 +84,15 @@ fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonVa
     execute_item(trans.create_vertex(t))
 }
 
-fn set_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let id = get_required_json_uuid_param(item, "id")?;
+fn set_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let q = get_required_json_vertex_query_param(item, "query")?;
     let t = get_required_json_type_param(item, "type")?;
-    execute_item(trans.set_vertices(VertexQuery::Vertex(id), t))
+    execute_item(trans.set_vertices(q, t))
 }
 
-fn delete_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let id = get_required_json_uuid_param(item, "id")?;
-    execute_item(trans.delete_vertices(VertexQuery::Vertex(id)))
+fn delete_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let q = get_required_json_vertex_query_param(item, "query")?;
+    execute_item(trans.delete_vertices(q))
 }
 
 fn get_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {

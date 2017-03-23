@@ -81,9 +81,9 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        let body = serde_json::to_string(&q).unwrap();
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", body)]);
+        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -99,20 +99,18 @@ impl Transaction for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn set_vertex(&self, v: Vertex) -> Result<(), Error> {
-        let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
-        d.insert("type".to_string(), JsonValue::String(v.t.0));
-        let body = serde_json::to_string(&d).unwrap();
-
+    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "PUT", format!("/vertex/{}", v.id), vec![]).body(&body[..]);
+        let req = self.request(&client, "PUT", format!("/vertex"), vec![("q", q_json), ("type", t.0)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn delete_vertex(&self, id: Uuid) -> Result<(), Error> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "DELETE", format!("/vertex/{}", id), vec![]);
+        let req = self.request(&client, "DELETE", format!("/vertex"), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
