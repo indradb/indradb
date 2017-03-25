@@ -153,56 +153,6 @@ impl RocksdbTransaction {
         })
     }
 
-    fn handle_get_edge_count(&self, edge_range_manager: EdgeRangeManager, first_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
-        let iterator = edge_range_manager.iterate_for_range(first_id, &t, None)?;
-        Ok(iterator.count() as u64)
-    }
-
-    fn handle_get_edge_time_range(&self, iterator: Box<Iterator<Item=Result<models::Edge, Error>>>, low: Option<DateTime<UTC>>) -> Result<Vec<models::Edge>, Error> {
-        let mut edges: Vec<models::Edge> = Vec::new();
-
-        match low {
-            Some(low) => {
-                // Round down since we only have second accuracy
-                let fuzzy_low = low.with_nanosecond(0).unwrap();
-
-                for item in iterator {
-                    let edge = item?;
-
-                    if edge.update_datetime < fuzzy_low {
-                        break;
-                    } else {
-                        edges.push(edge);
-                    }
-                }
-            },
-            None => {
-                for item in iterator {
-                    let edge = item?;
-                    edges.push(edge);
-                }
-            }
-        }
-
-        Ok(edges)
-    }
-
-    fn check_write_permissions(&self, id: Uuid, not_found_err: Error) -> Result<(), Error> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let vertex_value = vertex_manager.get(id)?;
-
-        match vertex_value {
-            None => Err(not_found_err),
-            Some(vertex_value) => {
-                if vertex_value.owner_id != self.account_id {
-                    Err(Error::Unauthorized)
-                } else {
-                    Ok(())
-                }
-            }
-        }
-    }
-
     fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
@@ -463,120 +413,24 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge(&self,
-                outbound_id: Uuid,
-                t: models::Type,
-                inbound_id: Uuid)
-                -> Result<models::Edge, Error> {
-        match EdgeManager::new(self.db.clone()).get(outbound_id, &t, inbound_id)? {
-            Some(value) => {
-                let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                Ok(models::Edge::new(outbound_id, t, inbound_id, value.weight, datetime))
-            },
-            None => Err(Error::EdgeNotFound),
-        }
+    fn create_edge(&self, e: models::Edge) -> Result<(), Error> {
+        panic!("Unimplemented");
     }
 
-    fn set_edge(&self, edge: models::Edge) -> Result<(), Error> {
-        // Verify that the vertices exist and that we own the vertex with the outbound ID
-        self.check_write_permissions(edge.outbound_id, Error::VertexNotFound)?;
-        if !VertexManager::new(self.db.clone()).exists(edge.inbound_id)? {
-            return Err(Error::VertexNotFound);
-        }
-
-        let new_update_datetime = UTC::now();
-        let mut batch = WriteBatch::default();
-        EdgeManager::new(self.db.clone()).set(&mut batch,
-                                                   edge.outbound_id,
-                                                   &edge.t,
-                                                   edge.inbound_id,
-                                                   new_update_datetime,
-                                                   edge.weight)?;
-        self.db.write(batch)?;
-        Ok(())
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
+        panic!("Unimplemented");
     }
 
-    fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
-        // Verify that the edge exists and that we own it
-        let edge_manager = EdgeManager::new(self.db.clone());
-
-        match edge_manager.get(outbound_id, &t, inbound_id)? {
-            Some(value) => {
-                self.check_write_permissions(outbound_id, Error::EdgeNotFound)?;
-                let update_datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                let mut batch = WriteBatch::default();
-                edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
-                self.db.write(batch)?;
-                Ok(())
-            }
-            None => Err(Error::EdgeNotFound),
-        }
+    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
+        panic!("Unimplemented");
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        self.handle_get_edge_count(edge_range_manager, outbound_id, t)
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+        panic!("Unimplemented");
     }
 
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        let iterator = edge_range_manager.iterate_for_range(outbound_id, &t, high)?;
-
-        let mapped = iterator.take(limit as usize).map(move |item| {
-            let ((edge_range_outbound_id,
-                  edge_range_t,
-                  edge_range_update_datetime,
-                  edge_range_inbound_id),
-                 edge_range_weight) = item?;
-            debug_assert_eq!(edge_range_outbound_id, outbound_id);
-            
-            if let Some(ref t) = t {
-                debug_assert_eq!(edge_range_t, *t);
-            }
-
-            Ok(models::Edge::new(
-                edge_range_outbound_id,
-                edge_range_t,
-                edge_range_inbound_id,
-                edge_range_weight,
-                edge_range_update_datetime
-            ))
-        });
-
-        self.handle_get_edge_time_range(Box::new(mapped), low)
-    }
-
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
-        let edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        self.handle_get_edge_count(edge_range_manager, inbound_id, t)
-    }
-
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        let iterator = reversed_edge_range_manager.iterate_for_range(inbound_id, &t, high)?;
-
-        let mapped = iterator.take(limit as usize).map(move |item| {
-            let ((edge_range_inbound_id,
-                  edge_range_t,
-                  edge_range_update_datetime,
-                  edge_range_outbound_id),
-                 edge_range_weight) = item?;
-            debug_assert_eq!(edge_range_inbound_id, inbound_id);
-            
-            if let Some(ref t) = t {
-                debug_assert_eq!(edge_range_t, *t);
-            }
-
-            Ok(models::Edge::new(
-                edge_range_outbound_id,
-                edge_range_t,
-                edge_range_inbound_id,
-                edge_range_weight,
-                edge_range_update_datetime
-            ))
-        });
-
-        self.handle_get_edge_time_range(Box::new(mapped), low)
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+        panic!("Unimplemented");
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

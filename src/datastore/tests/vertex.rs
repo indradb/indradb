@@ -198,7 +198,7 @@ pub fn delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     let v = trans.get_vertices(q.clone()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans.get_edge_count(outbound_id, Some(t)).unwrap();
+    let count = trans.get_edge_count(VertexQuery::Vertex(outbound_id).outbound_edges(Some(t), None, None, 10)).unwrap();
     assert_eq!(count, 0);
 }
 

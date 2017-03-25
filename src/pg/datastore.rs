@@ -151,38 +151,6 @@ impl PostgresTransaction {
         })
     }
 
-    fn fill_edges(&self, results: Rows, outbound_id: Uuid) -> Result<Vec<models::Edge>, Error> {
-        let mut edges: Vec<models::Edge> = Vec::new();
-
-        for row in &results {
-            let t_str: String = row.get(0);
-            let t = models::Type::new(t_str).unwrap();
-            let inbound_id: Uuid = row.get(1);
-            let weight_f32: f32 = row.get(2);
-            let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(3);
-            edges.push(models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime));
-        }
-
-        Ok(edges)
-    }
-
-    fn fill_reversed_edges(&self, results: Rows, inbound_id: Uuid) -> Result<Vec<models::Edge>, Error> {
-        let mut edges: Vec<models::Edge> = Vec::new();
-
-        for row in &results {
-            let t_str: String = row.get(0);
-            let t = models::Type::new(t_str).unwrap();
-            let outbound_id: Uuid = row.get(1);
-            let weight_f32: f32 = row.get(2);
-            let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(3);
-            edges.push(models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime));
-        }
-
-        Ok(edges)
-    }
-
     fn handle_get_metadata(&self, results: Rows) -> Result<JsonValue, Error> {
         for row in &results {
             let value: JsonValue = row.get(0);
@@ -345,6 +313,10 @@ impl PostgresTransaction {
         params.push(Box::new(limit as i64));
         (where_clause_template_builder.join(" AND "), "LIMIT %p".to_string(), params)
     }
+
+    fn ensure_edges_are_owned_by_account(&self, sql_query_builder: &mut CTEQueryBuilder) {
+        sql_query_builder.push("SELECT %t.id FROM %t JOIN vertices ON %t.outbound_id=vertices.id WHERE vertices.owner_id=%p", "vertices", vec![Box::new(self.account_id)]);
+    }
 }
 
 impl Transaction for PostgresTransaction {
@@ -357,7 +329,6 @@ impl Transaction for PostgresTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        
         let (query, params) = sql_query_builder.to_query_payload("SELECT id, type FROM %t", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
@@ -377,12 +348,10 @@ impl Transaction for PostgresTransaction {
     fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-
         let (query, params) = sql_query_builder.to_query_payload(
             "UPDATE vertices SET type=%p WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)",
             vec![Box::new(t.0), Box::new(self.account_id)]
         );
-
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
@@ -391,60 +360,26 @@ impl Transaction for PostgresTransaction {
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-
         let (query, params) = sql_query_builder.to_query_payload("DELETE FROM vertices WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)", vec![Box::new(self.account_id)]);
-
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
     }
 
-    fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge, Error> {
-        let results = self.trans.query("
-            SELECT weight, update_timestamp
-            FROM edges
-            WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
-            LIMIT 1", &[&outbound_id, &t.0, &inbound_id])?;
-
-        for row in &results {
-            let weight_f32: f32 = row.get(0);
-            let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(1);
-            let e = models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime);
-            return Ok(e);
-        }
-
-        Err(Error::EdgeNotFound)
-    }
-
-    fn set_edge(&self, e: models::Edge) -> Result<(), Error> {
+    fn create_edge(&self, e: models::Edge) -> Result<(), Error> {
         let id = models::id();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction
         let results = {
             let trans = self.trans.savepoint("set_edge")?;
-
             let results = trans.query("
-				INSERT INTO edges (
-                    id,
-                    outbound_id,
-                    type,
-                    inbound_id,
-                    weight,
-                    update_timestamp
-                ) VALUES (
-                    $1,
-                    (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3),
-                    $4,
-                    $5,
-                    $6,
-                    CLOCK_TIMESTAMP()
-                )
+                INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_timestamp)
+                VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
                 ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
                 DO UPDATE SET weight=$6, update_timestamp=CLOCK_TIMESTAMP()
-			", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
-
+            ", &[&id, &e.outbound_id, &self.account_id, &e.t.0, &e.inbound_id, &e.weight.0]);
+            
             match results {
                 Err(err) => {
                     trans.set_rollback();
@@ -456,12 +391,11 @@ impl Transaction for PostgresTransaction {
                 }
             }
         };
-
+        
         if let Err(pg_error::Error::Db(ref err)) = results {
             if err.code == pg_error::SqlState::NotNullViolation {
                 // This should only happen when the inner select fails
                 let v = self.get_vertices(VertexQuery::Vertex(e.outbound_id))?;
-
                 if v.len() == 0 {
                     return Err(Error::VertexNotFound);
                 } else {
@@ -472,230 +406,73 @@ impl Transaction for PostgresTransaction {
                 return Err(Error::VertexNotFound);
             }
         }
-
-        results?;
+        
         Ok(())
     }
 
-    fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error> {
-        let results = self.trans.query("
-			DELETE FROM edges
-			WHERE outbound_id=(
-                SELECT id
-                FROM vertices
-                WHERE id=$1 AND owner_id=$2
-            ) AND type=$3 AND inbound_id=$4
-			RETURNING 1
-		", &[&outbound_id, &self.account_id, &t.0, &inbound_id])?;
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("SELECT outbound_id, type, inbound_id, weight, update_timestamp FROM %t", vec![]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
-        for _ in &results {
-            return Ok(());
+        let results = self.trans.query(&query[..], &params_refs[..])?;
+        let mut edges: Vec<models::Edge> = Vec::new();
+
+        for row in &results {
+            let outbound_id: Uuid = row.get(0);
+            let t_str: String = row.get(1);
+            let inbound_id: Uuid = row.get(2);
+            let weight_f32: f32 = row.get(3);
+            let update_datetime: DateTime<UTC> = row.get(4);
+
+            let e = models::Edge::new(
+                outbound_id,
+                models::Type::new(t_str).unwrap(),
+                inbound_id,
+                models::Weight::new(weight_f32).unwrap(),
+                update_datetime
+            );
+
+            edges.push(e);
         }
 
-        self.get_edge(outbound_id, t, inbound_id)?;
-        Err(Error::Unauthorized)
+        Ok(edges)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
-        let results = match t {
-            Some(t) => {
-                self.trans.query("
-			        SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1 AND type=$2
-		        ", &[&outbound_id, &t.0])?
-            },
-            None => {
-                self.trans.query("
-                    SELECT COUNT(outbound_id) FROM edges WHERE outbound_id=$1
-                ", &[&outbound_id])?
-            }
-        };
+    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        self.ensure_edges_are_owned_by_account(&mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("UPDATE edges SET weight=%p, update_timestamp=NOW() WHERE id IN (SELECT id FROM %t)", vec![Box::new(weight.0)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
+    }
+
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        self.ensure_edges_are_owned_by_account(&mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("DELETE FROM edges WHERE id IN (SELECT id FROM %t)", vec![]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
+    }
+
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("SELECT COUNT(id) FROM %t", vec![]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        let results = self.trans.query(&query[..], &params_refs[..])?;
 
         for row in &results {
             let count: i64 = row.get(0);
             return Ok(count as u64);
         }
 
-        panic!("Unreachable point hit")
-    }
-
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let results = match (t, high, low) {
-            (Some(t), Some(high), Some(low)) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
-					ORDER BY update_timestamp DESC
-					LIMIT $5
-				", &[&outbound_id, &t.0, &high, &low, &(limit as i64)])
-            }
-            (Some(t), Some(high), None) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_timestamp <= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&outbound_id, &t.0, &high, &(limit as i64)])
-            }
-            (Some(t), None, Some(low)) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND type=$2 AND update_timestamp >= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&outbound_id, &t.0, &low, &(limit as i64)])
-            }
-            (Some(t), None, None) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND type=$2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&outbound_id, &t.0, &(limit as i64)])
-            },
-            (None, Some(high), Some(low)) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND update_timestamp <= $2 AND update_timestamp >= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&outbound_id, &high, &low, &(limit as i64)])
-            }
-            (None, Some(high), None) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND update_timestamp <= $2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&outbound_id, &high, &(limit as i64)])
-            }
-            (None, None, Some(low)) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1 AND update_timestamp >= $2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&outbound_id, &low, &(limit as i64)])
-            }
-            (None, None, None) => {
-                self.trans.query("
-					SELECT type, inbound_id, weight, update_timestamp
-					FROM edges
-					WHERE outbound_id=$1
-					ORDER BY update_timestamp DESC
-					LIMIT $2
-				", &[&outbound_id, &(limit as i64)])
-            }
-        }?;
-
-        self.fill_edges(results, outbound_id)
-    }
-
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error> {
-        let results = match t {
-            Some(t) => {
-                self.trans.query("
-                    SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1 AND type=$2
-                ", &[&inbound_id, &t.0])?
-            },
-            None => {
-                self.trans.query("
-                    SELECT COUNT(inbound_id) FROM edges WHERE inbound_id=$1
-                ", &[&inbound_id])?
-            }
-        };
-
-        for row in &results {
-            let count: i64 = row.get(0);
-            return Ok(count as u64);
-        }
-
-        panic!("Unreachable point hit")
-    }
-
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<models::Edge>, Error> {
-        let results = match (t, high, low) {
-            (Some(t), Some(high), Some(low)) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3 AND update_timestamp >= $4
-					ORDER BY update_timestamp DESC
-					LIMIT $5
-				", &[&inbound_id, &t.0, &high, &low, &(limit as i64)])
-            }
-            (Some(t), Some(high), None) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_timestamp <= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&inbound_id, &t.0, &high, &(limit as i64)])
-            }
-            (Some(t), None, Some(low)) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND type=$2 AND update_timestamp >= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&inbound_id, &t.0, &low, &(limit as i64)])
-            }
-            (Some(t), None, None) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND type=$2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&inbound_id, &t.0, &(limit as i64)])
-            },
-            (None, Some(high), Some(low)) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND update_timestamp <= $2 AND update_timestamp >= $3
-					ORDER BY update_timestamp DESC
-					LIMIT $4
-				", &[&inbound_id, &high, &low, &(limit as i64)])
-            }
-            (None, Some(high), None) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND update_timestamp <= $2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&inbound_id, &high, &(limit as i64)])
-            }
-            (None, None, Some(low)) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1 AND update_timestamp >= $2
-					ORDER BY update_timestamp DESC
-					LIMIT $3
-				", &[&inbound_id, &low, &(limit as i64)])
-            }
-            (None, None, None) => {
-                self.trans.query("
-					SELECT type, outbound_id, weight, update_timestamp
-					FROM edges
-					WHERE inbound_id=$1
-					ORDER BY update_timestamp DESC
-					LIMIT $2
-				", &[&inbound_id, &(limit as i64)])
-            }
-        }?;
-
-        self.fill_reversed_edges(results, inbound_id)
+        panic!("Unreachable point hit");
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

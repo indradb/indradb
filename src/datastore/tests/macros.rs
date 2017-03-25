@@ -49,36 +49,24 @@ macro_rules! test_transaction_impl {
 		// Edges
 		define_test!(should_get_a_valid_edge, ::get_a_valid_edge, $code);
 		define_test!(should_not_get_an_invalid_edge, ::not_get_an_invalid_edge, $code);
+		define_test!(should_create_a_valid_edge, ::create_a_valid_edge, $code);
 		define_test!(should_update_a_valid_edge, ::update_a_valid_edge, $code);
-		define_test!(should_not_update_an_invalid_edge, ::not_update_an_invalid_edge, $code);
-		define_test!(should_not_set_an_edge_with_bad_permissions, ::not_set_an_edge_with_bad_permissions, $code);
+		define_test!(should_not_create_an_invalid_edge, ::not_create_an_invalid_edge, $code);
+		define_test!(should_not_create_an_edge_with_bad_permissions, ::not_create_an_edge_with_bad_permissions, $code);
+		define_test!(should_not_update_an_edge_with_bad_permissions, ::not_update_an_edge_with_bad_permissions, $code);
 		define_test!(should_delete_a_valid_edge, ::delete_a_valid_edge, $code);
 		define_test!(should_not_delete_an_invalid_edge, ::not_delete_an_invalid_edge, $code);
 		define_test!(should_not_delete_an_edge_with_bad_permissions, ::not_delete_an_edge_with_bad_permissions, $code);
-
-		// Edge ranges
 		define_test!(should_get_an_edge_count, ::get_an_edge_count, $code);
 		define_test!(should_get_an_edge_count_with_no_type, ::get_an_edge_count_with_no_type, $code);
 		define_test!(should_get_an_edge_count_for_an_invalid_edge, ::get_an_edge_count_for_an_invalid_edge, $code);
 		define_test!(should_get_an_edge_range, ::get_an_edge_range, $code);
-		define_test!(should_get_edge_range_with_no_type, ::get_edge_range_with_no_type, $code);
+		define_test!(should_get_edges_with_no_type, ::get_edges_with_no_type, $code);
 		define_test!(should_get_no_edges_for_an_invalid_range, ::get_no_edges_for_an_invalid_range, $code);
-		define_test!(should_get_edge_range_with_no_high, ::get_edge_range_with_no_high, $code);
-		define_test!(should_get_edge_range_with_no_low, ::get_edge_range_with_no_low, $code);
-		define_test!(should_get_edge_range_with_no_time, ::get_edge_range_with_no_time, $code);
+		define_test!(should_get_edges_with_no_high, ::get_edges_with_no_high, $code);
+		define_test!(should_get_edges_with_no_low, ::get_edges_with_no_low, $code);
+		define_test!(should_get_edges_with_no_time, ::get_edges_with_no_time, $code);
 		define_test!(should_get_no_edges_for_reversed_time, ::get_no_edges_for_reversed_time, $code);
-
-		// Reversed edge ranges
-		define_test!(should_get_a_reversed_edge_count, ::get_a_reversed_edge_count, $code);
-		define_test!(should_get_a_reversed_edge_count_with_no_type, ::get_a_reversed_edge_count_with_no_type, $code);
-		define_test!(should_get_a_reversed_edge_count_for_an_invalid_edge, ::get_a_reversed_edge_count_for_an_invalid_edge, $code);
-		define_test!(should_get_a_reversed_edge_range, ::get_a_reversed_edge_range, $code);
-		define_test!(should_get_a_reversed_edge_range_with_no_type, ::get_a_reversed_edge_range_with_no_type, $code);
-		define_test!(should_get_no_reversed_edges_for_an_invalid_range, ::get_no_reversed_edges_for_an_invalid_range, $code);
-		define_test!(should_get_a_reversed_edge_range_with_no_high, ::get_a_reversed_edge_range_with_no_high, $code);
-		define_test!(should_get_a_reversed_edge_range_with_no_low, ::get_a_reversed_edge_range_with_no_low, $code);
-		define_test!(should_get_a_reversed_edge_range_with_no_time, ::get_a_reversed_edge_range_with_no_time, $code);
-		define_test!(should_get_no_reversed_edges_for_reversed_time, ::get_no_reversed_edges_for_reversed_time, $code);
 	)
 }
 

@@ -154,7 +154,7 @@ pub fn handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
         inbound_id,
         models::Weight::new(0.5).unwrap()
     );
-    trans.set_edge(e).unwrap();
+    trans.create_edge(e).unwrap();
 
     let key = sandbox.generate_unique_string("edge-metadata");
 
@@ -225,7 +225,7 @@ pub fn not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox
         inbound_id,
         models::Weight::new(1.0).unwrap()
     );
-    trans.set_edge(edge).unwrap();
+    trans.create_edge(edge).unwrap();
     
     let result = trans.delete_edge_metadata(
         outbound_id,

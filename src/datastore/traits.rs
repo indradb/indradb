@@ -2,8 +2,6 @@ use errors::Error;
 use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
-use std::option::Option;
-use chrono::{DateTime, UTC};
 use uuid::Uuid;
 use super::models::*;
 
@@ -90,105 +88,45 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error>;
+
+    /// Creates a new edge. If the edge already exists, this will update it
+    /// with a new update datetime and weight. The transaction tied to the
+    /// account must own the vertex from which the edge is outbounding from,
+    /// but does not need to own the inbounding vertex.
+    ///
+    /// # Arguments
+    /// `edge`: The edge to create.
+    ///
+    /// # Errors
+    /// Return `Error::VertexNotFound` if either of the connected vertices do
+    /// not exist. Returns `Error::Unauthorized` if the account tied to the
+    /// current transaction does not own the source vertex.
+    fn create_edge(&self, edge: models::Edge) -> Result<(), Error>;
     
-    /// Gets an edge.
+    /// Gets a range of edges specified by a query.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error>;
+
+    /// Updates an existing set of edges specified by a query.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error>;
+
+    /// Deletes a set of edges specified by a query.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error>;
+
+    /// Gets the number of edges that match a query.
     ///
     /// # Arguments
     /// * `outbound_id` - The ID of the outbound vertex.
     /// * `t` - The edge type.
-    /// * `outbound_id` - The ID of the inbound vertex.
-    ///
-    /// # Errors
-    /// Returns `Error::EdgeNotFound` if the edge does not exist.
-    fn get_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<models::Edge, Error>;
-
-    /// Creates an edge, or updates an existing edge.
-    ///
-    /// # Arguments
-    /// * `edge` - The edge model to create or update.
-    ///
-    /// # Errors
-    /// Returns `Errors::EdgeNotFound` if the edge does not exist, or
-    /// `Error::Unauthorized` if the edge's outbound vertex is not owned by
-    /// the current transaction's account.
-    fn set_edge(&self, models::Edge) -> Result<(), Error>;
-
-    /// Deletes an edge.
-    ///
-    /// # Arguments
-    /// * `outbound_id` - The ID of the outbound vertex.
-    /// * `t` - The edge type.
-    /// * `outbound_id` - The ID of the inbound vertex.
-    ///
-    /// # Errors
-    /// Returns `Errors::EdgeNotFound` if the edge does not exist, or
-    /// `Error::Unauthorized` if the edge's outbound vertex is not owned by
-    /// the current transaction's account.
-    fn delete_edge(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid) -> Result<(), Error>;
-
-    /// Gets the number of outbound edges of a given type.
-    ///
-    /// Note that this will not error out if the vertex does not exist - it
-    /// will just return 0.
-    ///
-    /// # Arguments
-    /// * `outbound_id` - The ID of the outbound vertex.
-    /// * `t` - The edge type.
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error>;
-
-    /// Gets a range of the outbound edges of a given type, optionally bounded
-    /// by the specified update/creation datetime upper and lower bounds.
-    ///
-    /// Edges should generally be ordered by their update/creation datetime
-    /// (descending), but order may not be exact depending on the
-    /// implementation. Note that this will not error out if the vertex does
-    /// not exist - it will just return an empty edge range.
-    ///
-    /// # Arguments
-    /// * `outbound_id` - The ID of the outbound vertex.
-    /// * `t` - The edge type.
-    /// * `high` - The maximum allowed edge update datetime.
-    /// * `low` - The minimum allowed edge update datetime.
-    /// * `limit` - The number of edges to return.
-    fn get_edge_range(&self,
-                           outbound_id: Uuid,
-                           t: Option<models::Type>,
-                           high: Option<DateTime<UTC>>,
-                           low: Option<DateTime<UTC>>,
-                           limit: u16)
-                           -> Result<Vec<models::Edge>, Error>;
-
-    /// Gets the number of inbound edges of a given type.
-    ///
-    /// Note that this will not error out if the vertex does not exist - it
-    /// will just return 0.
-    ///
-    /// # Arguments
-    /// * `inbound_id` - The ID of the inbound vertex.
-    /// * `t` - The edge type.
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<models::Type>) -> Result<u64, Error>;
-
-    /// Gets a range of the inbound edges of a given type, optionally bounded
-    /// by the specified update/creation datetime upper and lower bounds.
-    ///
-    /// Edges should generally be ordered by their update/creation datetime
-    /// (descending), but order may not be exact depending on the
-    /// implementation. Note that this will not error out if the vertex does
-    /// not exist - it will just return an empty edge range.
-    ///
-    /// # Arguments
-    /// * `inbound_id` - The ID of the inbound vertex.
-    /// * `t` - The edge type.
-    /// * `high` - The maximum allowed edge update datetime.
-    /// * `low` - The minimum allowed edge update datetime.
-    /// * `limit` - The number of edges to return.
-    fn get_reversed_edge_range(&self,
-                                    inbound_id: Uuid,
-                                    t: Option<models::Type>,
-                                    high: Option<DateTime<UTC>>,
-                                    low: Option<DateTime<UTC>>,
-                                    limit: u16)
-                                    -> Result<Vec<models::Edge>, Error>;
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error>;
 
     /// Gets a global metadata value.
     ///
