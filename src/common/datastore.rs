@@ -4,8 +4,9 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
-              PostgresTransaction, RocksdbTransaction, Type, VertexQuery};
+use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore,
+            Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction,
+            Type, VertexQuery, EdgeQuery, Weight};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, UTC};
@@ -93,40 +94,24 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
-    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {
-        proxy_transaction!(self, get_edge, outbound_id, t, inbound_id)
+    fn create_edge(&self, edge: Edge) -> Result<(), Error> {
+        proxy_transaction!(self, create_edge, edge)
+    }
+    
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
+        proxy_transaction!(self, get_edges, q)
     }
 
-    fn set_edge(&self, edge: Edge) -> Result<(), Error> {
-        proxy_transaction!(self, set_edge, edge)
+    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
+        proxy_transaction!(self, set_edges, q, weight)
     }
 
-    fn delete_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<(), Error> {
-        proxy_transaction!(self, delete_edge, outbound_id, t, inbound_id)
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+        proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
-        proxy_transaction!(self, get_edge_count, outbound_id, t)
-    }
-
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        proxy_transaction!(self, get_edge_range, outbound_id, t, high, low, limit)
-    }
-
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
-        proxy_transaction!(self, get_reversed_edge_count, inbound_id, t)
-    }
-
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        proxy_transaction!(
-            self,
-            get_reversed_edge_range,
-            inbound_id,
-            t,
-            high,
-            low,
-            limit
-        )
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+        proxy_transaction!(self, get_edge_count, q)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

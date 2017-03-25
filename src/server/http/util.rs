@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{Headers, ContentType};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use braid::{Datastore, Error, Type, Weight, VertexQuery};
+use braid::{Datastore, Error, Type, Weight, VertexQuery, EdgeQuery};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -13,23 +13,17 @@ use iron::mime::{Mime, TopLevel, SubLevel, Attr, Value};
 use iron::request::Body;
 use std::io;
 use std::io::Read;
-use chrono::{DateTime, UTC};
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use serde::ser::Serialize;
 use std::collections::HashMap;
-use std::cmp::min;
-use std::u16;
 use statics;
 use uuid::Uuid;
 use regex;
 use std::path::Path;
 use std::fs::File;
 use script;
-
-/// The most edges that can be returned
-const MAX_RETURNABLE_EDGES: u16 = 1000;
 
 lazy_static! {
 	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
@@ -106,41 +100,6 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     }
 }
 
-/// Converts a URL parameter to a given type, or a null value
-///
-/// # Errors
-/// Returns an error if the parameter could not be serialized to the given type
-pub fn get_optional_url_param<T: FromStr>(req: &Request, name: &str) -> Result<Option<T>, IronError> {
-    let s = req.extensions.get::<Router>().unwrap().find(name).unwrap();
-
-    match s {
-        "_" => Ok(None),
-        s => {
-            match T::from_str(s) {
-                Ok(val) => Ok(Some(val)),
-                Err(_) => {
-                    Err(create_iron_error(
-                        status::BadRequest,
-                        format!("Invalid value for URL param {}", name)
-                    ))
-                }
-            }
-        }
-    }
-}
-
-/// Gets a JSON string value, or a null value
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_string_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<String>, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::String(ref val)) => Ok(Some(val.clone())),
-        None | Some(&JsonValue::Null) => Ok(None),
-        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
-    }
-}
-
 /// Gets a JSON string value
 ///
 /// # Errors
@@ -195,7 +154,7 @@ pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, n
     }
 }
 
-/// Gets a JSON string value that represents a vertex query
+/// Gets a JSON object value that represents a vertex query
 ///
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
@@ -203,6 +162,22 @@ pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, n
 pub fn get_required_json_vertex_query_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<VertexQuery, IronError> {
     if let Some(obj) = json.get(name) {
         match serde_json::from_value::<VertexQuery>(obj.clone()) {
+            Ok(val) => Ok(val),
+            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+        }
+    } else {
+        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+    }
+}
+
+/// Gets a JSON object value that represents a vertex query
+///
+/// # Errors
+/// Returns an `IronError` if the value is missing from the JSON object, or
+/// has an unexpected type.
+pub fn get_required_json_edge_query_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<EdgeQuery, IronError> {
+    if let Some(obj) = json.get(name) {
+        match serde_json::from_value::<EdgeQuery>(obj.clone()) {
             Ok(val) => Ok(val),
             Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
         }
@@ -230,30 +205,6 @@ pub fn get_required_json_type_param(json: &serde_json::Map<String, JsonValue>, n
     }
 }
 
-/// Gets a JSON string value that represents a type, or null
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_optional_json_type_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<Type>, IronError> {
-    let s = get_optional_json_string_param(json, name)?;
-
-    match s {
-        None => Ok(None),
-        Some(s) => {
-            match Type::from_str(&s[..]) {
-                Ok(u) => Ok(Some(u)),
-                Err(_) => {
-                    Err(create_iron_error(
-                        status::BadRequest,
-                        format!("Invalid type format for `{}`", name)
-                    ))
-                }
-            }
-        }
-    }
-}
-
 // Gets a JSON float value that represents a weight
 ///
 /// # Errors
@@ -270,64 +221,6 @@ pub fn get_required_json_weight_param(json: &serde_json::Map<String, JsonValue>,
                 format!("Invalid weight format for `{}`: it should be a float between -1.0 and 1.0 inclusive.", name)
             ))
         }
-    }
-}
-
-// Gets a JSON RFC3339-formatted datetime or a null value
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_datetime_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<DateTime<UTC>>, IronError> {
-    match get_optional_json_string_param(json, name)? {
-        Some(val) => {
-            match DateTime::parse_from_rfc3339(&val[..]) {
-                Ok(val) => Ok(Some(val.with_timezone(&UTC))),
-                Err(_) => Err(create_iron_error(status::BadRequest, format!("Could not parse RFC3339-formatted datetime string for `{}`", name)))
-            }
-        },
-        None => Ok(None)
-    }
-}
-
-// Gets a JSON u64 or a null value
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_u64_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<u64>, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::Number(ref val)) => {
-            if val.is_u64() {
-                Ok(val.as_u64())
-            } else {
-                Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-            }
-        },
-        None |
-        Some(&JsonValue::Null) => Ok(None),
-        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
-    }
-}
-
-// Gets a JSON u16 or a null value
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_u16_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<u16>, IronError> {
-    match get_optional_json_u64_param(json, name)? {
-        Some(val) if val > u16::MAX as u64 => {
-            Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-        }
-        Some(val) => Ok(Some(val as u16)),
-        None => Ok(None),
-    }
-}
-
-/// Parses an optionally specified int to a limit value, clipping the maximum
-/// allowed value to `MAX_RETURNABLE_EDGES`.
-pub fn parse_limit(val: Option<u16>) -> u16 {
-    match val {
-        Some(val) => min(val, MAX_RETURNABLE_EDGES),
-        _ => MAX_RETURNABLE_EDGES,
     }
 }
 
@@ -444,8 +337,8 @@ pub fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, 
 ///
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: String, required: bool) -> Result<Option<T>, IronError> {
-    if let Some(values) = params.get(&key) {
+pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &str, required: bool) -> Result<Option<T>, IronError> {
+    if let Some(values) = params.get(key) {
         if let Some(first_value) = values.get(0) {
             match first_value.parse::<T>() {
                 Ok(value) => return Ok(Some(value)),
@@ -469,14 +362,59 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: S
     }
 }
 
+/// Gets a required edge query from the query parameters.
+///
+/// # Errors
+/// Returns an `IronError if the query could be parsed, or was not specified.
+pub fn get_edge_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<EdgeQuery, IronError> {
+    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
+    
+    match serde_json::from_value::<EdgeQuery>(q_json) {
+        Ok(q) => Ok(q),
+        Err(_) => {
+            return Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected edge query".to_string()))
+        }
+    }
+}
+
+/// Gets a required vertex query from the query parameters.
+///
+/// # Errors
+/// Returns an `IronError if the query could be parsed, or was not specified.
 pub fn get_vertex_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<VertexQuery, IronError> {
-    let q_json = get_query_param::<JsonValue>(query_params, "q".to_string(), true)?.unwrap_or_else(|| JsonValue::Null);
+    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
     
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(q) => Ok(q),
         Err(_) => {
-            return Err(create_iron_error(status::BadRequest, "Bad payload: expected vertex query".to_string()))
+            return Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected vertex query".to_string()))
         }
+    }
+}
+
+/// Gets a required weight value from the query parameters.
+///
+/// # Errors
+/// Returns an `IronError` if the weight could be parsed, or was not specified.
+pub fn get_weight_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<Weight, IronError> {
+    let weight_f32 = get_query_param::<f32>(query_params, "weight", true)?.unwrap();
+
+    match Weight::new(weight_f32) {
+        Ok(weight) => Ok(weight),
+        Err(_) => Err(create_iron_error(status::BadRequest, "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string()))
+    }
+}
+
+/// Gets a required type value from the query parameters.
+///
+/// # Errors
+/// Returns an `IronError` if the type could be parsed, or was not specified.
+pub fn get_type_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<Type, IronError> {
+    let t_str = get_query_param::<String>(query_params, "type", true)?.unwrap();
+
+    match Type::new(t_str) {
+        Ok(t) => Ok(t),
+        Err(_) => Err(create_iron_error(status::BadRequest, "Invalid type for `type`: expected string up to 255 characters in length".to_string()))
     }
 }
 

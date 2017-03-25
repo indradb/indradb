@@ -1,10 +1,9 @@
 use lua;
 use serde_json::value::Value as JsonValue;
 use serde_json::{Map, Number};
-use braid::{Vertex, Edge, Type, Weight, VertexQuery};
+use braid::{Vertex, Edge, Type, Weight, VertexQuery, EdgeQuery};
 use uuid::Uuid;
-use chrono::{DateTime, UTC, NaiveDateTime};
-use std::{isize, i32, u16};
+use std::{isize, i32};
 use core::str::FromStr;
 use super::errors::LuaError;
 use serde_json;
@@ -187,13 +186,23 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
     l.setfield(-2, k);
 }
 
-/// Gets a string value from lua by its offset
+/// Gets a vertex query from lua by its offset
 pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
 
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
         Err(_) => Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
+    }
+}
+
+/// Gets an edge query from lua by its offset
+pub unsafe fn get_edge_query_param(l: &mut lua::ExternState, narg: i32) -> Result<EdgeQuery, LuaError> {
+    let q_json = deserialize_json(l, 1)?;
+
+    match serde_json::from_value::<EdgeQuery>(q_json) {
+        Ok(val) => Ok(val),
+        Err(_) => Err(LuaError::Arg(narg, "Expected edge query table".to_string()))
     }
 }
 
@@ -209,31 +218,6 @@ pub unsafe fn get_string_param(l: &mut lua::ExternState, narg: i32) -> Result<St
 pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type, LuaError> {
     let s = get_string_param(l, narg)?;
     Ok(Type::new(s)?)
-}
-
-/// Gets an optional type value from lua by its offset
-pub unsafe fn get_optional_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<Type>, LuaError> {
-    let s = get_string_param(l, narg)?;
-
-    if s == "" {
-        Ok(None)
-    } else {
-        Ok(Some(Type::new(s)?))
-    }
-}
-
-/// Gets either a string value that represents an i64 or a nil from lua by its offset
-pub unsafe fn get_optional_i64_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<i64>, LuaError> {
-    let s = get_string_param(l, narg)?;
-
-    if s == "" {
-        Ok(None)
-    } else {
-        match i64::from_str_radix(&s[..], 10) {
-            Ok(i) => Ok(Some(i)),
-            Err(_) => Err(LuaError::Arg(narg, "Expected i64 as string".to_string())),
-        }
-    }
 }
 
 /// Gets a string value that represents a uuid from lua by its offset
@@ -255,23 +239,6 @@ pub unsafe fn get_optional_uuid_param(l: &mut lua::ExternState, narg: i32) -> Re
             Ok(u) => Ok(Some(u)),
             Err(_) => Err(LuaError::Arg(narg, "Expected uuid as string".to_string())),
         }
-    }
-}
-
-/// Gets either a string value that represents a timestamp or a nil from lua
-pub unsafe fn get_optional_datetime_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<DateTime<UTC>>, LuaError> {
-    match get_optional_i64_param(l, narg)? {
-        Some(i) => Ok(Some(DateTime::from_utc(NaiveDateTime::from_timestamp(i, 0), UTC))),
-        None => Ok(None),
-    }
-}
-
-/// Gets a limit value from lua by its offset
-pub unsafe fn get_limit_param(l: &mut lua::ExternState, narg: i32) -> Result<u16, LuaError> {
-    match l.checkinteger(narg) {
-        i if i > u16::MAX as isize => Ok(u16::MAX),
-        i if i < 0 => Err(LuaError::Arg(narg, "Limit cannot be negative".to_string())),
-        i => Ok(i as u16),
     }
 }
 

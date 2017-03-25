@@ -28,20 +28,16 @@ pub fn run(mut trans: &ProxyTransaction,
     let mut l = lua::State::new();
     l.openlibs();
 
-    l.register("get_vertices", api::get_vertices);
     l.register("create_vertex", api::create_vertex);
+    l.register("get_vertices", api::get_vertices);
     l.register("set_vertex", api::set_vertex);
     l.register("delete_vertex", api::delete_vertex);
 
-    l.register("get_edge", api::get_edge);
-    l.register("set_edge", api::set_edge);
-    l.register("delete_edge", api::delete_edge);
-
+    l.register("create_edge", api::create_edge);
+    l.register("get_edges", api::get_edges);
+    l.register("set_edges", api::set_edges);
+    l.register("delete_edges", api::delete_edges);
     l.register("get_edge_count", api::get_edge_count);
-    l.register("get_edge_range", api::get_edge_range);
-
-    l.register("get_reversed_edge_count", api::get_reversed_edge_count);
-    l.register("get_reversed_edge_range", api::get_reversed_edge_range);
 
     l.register("get_global_metadata", api::get_global_metadata);
     l.register("set_global_metadata", api::set_global_metadata);

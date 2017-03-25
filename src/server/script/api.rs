@@ -9,17 +9,17 @@ use super::util::*;
 use super::errors::LuaError;
 
 lua_fn! {
-    pub unsafe fn get_vertices(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let q = get_vertex_query_param(l, 1)?;
-        let result = trans.get_vertices(q)?;
-        serialize_vertices(l, result);
-        Ok(1)
-    }
-
     pub unsafe fn create_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let t = get_type_param(l, 1)?;
         let result = trans.create_vertex(t)?;
         l.pushstring(&result.to_string()[..]);
+        Ok(1)
+    }
+
+    pub unsafe fn get_vertices(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_vertex_query_param(l, 1)?;
+        let result = trans.get_vertices(q)?;
+        serialize_vertices(l, result);
         Ok(1)
     }
 
@@ -36,68 +36,39 @@ lua_fn! {
         Ok(0)
     }
 
-    pub unsafe fn get_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        let inbound_id = get_uuid_param(l, 3)?;
-        let result = trans.get_edge(outbound_id, t, inbound_id)?;
-        serialize_edge(l, &result);
-        Ok(1)
-    }
-
-    pub unsafe fn set_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+    pub unsafe fn create_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let outbound_id = get_uuid_param(l, 1)?;
         let t = get_type_param(l, 2)?;
         let inbound_id = get_uuid_param(l, 3)?;
         let weight = get_weight_param(l, 4)?;
-        let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
-        trans.set_edge(e)?;
+        trans.create_edge(Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight))?;
+        Ok(0)
+    }
+
+    pub unsafe fn get_edges(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_edge_query_param(l, 1)?;
+        let result = trans.get_edges(q)?;
+        serialize_edges(l, result);
         Ok(1)
     }
 
-    pub unsafe fn delete_edge(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        let inbound_id = get_uuid_param(l, 3)?;
-        trans.delete_edge(outbound_id, t, inbound_id)?;
+    pub unsafe fn set_edges(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_edge_query_param(l, 1)?;
+        let weight = get_weight_param(l, 2)?;
+        trans.set_edges(q, weight)?;
+        Ok(0)
+    }
+
+    pub unsafe fn delete_edges(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_edge_query_param(l, 1)?;
+        trans.delete_edges(q)?;
         Ok(0)
     }
 
     pub unsafe fn get_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_optional_type_param(l, 2)?;
-        let result = trans.get_edge_count(outbound_id, t)?;
+        let q = get_edge_query_param(l, 1)?;
+        let result = trans.get_edge_count(q)?;
         serialize_u64(l, result);
-        Ok(1)
-    }
-
-    pub unsafe fn get_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_optional_type_param(l, 2)?;
-        let high = get_optional_datetime_param(l, 3)?;
-        let low = get_optional_datetime_param(l, 4)?;
-        let limit = get_limit_param(l, 5)?;
-        let result = trans.get_edge_range(outbound_id, t, high, low, limit)?;
-        serialize_edges(l, result);
-        Ok(1)
-    }
-
-    pub unsafe fn get_reversed_edge_count(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let inbound_id = get_uuid_param(l, 1)?;
-        let t = get_optional_type_param(l, 2)?;
-        let result = trans.get_reversed_edge_count(inbound_id, t)?;
-        serialize_u64(l, result);
-        Ok(1)
-    }
-
-    pub unsafe fn get_reversed_edge_range(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let inbound_id = get_uuid_param(l, 1)?;
-        let t = get_optional_type_param(l, 2)?;
-        let high = get_optional_datetime_param(l, 3)?;
-        let low = get_optional_datetime_param(l, 4)?;
-        let limit = get_limit_param(l, 5)?;
-        let result = trans.get_reversed_edge_range(inbound_id, t, high, low, limit)?;
-        serialize_edges(l, result);
         Ok(1)
     }
 
