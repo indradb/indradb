@@ -300,22 +300,6 @@ pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
     }
 }
 
-/// Reads the request body into a JSON object.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn read_json_object(body: &mut Body) -> Result<serde_json::Map<String, JsonValue>, IronError> {
-    match read_required_json(body)? {
-        JsonValue::Object(obj) => Ok(obj),
-        _ => {
-            Err(create_iron_error(
-                status::BadRequest,
-                "Bad payload: expected object".to_string()
-            ))
-        }
-    }
-}
-
 /// Parses the and returns the request query parameters.
 ///
 /// # Errors
@@ -402,19 +386,6 @@ pub fn get_weight_query_param(query_params: &HashMap<String, Vec<String>>) -> Re
     match Weight::new(weight_f32) {
         Ok(weight) => Ok(weight),
         Err(_) => Err(create_iron_error(status::BadRequest, "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string()))
-    }
-}
-
-/// Gets a required type value from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the type could be parsed, or was not specified.
-pub fn get_type_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<Type, IronError> {
-    let t_str = get_query_param::<String>(query_params, "type", true)?.unwrap();
-
-    match Type::new(t_str) {
-        Ok(t) => Ok(t),
-        Err(_) => Err(create_iron_error(status::BadRequest, "Invalid type for `type`: expected string up to 255 characters in length".to_string()))
     }
 }
 

@@ -5,20 +5,20 @@ use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use super::util::*;
 
+pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
+    let trans = get_transaction(req)?;
+    let query_params = get_query_params(req)?;
+    let t = get_query_param::<Type>(query_params, "type", true)?.unwrap();
+    let response = datastore_request(trans.create_vertex(t))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &response))
+}
+
 pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
     let q = get_vertex_query_param(query_params)?;
     let response = datastore_request(trans.get_vertices(q))?;
-    datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &response))
-}
-
-pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
-    let obj = read_json_object(&mut req.body)?;
-    let t = get_required_json_type_param(&obj, "type")?;
-    let trans = get_transaction(req)?;
-    let response = datastore_request(trans.create_vertex(t))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &response))
 }
@@ -42,6 +42,19 @@ pub fn delete_vertices(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &()))
 }
 
+pub fn create_edge(req: &mut Request) -> IronResult<Response> {
+    let trans = get_transaction(req)?;
+    let outbound_id: Uuid = get_url_param(req, "outbound_id")?;
+    let t: Type = get_url_param(req, "t")?;
+    let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
+    let query_params = get_query_params(req)?;
+    let weight = get_weight_query_param(query_params)?;
+    let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
+    datastore_request(trans.create_edge(e))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &()))
+}
+
 pub fn get_edges(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
@@ -60,23 +73,11 @@ pub fn get_edges(req: &mut Request) -> IronResult<Response> {
 pub fn set_edges(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
-
-    if query_params.contains_key("q") {
-        let q = get_edge_query_param(query_params)?;
-        let weight = get_weight_query_param(query_params)?;
-        datastore_request(trans.set_edges(q, weight))?;
-        datastore_request(trans.commit())?;
-        Ok(to_response(status::Ok, &()))
-    } else {
-        let outbound_id = get_query_param::<Uuid>(query_params, "outbound_id", true)?.unwrap();
-        let t = get_type_query_param(query_params)?;
-        let inbound_id = get_query_param::<Uuid>(query_params, "inbound_id", true)?.unwrap();
-        let weight = get_weight_query_param(query_params)?;
-        let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
-        datastore_request(trans.create_edge(e))?;
-        datastore_request(trans.commit())?;
-        Ok(to_response(status::Ok, &()))
-    }
+    let q = get_edge_query_param(query_params)?;
+    let weight = get_weight_query_param(query_params)?;
+    datastore_request(trans.set_edges(q, weight))?;
+    datastore_request(trans.commit())?;
+    Ok(to_response(status::Ok, &()))
 }
 
 pub fn delete_edges(req: &mut Request) -> IronResult<Response> {

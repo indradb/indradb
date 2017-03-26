@@ -33,20 +33,6 @@ lazy_static! {
 	static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
 }
 
-fn format_datetime(datetime: Option<DateTime<UTC>>) -> JsonValue {
-    match datetime {
-        Some(val) => JsonValue::String(val.to_rfc3339()),
-        None => JsonValue::Null
-    }
-}
-
-fn serialize_type(t: Option<Type>) -> JsonValue {
-    match t {
-        Some(t) => JsonValue::String(t.0),
-        None => JsonValue::Null
-    }
-}
-
 pub struct BatchTransaction {
     port: i32,
     account_id: Uuid,
@@ -104,18 +90,18 @@ impl BatchTransaction {
 }
 
 impl Transaction for BatchTransaction {
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("get_vertices".to_string()),
-            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-        })
-    }
-    
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("create_vertex".to_string()),
 			"type".to_string() => JsonValue::String(t.0)
 		})
+    }
+
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+        self.request(btreemap!{
+            "action".to_string() => JsonValue::String("get_vertices".to_string()),
+            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
+        })
     }
 
     fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
@@ -132,70 +118,43 @@ impl Transaction for BatchTransaction {
 			"query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
 		})
     }
-    
-    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_edge".to_string()),
-			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
-			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string())
-		})
-    }
 
-    fn set_edge(&self, e: Edge) -> Result<(), Error> {
+    fn create_edge(&self, e: Edge) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("set_edge".to_string()),
+			"action".to_string() => JsonValue::String("create_edge".to_string()),
 			"outbound_id".to_string() => JsonValue::String(e.outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(e.t.0),
 			"inbound_id".to_string() => JsonValue::String(e.inbound_id.hyphenated().to_string()),
 			"weight".to_string() => JsonValue::Number(JsonNumber::from_f64(e.weight.0 as f64).unwrap())
 		})
     }
-
-    fn delete_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<(), Error> {
+    
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("delete_edge".to_string()),
-			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => JsonValue::String(t.0),
-			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string())
+			"action".to_string() => JsonValue::String("get_edges".to_string()),
+			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
 		})
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
+    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
+        self.request(btreemap!{
+			"action".to_string() => JsonValue::String("set_edges".to_string()),
+			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
+		})
+    }
+
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+        self.request(btreemap!{
+			"action".to_string() => JsonValue::String("delete_edges".to_string()),
+			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+		})
+    }
+
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("get_edge_count".to_string()),
-			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => serialize_type(t)
-		})
-    }
-
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_edge_range".to_string()),
-			"outbound_id".to_string() => JsonValue::String(outbound_id.hyphenated().to_string()),
-			"type".to_string() => serialize_type(t),
-            "high".to_string() => format_datetime(high),
-            "low".to_string() => format_datetime(low),
-			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
-		})
-    }
-
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_reversed_edge_count".to_string()),
-			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
-			"type".to_string() => serialize_type(t)
-		})
-    }
-
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_reversed_edge_range".to_string()),
-			"inbound_id".to_string() => JsonValue::String(inbound_id.hyphenated().to_string()),
-			"type".to_string() => serialize_type(t),
-            "high".to_string() => format_datetime(high),
-            "low".to_string() => format_datetime(low),
-			"limit".to_string() => JsonValue::Number(JsonNumber::from(limit))
+			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
 		})
     }
 

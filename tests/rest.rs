@@ -13,13 +13,10 @@ extern crate uuid;
 #[macro_use]
 mod common;
 
-use std::collections::BTreeMap;
 use std::io::Read;
 
 use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
-use serde_json::Number as JsonNumber;
-use chrono::{DateTime, UTC};
 use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
@@ -27,13 +24,6 @@ use uuid::Uuid;
 
 pub use braid::*;
 pub use common::*;
-
-fn serialize_type(t: Option<Type>) -> String {
-    match t {
-        Some(t) => t.0,
-        None => "_".to_string()
-    }
-}
 
 pub struct RestTransaction {
     port: i32,
@@ -53,20 +43,6 @@ impl RestTransaction {
             query_pairs
         )
     }
-
-    fn build_time_range_query_pairs(&self, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>) -> Vec<(&str, String)> {
-        let mut query_pairs = vec![];
-
-        if let Some(high) = high {
-            query_pairs.push(("high", high.to_rfc3339()));
-        }
-
-        if let Some(low) = low {
-            query_pairs.push(("low", low.to_rfc3339()));
-        }
-
-        query_pairs
-    }
 }
 
 impl HttpTransaction<RestTransaction> for RestTransaction {
@@ -80,21 +56,17 @@ impl HttpTransaction<RestTransaction> for RestTransaction {
 }
 
 impl Transaction for RestTransaction {
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        let q_json = serde_json::to_string(&q).unwrap();
+    fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         let client = Client::new();
-        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", q_json)]);
+        let req = self.request(&client, "POST", "/vertex".to_string(), vec![("type", t.0)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
-        d.insert("type".to_string(), JsonValue::String(t.0));
-        let body = serde_json::to_string(&d).unwrap();
-
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "POST", "/vertex".to_string(), vec![]).body(&body[..]);
+        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -115,104 +87,42 @@ impl Transaction for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn get_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<Edge, Error> {
+    fn create_edge(&self, edge: Edge) -> Result<(), Error> {
         let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id),
-            vec![]
-        );
+        let path = format!("/edge/{}/{}/{}", edge.outbound_id, edge.t.0, edge.inbound_id);
+        let req = self.request(&client, "PUT", path, vec![("weight", edge.weight.0.to_string())]);
+        let mut res = req.send().unwrap();
+        response_to_obj(&mut res)
+    }
+    
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
+        let client = Client::new();
+        let req = self.request(&client, "GET", "/edge".to_string(), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn set_edge(&self, e: Edge) -> Result<(), Error> {
-        let mut d: BTreeMap<String, JsonValue> = BTreeMap::new();
-        d.insert("weight".to_string(), JsonValue::Number(JsonNumber::from_f64(e.weight.0 as f64).unwrap()));
-        let body = serde_json::to_string(&d).unwrap();
-
+    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(
-            &client,
-            "PUT",
-            format!("/edge/{}/{}/{}", e.outbound_id, e.t.0, e.inbound_id),
-            vec![]
-        ).body(&body[..]);
+        let req = self.request(&client, "PUT", "/edge".to_string(), vec![("q", q_json), ("weight", weight.0.to_string())]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn delete_edge(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid) -> Result<(), Error> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(
-            &client,
-            "DELETE",
-            format!("/edge/{}/{}/{}", outbound_id, t.0, inbound_id),
-            vec![]
-        );
+        let req = self.request(&client, "DELETE", "/edge".to_string(), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
 
-    fn get_edge_count(&self, outbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+        let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
-            vec![("action", "count".to_string())]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_edge_range(&self, outbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        let mut query_pairs = vec![
-            ("action", "time".to_string()),
-            ("limit", format!("{}", limit))
-        ];
-
-        query_pairs.extend(self.build_time_range_query_pairs(high, low));
-
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/{}/{}/_", outbound_id, serialize_type(t)),
-            query_pairs
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_reversed_edge_count(&self, inbound_id: Uuid, t: Option<Type>) -> Result<u64, Error> {
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
-            vec![("action", "count".to_string())]
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn get_reversed_edge_range(&self, inbound_id: Uuid, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u16) -> Result<Vec<Edge>, Error> {
-        let mut query_pairs = vec![
-            ("action", "time".to_string()),
-            ("limit", format!("{}", limit))
-        ];
-
-        query_pairs.extend(self.build_time_range_query_pairs(high, low));
-
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
-            format!("/edge/_/{}/{}", inbound_id, serialize_type(t)),
-            query_pairs
-        );
+        let req = self.request(&client, "GET", "/edge".to_string(), vec![("action", "count".to_string()), ("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }

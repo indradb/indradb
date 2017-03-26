@@ -9,7 +9,6 @@ use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore,
             Type, VertexQuery, EdgeQuery, Weight};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
-use chrono::{DateTime, UTC};
 
 /// This macro is used to proxy most methods.
 macro_rules! proxy_datastore {
