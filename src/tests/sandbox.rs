@@ -1,4 +1,4 @@
-use datastore::{Datastore, Transaction};
+use super::super::{Datastore, Transaction};
 use uuid::Uuid;
 use std::marker::PhantomData;
 

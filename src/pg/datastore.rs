@@ -1,7 +1,7 @@
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config, Pool, PooledConnection};
 use std::mem;
-use datastore::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
+use super::super::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
 use models;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash};

@@ -1,11 +1,11 @@
-use datastore::{Datastore, Transaction};
+use super::super::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
-pub fn handle_global_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_handle_global_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -35,7 +35,7 @@ pub fn handle_global_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn handle_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_handle_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -65,7 +65,7 @@ pub fn handle_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn not_set_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_set_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -74,7 +74,7 @@ pub fn not_set_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(result.unwrap_err(), Error::AccountNotFound);
 }
 
-pub fn not_delete_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -85,7 +85,7 @@ pub fn not_delete_invalid_account_metadata<D, T>(sandbox: &mut DatastoreTestSand
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn handle_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_handle_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -117,7 +117,7 @@ pub fn handle_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn not_set_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_set_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -126,7 +126,7 @@ pub fn not_set_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn not_delete_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -139,7 +139,7 @@ pub fn not_delete_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandb
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -189,7 +189,7 @@ pub fn handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn not_set_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_set_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -204,7 +204,7 @@ pub fn not_set_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D,
     assert_eq!(result.unwrap_err(), Error::EdgeNotFound);
 }
 
-pub fn not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {

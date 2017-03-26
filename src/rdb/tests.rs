@@ -1,8 +1,7 @@
 #![cfg(test)]
 
 pub use super::datastore::*;
-pub use datastore::*;
-pub use datastore::tests::*;
+pub use super::super::tests;
 pub use super::super::util::generate_random_secret;
 pub use std::env;
 use std::path::Path;

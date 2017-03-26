@@ -1,8 +1,7 @@
 #![cfg(test)]
 
 pub use super::datastore::*;
-pub use datastore::*;
-pub use datastore::tests::*;
+pub use super::super::tests;
 pub use std::env;
 
 fn datastore() -> PostgresDatastore {

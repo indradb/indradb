@@ -30,14 +30,16 @@ extern crate bincode;
 extern crate byteorder;
 
 #[macro_use]
-mod datastore;
+pub mod tests;
 mod errors;
 mod models;
+mod traits;
 mod util;
 
-pub use datastore::*;
-pub use models::{Vertex, Edge, Type, Weight};
-pub use errors::{Error, ValidationError};
+pub use models::*;
+pub use errors::*;
+pub use models::*;
+pub use traits::*;
 
 #[cfg(feature="postgres-datastore")]
 mod pg;

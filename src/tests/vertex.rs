@@ -1,4 +1,4 @@
-use datastore::{Datastore, Transaction, VertexQuery};
+use super::super::{Datastore, Transaction, VertexQuery};
 use super::sandbox::DatastoreTestSandbox;
 use super::util::*;
 use uuid::Uuid;
@@ -6,7 +6,7 @@ use models;
 use std::u32;
 use std::collections::HashSet;
 
-pub fn get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -40,7 +40,7 @@ pub fn get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     }
 }
 
-pub fn get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -61,7 +61,7 @@ pub fn get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox
     assert_eq!(range.len(), 0);
 }
 
-pub fn get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -82,7 +82,7 @@ pub fn get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D,
     assert_eq!(range.len(), 0);
 }
 
-pub fn get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -96,7 +96,7 @@ pub fn get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(range[0].t.0, "test_vertex_type");
 }
 
-pub fn get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -108,7 +108,7 @@ pub fn get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<
     assert_eq!(range.len(), 0);
 }
 
-pub fn get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -139,7 +139,7 @@ pub fn get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     }
 }
 
-pub fn get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -164,7 +164,7 @@ pub fn get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(range[0].id, inserted_id_5);
 }
 
-pub fn update_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_update_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -178,7 +178,7 @@ pub fn update_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(v[0].t, updated_t);
 }
 
-pub fn not_update_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_update_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -187,7 +187,7 @@ pub fn not_update_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, 
     trans.set_vertices(VertexQuery::Vertex(Uuid::default()), t).unwrap();
 }
 
-pub fn delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
@@ -202,7 +202,7 @@ pub fn delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(count, 0);
 }
 
-pub fn not_delete_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction,
 {
@@ -210,7 +210,7 @@ pub fn not_delete_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, 
     trans.delete_vertices(VertexQuery::Vertex(Uuid::default())).unwrap();
 }
 
-pub fn not_delete_an_unowned_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_an_unowned_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
 {
