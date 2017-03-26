@@ -1,7 +1,10 @@
+local queries = require("queries");
+
 local outbound_id = create_vertex("foo");
 local inbound_id = create_vertex("bar");
-set_edge(outbound_id, "baz", inbound_id, 0.5);
-local e = get_edge(outbound_id, "baz", inbound_id);
-assert(e.outbound_id == outbound_id);
-assert(e.type == "baz");
-assert(e.inbound_id == inbound_id);
+create_edge(outbound_id, "baz", inbound_id, 0.5);
+local e = get_edges(queries.edge(outbound_id, "baz", inbound_id).query);
+assert(table.getn(e) == 1);
+assert(e[1].outbound_id == outbound_id);
+assert(e[1].type == "baz");
+assert(e[1].inbound_id == inbound_id);

@@ -1,6 +1,6 @@
 local outbound_id = create_vertex("foo");
 local inbound_id = create_vertex("bar");
-set_edge(outbound_id, "baz", inbound_id, 0.5);
+create_edge(outbound_id, "baz", inbound_id, 0.5);
 
 set_edge_metadata(outbound_id, "baz", inbound_id, "script-test-edge", {foo={true, false}});
 local val = get_edge_metadata(outbound_id, "baz", inbound_id, "script-test-edge");

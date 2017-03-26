@@ -30,9 +30,9 @@ lua_fn! {
         Ok(0)
     }
 
-    pub unsafe fn delete_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let id = get_uuid_param(l, 1)?;
-        trans.delete_vertices(VertexQuery::Vertex(id))?;
+    pub unsafe fn delete_vertices(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
+        let q = get_vertex_query_param(l, 1)?;
+        trans.delete_vertices(q)?;
         Ok(0)
     }
 

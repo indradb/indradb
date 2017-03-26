@@ -31,7 +31,7 @@ pub fn run(mut trans: &ProxyTransaction,
     l.register("create_vertex", api::create_vertex);
     l.register("get_vertices", api::get_vertices);
     l.register("set_vertex", api::set_vertex);
-    l.register("delete_vertex", api::delete_vertex);
+    l.register("delete_vertices", api::delete_vertices);
 
     l.register("create_edge", api::create_edge);
     l.register("get_edges", api::get_edges);
