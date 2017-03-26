@@ -153,6 +153,22 @@ impl RocksdbTransaction {
         })
     }
 
+    fn check_write_permissions(&self, id: Uuid, not_found_err: Error) -> Result<(), Error> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_value = vertex_manager.get(id)?;
+
+        match vertex_value {
+            None => Err(not_found_err),
+            Some(vertex_value) => {
+                if vertex_value.owner_id != self.account_id {
+                    Err(Error::Unauthorized)
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+
     fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
@@ -413,24 +429,81 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, e: models::Edge) -> Result<(), Error> {
-        panic!("Unimplemented");
+    fn create_edge(&self, edge: models::Edge) -> Result<(), Error> {
+        // Verify that the vertices exist and that we own the vertex with the outbound ID
+        self.check_write_permissions(edge.outbound_id, Error::VertexNotFound)?;
+        if !VertexManager::new(self.db.clone()).exists(edge.inbound_id)? {
+            return Err(Error::VertexNotFound);
+        }
+
+        let new_update_datetime = UTC::now();
+        let mut batch = WriteBatch::default();
+        EdgeManager::new(self.db.clone()).set(&mut batch,
+                                                   edge.outbound_id,
+                                                   &edge.t,
+                                                   edge.inbound_id,
+                                                   new_update_datetime,
+                                                   edge.weight)?;
+        self.db.write(batch)?;
+        Ok(())
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
-        panic!("Unimplemented");
+        let iterator = self.edge_query_to_iterator(q)?;
+
+        let mapped = iterator.map(move |item| {
+            let ((outbound_id, t, update_datetime, inbound_id), weight) = item?;
+            let edge = models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime);
+            Ok(edge)
+        });
+
+        mapped.collect()
     }
 
     fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
-        panic!("Unimplemented");
+        let edge_manager = EdgeManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let iterator = self.edge_query_to_iterator(q)?;
+        let mut batch = WriteBatch::default();
+        let new_update_datetime = UTC::now();
+
+        for item in iterator {
+            let ((outbound_id, t, _, inbound_id), _) = item?;
+
+            if let Some(vertex_value) = vertex_manager.get(outbound_id)? {
+                if vertex_value.owner_id == self.account_id {
+                    edge_manager.set(&mut batch, outbound_id, &t, inbound_id, new_update_datetime, weight)?;
+                }
+            };
+        }
+
+        self.db.write(batch)?;
+        Ok(())
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
-        panic!("Unimplemented");
+        let edge_manager = EdgeManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let iterator = self.edge_query_to_iterator(q)?;
+        let mut batch = WriteBatch::default();
+
+        for item in iterator {
+            let ((outbound_id, t, update_datetime, inbound_id), _) = item?;
+
+            if let Some(vertex_value) = vertex_manager.get(outbound_id)? {
+                if vertex_value.owner_id == self.account_id {
+                    edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
+                }
+            };
+        }
+
+        self.db.write(batch)?;
+        Ok(())
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
-        panic!("Unimplemented");
+        let iterator = self.edge_query_to_iterator(q)?;
+        Ok(iterator.count() as u64)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {

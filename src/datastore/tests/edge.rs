@@ -360,6 +360,35 @@ pub fn get_no_edges_for_reversed_time<D, T>(mut sandbox: &mut DatastoreTestSandb
     check_edge_range(range, outbound_id, 0);
 }
 
+pub fn get_all_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
+{
+    create_time_range_queryable_edges(&mut sandbox);
+    let trans = sandbox.transaction();
+    let q = EdgeQuery::All(None, None, None, u32::MAX);
+    let range = trans.get_edges(q).unwrap();
+    assert!(range.len() >= 15);
+}
+
+pub fn get_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+    where D: Datastore<T>,
+          T: Transaction
+{
+    let (outbound_id, _, _, inbound_ids) = create_time_range_queryable_edges(&mut sandbox);
+    let trans = sandbox.transaction();
+    let t = models::Type::new("test_edge_type".to_string()).unwrap();
+    let q = EdgeQuery::Edges(vec![
+        (outbound_id, t.clone(), inbound_ids[0]),
+        (outbound_id, t.clone(), inbound_ids[1]),
+        (outbound_id, t.clone(), inbound_ids[2]),
+        (outbound_id, t.clone(), inbound_ids[3]),
+        (outbound_id, t.clone(), inbound_ids[4]),
+    ]);
+    let range = trans.get_edges(q).unwrap();
+    check_edge_range(range, outbound_id, 5);
+}
+
 fn check_edge_range(range: Vec<models::Edge>, expected_outbound_id: Uuid, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
     let mut covered_ids: HashSet<Uuid> = HashSet::new();
@@ -373,5 +402,3 @@ fn check_edge_range(range: Vec<models::Edge>, expected_outbound_id: Uuid, expect
         covered_ids.insert(edge.inbound_id);
     }
 }
-
-// TODO: test EdgeQuery::All, EdgeQuery::Edges

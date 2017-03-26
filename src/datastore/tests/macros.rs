@@ -67,6 +67,8 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_edges_with_no_low, ::get_edges_with_no_low, $code);
 		define_test!(should_get_edges_with_no_time, ::get_edges_with_no_time, $code);
 		define_test!(should_get_no_edges_for_reversed_time, ::get_no_edges_for_reversed_time, $code);
+		define_test!(should_get_all_edges, ::get_all_edges, $code);
+		define_test!(should_get_edges, ::get_edges, $code);
 	)
 }
 
