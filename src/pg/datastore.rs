@@ -197,9 +197,18 @@ impl PostgresTransaction {
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
          match q {
             VertexQuery::All(start_id, limit) => {
-                let query_template = "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
-                let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
-                sql_query_builder.push(query_template, "vertices", params);
+                match start_id {
+                    Some(start_id) => {
+                        let query_template = "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                        let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
+                        sql_query_builder.push(query_template, "vertices", params);
+                    },
+                    None => {
+                        let query_template = "SELECT id, owner_id, type FROM %t ORDER BY id LIMIT %p";
+                        let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
+                        sql_query_builder.push(query_template, "vertices", params);
+                    }
+                }
             },
             VertexQuery::Vertex(id) => {
                 let query_template = "SELECT id, owner_id, type FROM %t WHERE id=%p LIMIT 1";

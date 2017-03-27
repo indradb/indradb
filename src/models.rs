@@ -190,7 +190,7 @@ pub enum QueryTypeConverter {
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum VertexQuery {
     #[serde(rename="all")]
-    All(Uuid, u32),
+    All(Option<Uuid>, u32),
     #[serde(rename="vertex")]
     Vertex(Uuid),
     #[serde(rename="vertices")]

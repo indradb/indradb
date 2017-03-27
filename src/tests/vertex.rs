@@ -22,7 +22,7 @@ pub fn should_get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     ];
 
     inserted_ids.sort();
-    let range = trans.get_vertices(VertexQuery::All(Uuid::default(), u32::MAX)).unwrap();
+    let range = trans.get_vertices(VertexQuery::All(None, u32::MAX)).unwrap();
     trans.commit().unwrap();
 
     assert!(range.len() >= 5);
@@ -56,7 +56,7 @@ pub fn should_get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTest
     ];
 
     inserted_ids.sort();
-    let range = trans.get_vertices(VertexQuery::All(Uuid::default(), 0)).unwrap();
+    let range = trans.get_vertices(VertexQuery::All(None, 0)).unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -77,7 +77,7 @@ pub fn should_get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSan
     ];
 
     inserted_ids.sort();
-    let range = trans.get_vertices(VertexQuery::All(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap(), u32::MAX)).unwrap();
+    let range = trans.get_vertices(VertexQuery::All(Some(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()), u32::MAX)).unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }

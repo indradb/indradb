@@ -174,14 +174,25 @@ impl RocksdbTransaction {
 
         match q {
             VertexQuery::All(start_id, limit) => {
-                match next_uuid(start_id) {
-                    Ok(uuid) => Ok(Box::new(vertex_manager.iterate_for_range(uuid)?.take(limit as usize))),
-                    // If we get an error back, it's because `start_id` is the maximum
-                    // possible value. We know that no vertices exist whose ID is
-                    // greater than the maximum possible value, so just return an
-                    // empty list.
-                    Err(_) => Ok(Box::new(vec![].into_iter()))
-                }
+                let next_uuid = match start_id {
+                    Some(start_id) => {
+                        match next_uuid(start_id) {
+                            Ok(next_uuid) => next_uuid,
+                            // If we get an error back, it's because
+                            // `start_id` is the maximum possible value. We
+                            // know that no vertices exist whose ID is greater
+                            // than the maximum possible value, so just return
+                            // an empty list.
+                            Err(_) => {
+                                return Ok(Box::new(vec![].into_iter()))
+                            }
+                        }
+                    },
+                    None => Uuid::default()
+                };
+
+                let iterator = vertex_manager.iterate_for_range(next_uuid)?;
+                Ok(Box::new(iterator.take(limit as usize)))
             },
             VertexQuery::Vertex(id) => {
                 match vertex_manager.get(id)? {
