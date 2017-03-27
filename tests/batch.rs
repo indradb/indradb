@@ -27,7 +27,6 @@ use uuid::Uuid;
 pub use braid::*;
 pub use common::*;
 use std::io::Read;
-use chrono::{DateTime, UTC};
 
 lazy_static! {
 	static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
