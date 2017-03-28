@@ -192,7 +192,7 @@ pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Res
 
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(_) => Err(LuaError::Arg(narg, "Expected vertex query table".to_string()))
+        Err(err) => Err(LuaError::Arg(narg, format!("Expected vertex query table: {}", err)))
     }
 }
 
@@ -202,7 +202,7 @@ pub unsafe fn get_edge_query_param(l: &mut lua::ExternState, narg: i32) -> Resul
 
     match serde_json::from_value::<EdgeQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(_) => Err(LuaError::Arg(narg, "Expected edge query table".to_string()))
+        Err(err) => Err(LuaError::Arg(narg, format!("Expected edge query table: {}", err)))
     }
 }
 
