@@ -87,7 +87,7 @@ pub fn run(mut trans: &ProxyTransaction,
     // Add the input arg as a global variable.
     {
         unsafe {
-            util::serialize_json(l.as_extern(), arg);
+            util::serialize_json(l.as_extern(), &arg);
         }
         l.setglobal("arg");
     }

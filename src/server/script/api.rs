@@ -75,7 +75,7 @@ lua_fn! {
     pub unsafe fn get_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = get_string_param(l, 1)?;
         let result = trans.get_global_metadata(key.clone())?;
-        serialize_json(l, result);
+        serialize_json(l, &result);
         Ok(1)
     }
 
@@ -96,7 +96,7 @@ lua_fn! {
         let owner_id = get_uuid_param(l, 1)?;
         let key = get_string_param(l, 2)?;
         let result = trans.get_account_metadata(owner_id, key)?;
-        serialize_json(l, result);
+        serialize_json(l, &result);
         Ok(1)
     }
 
@@ -116,54 +116,81 @@ lua_fn! {
     }
 
     pub unsafe fn get_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = get_uuid_param(l, 1)?;
+        let q = get_vertex_query_param(l, 1)?;
         let key = get_string_param(l, 2)?;
-        let result = trans.get_vertex_metadata(owner_id, key)?;
-        serialize_json(l, result);
+        let result = trans.get_vertex_metadata(q, key)?;
+        
+        // Return the results
+        l.newtable();
+        for (id, v) in result.iter() {
+            // Push the key
+            l.pushstring(&id.to_string()[..]);
+            // Push the value
+            serialize_json(l, v);
+            // Add the key/value to the table
+            l.settable(-3);
+        }
+        
         Ok(1)
     }
 
     pub unsafe fn set_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = get_uuid_param(l, 1)?;
+        let q = get_vertex_query_param(l, 1)?;
         let key = get_string_param(l, 2)?;
         let value = deserialize_json(l, 3)?;
-        trans.set_vertex_metadata(owner_id, key, value)?;
+        trans.set_vertex_metadata(q, key, value)?;
         Ok(0)
     }
 
     pub unsafe fn delete_vertex_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let owner_id = get_uuid_param(l, 1)?;
+        let q = get_vertex_query_param(l, 1)?;
         let key = get_string_param(l, 2)?;
-        trans.delete_vertex_metadata(owner_id, key)?;
+        trans.delete_vertex_metadata(q, key)?;
         Ok(0)
     }
 
     pub unsafe fn get_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        let inbound_id = get_uuid_param(l, 3)?;
-        let key = get_string_param(l, 4)?;
-        let result = trans.get_edge_metadata(outbound_id, t, inbound_id, key)?;
-        serialize_json(l, result);
+        let q = get_edge_query_param(l, 1)?;
+        let key = get_string_param(l, 2)?;
+        let result = trans.get_edge_metadata(q, key)?;
+        
+        // Return the results
+        l.newtable();
+        for (&(ref outbound_id, ref t, ref inbound_id), ref v) in result.iter() {
+            // Push the key
+            {
+                l.newtable();
+                l.pushinteger(1);
+                l.pushstring(&outbound_id.to_string()[..]);
+                l.settable(-3);
+                l.pushinteger(2);
+                l.pushstring(&t.0[..]);
+                l.settable(-3);
+                l.pushinteger(3);
+                l.pushstring(&inbound_id.to_string()[..]);
+                l.settable(-3);
+            }
+            // Push the value
+            serialize_json(l, v);
+            // Add the key/value to the table
+            l.settable(-3);
+        }
+
         Ok(1)
     }
 
     pub unsafe fn set_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        let inbound_id = get_uuid_param(l, 3)?;
-        let key = get_string_param(l, 4)?;
-        let value = deserialize_json(l, 5)?;
-        trans.set_edge_metadata(outbound_id, t, inbound_id, key, value)?;
+        let q = get_edge_query_param(l, 1)?;
+        let key = get_string_param(l, 2)?;
+        let value = deserialize_json(l, 3)?;
+        trans.set_edge_metadata(q, key, value)?;
         Ok(0)
     }
 
     pub unsafe fn delete_edge_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let outbound_id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        let inbound_id = get_uuid_param(l, 3)?;
-        let key = get_string_param(l, 4)?;
-        trans.delete_edge_metadata(outbound_id, t, inbound_id, key)?;
+        let q = get_edge_query_param(l, 1)?;
+        let key = get_string_param(l, 2)?;
+        trans.delete_edge_metadata(q, key)?;
         Ok(0)
     }
 }

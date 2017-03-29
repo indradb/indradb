@@ -21,6 +21,7 @@ use serde::Deserialize;
 use hyper::status::StatusCode;
 use hyper::client::response::Response;
 use uuid::Uuid;
+use std::collections::HashMap;
 
 pub use braid::*;
 pub use common::*;
@@ -128,51 +129,51 @@ impl Transaction for RestTransaction {
     }
 
     fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
     fn set_global_metadata(&self, _: String, _: JsonValue) -> Result<(), Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
     fn delete_global_metadata(&self, _: String) -> Result<(), Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
     fn get_account_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
     fn set_account_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
     fn delete_account_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
-        panic!("Unimplemented")
+        unimplemented!();
     }
 
-    fn get_vertex_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
-        panic!("Unimplemented")
+    fn get_vertex_metadata(&self, _: VertexQuery, _: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+        unimplemented!();
     }
 
-    fn set_vertex_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
-        panic!("Unimplemented")
+    fn set_vertex_metadata(&self, _: VertexQuery, _: String, _: JsonValue) -> Result<(), Error> {
+        unimplemented!();
     }
 
-    fn delete_vertex_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
-        panic!("Unimplemented")
+    fn delete_vertex_metadata(&self, _: VertexQuery, _: String) -> Result<(), Error> {
+        unimplemented!();
     }
 
-    fn get_edge_metadata(&self, _: Uuid, _: Type, _: Uuid, _: String) -> Result<JsonValue, Error> {
-        panic!("Unimplemented")
+    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error> {
+        unimplemented!();
     }
 
-    fn set_edge_metadata(&self, _: Uuid, _: Type, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
-        panic!("Unimplemented")
+    fn set_edge_metadata(&self, _: EdgeQuery, _: String, _: JsonValue) -> Result<(), Error> {
+        unimplemented!();
     }
 
-    fn delete_edge_metadata(&self, _: Uuid, _: Type, _: Uuid, _: String) -> Result<(), Error> {
-        panic!("Unimplemented")
+    fn delete_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<(), Error> {
+        unimplemented!();
     }
 
     fn commit(self) -> Result<(), Error> {

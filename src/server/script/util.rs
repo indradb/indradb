@@ -103,33 +103,33 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
 }
 
 /// Serializes a JSON value into a lua value.
-pub unsafe fn serialize_json(l: &mut lua::ExternState, json: JsonValue) {
+pub unsafe fn serialize_json(l: &mut lua::ExternState, json: &JsonValue) {
     match json {
-        JsonValue::Null => l.pushnil(),
-        JsonValue::Bool(v) => l.pushboolean(v),
-        JsonValue::Number(v) => {
+        &JsonValue::Null => l.pushnil(),
+        &JsonValue::Bool(v) => l.pushboolean(v),
+        &JsonValue::Number(ref v) => {
             if v.is_f64() {
                 l.pushnumber(v.as_f64().unwrap());
             } else {
                 l.pushstring(&v.to_string()[..]);
             }
         },
-        JsonValue::String(v) => l.pushstring(&v[..]),
-        JsonValue::Array(v) => {
+        &JsonValue::String(ref v) => l.pushstring(v),
+        &JsonValue::Array(ref v) => {
             l.newtable();
 
             for (i, iv) in v.iter().enumerate() {
                 l.pushinteger((i + 1) as isize);
-                serialize_json(l, iv.clone());
+                serialize_json(l, &iv);
                 l.settable(-3);
             }
         }
-        JsonValue::Object(v) => {
+        &JsonValue::Object(ref v) => {
             l.newtable();
 
-            for (k, iv) in &v {
+            for (k, iv) in v {
                 l.pushstring(k);
-                serialize_json(l, iv.clone());
+                serialize_json(l, &iv);
                 l.settable(-3);
             }
         }

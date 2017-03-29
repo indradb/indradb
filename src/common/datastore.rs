@@ -9,6 +9,7 @@ use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore,
             Type, VertexQuery, EdgeQuery, Weight};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 
 /// This macro is used to proxy most methods.
 macro_rules! proxy_datastore {
@@ -137,36 +138,28 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_account_metadata, owner_id, key)
     }
 
-    fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        proxy_transaction!(self, get_vertex_metadata, owner_id, key)
+    fn get_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+        proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
-    fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        proxy_transaction!(self, set_vertex_metadata, owner_id, key, value)
+    fn set_vertex_metadata(&self, q: VertexQuery, key: String, value: JsonValue) -> Result<(), Error> {
+        proxy_transaction!(self, set_vertex_metadata, q, key, value)
     }
 
-    fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        proxy_transaction!(self, delete_vertex_metadata, owner_id, key)
+    fn delete_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<(), Error> {
+        proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        proxy_transaction!(self, get_edge_metadata, outbound_id, t, inbound_id, key)
+    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error> {
+        proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
-    fn set_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        proxy_transaction!(
-            self,
-            set_edge_metadata,
-            outbound_id,
-            t,
-            inbound_id,
-            key,
-            value
-        )
+    fn set_edge_metadata(&self, q: EdgeQuery, key: String, value: JsonValue) -> Result<(), Error> {
+        proxy_transaction!(self, set_edge_metadata, q, key, value)
     }
 
-    fn delete_edge_metadata(&self, outbound_id: Uuid, t: Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
-        proxy_transaction!(self, delete_edge_metadata, outbound_id, t, inbound_id, key)
+    fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
+        proxy_transaction!(self, delete_edge_metadata, q, key)
     }
 
     fn commit(self) -> Result<(), Error> {
