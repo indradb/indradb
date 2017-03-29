@@ -11,6 +11,7 @@ use chrono::{UTC, DateTime};
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
+use std::collections::HashMap;
 use std::i64;
 use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
@@ -65,12 +66,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
         let conn = self.pool.get()?;
 
         let results = conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&account_id])?;
-
-        for _ in &results {
-            return Result::Ok(true);
-        }
-
-        Result::Ok(false)
+        Ok(results.len() > 0)
     }
 
     fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
@@ -94,11 +90,11 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
         
         let results = conn.query("DELETE FROM accounts WHERE id=$1 RETURNING 1", &[&account_id])?;
 
-        for _ in &results {
-            return Result::Ok(());
+        if results.len() > 0 {
+            Ok(())
+        } else {
+            Err(Error::AccountNotFound)
         }
-
-        Err(Error::AccountNotFound)
     }
 
     fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
@@ -161,37 +157,23 @@ impl PostgresTransaction {
     }
 
     fn handle_delete_metadata(&self, results: Rows) -> Result<(), Error> {
-        for _ in &results {
-            return Ok(());
+        if results.len() > 0 {
+            Ok(())
+        } else {
+            Err(Error::MetadataNotFound)
         }
-
-        Err(Error::MetadataNotFound)
     }
 
-    fn handle_set_metadata(&self, result: Result<Rows, pg_error::Error>, foreign_key_error: Error) -> Result<(), Error> {
-        match result {
-            Ok(rows) => {
-                for _ in &rows {
-                    return Ok(());
-                }
-
-                Err(Error::MetadataNotFound)
-            },
-            Err(pg_error::Error::Db(ref err)) => {
-                if err.code == pg_error::SqlState::ForeignKeyViolation || err.code == pg_error::SqlState::NotNullViolation {
-                    // This should only happen when we couldn't get the
-                    // "owning" resource for the metadata
-                    Err(foreign_key_error)
-                } else {
-                    try!(result);
-                    panic!("Unreacheable code hit")
-                }
-            },
-            _ => {
-                try!(result);
-                panic!("Unreacheable code hit")
+    fn handle_set_metadata_error(&self, err: pg_error::Error, foreign_key_err: Error) -> Error {
+        if let pg_error::Error::Db(ref err) = err {
+            if err.code == pg_error::SqlState::ForeignKeyViolation || err.code == pg_error::SqlState::NotNullViolation {
+                // This should only happen when we couldn't get the
+                // "owning" resource for the metadata
+                return foreign_key_err;
             }
         }
+
+        Error::from(err)
     }
 
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
@@ -490,15 +472,28 @@ impl Transaction for PostgresTransaction {
     }
 
     fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = self.trans.query("
-			INSERT INTO global_metadata (key, value)
-			VALUES ($1, $2)
-			ON CONFLICT ON CONSTRAINT global_metadata_pkey
-			DO UPDATE SET value=$2
-			RETURNING 1
-		", &[&key, &value]);
+        // Because this command could fail, we need to set a savepoint to roll
+        // back to, rather than spoiling the entire transaction
+        let trans = self.trans.savepoint("set_global_metadata")?;
 
-        self.handle_set_metadata(results, Error::Unexpected("Unexpected error when setting global metadata".to_string()))
+        let results = trans.query("
+            INSERT INTO global_metadata (key, value)
+            VALUES ($1, $2)
+            ON CONFLICT ON CONSTRAINT global_metadata_pkey
+            DO UPDATE SET value=$2
+            RETURNING 1
+        ", &[&key, &value]);
+        
+        match results {
+            Err(err) => {
+                trans.set_rollback();
+                Err(self.handle_set_metadata_error(err, Error::Unexpected("Unexpected error when setting global metadata".to_string())))
+            }
+            Ok(_) => {
+                trans.set_commit();
+                Ok(())
+            }
+        }
     }
 
     fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
@@ -520,15 +515,33 @@ impl Transaction for PostgresTransaction {
     }
 
     fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = self.trans.query("
-			INSERT INTO account_metadata (owner_id, key, value)
-			VALUES ($1, $2, $3)
-			ON CONFLICT ON CONSTRAINT account_metadata_pkey
-			DO UPDATE SET value=$3
-			RETURNING 1
-		", &[&owner_id, &key, &value]);
+        // Because this command could fail, we need to set a savepoint to roll
+        // back to, rather than spoiling the entire transaction
+        let trans = self.trans.savepoint("set_account_metadata")?;
+        
+        let results = trans.query("
+            INSERT INTO account_metadata (owner_id, key, value)
+            VALUES ($1, $2, $3)
+            ON CONFLICT ON CONSTRAINT account_metadata_pkey
+            DO UPDATE SET value=$3
+            RETURNING 1
+        ", &[&owner_id, &key, &value]);
+        
+        match results {
+            Err(err) => {
+                trans.set_rollback();
+                Err(self.handle_set_metadata_error(err, Error::AccountNotFound))
+            }
+            Ok(rows) => {
+                trans.set_commit();
 
-        self.handle_set_metadata(results, Error::AccountNotFound)
+                if rows.len() > 0 {
+                    Ok(())
+                } else {
+                    Err(Error::AccountNotFound)
+                }
+            }
+        }
     }
 
     fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
@@ -539,74 +552,92 @@ impl Transaction for PostgresTransaction {
         self.handle_delete_metadata(results)
     }
 
-    fn get_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = self.trans.query(
-            "SELECT value FROM vertex_metadata WHERE owner_id=$1 AND key=$2",
-            &[&owner_id, &key]
-        )?;
-        
-        self.handle_get_metadata(results)
+    fn get_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND key=%p", vec![Box::new(key)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        let results = self.trans.query(&query[..], &params_refs[..])?;
+        let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
+
+        for row in &results {
+            let id: Uuid = row.get(0);
+            let value: JsonValue = row.get(1);
+            metadata.insert(id, value);
+        }
+
+        Ok(metadata)
     }
 
-    fn set_vertex_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = self.trans.query("
+    fn set_vertex_metadata(&self, q: VertexQuery, key: String, value: JsonValue) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("
 			INSERT INTO vertex_metadata (owner_id, key, value)
-			VALUES ($1, $2, $3)
+            SELECT id, %p, %p FROM %t
 			ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
-			DO UPDATE SET value=$3
-			RETURNING 1
-		", &[&owner_id, &key, &value]);
-
-        self.handle_set_metadata(results, Error::VertexNotFound)
+			DO UPDATE SET value=%p
+        ", vec![Box::new(key), Box::new(value.clone()), Box::new(value)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
     }
 
-    fn delete_vertex_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        let results = self.trans.query(
-            "DELETE FROM vertex_metadata WHERE owner_id=$1 AND key=$2 RETURNING 1",
-            &[&owner_id, &key]
-        )?;
+    fn delete_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.vertex_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("DELETE FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND key=%p", vec![Box::new(key)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
+    }
+
+    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<(Uuid, models::Type, Uuid), JsonValue>, Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+
+        let (query, params) = sql_query_builder.to_query_payload("
+            SELECT edges.outbound_id, edges.type, edges.inbound_id, edge_metadata.value
+            FROM edge_metadata JOIN edges ON edge_metadata.owner_id=edges.id
+            WHERE owner_id IN (SELECT id FROM %t) AND key=%p
+        ", vec![Box::new(key)]);
         
-        self.handle_delete_metadata(results)
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        let results = self.trans.query(&query[..], &params_refs[..])?;
+        let mut metadata: HashMap<(Uuid, models::Type, Uuid), JsonValue> = HashMap::new();
+
+        for row in &results {
+            let outbound_id: Uuid = row.get(0);
+            let t_str: String = row.get(1);
+            let inbound_id: Uuid = row.get(2);
+            let value: JsonValue = row.get(3);
+            metadata.insert((outbound_id, models::Type::new(t_str).unwrap(), inbound_id), value);
+        }
+
+        Ok(metadata)
     }
 
-    fn get_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        let results = self.trans.query("
-			SELECT value
-			FROM edge_metadata
-			WHERE owner_id=(
-                SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
-            ) AND key=$4
-		", &[&outbound_id, &t.0, &inbound_id, &key])?;
-
-        self.handle_get_metadata(results)
-    }
-
-    fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
-        let results = self.trans.query("
+    fn set_edge_metadata(&self, q: EdgeQuery, key: String, value: JsonValue) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("
 			INSERT INTO edge_metadata (owner_id, key, value)
-			VALUES (
-                (SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3),
-                $4,
-                $5
-            )
+            SELECT id, %p, %p FROM %t
 			ON CONFLICT ON CONSTRAINT edge_metadata_pkey
-			DO UPDATE SET value=$5
-			RETURNING 1
-		", &[&outbound_id, &t.0, &inbound_id, &key, &value]);
-
-        self.handle_set_metadata(results, Error::EdgeNotFound)
+			DO UPDATE SET value=%p
+        ", vec![Box::new(key), Box::new(value.clone()), Box::new(value)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
     }
 
-    fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
-        let results = self.trans.query("
-			DELETE FROM edge_metadata
-			WHERE owner_id=(
-                SELECT id FROM edges WHERE outbound_id=$1 AND type=$2 AND inbound_id=$3
-            ) AND key=$4
-			RETURNING 1
-		", &[&outbound_id, &t.0, &inbound_id, &key])?;
-
-        self.handle_delete_metadata(results)
+    fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
+        let mut sql_query_builder = CTEQueryBuilder::new();
+        self.edge_query_to_sql(q, &mut sql_query_builder);
+        let (query, params) = sql_query_builder.to_query_payload("DELETE FROM edge_metadata WHERE owner_id IN (SELECT id FROM %t) AND key=%p", vec![Box::new(key)]);
+        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
+        self.trans.execute(&query[..], &params_refs[..])?;
+        Ok(())
     }
 
     fn commit(self) -> Result<(), Error> {

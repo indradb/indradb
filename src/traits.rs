@@ -3,6 +3,7 @@ use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
 use uuid::Uuid;
+use std::collections::HashMap;
 use super::models::*;
 
 /// Specifies a datastore implementation.
@@ -188,80 +189,46 @@ pub trait Transaction {
     /// Gets a vertex metadata value.
     ///
     /// # Arguments
-    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Return `Error::VertexNotFound` if the specified vertex does not
-    /// exist. Returns `Error::MetadataNotFound` if the metadata does not
-    /// exist.
-    fn get_vertex_metadata(&self, vertex_id: Uuid, name: String) -> Result<JsonValue, Error>;
+    fn get_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<HashMap<Uuid, JsonValue>, Error>;
 
     /// Sets a vertex metadata value.
     ///
     /// # Arguments
-    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    ///
-    /// # Errors
-    /// Return `Error::VertexNotFound` if the specified vertex does not
-    /// exist.
-    fn set_vertex_metadata(&self, vertex_id: Uuid, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes a vertex metadata value.
     ///
     /// # Arguments
-    /// * `vertex_id`: The ID of the vertex that the metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_vertex_metadata(&self, vertex_id: Uuid, name: String) -> Result<(), Error>;
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error>;
 
     /// Gets an edge metadata value.
     ///
     /// # Arguments
-    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
-    ///   metadata is tied to.
-    /// * `edge_t`: The type the edge that the metadata is tied to.
-    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
-    ///   metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_edge_metadata(&self, edge_outbound_id: Uuid, edge_t: models::Type, edge_inbound_id: Uuid, name: String) -> Result<JsonValue, Error>;
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error>;
 
     /// Sets an edge metadata value.
     ///
     /// # Arguments
-    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
-    ///   metadata is tied to.
-    /// * `edge_t`: The type the edge that the metadata is tied to.
-    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
-    ///   metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    ///
-    /// # Errors
-    /// Returns `Error::EdgeNotFound` if the specified edge does not exist.
-    fn set_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes an edge metadata value.
     ///
     /// # Arguments
-    /// * `edge_outbound_id`: The outbound vertex ID of the edge that the
-    ///   metadata is tied to.
-    /// * `edge_t`: The type the edge that the metadata is tied to.
-    /// * `edge_inbound_id`: The inbound vertex ID of the edge that the
-    ///   metadata is tied to.
+    /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, name: String) -> Result<(), Error>;
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error>;
 
     /// Commits the transaction.
     fn commit(self) -> Result<(), Error>;

@@ -47,6 +47,10 @@ impl CTEQueryBuilder {
     }
 
     pub fn push(&mut self, query_template: &str, root_table_name: &str, params: Vec<Box<ToSql>>) {
+        // TODO: because we don't support query parameter numbers, there are a
+        // couple of times where we have to pass the same parameter multiple
+        // times. Fix this.
+
         let from_table_name = get_from_table_name(root_table_name, self.queries.len());
         let query = format_query(query_template, &from_table_name[..], params.len(), self.params.len());
         self.queries.push(query);

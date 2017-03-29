@@ -308,14 +308,6 @@ impl EdgeManager {
                        KeyComponent::Uuid(inbound_id)])
     }
 
-    pub fn exists(&self,
-                  outbound_id: Uuid,
-                  t: &models::Type,
-                  inbound_id: Uuid)
-                  -> Result<bool, Error> {
-        exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
-    }
-
     pub fn get(&self,
                outbound_id: Uuid,
                t: &models::Type,
@@ -623,16 +615,15 @@ impl VertexMetadataManager {
         iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
     }
 
-    pub fn exists(&self, vertex_id: Uuid, name: &str) -> Result<bool, Error> {
-        exists(&self.db, self.cf, self.key(vertex_id, name))
-    }
-
     pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
         get_json(&self.db, self.cf, self.key(vertex_id, name))
     }
 
-    pub fn set(&self, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<(), Error> {
-        set_json(&self.db, self.cf, self.key(vertex_id, name), value)
+    pub fn set(&self, mut batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<(), Error> {
+        let key = self.key(vertex_id, name);
+        let value_json = json_serialize_value(value)?;
+        batch.put_cf(self.cf, &key, &value_json)?;
+        Ok(())
     }
 
     pub fn delete(&self,
@@ -696,10 +687,6 @@ impl EdgeMetadataManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn exists(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<bool, Error> {
-        exists(&self.db, self.cf, self.key(outbound_id, t, inbound_id, name))
-    }
-
     pub fn get(&self,
                outbound_id: Uuid,
                t: &models::Type,
@@ -712,16 +699,17 @@ impl EdgeMetadataManager {
     }
 
     pub fn set(&self,
+               mut batch: &mut WriteBatch, 
                outbound_id: Uuid,
                t: &models::Type,
                inbound_id: Uuid,
                name: &str,
                value: &JsonValue)
                -> Result<(), Error> {
-        set_json(&self.db,
-                 self.cf,
-                 self.key(outbound_id, t, inbound_id, name),
-                 value)
+        let key = self.key(outbound_id, t, inbound_id, name);
+        let value_json = json_serialize_value(value)?;
+        batch.put_cf(self.cf, &key, &value_json)?;
+        Ok(())
     }
 
     pub fn delete(&self,
