@@ -168,17 +168,14 @@ impl FromStr for Type {
     }
 }
 
-/// Returns a new ID that can be used by vertices.
-pub fn id() -> Uuid {
-    loop {
-        let id = Uuid::new_v4();
-
-        if id != Uuid::default() {
-            return id;
-        }
-    }
-}
-
+/// Specifies what kind of items should be piped from one type of query to
+/// another.
+///
+/// Edge and vertex queries can build off of one another via pipes - e.g. you
+/// can get the outbound edges of a set of vertices by piping from a vertex
+/// query to an edge query. `QueryTypeConverter`s are used to specify which
+/// end of things you want to pipe - either the outbound items or the inbound
+/// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum QueryTypeConverter {
     #[serde(rename="outbound")]
@@ -187,6 +184,10 @@ pub enum QueryTypeConverter {
     Inbound
 }
 
+/// A query for vertices.
+///
+/// This is used by transactions to get, set and delete vertices and vertex
+/// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum VertexQuery {
     #[serde(rename="all")]
@@ -209,6 +210,10 @@ impl VertexQuery {
     }
 }
 
+/// A query for edges.
+///
+/// This is used by transactions to get, set and delete edges and edge
+/// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeQuery {
     #[serde(rename="all")]
@@ -228,5 +233,16 @@ impl EdgeQuery {
 
     pub fn inbound_vertices(self, limit: u32) -> VertexQuery {
         VertexQuery::Pipe(Box::new(self), QueryTypeConverter::Inbound, limit)
+    }
+}
+
+/// Returns a new ID that can be used by vertices.
+pub fn id() -> Uuid {
+    loop {
+        let id = Uuid::new_v4();
+
+        if id != Uuid::default() {
+            return id;
+        }
     }
 }

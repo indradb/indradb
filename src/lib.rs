@@ -1,3 +1,10 @@
+//! Braid - a graph datastore.
+//!
+//! Braid is broken up into a library and an application. This is the library,
+//! which you would use if you want to create new datastore implementations, or
+//! plug into the low-level details of braid. For most use cases, you can use
+//! the application, which exposes an API and scripting layer.
+
 extern crate uuid;
 extern crate crypto;
 extern crate chrono;
