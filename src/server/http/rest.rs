@@ -84,9 +84,9 @@ pub fn delete_edges(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
     let q = get_edge_query_param(query_params)?;
-    let response = datastore_request(trans.delete_edges(q))?;
+    datastore_request(trans.delete_edges(q))?;
     datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &response))
+    Ok(to_response(status::Ok, &()))
 }
 
 pub fn script(req: &mut Request) -> IronResult<Response> {

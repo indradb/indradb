@@ -122,11 +122,11 @@ lua_fn! {
         
         // Return the results
         l.newtable();
-        for (id, v) in result.iter() {
+        for (id, v) in result {
             // Push the key
             l.pushstring(&id.to_string()[..]);
             // Push the value
-            serialize_json(l, v);
+            serialize_json(l, &v);
             // Add the key/value to the table
             l.settable(-3);
         }
@@ -156,7 +156,7 @@ lua_fn! {
         
         // Return the results
         l.newtable();
-        for (&(ref outbound_id, ref t, ref inbound_id), ref v) in result.iter() {
+        for ((outbound_id, t, inbound_id), v) in result {
             // Push the key
             {
                 l.newtable();
@@ -171,7 +171,7 @@ lua_fn! {
                 l.settable(-3);
             }
             // Push the value
-            serialize_json(l, v);
+            serialize_json(l, &v);
             // Add the key/value to the table
             l.settable(-3);
         }

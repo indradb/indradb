@@ -356,7 +356,7 @@ pub fn get_edge_query_param(query_params: &HashMap<String, Vec<String>>) -> Resu
     match serde_json::from_value::<EdgeQuery>(q_json) {
         Ok(q) => Ok(q),
         Err(_) => {
-            return Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected edge query".to_string()))
+            Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected edge query".to_string()))
         }
     }
 }
@@ -371,7 +371,7 @@ pub fn get_vertex_query_param(query_params: &HashMap<String, Vec<String>>) -> Re
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(q) => Ok(q),
         Err(_) => {
-            return Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected vertex query".to_string()))
+            Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected vertex query".to_string()))
         }
     }
 }

@@ -75,7 +75,7 @@ impl Transaction for RestTransaction {
     fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "PUT", format!("/vertex"), vec![("q", q_json), ("type", t.0)]);
+        let req = self.request(&client, "PUT", "/vertex".to_string(), vec![("q", q_json), ("type", t.0)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -83,7 +83,7 @@ impl Transaction for RestTransaction {
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "DELETE", format!("/vertex"), vec![("q", q_json)]);
+        let req = self.request(&client, "DELETE", "/vertex".to_string(), vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }

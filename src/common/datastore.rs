@@ -188,12 +188,12 @@ impl Transaction for ProxyTransaction {
 /// Returns an error if we are unable to figure out what kind of datastore to
 /// use.
 pub fn datastore() -> ProxyDatastore {
-    let connection_string = env::var("DATABASE_URL").unwrap_or("rocksdb://.rdb".to_string());
+    let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "rocksdb://.rdb".to_string());
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
-        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
+        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
         let max_open_files = max_open_files_str.parse::<i32>()
             .expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
                      i32");
@@ -214,7 +214,7 @@ pub fn datastore() -> ProxyDatastore {
             Err(_) => None,
         };
 
-        let secret = env::var("SECRET").unwrap_or("".to_string());
+        let secret = env::var("SECRET").unwrap_or_else(|_| "".to_string());
         let datastore = PostgresDatastore::new(pool_size, connection_string, secret);
         ProxyDatastore::Postgres(datastore)
     } else {

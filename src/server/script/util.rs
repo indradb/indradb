@@ -71,15 +71,13 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 l.pop(1);
 
                 // BTreeMap already does the sorting by key for us
-                let v: Vec<JsonValue> = o.values().map(|v| v.clone()).collect();
+                let v: Vec<JsonValue> = o.values().cloned().collect();
 
                 // Check for a special null value. We need to do this because
                 // it's not possible to put a lua nil into some places, such as
                 // inside of an array.
-                if v.len() == 1 {
-                    if v[0].is_string() && v[0].as_str().unwrap() == "__braid_json_null".to_string() {
-                        return Ok(JsonValue::Null);
-                    }
+                if v.len() == 1 && v[0].is_string() && v[0].as_str().unwrap() == "__braid_json_null" {
+                    return Ok(JsonValue::Null);
                 }
 
                 JsonValue::Array(v)
@@ -120,7 +118,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: &JsonValue) {
 
             for (i, iv) in v.iter().enumerate() {
                 l.pushinteger((i + 1) as isize);
-                serialize_json(l, &iv);
+                serialize_json(l, iv);
                 l.settable(-3);
             }
         }
@@ -129,7 +127,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: &JsonValue) {
 
             for (k, iv) in v {
                 l.pushstring(k);
-                serialize_json(l, &iv);
+                serialize_json(l, iv);
                 l.settable(-3);
             }
         }
