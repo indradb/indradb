@@ -38,7 +38,6 @@ mod util;
 
 pub use models::*;
 pub use errors::*;
-pub use models::*;
 pub use traits::*;
 
 #[cfg(feature="postgres-datastore")]
