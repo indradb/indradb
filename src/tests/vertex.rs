@@ -1,6 +1,6 @@
 use super::super::{Datastore, Transaction, VertexQuery};
 use super::sandbox::DatastoreTestSandbox;
-use super::util::*;
+use super::util::{create_edge_from, create_edges};
 use uuid::Uuid;
 use models;
 use std::u32;

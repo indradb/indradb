@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-pub use super::datastore::*;
+pub use super::datastore::PostgresDatastore;
 pub use super::super::tests;
 pub use std::env;
 

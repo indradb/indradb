@@ -5,7 +5,7 @@ use models;
 use uuid::Uuid;
 use chrono::UTC;
 use chrono::Timelike;
-use super::util::*;
+use super::util::{create_edges, create_time_range_queryable_edges};
 use std::collections::HashSet;
 use std::f32;
 use std::u32;

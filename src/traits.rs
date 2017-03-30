@@ -4,7 +4,6 @@ use serde_json::value::Value as JsonValue;
 use models;
 use uuid::Uuid;
 use std::collections::HashMap;
-use super::models::*;
 
 /// Specifies a datastore implementation.
 ///
@@ -75,20 +74,20 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error>;
+    fn get_vertices(&self, q: models::VertexQuery) -> Result<Vec<models::Vertex>, Error>;
 
     /// Sets the type of existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q` - The query to run.
     /// * `t` - The type to set.
-    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error>;
+    fn set_vertices(&self, q: models::VertexQuery, t: models::Type) -> Result<(), Error>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error>;
+    fn delete_vertices(&self, q: models::VertexQuery) -> Result<(), Error>;
 
     /// Creates a new edge. If the edge already exists, this will update it
     /// with a new update datetime and weight. The transaction tied to the
@@ -108,26 +107,26 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error>;
+    fn get_edges(&self, q: models::EdgeQuery) -> Result<Vec<models::Edge>, Error>;
 
     /// Updates an existing set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error>;
+    fn set_edges(&self, q: models::EdgeQuery, weight: models::Weight) -> Result<(), Error>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error>;
+    fn delete_edges(&self, q: models::EdgeQuery) -> Result<(), Error>;
 
     /// Gets the number of edges that match a query.
     ///
     /// # Arguments
     /// * `outbound_id` - The ID of the outbound vertex.
     /// * `t` - The edge type.
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error>;
+    fn get_edge_count(&self, q: models::EdgeQuery) -> Result<u64, Error>;
 
     /// Gets a global metadata value.
     ///
@@ -191,7 +190,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<HashMap<Uuid, JsonValue>, Error>;
+    fn get_vertex_metadata(&self, q: models::VertexQuery, name: String) -> Result<HashMap<Uuid, JsonValue>, Error>;
 
     /// Sets a vertex metadata value.
     ///
@@ -199,21 +198,21 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_vertex_metadata(&self, q: models::VertexQuery, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes a vertex metadata value.
     ///
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error>;
+    fn delete_vertex_metadata(&self, q: models::VertexQuery, name: String) -> Result<(), Error>;
 
     /// Gets an edge metadata value.
     ///
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error>;
+    fn get_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<HashMap<(Uuid, models::Type, Uuid), JsonValue>, Error>;
 
     /// Sets an edge metadata value.
     ///
@@ -221,14 +220,14 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_edge_metadata(&self, q: models::EdgeQuery, name: String, value: JsonValue) -> Result<(), Error>;
 
     /// Deletes an edge metadata value.
     ///
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error>;
+    fn delete_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<(), Error>;
 
     /// Commits the transaction.
     fn commit(self) -> Result<(), Error>;

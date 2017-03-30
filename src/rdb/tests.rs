@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-pub use super::datastore::*;
+pub use super::datastore::RocksdbDatastore;
 pub use super::super::tests;
 pub use super::super::util::generate_random_secret;
 pub use std::env;
