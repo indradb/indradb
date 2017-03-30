@@ -46,7 +46,7 @@ impl RestTransaction {
     }
 }
 
-impl HttpTransaction<RestTransaction> for RestTransaction {
+impl HttpTransaction for RestTransaction {
     fn new(port: i32, account_id: Uuid, secret: String) -> Self {
         RestTransaction {
             port: port,
@@ -200,8 +200,8 @@ pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
     }
 }
 
-pub fn datastore() -> HttpDatastore<RestTransaction, RestTransaction> {
-    HttpDatastore::<RestTransaction, RestTransaction>::new(8000)
+pub fn datastore() -> HttpDatastore<RestTransaction> {
+    HttpDatastore::<RestTransaction>::new(8000)
 }
 
 test_transaction_impl!(datastore());

@@ -39,7 +39,7 @@ pub struct BatchTransaction {
     secret: String,
 }
 
-impl HttpTransaction<BatchTransaction> for BatchTransaction {
+impl HttpTransaction for BatchTransaction {
     fn new(port: i32, account_id: Uuid, secret: String) -> Self {
         BatchTransaction {
             port: port,
@@ -215,8 +215,8 @@ impl Transaction for BatchTransaction {
     }
 }
 
-pub fn datastore() -> HttpDatastore<BatchTransaction, BatchTransaction> {
-    HttpDatastore::<BatchTransaction, BatchTransaction>::new(8000)
+pub fn datastore() -> HttpDatastore<BatchTransaction> {
+    HttpDatastore::<BatchTransaction>::new(8000)
 }
 
 test_transaction_impl!(datastore());

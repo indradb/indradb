@@ -15,26 +15,24 @@ thread_local! {
 }
 
 #[derive(Clone, Debug)]
-pub struct HttpDatastore<H: HttpTransaction<T>, T: Transaction> {
+pub struct HttpDatastore<H: HttpTransaction> {
     port: i32,
-    phantom_http_transaction: PhantomData<H>,
-    phantom_transaction: PhantomData<T>,
+    phantom_http_transaction: PhantomData<H>
 }
 
-impl<H: HttpTransaction<T>, T: Transaction> HttpDatastore<H, T> {
+impl<H: HttpTransaction> HttpDatastore<H> {
     // Ignore is here because otherwise we get noisy results - it's used in
     // macros which the compiler doesn't seem to pick up on
     #[allow(dead_code)]
-    pub fn new(port: i32) -> HttpDatastore<H, T> {
+    pub fn new(port: i32) -> HttpDatastore<H> {
         HttpDatastore {
             port: port,
             phantom_http_transaction: PhantomData,
-            phantom_transaction: PhantomData,
         }
     }
 }
 
-impl<H: HttpTransaction<T>, T: Transaction> Datastore<T> for HttpDatastore<H, T> {
+impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
     fn has_account(&self, _: Uuid) -> Result<bool, Error> {
         panic!("Unimplemented")
     }
@@ -58,7 +56,7 @@ impl<H: HttpTransaction<T>, T: Transaction> Datastore<T> for HttpDatastore<H, T>
         panic!("Unimplemented")
     }
 
-    fn transaction(&self, account_id: Uuid) -> Result<T, Error> {
+    fn transaction(&self, account_id: Uuid) -> Result<H, Error> {
         let secret = ACCOUNT_IDS.with(|account_ids| {
             let account_ids: &BTreeMap<Uuid, String> = &(*account_ids.borrow());
             account_ids.get(&account_id).unwrap().clone()
@@ -68,6 +66,6 @@ impl<H: HttpTransaction<T>, T: Transaction> Datastore<T> for HttpDatastore<H, T>
     }
 }
 
-pub trait HttpTransaction<T: Transaction> {
-    fn new(i32, Uuid, String) -> T;
+pub trait HttpTransaction: Transaction {
+    fn new(i32, Uuid, String) -> Self;
 }
