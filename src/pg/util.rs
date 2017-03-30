@@ -40,7 +40,7 @@ pub struct CTEQueryBuilder {
 
 impl CTEQueryBuilder {
     pub fn new() -> CTEQueryBuilder {
-        return CTEQueryBuilder{
+        CTEQueryBuilder{
             queries: Vec::new(),
             params: Vec::new()
         }
@@ -57,8 +57,8 @@ impl CTEQueryBuilder {
         self.params.extend(params);
     }
 
-    pub fn to_query_payload(self, query_template: &str, params: Vec<Box<ToSql>>) -> (String, Vec<Box<ToSql>>) {
-        if self.queries.len() == 0 {
+    pub fn into_query_payload(self, query_template: &str, params: Vec<Box<ToSql>>) -> (String, Vec<Box<ToSql>>) {
+        if self.queries.is_empty() {
             panic!("No queries");
         }
 

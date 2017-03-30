@@ -351,8 +351,8 @@ impl RocksdbTransaction {
 
     fn remove_nones_from_iterator<'a, T: Debug + 'a>(&self, iterator: Box<Iterator<Item = Result<Option<T>, Error>>>) -> Box<Iterator<Item = Result<T, Error>> + 'a> {
         let filtered = iterator.filter(|item| {
-            match item {
-                &Err(_) | &Ok(Some(_)) => true,
+            match *item {
+                Err(_) | Ok(Some(_)) => true,
                 _ => false
             }
         });
