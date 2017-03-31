@@ -226,35 +226,6 @@ impl RocksdbTransaction {
 
     fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
         match q {
-            EdgeQuery::All(t, high, low, limit) => {
-                let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-                let iterator = edge_range_manager.iterate_all()?;
-                let filtered = iterator.filter(move |item| {
-                    if let &Ok(((_, ref edge_range_t, edge_range_update_datetime, _), _)) = item {
-                        if let Some(t) = t.clone() {
-                            if *edge_range_t != t {
-                                return false;
-                            }
-                        }
-
-                        if let Some(high) = high {
-                            if edge_range_update_datetime > high {
-                                return false;
-                            }
-                        }
-
-                        if let Some(low) = low {
-                            if edge_range_update_datetime < low {
-                                return false;
-                            }
-                        }
-                    }
-
-                    true
-                });
-
-                Ok(Box::new(filtered.take(limit as usize)))
-            },
             EdgeQuery::Edge(outbound_id, t, inbound_id) => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 

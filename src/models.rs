@@ -216,8 +216,6 @@ impl VertexQuery {
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeQuery {
-    #[serde(rename="all")]
-    All(Option<Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, u32),
     #[serde(rename="edge")]
     Edge(Uuid, Type, Uuid),
     #[serde(rename="edges")]

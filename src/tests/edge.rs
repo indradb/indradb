@@ -360,17 +360,6 @@ pub fn should_get_no_edges_for_reversed_time<D, T>(mut sandbox: &mut DatastoreTe
     check_edge_range(range, outbound_id, 0);
 }
 
-pub fn should_get_all_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
-    where D: Datastore<T>,
-          T: Transaction
-{
-    create_time_range_queryable_edges(&mut sandbox);
-    let trans = sandbox.transaction();
-    let q = EdgeQuery::All(None, None, None, u32::MAX);
-    let range = trans.get_edges(q).unwrap();
-    assert!(range.len() >= 15);
-}
-
 pub fn should_get_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction

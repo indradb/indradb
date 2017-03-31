@@ -437,12 +437,6 @@ impl EdgeRangeManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_all(&self) -> Result<Box<Iterator<Item=EdgeRangeItem>>, Error> {
-        let iterator = self.db
-            .iterator_cf(self.cf, IteratorMode::From(b"", Direction::Forward))?;
-        self.iterate(iterator, Box::new([]))
-    }
-
     pub fn iterate_for_range<'a>(&self, id: Uuid, t: &Option<models::Type>, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=EdgeRangeItem> + 'a>, Error> {
         match *t {
             Some(ref t) => {

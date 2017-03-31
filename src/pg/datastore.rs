@@ -225,15 +225,6 @@ impl PostgresTransaction {
 
     fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::All(t, high, low, limit) => {
-                let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
-                let query_template = match where_clause.len() {
-                    0 => format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t ORDER BY update_timestamp DESC {}", limit_clause),
-                    _ => format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
-                };
-
-                sql_query_builder.push(&query_template[..], "edges", params);
-            },
             EdgeQuery::Edge(outbound_id, t, inbound_id) => {
                 let params: Vec<Box<ToSql>> = vec![Box::new(outbound_id), Box::new(t.0), Box::new(inbound_id)];
 
@@ -261,48 +252,45 @@ impl PostgresTransaction {
             EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
                 self.vertex_query_to_sql(*vertex_query, sql_query_builder);
 
-                let (where_clause, limit_clause, params) = self.edge_filters_to_sql(t, high, low, limit);
+                let mut where_clause_template_builder = vec![];
+                let mut params: Vec<Box<ToSql>> = vec![];
+
+                if let Some(t) = t {
+                    where_clause_template_builder.push("type = %p");
+                    params.push(Box::new(t.0));
+                }
+
+                if let Some(high) = high {
+                    where_clause_template_builder.push("update_timestamp <= %p");
+                    params.push(Box::new(high));
+                }
+
+                if let Some(low) = low {
+                    where_clause_template_builder.push("update_timestamp >= %p");
+                    params.push(Box::new(low));
+                }
+
+                params.push(Box::new(limit as i64));
+                let where_clause = where_clause_template_builder.join(" AND ");
+
                 let query_template = match (converter, where_clause.len()) {
                     (QueryTypeConverter::Outbound, 0) => {
-                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     },
                     (QueryTypeConverter::Outbound, _) => {
-                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p", where_clause)
                     },
                     (QueryTypeConverter::Inbound, 0) => {
-                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC {}", limit_clause)
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     },
                     (QueryTypeConverter::Inbound, _) => {
-                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC {}", where_clause, limit_clause)
+                        format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p", where_clause)
                     }
                  };
                 
                 sql_query_builder.push(&query_template[..], "", params);
             }
         }
-    }
-
-    fn edge_filters_to_sql(&self, t: Option<models::Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> (String, String, Vec<Box<ToSql>>) {
-        let mut where_clause_template_builder = vec![];
-        let mut params: Vec<Box<ToSql>> = vec![];
-
-        if let Some(t) = t {
-            where_clause_template_builder.push("type = %p");
-            params.push(Box::new(t.0));
-        }
-
-        if let Some(high) = high {
-            where_clause_template_builder.push("update_timestamp <= %p");
-            params.push(Box::new(high));
-        }
-
-        if let Some(low) = low {
-            where_clause_template_builder.push("update_timestamp >= %p");
-            params.push(Box::new(low));
-        }
-
-        params.push(Box::new(limit as i64));
-        (where_clause_template_builder.join(" AND "), "LIMIT %p".to_string(), params)
     }
 
     fn ensure_edges_are_owned_by_account(&self, sql_query_builder: &mut CTEQueryBuilder) {
