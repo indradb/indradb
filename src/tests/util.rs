@@ -1,9 +1,7 @@
-use chrono::{UTC, DateTime, Duration as ChronoDuration};
+use chrono::{UTC, DateTime};
 use super::super::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use models;
-use std::thread::sleep;
-use std::time::Duration;
 use uuid::Uuid;
 
 pub fn create_edge_from<D, T>(trans: &T, outbound_id: Uuid) -> Uuid
@@ -52,15 +50,13 @@ pub fn create_time_range_queryable_edges<D, T>(sandbox: &mut DatastoreTestSandbo
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);
 
-    sleep(Duration::new(2, 0));
-    let start_time = UTC::now().checked_sub_signed(ChronoDuration::seconds(1)).unwrap();
+    let start_time = UTC::now();
     let inbound_ids = [create_edge_from::<D, T>(&trans, outbound_id),
                        create_edge_from::<D, T>(&trans, outbound_id),
                        create_edge_from::<D, T>(&trans, outbound_id),
                        create_edge_from::<D, T>(&trans, outbound_id),
                        create_edge_from::<D, T>(&trans, outbound_id)];
-    let end_time = UTC::now().checked_add_signed(ChronoDuration::seconds(1)).unwrap();
-    sleep(Duration::new(2, 0));
+    let end_time = UTC::now();
 
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);

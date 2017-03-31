@@ -4,7 +4,6 @@ use crypto::digest::Digest;
 use errors::ValidationError;
 use uuid::Uuid;
 use chrono::{DateTime, UTC};
-use std::u32;
 
 /// Generates a securely random string consisting of letters (uppercase and
 /// lowercase) and digits.
@@ -53,14 +52,9 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
 
 /// Gets the number of nanoseconds since unix epoch for a given datetime
 pub fn nanos_since_epoch(datetime: DateTime<UTC>) -> u64 {
-    let timestamp = datetime.timestamp();
-
-    if timestamp > u32::MAX as i64 {
-        panic!("Timestamp is greater than than expected!");
-    }
-
-    let nanoseconds = datetime.timestamp_subsec_nanos();
-    ((timestamp as u64) << 32) + nanoseconds as u64
+    let timestamp: u64 = datetime.timestamp() as u64;
+    let nanoseconds: u64 = datetime.timestamp_subsec_nanos() as u64;
+    timestamp * 1000000000 + nanoseconds
 }
 
 #[cfg(test)]
@@ -98,6 +92,6 @@ mod tests {
     #[test]
     fn should_generate_nanos_since_epoch() {
         let datetime = DateTime::<UTC>::from_utc(NaiveDateTime::from_timestamp(61, 62), UTC);
-        assert_eq!(nanos_since_epoch(datetime), 0x0000003D0000003E);
+        assert_eq!(nanos_since_epoch(datetime), 61000000062);
     }
 }

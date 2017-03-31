@@ -1,6 +1,5 @@
 use super::super::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
 use models;
-use chrono::Timelike;
 use uuid::Uuid;
 use errors::Error;
 use util::{get_salted_hash, next_uuid};
@@ -301,9 +300,6 @@ impl RocksdbTransaction {
                 let mut edges: Vec<EdgeRangeItem> = Vec::new();
 
                 if let Some(low) = low {
-                    // Round down since we only have second accuracy
-                    let fuzzy_low = low.with_nanosecond(0).unwrap();
-
                     for item in vertex_iterator {
                         let (id, _) = item?;
                         let edge_iterator = edge_range_manager.iterate_for_range(id, &t, high)?;
@@ -311,7 +307,7 @@ impl RocksdbTransaction {
                         for item in edge_iterator {
                             match item {
                                 Ok(((_, _, edge_range_update_datetime, _), _)) => {
-                                    if edge_range_update_datetime >= fuzzy_low {
+                                    if edge_range_update_datetime >= low {
                                         edges.push(item);
                                     } else {
                                         break;

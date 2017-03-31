@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use std::io::Write;
 use std::i32;
+use std::i64;
 use std::str;
 use std::u8;
 use std::io::Read;
@@ -8,6 +9,12 @@ use std::io::{Cursor, Error as IoError};
 use models;
 use chrono::{NaiveDateTime, DateTime, UTC};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use util::nanos_since_epoch;
+use chrono::{Timelike, Duration};
+
+lazy_static! {
+    pub static ref MAX_DATETIME: DateTime<UTC> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), UTC).with_nanosecond(1999999999u32).unwrap();
+}
 
 pub enum KeyComponent<'a> {
     Uuid(Uuid),
@@ -39,9 +46,8 @@ impl<'a> KeyComponent<'a> {
                 cursor.write_all(t.0.as_bytes())?;
             }
             KeyComponent::DateTime(datetime) => {
-                let time_to_end = max_datetime().timestamp() - datetime.timestamp();
-                debug_assert!(time_to_end >= 0);
-                cursor.write_i64::<BigEndian>(time_to_end)?;
+                let time_to_end = nanos_since_epoch(MAX_DATETIME.clone()) - nanos_since_epoch(datetime);
+                cursor.write_u64::<BigEndian>(time_to_end)?;
             }
         };
 
@@ -98,13 +104,7 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 }
 
 pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<UTC> {
-    let time_to_end = cursor.read_i64::<BigEndian>().unwrap();
-    let timestamp = max_datetime().timestamp() - time_to_end;
-    DateTime::from_utc(NaiveDateTime::from_timestamp(timestamp, 0), UTC)
-}
-
-pub fn max_datetime() -> DateTime<UTC> {
-    // NOTE: this suffers from the year 2038 problem, but we can't use
-    // i64::MAX because chrono sees it as an invalid time
-    DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), UTC)
+    let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
+    assert!(time_to_end <= i64::MAX as u64);
+    MAX_DATETIME.clone() - Duration::nanoseconds(time_to_end as i64)
 }
