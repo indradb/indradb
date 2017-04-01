@@ -225,9 +225,9 @@ impl VertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum EdgeQuery {
     #[serde(rename="edge")]
-    Edge(Uuid, Type, Uuid),
+    Edge(EdgeKey),
     #[serde(rename="edges")]
-    Edges(Vec<(Uuid, Type, Uuid)>),
+    Edges(Vec<EdgeKey>),
     #[serde(rename="pipe")]
     Pipe(Box<VertexQuery>, QueryTypeConverter, Option<Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, u32)
 }

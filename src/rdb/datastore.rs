@@ -226,13 +226,13 @@ impl RocksdbTransaction {
 
     fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
         match q {
-            EdgeQuery::Edge(outbound_id, t, inbound_id) => {
+            EdgeQuery::Edge(key) => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                match edge_manager.get(outbound_id, &t, inbound_id)? {
+                match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                     Some(value) => {
                         let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                        let item = Ok(((outbound_id, t, datetime, inbound_id), value.weight));
+                        let item = Ok(((key.outbound_id, key.t, datetime, key.inbound_id), value.weight));
                         Ok(Box::new(vec![item].into_iter()))
                     },
                     None => Ok(Box::new(vec![].into_iter()))
@@ -241,13 +241,11 @@ impl RocksdbTransaction {
             EdgeQuery::Edges(edges) => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let iterator = edges.into_iter().map(move |item| {
-                    let (outbound_id, t, inbound_id) = item;
-
-                    match edge_manager.get(outbound_id, &t, inbound_id)? {
+                let iterator = edges.into_iter().map(move |key| {
+                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                         Some(value) => {
                             let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                            Ok(Some(((outbound_id, t, datetime, inbound_id), value.weight)))
+                            Ok(Some(((key.outbound_id, key.t, datetime, key.inbound_id), value.weight)))
                         },
                         None => Ok(None)
                     }

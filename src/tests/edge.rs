@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction, EdgeQuery, VertexQuery};
+use super::super::{Datastore, Transaction, EdgeQuery, VertexQuery, EdgeKey};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
@@ -30,7 +30,7 @@ pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     trans.create_edge(key, weight).unwrap();
     let end_time = UTC::now();
 
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t.clone(), inbound_id))).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(e[0].key.outbound_id, outbound_id);
     assert_eq!(e[0].key.t, edge_t);
@@ -51,9 +51,9 @@ pub fn should_not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
 
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), Uuid::default())).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t.clone(), Uuid::default()))).unwrap();
     assert_eq!(e.len(), 0);
-    let e = trans.get_edges(EdgeQuery::Edge(Uuid::default(), edge_t, inbound_id)).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(EdgeKey::new(Uuid::default(), edge_t, inbound_id))).unwrap();
     assert_eq!(e.len(), 0);
 }
 
@@ -71,7 +71,7 @@ pub fn should_create_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     trans.create_edge(key.clone(), weight).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key.clone())).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
     assert!(e[0].weight.0 > 0.0);
@@ -80,7 +80,7 @@ pub fn should_create_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     // - test for that
     let weight = models::Weight::new(-0.5).unwrap();
     trans.create_edge(key.clone(), weight).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key.clone())).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
     assert!(e[0].weight.0 < 0.0);
@@ -100,15 +100,15 @@ pub fn should_update_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     let weight = models::Weight::new(0.5).unwrap();
     trans.create_edge(key.clone(), weight).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key.clone())).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
     assert!(e[0].weight.0 > 0.0);
 
     // Update the edge
     let weight = models::Weight::new(-0.5).unwrap();
-    trans.set_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id), weight).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    trans.set_edges(EdgeQuery::Edge(key.clone()), weight).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key)).unwrap();
     assert_eq!(e.len(), 1);
     assert!(e[0].weight.0 < 0.0);
 }
@@ -158,14 +158,14 @@ pub fn should_not_update_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Da
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     let weight = models::Weight::new(0.5).unwrap();
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key.clone(), weight).unwrap();
     trans.commit().unwrap();
 
     let email = sandbox.generate_unique_string("isolated");
     let (id, _) = sandbox.register_account(&email[..]);
     let trans = sandbox.datastore.transaction(id).unwrap();
-    trans.set_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id), models::Weight::new(-0.5).unwrap()).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t, inbound_id)).unwrap();
+    trans.set_edges(EdgeQuery::Edge(key.clone()), models::Weight::new(-0.5).unwrap()).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key)).unwrap();
     assert_eq!(e.len(), 1);
     assert!(e[0].weight.0 > 0.0);
 }
@@ -182,9 +182,9 @@ pub fn should_delete_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    trans.create_edge(key, weight).unwrap();
-    trans.delete_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
+    trans.create_edge(key.clone(), weight).unwrap();
+    trans.delete_edges(EdgeQuery::Edge(key.clone())).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(key)).unwrap();
     assert_eq!(e.len(), 0);
 }
 
@@ -196,7 +196,7 @@ pub fn should_not_delete_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbo
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    trans.delete_edges(EdgeQuery::Edge(outbound_id, edge_t, Uuid::default())).unwrap();
+    trans.delete_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t, Uuid::default()))).unwrap();
 }
 
 pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -217,8 +217,8 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Da
     let email = sandbox.generate_unique_string("isolated");
     let (id, _) = sandbox.register_account(&email[..]);
     let trans = sandbox.datastore.transaction(id).unwrap();
-    trans.delete_edges(EdgeQuery::Edge(outbound_id, edge_t.clone(), inbound_id)).unwrap();
-    let e = trans.get_edges(EdgeQuery::Edge(outbound_id, edge_t, inbound_id)).unwrap();
+    trans.delete_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t.clone(), inbound_id))).unwrap();
+    let e = trans.get_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t, inbound_id))).unwrap();
     assert_eq!(e.len(), 1);
 }
 
@@ -347,11 +347,11 @@ pub fn should_get_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
     let q = EdgeQuery::Edges(vec![
-        (outbound_id, t.clone(), inbound_ids[0]),
-        (outbound_id, t.clone(), inbound_ids[1]),
-        (outbound_id, t.clone(), inbound_ids[2]),
-        (outbound_id, t.clone(), inbound_ids[3]),
-        (outbound_id, t.clone(), inbound_ids[4]),
+        EdgeKey::new(outbound_id, t.clone(), inbound_ids[0]),
+        EdgeKey::new(outbound_id, t.clone(), inbound_ids[1]),
+        EdgeKey::new(outbound_id, t.clone(), inbound_ids[2]),
+        EdgeKey::new(outbound_id, t.clone(), inbound_ids[3]),
+        EdgeKey::new(outbound_id, t.clone(), inbound_ids[4]),
     ]);
     let range = trans.get_edges(q).unwrap();
     check_edge_range(range, outbound_id, 5);

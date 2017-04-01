@@ -225,8 +225,8 @@ impl PostgresTransaction {
 
     fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::Edge(outbound_id, t, inbound_id) => {
-                let params: Vec<Box<ToSql>> = vec![Box::new(outbound_id), Box::new(t.0), Box::new(inbound_id)];
+            EdgeQuery::Edge(key) => {
+                let params: Vec<Box<ToSql>> = vec![Box::new(key.outbound_id), Box::new(key.t.0), Box::new(key.inbound_id)];
 
                 sql_query_builder.push(
                     "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE outbound_id=%p AND type=%p AND inbound_id=%p",
@@ -238,12 +238,11 @@ impl PostgresTransaction {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
-                for edge in edges {
-                    let (outbound_id, t, inbound_id) = edge.clone();
+                for key in edges {
                     params_template_builder.push("(%p, %p, %p)");
-                    params.push(Box::new(outbound_id));
-                    params.push(Box::new(t.0));
-                    params.push(Box::new(inbound_id));
+                    params.push(Box::new(key.outbound_id));
+                    params.push(Box::new(key.t.0));
+                    params.push(Box::new(key.inbound_id));
                 }
 
                 let query_template = format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
