@@ -11,8 +11,9 @@ pub fn create_edge_from<D, T>(trans: &T, outbound_id: Uuid) -> Uuid
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type".to_string()).unwrap();
     let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
+    let key = models::EdgeKey::new(outbound_id, edge_t, inbound_id);
     let weight = models::Weight::new(1.0).unwrap();
-    trans.create_edge(models::Edge::new_with_current_datetime(outbound_id, edge_t, inbound_id, weight)).unwrap();
+    trans.create_edge(key, weight).unwrap();
     inbound_id
 }
 

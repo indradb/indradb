@@ -95,13 +95,14 @@ pub trait Transaction {
     /// but does not need to own the inbounding vertex.
     ///
     /// # Arguments
-    /// `edge`: The edge to create.
+    /// `key`: The edge to create.
+    /// * `weight` - The edge weight.
     ///
     /// # Errors
     /// Return `Error::VertexNotFound` if either of the connected vertices do
     /// not exist. Returns `Error::Unauthorized` if the account tied to the
     /// current transaction does not own the source vertex.
-    fn create_edge(&self, edge: models::Edge) -> Result<(), Error>;
+    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error>;
     
     /// Gets a range of edges specified by a query.
     ///
@@ -113,6 +114,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
+    /// * `weight` - The edge weight to set.
     fn set_edges(&self, q: models::EdgeQuery, weight: models::Weight) -> Result<(), Error>;
 
     /// Deletes a set of edges specified by a query.
@@ -212,7 +214,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<HashMap<(Uuid, models::Type, Uuid), JsonValue>, Error>;
+    fn get_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<HashMap<models::EdgeKey, JsonValue>, Error>;
 
     /// Sets an edge metadata value.
     ///

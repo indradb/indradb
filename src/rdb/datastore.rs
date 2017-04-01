@@ -408,21 +408,21 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, edge: models::Edge) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        self.check_write_permissions(edge.outbound_id, Error::VertexNotFound)?;
-        if !VertexManager::new(self.db.clone()).exists(edge.inbound_id)? {
+        self.check_write_permissions(key.outbound_id, Error::VertexNotFound)?;
+        if !VertexManager::new(self.db.clone()).exists(key.inbound_id)? {
             return Err(Error::VertexNotFound);
         }
 
         let new_update_datetime = UTC::now();
         let mut batch = WriteBatch::default();
         EdgeManager::new(self.db.clone()).set(&mut batch,
-                                                   edge.outbound_id,
-                                                   &edge.t,
-                                                   edge.inbound_id,
+                                                   key.outbound_id,
+                                                   &key.t,
+                                                   key.inbound_id,
                                                    new_update_datetime,
-                                                   edge.weight)?;
+                                                   weight)?;
         self.db.write(batch)?;
         Ok(())
     }
@@ -432,7 +432,8 @@ impl Transaction for RocksdbTransaction {
 
         let mapped = iterator.map(move |item| {
             let ((outbound_id, t, update_datetime, inbound_id), weight) = item?;
-            let edge = models::Edge::new(outbound_id, t, inbound_id, weight, update_datetime);
+            let key = models::EdgeKey::new(outbound_id, t, inbound_id);
+            let edge = models::Edge::new(key, weight, update_datetime);
             Ok(edge)
         });
 
@@ -485,62 +486,62 @@ impl Transaction for RocksdbTransaction {
         Ok(iterator.count() as u64)
     }
 
-    fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
         let manager = GlobalMetadataManager::new(self.db.clone());
-        manager.get(&key[..])?.ok_or_else(|| Error::MetadataNotFound)
+        manager.get(&name[..])?.ok_or_else(|| Error::MetadataNotFound)
     }
 
-    fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
         let manager = GlobalMetadataManager::new(self.db.clone());
-        manager.set(&key[..], &value)
+        manager.set(&name[..], &value)
     }
 
-    fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
+    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
         let mut batch = WriteBatch::default();
-        GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, &key[..])?;
+        GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, &name[..])?;
         self.db.write(batch)?;
         Ok(())
     }
 
-    fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
+    fn get_account_metadata(&self, owner_id: Uuid, name: String) -> Result<JsonValue, Error> {
         if !AccountManager::new(self.db.clone()).exists(owner_id)? {
             return Err(Error::AccountNotFound);
         }
 
         let manager = AccountMetadataManager::new(self.db.clone());
-        manager.get(owner_id, &key[..])?.ok_or_else(|| Error::MetadataNotFound)
+        manager.get(owner_id, &name[..])?.ok_or_else(|| Error::MetadataNotFound)
     }
 
-    fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_account_metadata(&self, owner_id: Uuid, name: String, value: JsonValue) -> Result<(), Error> {
         if !AccountManager::new(self.db.clone()).exists(owner_id)? {
             return Err(Error::AccountNotFound);
         }
 
         let manager = AccountMetadataManager::new(self.db.clone());
-        manager.set(owner_id, &key[..], &value)?;
+        manager.set(owner_id, &name[..], &value)?;
         Ok(())
     }
 
-    fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
+    fn delete_account_metadata(&self, owner_id: Uuid, name: String) -> Result<(), Error> {
         let manager = AccountMetadataManager::new(self.db.clone());
 
-        if !manager.exists(owner_id, &key)? {
+        if !manager.exists(owner_id, &name)? {
             return Err(Error::MetadataNotFound);
         }
 
         let mut batch = WriteBatch::default();
-        manager.delete(&mut batch, owner_id, &key[..])?;
+        manager.delete(&mut batch, owner_id, &name[..])?;
         self.db.write(batch)?;
         Ok(())
     }
 
-    fn get_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    fn get_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
-            let value = manager.get(id, &key[..])?;
+            let value = manager.get(id, &name[..])?;
 
             if let Some(value) = value {
                 metadata.insert(id, value);
@@ -550,81 +551,69 @@ impl Transaction for RocksdbTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(&self, q: VertexQuery, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
-            manager.set(&mut batch, id, &key[..], &value)?;
+            manager.set(&mut batch, id, &name[..], &value)?;
         }
 
         self.db.write(batch)?;
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
-            manager.delete(&mut batch, id, &key[..])?;
+            manager.delete(&mut batch, id, &name[..])?;
         }
 
         self.db.write(batch)?;
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<(Uuid, models::Type, Uuid), JsonValue>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
-        let mut metadata: HashMap<(Uuid, models::Type, Uuid), JsonValue> = HashMap::new();
+        let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
 
         for item in self.edge_query_to_iterator(q)? {
             let ((outbound_id, t, _, inbound_id), _) = item?;
-            let value = manager.get(outbound_id, &t, inbound_id, &key[..])?;
+            let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
 
             if let Some(value) = value {
-                metadata.insert((outbound_id, t, inbound_id), value);
+                let key = models::EdgeKey::new(outbound_id, t, inbound_id);
+                metadata.insert(key, value);
             }
         }
 
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
             let ((outbound_id, t, _, inbound_id), _) = item?;
-            manager.set(&mut batch, outbound_id, &t, inbound_id, &key[..], &value)?;
+            manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], &value)?;
         }
 
         self.db.write(batch)?;
         Ok(())
     }
 
-    // fn delete_edge_metadata(&self, outbound_id: Uuid, t: models::Type, inbound_id: Uuid, key: String) -> Result<(), Error> {
-    //     let manager = EdgeMetadataManager::new(self.db.clone());
-
-    //     if !manager.exists(outbound_id, &t, inbound_id, &key)? {
-    //         return Err(Error::MetadataNotFound);
-    //     }
-
-    //     let mut batch = WriteBatch::default();
-    //     manager.delete(&mut batch, outbound_id, &t, inbound_id, &key[..])?;
-    //     self.db.write(batch)?;
-    //     Ok(())
-    // }
-
-    fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
             let ((outbound_id, t, _, inbound_id), _) = item?;
-            manager.delete(&mut batch, outbound_id, &t, inbound_id, &key[..])?;
+            manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
         }
 
         self.db.write(batch)?;
