@@ -166,9 +166,15 @@ pub unsafe fn serialize_vertex(l: &mut lua::ExternState, vertex: &Vertex) {
 /// Serializes an edge into a lua table.
 pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge) {
     l.newtable();
-    add_string_field_to_table(l, "outbound_id", &edge.outbound_id.to_string()[..]);
-    add_string_field_to_table(l, "type", &edge.t.0[..]);
-    add_string_field_to_table(l, "inbound_id", &edge.inbound_id.to_string()[..]);
+    {
+        l.pushstring("key");
+        l.newtable();
+        add_string_field_to_table(l, "outbound_id", &edge.key.outbound_id.to_string()[..]);
+        add_string_field_to_table(l, "type", &edge.key.t.0[..]);
+        add_string_field_to_table(l, "inbound_id", &edge.key.inbound_id.to_string()[..]);
+        l.settable(-3);
+    }
+    add_string_field_to_table(l, "update_datetime", &edge.update_datetime.to_string()[..]);
     add_number_field_to_table(l, "weight", edge.weight.0 as f64);
 }
 

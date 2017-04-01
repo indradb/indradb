@@ -6,7 +6,7 @@
 use std::env;
 use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore,
             Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction,
-            Type, VertexQuery, EdgeQuery, Weight};
+            Type, VertexQuery, EdgeQuery, Weight, EdgeKey};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -94,8 +94,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
-    fn create_edge(&self, edge: Edge) -> Result<(), Error> {
-        proxy_transaction!(self, create_edge, edge)
+    fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
+        proxy_transaction!(self, create_edge, key, weight)
     }
     
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
@@ -150,7 +150,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 

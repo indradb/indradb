@@ -3,7 +3,7 @@
 
 use lua;
 use common::ProxyTransaction;
-use braid::{Edge, Transaction, VertexQuery};
+use braid::{Transaction, VertexQuery, EdgeKey};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;
@@ -41,7 +41,8 @@ lua_fn! {
         let t = get_type_param(l, 2)?;
         let inbound_id = get_uuid_param(l, 3)?;
         let weight = get_weight_param(l, 4)?;
-        trans.create_edge(Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight))?;
+        let key = EdgeKey::new(outbound_id, t, inbound_id);
+        trans.create_edge(key, weight)?;
         Ok(0)
     }
 
@@ -156,18 +157,18 @@ lua_fn! {
         
         // Return the results
         l.newtable();
-        for ((outbound_id, t, inbound_id), v) in result {
+        for (k, v) in result {
             // Push the key
             {
                 l.newtable();
                 l.pushinteger(1);
-                l.pushstring(&outbound_id.to_string()[..]);
+                l.pushstring(&k.outbound_id.to_string()[..]);
                 l.settable(-3);
                 l.pushinteger(2);
-                l.pushstring(&t.0[..]);
+                l.pushstring(&k.t.0[..]);
                 l.settable(-3);
                 l.pushinteger(3);
-                l.pushstring(&inbound_id.to_string()[..]);
+                l.pushstring(&k.inbound_id.to_string()[..]);
                 l.settable(-3);
             }
             // Push the value

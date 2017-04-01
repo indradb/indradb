@@ -42,42 +42,42 @@ CREATE INDEX ix_edges_inbound_id ON edges USING btree (inbound_id);
 
 /* Global metadata */
 CREATE TABLE global_metadata (
-    key VARCHAR(1024) NOT NULL,
+    name VARCHAR(1024) NOT NULL,
     value JSONB NOT NULL
 );
 
 ALTER TABLE global_metadata
-    ADD CONSTRAINT global_metadata_pkey PRIMARY KEY (key);
+    ADD CONSTRAINT global_metadata_pkey PRIMARY KEY (name);
 
 /* Account metadata */
 CREATE TABLE account_metadata (
     owner_id UUID NOT NULL,
-    key VARCHAR(1024) NOT NULL,
+    name VARCHAR(1024) NOT NULL,
     value JSONB NOT NULL
 );
 
 ALTER TABLE account_metadata
-    ADD CONSTRAINT account_metadata_pkey PRIMARY KEY (owner_id, key),
+    ADD CONSTRAINT account_metadata_pkey PRIMARY KEY (owner_id, name),
     ADD CONSTRAINT account_metadata_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES accounts (id) ON DELETE CASCADE;
 
 /* Vertex metadata */
 CREATE TABLE vertex_metadata (
     owner_id UUID NOT NULL,
-    key VARCHAR(1024) NOT NULL,
+    name VARCHAR(1024) NOT NULL,
     value JSONB NOT NULL
 );
 
 ALTER TABLE vertex_metadata
-    ADD CONSTRAINT vertex_metadata_pkey PRIMARY KEY (owner_id, key),
+    ADD CONSTRAINT vertex_metadata_pkey PRIMARY KEY (owner_id, name),
     ADD CONSTRAINT vertex_metadata_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES vertices (id) ON DELETE CASCADE;
 
 /* Metadata */
 CREATE TABLE edge_metadata (
     owner_id UUID NOT NULL,
-    key VARCHAR(1024) NOT NULL,
+    name VARCHAR(1024) NOT NULL,
     value JSONB NOT NULL
 );
 
 ALTER TABLE edge_metadata
-    ADD CONSTRAINT edge_metadata_pkey PRIMARY KEY (owner_id, key),
+    ADD CONSTRAINT edge_metadata_pkey PRIMARY KEY (owner_id, name),
     ADD CONSTRAINT edge_metadata_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES edges (id) ON DELETE CASCADE;

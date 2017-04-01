@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Edge, Transaction, Error};
+use braid::{Transaction, Error, EdgeKey};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -96,7 +96,7 @@ fn create_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValu
     let t = get_required_json_type_param(item, "type")?;
     let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
     let weight = get_required_json_weight_param(item, "weight")?;
-    execute_item(trans.create_edge(Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight)))
+    execute_item(trans.create_edge(EdgeKey::new(outbound_id, t, inbound_id), weight))
 }
 
 fn get_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {

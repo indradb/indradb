@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Edge, Transaction, Type};
+use braid::{Transaction, Type, EdgeKey};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use super::util::*;
@@ -49,8 +49,8 @@ pub fn create_edge(req: &mut Request) -> IronResult<Response> {
     let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
     let query_params = get_query_params(req)?;
     let weight = get_weight_query_param(query_params)?;
-    let e = Edge::new_with_current_datetime(outbound_id, t, inbound_id, weight);
-    datastore_request(trans.create_edge(e))?;
+    let key = EdgeKey::new(outbound_id, t, inbound_id);
+    datastore_request(trans.create_edge(key, weight))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &()))
 }

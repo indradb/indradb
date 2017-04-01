@@ -88,10 +88,10 @@ impl Transaction for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn create_edge(&self, edge: Edge) -> Result<(), Error> {
+    fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
         let client = Client::new();
-        let path = format!("/edge/{}/{}/{}", edge.outbound_id, edge.t.0, edge.inbound_id);
-        let req = self.request(&client, "PUT", path, vec![("weight", edge.weight.0.to_string())]);
+        let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
+        let req = self.request(&client, "PUT", path, vec![("weight", weight.0.to_string())]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -164,7 +164,7 @@ impl Transaction for RestTransaction {
         unimplemented!();
     }
 
-    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error> {
+    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         unimplemented!();
     }
 

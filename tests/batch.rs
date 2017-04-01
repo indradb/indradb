@@ -21,13 +21,13 @@ use serde::Deserialize;
 use hyper::client::Client;
 use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
-use serde_json::Number as JsonNumber;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use braid::*;
 pub use common::*;
 use std::io::Read;
 use std::collections::HashMap;
+use serde_json::Number as JsonNumber;
 
 lazy_static! {
 	static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
@@ -119,13 +119,13 @@ impl Transaction for BatchTransaction {
 		})
     }
 
-    fn create_edge(&self, e: Edge) -> Result<(), Error> {
+    fn create_edge(&self, e: EdgeKey, weight: Weight) -> Result<(), Error> {
         self.request(btreemap!{
 			"action".to_string() => JsonValue::String("create_edge".to_string()),
 			"outbound_id".to_string() => JsonValue::String(e.outbound_id.hyphenated().to_string()),
 			"type".to_string() => JsonValue::String(e.t.0),
 			"inbound_id".to_string() => JsonValue::String(e.inbound_id.hyphenated().to_string()),
-			"weight".to_string() => JsonValue::Number(JsonNumber::from_f64(e.weight.0 as f64).unwrap())
+			"weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
 		})
     }
     
@@ -194,7 +194,7 @@ impl Transaction for BatchTransaction {
         unimplemented!();
     }
 
-    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<(Uuid, Type, Uuid), JsonValue>, Error> {
+    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         unimplemented!();
     }
 
