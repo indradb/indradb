@@ -46,7 +46,7 @@ impl<'a> KeyComponent<'a> {
                 cursor.write_all(t.0.as_bytes())?;
             }
             KeyComponent::DateTime(datetime) => {
-                let time_to_end = nanos_since_epoch(MAX_DATETIME.clone()) - nanos_since_epoch(datetime);
+                let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)?;
             }
         };
@@ -106,5 +106,5 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<UTC> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
-    MAX_DATETIME.clone() - Duration::nanoseconds(time_to_end as i64)
+    *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
 }

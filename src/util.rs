@@ -36,7 +36,7 @@ pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String
 
 /// Gets the next UUID that would occur after the given one
 pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
-    let mut bytes = uuid.as_bytes().clone();
+    let mut bytes = *uuid.as_bytes();
 
     for i in (0..16).rev() {
         if bytes[i] < 255 {
@@ -51,7 +51,7 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
 }
 
 /// Gets the number of nanoseconds since unix epoch for a given datetime
-pub fn nanos_since_epoch(datetime: DateTime<UTC>) -> u64 {
+pub fn nanos_since_epoch(datetime: &DateTime<UTC>) -> u64 {
     let timestamp: u64 = datetime.timestamp() as u64;
     let nanoseconds: u64 = datetime.timestamp_subsec_nanos() as u64;
     timestamp * 1000000000 + nanoseconds
@@ -92,6 +92,6 @@ mod tests {
     #[test]
     fn should_generate_nanos_since_epoch() {
         let datetime = DateTime::<UTC>::from_utc(NaiveDateTime::from_timestamp(61, 62), UTC);
-        assert_eq!(nanos_since_epoch(datetime), 61000000062);
+        assert_eq!(nanos_since_epoch(&datetime), 61000000062);
     }
 }
