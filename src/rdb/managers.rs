@@ -440,7 +440,7 @@ impl EdgeRangeManager {
     pub fn iterate_for_range<'a>(&self, id: Uuid, t: &Option<models::Type>, high: Option<DateTime<UTC>>) -> Result<Box<Iterator<Item=EdgeRangeItem> + 'a>, Error> {
         match *t {
             Some(ref t) => {
-                let high = high.unwrap_or_else(|| MAX_DATETIME.clone());
+                let high = high.unwrap_or_else(|| *MAX_DATETIME);
                 let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
                 let low_key = build_key(vec![KeyComponent::Uuid(id),
                                             KeyComponent::Type(t),
