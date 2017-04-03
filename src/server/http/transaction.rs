@@ -92,11 +92,9 @@ fn delete_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, Json
 }
 
 fn create_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let outbound_id = get_required_json_uuid_param(item, "outbound_id")?;
-    let t = get_required_json_type_param(item, "type")?;
-    let inbound_id = get_required_json_uuid_param(item, "inbound_id")?;
+    let key = get_required_json_obj_param::<EdgeKey>(item, "key")?;
     let weight = get_required_json_weight_param(item, "weight")?;
-    execute_item(trans.create_edge(EdgeKey::new(outbound_id, t, inbound_id), weight))
+    execute_item(trans.create_edge(key, weight))
 }
 
 fn get_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {

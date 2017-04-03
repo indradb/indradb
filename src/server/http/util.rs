@@ -16,7 +16,7 @@ use std::io::Read;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use urlencoded::{UrlDecodingError, UrlEncodedQuery};
-use serde::ser::Serialize;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use statics;
 use uuid::Uuid;
@@ -137,20 +137,19 @@ pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, na
     }
 }
 
-/// Gets a JSON string value that represents a UUID
+/// Gets a JSON object value that represents an edge key
 ///
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_uuid_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Uuid, IronError> {
-    let s = get_required_json_string_param(json, name)?;
-
-    match Uuid::from_str(&s[..]) {
-        Ok(u) => Ok(u),
-        Err(_) => {
-            Err(create_iron_error(status::BadRequest,
-                                  format!("Invalid uuid format for `{}`", name)))
+pub fn get_required_json_obj_param<T: Deserialize>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError> {
+    if let Some(obj) = json.get(name) {
+        match serde_json::from_value::<T>(obj.clone()) {
+            Ok(val) => Ok(val),
+            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
         }
+    } else {
+        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
     }
 }
 
