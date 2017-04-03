@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Transaction, Error, EdgeKey};
+use braid::{Transaction, Error, EdgeKey, VertexQuery, EdgeQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -76,18 +76,18 @@ fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonVa
 }
 
 fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_vertex_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<VertexQuery>(item, "query")?;
     execute_item(trans.get_vertices(q))
 }
 
 fn set_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_vertex_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<VertexQuery>(item, "query")?;
     let t = get_required_json_type_param(item, "type")?;
     execute_item(trans.set_vertices(q, t))
 }
 
 fn delete_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_vertex_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<VertexQuery>(item, "query")?;
     execute_item(trans.delete_vertices(q))
 }
 
@@ -98,23 +98,23 @@ fn create_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValu
 }
 
 fn get_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_edge_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
     execute_item(trans.get_edges(q))
 }
 
 fn set_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_edge_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
     let weight = get_required_json_weight_param(item, "weight")?;
     execute_item(trans.set_edges(q, weight))
 }
 
 fn delete_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_edge_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
     execute_item(trans.delete_edges(q))
 }
 
 fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let q = get_required_json_edge_query_param(item, "query")?;
+    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
     execute_item(trans.get_edge_count(q))
 }
 

@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{Headers, ContentType};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use braid::{Datastore, Error, Type, Weight, VertexQuery, EdgeQuery};
+use braid::{Datastore, Error, Type, Weight};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -145,38 +145,6 @@ pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, na
 pub fn get_required_json_obj_param<T: Deserialize>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError> {
     if let Some(obj) = json.get(name) {
         match serde_json::from_value::<T>(obj.clone()) {
-            Ok(val) => Ok(val),
-            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-        }
-    } else {
-        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
-    }
-}
-
-/// Gets a JSON object value that represents a vertex query
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_vertex_query_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<VertexQuery, IronError> {
-    if let Some(obj) = json.get(name) {
-        match serde_json::from_value::<VertexQuery>(obj.clone()) {
-            Ok(val) => Ok(val),
-            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
-        }
-    } else {
-        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
-    }
-}
-
-/// Gets a JSON object value that represents a vertex query
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_edge_query_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<EdgeQuery, IronError> {
-    if let Some(obj) = json.get(name) {
-        match serde_json::from_value::<EdgeQuery>(obj.clone()) {
             Ok(val) => Ok(val),
             Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
         }
@@ -345,32 +313,17 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &
     }
 }
 
-/// Gets a required edge query from the query parameters.
+/// Gets a required object from the query parameters.
 ///
 /// # Errors
 /// Returns an `IronError if the query could be parsed, or was not specified.
-pub fn get_edge_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<EdgeQuery, IronError> {
+pub fn get_obj_query_param<T: Deserialize>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError> {
     let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
     
-    match serde_json::from_value::<EdgeQuery>(q_json) {
+    match serde_json::from_value::<T>(q_json) {
         Ok(q) => Ok(q),
         Err(_) => {
             Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected edge query".to_string()))
-        }
-    }
-}
-
-/// Gets a required vertex query from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError if the query could be parsed, or was not specified.
-pub fn get_vertex_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<VertexQuery, IronError> {
-    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
-    
-    match serde_json::from_value::<VertexQuery>(q_json) {
-        Ok(q) => Ok(q),
-        Err(_) => {
-            Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected vertex query".to_string()))
         }
     }
 }
