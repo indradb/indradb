@@ -3,7 +3,7 @@ use uuid::Uuid;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
-use chrono::{NaiveDateTime, DateTime, UTC};
+use chrono::{DateTime, UTC};
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use bincode::SizeLimit;
@@ -328,13 +328,11 @@ impl EdgeManager {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
         if let Some(existing_edge_value) = self.get(outbound_id, t, inbound_id)? {
-            let old_update_datetime =
-                DateTime::from_utc(NaiveDateTime::from_timestamp(existing_edge_value.update_timestamp, 0), UTC);
-            edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
-            reversed_edge_range_manager.delete(&mut batch, outbound_id, t, old_update_datetime, inbound_id)?;
+            edge_range_manager.delete(&mut batch, outbound_id, t, existing_edge_value.update_datetime, inbound_id)?;
+            reversed_edge_range_manager.delete(&mut batch, inbound_id, t, existing_edge_value.update_datetime, outbound_id)?;
         }
 
-        let new_edge_value = EdgeValue::new(new_update_datetime.timestamp(), weight);
+        let new_edge_value = EdgeValue::new(new_update_datetime, weight);
         set_bincode(&self.db,
                          self.cf,
                          self.key(outbound_id, t, inbound_id),
@@ -367,7 +365,7 @@ impl EdgeManager {
         edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, inbound_id)?;
+        reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
 
         let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
         for item in edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)? {

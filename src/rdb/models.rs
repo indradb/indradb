@@ -1,5 +1,6 @@
 use uuid::Uuid;
 use models;
+use chrono::{DateTime, UTC};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountValue {
@@ -35,14 +36,14 @@ impl VertexValue {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EdgeValue {
-    pub update_timestamp: i64,
+    pub update_datetime: DateTime<UTC>,
     pub weight: models::Weight,
 }
 
 impl EdgeValue {
-    pub fn new(update_timestamp: i64, weight: models::Weight) -> Self {
+    pub fn new(update_datetime: DateTime<UTC>, weight: models::Weight) -> Self {
         EdgeValue {
-            update_timestamp: update_timestamp,
+            update_datetime: update_datetime,
             weight: weight,
         }
     }

@@ -80,7 +80,16 @@ pub fn should_create_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>
     // - test for that
     let weight = models::Weight::new(-0.5).unwrap();
     trans.create_edge(key.clone(), weight).unwrap();
+
+    // First check that getting a single edge will still...get a single edge
     let e = trans.get_edges(EdgeQuery::Edge(key.clone())).unwrap();
+    assert_eq!(e.len(), 1);
+    assert_eq!(key, e[0].key);
+    assert!(e[0].weight.0 < 0.0);
+
+    // REGRESSION: Second check that getting an edge range will only fetch a
+    // single edge
+    let e = trans.get_edges(VertexQuery::Vertex(outbound_id).outbound_edges(None, None, None, 10)).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
     assert!(e[0].weight.0 < 0.0);

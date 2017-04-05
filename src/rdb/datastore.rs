@@ -4,7 +4,7 @@ use uuid::Uuid;
 use errors::Error;
 use util::{get_salted_hash, next_uuid};
 use serde_json::Value as JsonValue;
-use chrono::{DateTime, NaiveDateTime, UTC};
+use chrono::{UTC};
 use rocksdb::{DB, Options, WriteBatch, DBCompactionStyle};
 use super::models::VertexValue;
 use std::sync::Arc;
@@ -231,8 +231,7 @@ impl RocksdbTransaction {
 
                 match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                     Some(value) => {
-                        let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                        let item = Ok(((key.outbound_id, key.t, datetime, key.inbound_id), value.weight));
+                        let item = Ok(((key.outbound_id, key.t, value.update_datetime, key.inbound_id), value.weight));
                         Ok(Box::new(vec![item].into_iter()))
                     },
                     None => Ok(Box::new(vec![].into_iter()))
@@ -244,8 +243,7 @@ impl RocksdbTransaction {
                 let iterator = edges.into_iter().map(move |key| {
                     match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                         Some(value) => {
-                            let datetime = DateTime::from_utc(NaiveDateTime::from_timestamp(value.update_timestamp, 0), UTC);
-                            Ok(Some(((key.outbound_id, key.t, datetime, key.inbound_id), value.weight)))
+                            Ok(Some(((key.outbound_id, key.t, value.update_datetime, key.inbound_id), value.weight)))
                         },
                         None => Ok(None)
                     }
