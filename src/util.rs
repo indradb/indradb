@@ -80,21 +80,17 @@ pub fn parent_uuid() -> Uuid {
 /// * `parent` - The ID of the parent.
 pub fn child_uuid(parent: Uuid) -> Uuid {
     let now = UTC::now();
-    let timestamp = now.timestamp() as u64;
-    let nanoseconds = now.nanosecond();
-
     let mut buf = [0u8; 16];
     let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
     cursor.write(&parent.as_bytes()[12..]).unwrap();
-    cursor.write_u64::<BigEndian>(timestamp).unwrap();
-    cursor.write_u32::<BigEndian>(nanoseconds).unwrap();
-
+    cursor.write_i64::<BigEndian>(now.timestamp()).unwrap();
+    cursor.write_u32::<BigEndian>(now.nanosecond()).unwrap();
     Uuid::from_bytes(&cursor.into_inner()).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, get_salted_hash, next_uuid, nanos_since_epoch};
+    use super::{generate_random_secret, get_salted_hash, next_uuid, nanos_since_epoch, parent_uuid, child_uuid};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
@@ -128,5 +124,19 @@ mod tests {
     fn should_generate_nanos_since_epoch() {
         let datetime = DateTime::<UTC>::from_utc(NaiveDateTime::from_timestamp(61, 62), UTC);
         assert_eq!(nanos_since_epoch(&datetime), 61000000062);
+    }
+
+    #[test]
+    fn should_generate_parent_uuid() {
+        let uuid = parent_uuid();
+        assert!(uuid != Uuid::default());
+    }
+
+    #[test]
+    fn should_generate_child_uuid() {
+        let pid = parent_uuid();
+        let cid = child_uuid(pid);
+        assert!(pid != cid);
+        assert!(pid.as_bytes()[12..] == cid.as_bytes()[0..4]);
     }
 }
