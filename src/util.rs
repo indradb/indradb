@@ -6,7 +6,6 @@ use uuid::Uuid;
 use chrono::{DateTime, UTC};
 use byteorder::BigEndian;
 use std::io::Cursor;
-use chrono::Timelike;
 use std::io::Write;
 use byteorder::WriteBytesExt;
 
@@ -79,12 +78,10 @@ pub fn parent_uuid() -> Uuid {
 /// 
 /// * `parent` - The ID of the parent.
 pub fn child_uuid(parent: Uuid) -> Uuid {
-    let now = UTC::now();
     let mut buf = [0u8; 16];
     let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
-    cursor.write(&parent.as_bytes()[12..]).unwrap();
-    cursor.write_i64::<BigEndian>(now.timestamp()).unwrap();
-    cursor.write_u32::<BigEndian>(now.nanosecond()).unwrap();
+    cursor.write(&parent.as_bytes()[0..8]).unwrap();
+    cursor.write_u64::<BigEndian>(nanos_since_epoch(&UTC::now())).unwrap();
     Uuid::from_bytes(&cursor.into_inner()).unwrap()
 }
 
@@ -135,8 +132,13 @@ mod tests {
     #[test]
     fn should_generate_child_uuid() {
         let pid = parent_uuid();
-        let cid = child_uuid(pid);
-        assert!(pid != cid);
-        assert!(pid.as_bytes()[12..] == cid.as_bytes()[0..4]);
+        let cid1 = child_uuid(pid);
+        let cid2 = child_uuid(pid);
+        assert!(pid != cid1);
+        assert!(pid.as_bytes()[0..8] == cid1.as_bytes()[0..8]);
+        assert!(pid != cid2);
+        assert!(pid.as_bytes()[0..8] == cid2.as_bytes()[0..8]);
+        assert!(cid1 != cid2);
+        assert!(cid2 > cid1);
     }
 }
