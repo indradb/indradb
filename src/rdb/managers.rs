@@ -1,7 +1,7 @@
 use models;
 use uuid::Uuid;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash};
+use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, UTC};
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
@@ -141,7 +141,7 @@ impl AccountManager {
     }
 
     pub fn create(&self, email: String) -> Result<(Uuid, String), Error> {
-        let id = models::id();
+        let id = parent_uuid();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
@@ -227,7 +227,7 @@ impl VertexManager {
     }
     
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
-        let id = models::id();
+        let id = child_uuid(account_id);
         let value = VertexValue::new(account_id, t);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok(id)

@@ -4,6 +4,11 @@ use crypto::digest::Digest;
 use errors::ValidationError;
 use uuid::Uuid;
 use chrono::{DateTime, UTC};
+use byteorder::BigEndian;
+use std::io::Cursor;
+use chrono::Timelike;
+use std::io::Write;
+use byteorder::WriteBytesExt;
 
 /// Generates a securely random string consisting of letters (uppercase and
 /// lowercase) and digits.
@@ -55,6 +60,36 @@ pub fn nanos_since_epoch(datetime: &DateTime<UTC>) -> u64 {
     let timestamp: u64 = datetime.timestamp() as u64;
     let nanoseconds: u64 = datetime.timestamp_subsec_nanos() as u64;
     timestamp * 1000000000 + nanoseconds
+}
+
+/// Returns a new UUID.
+pub fn parent_uuid() -> Uuid {
+    loop {
+        let id = Uuid::new_v4();
+
+        if id != Uuid::default() {
+            return id;
+        }
+    }
+}
+
+/// Creates a new ID that is based in part off a parent ID.
+///
+/// # Arguments
+/// 
+/// * `parent` - The ID of the parent.
+pub fn child_uuid(parent: Uuid) -> Uuid {
+    let now = UTC::now();
+    let timestamp = now.timestamp() as u64;
+    let nanoseconds = now.nanosecond();
+
+    let mut buf = [0u8; 16];
+    let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
+    cursor.write(&parent.as_bytes()[12..]).unwrap();
+    cursor.write_u64::<BigEndian>(timestamp).unwrap();
+    cursor.write_u32::<BigEndian>(nanoseconds).unwrap();
+
+    Uuid::from_bytes(&cursor.into_inner()).unwrap()
 }
 
 #[cfg(test)]

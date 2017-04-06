@@ -241,14 +241,3 @@ impl EdgeQuery {
         VertexQuery::Pipe(Box::new(self), QueryTypeConverter::Inbound, limit)
     }
 }
-
-/// Returns a new ID that can be used by vertices.
-pub fn id() -> Uuid {
-    loop {
-        let id = Uuid::new_v4();
-
-        if id != Uuid::default() {
-            return id;
-        }
-    }
-}
