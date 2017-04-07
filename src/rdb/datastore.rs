@@ -54,6 +54,8 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 pub struct RocksdbDatastore {
     /// A reference to the rocksdb database.
     db: Arc<DB>,
+    /// Whether to use secure UUIDs.
+    secure_uuids: bool
 }
 
 impl RocksdbDatastore {
@@ -63,7 +65,10 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore, Error> {
+    /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
+    ///   difficult to guess UUIDs at the detriment of a more index-optimized
+    ///   (and thus faster) variant.
+    pub fn new(path: &str, max_open_files: Option<i32>, secure_uuids: bool) -> Result<RocksdbDatastore, Error> {
         let opts = get_options(max_open_files);
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
@@ -79,7 +84,10 @@ impl RocksdbDatastore {
             }
         };
 
-        Ok(RocksdbDatastore { db: Arc::new(db) })
+        Ok(RocksdbDatastore {
+            db: Arc::new(db),
+            secure_uuids: secure_uuids
+        })
     }
 
     /// Runs a repair operation on the rocksdb database.
@@ -97,15 +105,15 @@ impl RocksdbDatastore {
 
 impl Datastore<RocksdbTransaction> for RocksdbDatastore {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-        AccountManager::new(self.db.clone()).exists(account_id)
+        AccountManager::new(self.db.clone(), self.secure_uuids).exists(account_id)
     }
 
     fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        AccountManager::new(self.db.clone()).create(email)
+        AccountManager::new(self.db.clone(), self.secure_uuids).create(email)
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        let manager = AccountManager::new(self.db.clone());
+        let manager = AccountManager::new(self.db.clone(), self.secure_uuids);
 
         if !manager.exists(account_id)? {
             return Err(Error::AccountNotFound);
@@ -118,7 +126,7 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
     }
 
     fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        match AccountManager::new(self.db.clone()).get(account_id)? {
+        match AccountManager::new(self.db.clone(), self.secure_uuids).get(account_id)? {
             Some(value) => {
                 let expected_hash = get_salted_hash(&value.salt[..], None, &secret[..]);
                 Ok(expected_hash == value.hash)
@@ -132,7 +140,7 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
     }
 
     fn transaction(&self, account_id: Uuid) -> Result<RocksdbTransaction, Error> {
-        RocksdbTransaction::new(self.db.clone(), account_id)
+        RocksdbTransaction::new(self.db.clone(), account_id, self.secure_uuids)
     }
 }
 
@@ -143,18 +151,21 @@ pub struct RocksdbTransaction {
     db: Arc<DB>,
     /// The ID of the account that's triggering this transaction.
     account_id: Uuid,
+    /// Whether to use secure UUIDs.
+    secure_uuids: bool
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>, account_id: Uuid) -> Result<Self, Error> {
+    fn new(db: Arc<DB>, account_id: Uuid, secure_uuids: bool) -> Result<Self, Error> {
         Ok(RocksdbTransaction {
             db: db,
             account_id: account_id,
+            secure_uuids: secure_uuids
         })
     }
 
     fn check_write_permissions(&self, id: Uuid, not_found_err: Error) -> Result<(), Error> {
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         let vertex_value = vertex_manager.get(id)?;
 
         match vertex_value {
@@ -170,7 +181,7 @@ impl RocksdbTransaction {
     }
 
     fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
 
         match q {
             VertexQuery::All(start_id, limit) => {
@@ -332,7 +343,7 @@ impl RocksdbTransaction {
     }
 
     fn handle_vertex_id_iterator(&self, iterator: Box<Iterator<Item = Result<Uuid, Error>>>) -> Box<Iterator<Item = VertexItem>> {
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
 
         let mapped = iterator.map(move |item| {
             let id = item?;
@@ -350,7 +361,7 @@ impl RocksdbTransaction {
 
 impl Transaction for RocksdbTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        VertexManager::new(self.db.clone()).create(t, self.account_id)
+        VertexManager::new(self.db.clone(), self.secure_uuids).create(t, self.account_id)
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
@@ -367,7 +378,7 @@ impl Transaction for RocksdbTransaction {
 
     fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         let mut batch = WriteBatch::default();
         let new_value = VertexValue::new(self.account_id, t);
 
@@ -387,7 +398,7 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         let mut batch = WriteBatch::default();
 
         for item in iterator {
@@ -407,7 +418,7 @@ impl Transaction for RocksdbTransaction {
     fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
         self.check_write_permissions(key.outbound_id, Error::VertexNotFound)?;
-        if !VertexManager::new(self.db.clone()).exists(key.inbound_id)? {
+        if !VertexManager::new(self.db.clone(), self.secure_uuids).exists(key.inbound_id)? {
             return Err(Error::VertexNotFound);
         }
 
@@ -438,7 +449,7 @@ impl Transaction for RocksdbTransaction {
 
     fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
         let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         let iterator = self.edge_query_to_iterator(q)?;
         let mut batch = WriteBatch::default();
         let new_update_datetime = UTC::now();
@@ -459,7 +470,7 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         let iterator = self.edge_query_to_iterator(q)?;
         let mut batch = WriteBatch::default();
 
@@ -500,7 +511,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_account_metadata(&self, owner_id: Uuid, name: String) -> Result<JsonValue, Error> {
-        if !AccountManager::new(self.db.clone()).exists(owner_id)? {
+        if !AccountManager::new(self.db.clone(), self.secure_uuids).exists(owner_id)? {
             return Err(Error::AccountNotFound);
         }
 
@@ -509,7 +520,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn set_account_metadata(&self, owner_id: Uuid, name: String, value: JsonValue) -> Result<(), Error> {
-        if !AccountManager::new(self.db.clone()).exists(owner_id)? {
+        if !AccountManager::new(self.db.clone(), self.secure_uuids).exists(owner_id)? {
             return Err(Error::AccountNotFound);
         }
 

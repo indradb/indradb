@@ -7,7 +7,7 @@ pub use std::env;
 fn datastore() -> PostgresDatastore {
     let connection_string = env::var("DATABASE_URL").expect("Expected a DATABASE_URL");
     let secret = "OME88YorohonzPNWEFsi0dIsouXWqeO$".to_string();
-    PostgresDatastore::new(Some(1), connection_string, secret)
+    PostgresDatastore::new(Some(1), connection_string, secret, false)
 }
 
 test_account_impl!(datastore());

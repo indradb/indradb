@@ -118,13 +118,15 @@ type ColumnFamily = *mut rocksdb_column_family_handle_t;
 pub struct AccountManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
+    secure_uuids: bool
 }
 
 impl AccountManager {
-    pub fn new(db: Arc<DB>) -> Self {
+    pub fn new(db: Arc<DB>, secure_uuids: bool) -> Self {
         AccountManager {
             cf: *db.cf_handle("accounts:v1").unwrap(),
             db: db,
+            secure_uuids: secure_uuids
         }
     }
 
@@ -155,7 +157,7 @@ impl AccountManager {
 
         // NOTE: This currently does a sequential scan through all keys to
         // find which vertices to delete. This could be more efficient.
-        let vertex_manager = VertexManager::new(self.db.clone());
+        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
         for item in vertex_manager.iterate_all()? {
             let (vertex_id, vertex_value) = item?;
 
@@ -180,13 +182,15 @@ impl AccountManager {
 pub struct VertexManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
+    secure_uuids: bool
 }
 
 impl VertexManager {
-    pub fn new(db: Arc<DB>) -> Self {
+    pub fn new(db: Arc<DB>, secure_uuids: bool) -> Self {
         VertexManager {
             cf: *db.cf_handle("vertices:v1").unwrap(),
             db: db,
+            secure_uuids: secure_uuids
         }
     }
 
@@ -227,7 +231,12 @@ impl VertexManager {
     }
     
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
-        let id = child_uuid(account_id);
+        let id = if self.secure_uuids {
+            parent_uuid()
+        } else {
+            child_uuid(account_id)
+        };
+
         let value = VertexValue::new(account_id, t);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok(id)

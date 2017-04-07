@@ -22,9 +22,10 @@ use postgres::types::ToSql;
 pub struct PostgresDatastore {
     /// A database connection pool.
     pool: Pool<PostgresConnectionManager>,
-
     /// A secret value, used as the pepper in hashing sensitive account data.
     secret: String,
+    /// Whether to use secure UUIDs.
+    secure_uuids: bool
 }
 
 impl PostgresDatastore {
@@ -36,7 +37,10 @@ impl PostgresDatastore {
     /// * `connetion_string` - The postgres database connection string.
     /// * `secret` - A secret value. This is used as a pepper in hashing
     ///   sensitive account data. 
-    pub fn new(pool_size: Option<u32>, connection_string: String, secret: String) -> PostgresDatastore {
+    /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
+    ///   difficult to guess UUIDs at the detriment of a more index-optimized
+    ///   (and thus faster) variant.
+    pub fn new(pool_size: Option<u32>, connection_string: String, secret: String, secure_uuids: bool) -> PostgresDatastore {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => {
@@ -57,6 +61,7 @@ impl PostgresDatastore {
                 Err(err) => panic!("Could not initialize postgres database pool: {}", err),
             },
             secret: secret,
+            secure_uuids: secure_uuids,
         }
     }
 }
@@ -116,7 +121,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 
     fn transaction(&self, account_id: Uuid) -> Result<PostgresTransaction, Error> {
         let conn = self.pool.get()?;
-        let trans = PostgresTransaction::new(conn, account_id)?;
+        let trans = PostgresTransaction::new(conn, account_id, self.secure_uuids)?;
         Ok(trans)
     }
 }
@@ -127,10 +132,11 @@ pub struct PostgresTransaction {
     account_id: Uuid,
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
+    secure_uuids: bool,
 }
 
 impl PostgresTransaction {
-    fn new(conn: PooledConnection<PostgresConnectionManager>, account_id: Uuid) -> Result<Self, Error> {
+    fn new(conn: PooledConnection<PostgresConnectionManager>, account_id: Uuid, secure_uuids: bool) -> Result<Self, Error> {
         let conn = Box::new(conn);
 
         let trans = unsafe {
@@ -144,6 +150,7 @@ impl PostgresTransaction {
             account_id: account_id,
             conn: conn,
             trans: trans,
+            secure_uuids: secure_uuids,
         })
     }
 
@@ -299,7 +306,12 @@ impl PostgresTransaction {
 
 impl Transaction for PostgresTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        let id = child_uuid(self.account_id);
+        let id = if self.secure_uuids {
+            parent_uuid()
+        } else {
+            child_uuid(self.account_id)
+        };
+
         self.trans.execute("INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)", &[&id, &t.0, &self.account_id])?;
         Ok(id)
     }
@@ -345,7 +357,11 @@ impl Transaction for PostgresTransaction {
     }
 
     fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
-        let id = child_uuid(key.outbound_id);
+        let id = if self.secure_uuids {
+            parent_uuid()
+        } else {
+            child_uuid(key.outbound_id)
+        };
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction
