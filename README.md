@@ -25,8 +25,8 @@ A graph database. This software is in the alpha state. Do not use this as your s
     * Make sure you have postgres 9.5+ installed
 * Clone the repo: `git clone git@github.com:braidery/braid.git`.
 * Build a release version: `cargo build --release`.
-* Create a new account: `DATABASE_URL=rocksdb://database.rdb  bin/target/release/braid-user add email_address@gmail.com`.
-* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 bin/target/release/braid-server`.
+* Create a new account: `DATABASE_URL=rocksdb://database.rdb target/release/braid-user add email_address@gmail.com`.
+* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 target/release/braid-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
 ## Concepts
