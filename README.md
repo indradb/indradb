@@ -186,3 +186,149 @@ Get the edges with a specified inbound UUID, and that were last updated after or
     ]
 }
 ```
+
+## Environment variables
+
+The application is configured via these environment variables:
+
+* `DATABASE_URL` - The connection string to the underlying database. Examples:
+    * For a postgres datastore: `postgres://user:pass@localhost:5432/database-name`.
+    * For a rocksdb datastore: `rocksdb://braid.rdb`. This will store data in the directory `./braid.rdb`.
+* `PORT` - The port to run the application on. Defaults to `8000`.
+* `SECRET` - The postgres implementation uses this as a [pepper](https://en.wikipedia.org/wiki/Pepper_%28cryptography%29) for increased security. Defaults to an empty string.
+* `BRAID_SCRIPT_ROOT` - The directory housing the lua scripts. Defaults to `./scripts`.
+
+## Scripting
+
+The server has a lua-based scripting layer, which allows you to run several requests without the network overhead of repeated HTTP API requests. Scripts are executed via a request to the HTTP API. See `test_scripts` for the test scripts as examples. You can reuse `test_scripts/queries.lua` to help build vertex and edge queries in lua scripts more easily.
+
+Scripts have access to these globals:
+* `account_id` - The UUID of the account that is executing the script.
+* `arg` - The JSON body of the request that called the script.
+* All transaction methods are exposed as global functions. All requests in the script are run through a single transaction.
+
+## HTTP API
+
+If you're using python, you can use the [python client](https://github.com/braidery/python-client) rather than interacting with the HTTP API directly.
+
+### Authentication
+
+The HTTP API uses basic authentication. The username is the user UUID, and the password is the secret. These are returned by `braid-user` when you add a new user.
+
+### Status messages
+
+The HTTP API uses these return status codes:
+
+* `200` - If the request went through fine.
+* `401` - If authentication failed.
+* `404` - If the endpoint was not found. Note that, due to a current shortcoming in [iron router](https://github.com/iron/router), this is used in place of `405` as well.
+* `500` - When a server error occurs.
+
+### Endpoints
+
+#### Create/update a single edge
+
+`PUT /edge/:outbound_id/:type/:inbound_id?weight=:weight`: Creates a new edge, or updates an existing one.
+
+URL parameters:
+* `outbound_id` - The vertex UUID from which the edge is outbounding.
+* `type` - The edge type.
+* `inbound_id` - The vertex UUID into which the edge is inbounding.
+
+Query parameters:
+* `weight` - The edge weight, which must be between -1.0 and 1.0.
+
+Returns nothing.
+
+#### Get edges
+
+`GET /edge?q=:query`: Gets the edges that match the query.
+
+Query parameters:
+* `query` - The edge query JSON.
+
+Returns a JSON array of edges that match the query.
+
+#### Edge count
+
+`GET /edge?action=count&q=:query`: Gets the number of edges that match the query.
+
+Query parameters:
+* `query` - The edge query JSON.
+
+Returns the number of edges that match the query.
+
+#### Update edges
+
+`PUT /edge?q=:query&weight=:weight`: Updates the edges that match the query with the supplied weight.
+
+Query parameters:
+* `query` - The edge query JSON.
+* `weight` - The weight to set the edges to, which must be between -1.0 and 1.0.
+
+Returns nothing.
+
+#### Delete edges
+
+`DELETE /edge?q=:query`: Deletes edges that match the query.
+
+Query parameters:
+* `query` - The edge query JSON.
+
+Returns nothing.
+
+#### Get vertices
+
+`GET /vertex?q=:query`: Get vertices that match a query.
+
+Query parameters:
+* `query` - The vertex query JSON.
+
+Returns a JSON array of the vertices.
+
+#### Create vertex
+
+`POST /vertex?type=:type` - Creates a new vertex with the given type.
+
+Query parameters:
+* `type` - The type of the vertex. Must be less than 256 characters long, and can only contain letters, numbers, dashes, and underscores.
+
+Returns the vertex UUID.
+
+#### Update vertices
+
+`PUT /vertex?q=:query&type=:type`: Updates existing vertices that match a query.
+
+Query parameters:
+* `query` - The vertex query JSON.
+* `type` - Matching vertices will be updated to have this type. Must be less than 256 characters long, and can only contain letters, numbers, dashes, and underscores.
+
+Returns nothing.
+
+#### Delete vertices
+
+`DELETE /vertex?q=:query`: Deletes vertices that match a query.
+
+Query parameters:
+* `query` - The vertex query JSON.
+
+Returns nothing.
+
+#### Run a script
+
+`POST /script/:filename`: Runs a script with the given filename.
+
+URL parameters:
+* `filename` - The lua script to run.
+
+The request body can be JSON. When it is, it is passed to the script as `arg`.
+
+Returns the value returned by the script, serialized to JSON.
+
+#### Transactions
+
+`POST /transaction`: Executes several requests in a single transaction.
+
+The request body must be a JSON array of requests.
+
+Returns a JSON array of responses.
