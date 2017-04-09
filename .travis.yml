@@ -1,0 +1,19 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+sudo: required
+dist: trusty
+addons:
+  postgresql: "9.5"
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y lua5.1 liblua5.1-0-dev
+before_script:
+  - psql -c 'create database braid_test;' -U postgres
+script:
+  - make test

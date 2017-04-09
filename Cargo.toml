@@ -37,7 +37,7 @@ version = "~0.3.0"
 features = ["serde"]
 
 [dependencies.braid]
-path = "../lib"
+git = "https://github.com/braidery/lib.git"
 
 [dependencies.lua]
 git = "https://github.com/kballard/rust-lua.git"
