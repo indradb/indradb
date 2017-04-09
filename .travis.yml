@@ -6,9 +6,12 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+sudo: required
 dist: trusty
 addons:
   postgresql: "9.5"
+before_install:
+  - sudo apt-get -qq update
 before_script:
   - psql -c 'create database braid_test;' -U postgres
 script:
