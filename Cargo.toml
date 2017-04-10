@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 
 [[bin]]
+name = "braid-db"
+path = "src/db/main.rs"
+
+[[bin]]
 name = "braid-server"
 path = "src/server/main.rs"
 
@@ -38,6 +42,7 @@ features = ["serde"]
 
 [dependencies.braid]
 git = "https://github.com/braidery/lib.git"
+branch = "develop"
 
 [dependencies.lua]
 git = "https://github.com/kballard/rust-lua.git"

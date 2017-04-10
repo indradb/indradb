@@ -6,7 +6,6 @@ extern crate common;
 extern crate uuid;
 
 use clap::{Arg, App, SubCommand};
-use std::error::Error;
 use common::datastore;
 use braid::Datastore;
 use uuid::Uuid;
@@ -32,13 +31,13 @@ fn main() {
                 println!("Account ID: {}", id);
                 println!("Account secret: {}", secret);
             }
-            Err(err) => exit_with_err!("Could not create account: {}", err.description()),
+            Err(err) => exit_with_err!("Could not create account: {:?}", err),
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {
         let id = value_t!(matches, "ID", Uuid).unwrap();
 
         if let Err(err) = datastore.delete_account(id) {
-            exit_with_err!("Could not delete account: {}", err.description());
+            exit_with_err!("Could not delete account: {:?}", err);
         }
     } else {
         exit_with_err!("No action specified");
