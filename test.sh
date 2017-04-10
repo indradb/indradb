@@ -18,5 +18,5 @@ mkdir -p $TEST_RDB_DIRECTORY
 trap cleanup EXIT
 
 dropdb --if-exists $DATABASE_NAME
-DATABASE_OWNER=postgres ./support/create_pg_db.sh
+createdb --owner=postgres $DATABASE_NAME
 cargo test $TEST_NAME

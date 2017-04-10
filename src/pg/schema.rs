@@ -1,3 +1,4 @@
+pub const SCHEMA: &'static str = "
 /* Accounts */
 CREATE TABLE accounts (
     id UUID NOT NULL,
@@ -81,3 +82,5 @@ CREATE TABLE edge_metadata (
 ALTER TABLE edge_metadata
     ADD CONSTRAINT edge_metadata_pkey PRIMARY KEY (owner_id, name),
     ADD CONSTRAINT edge_metadata_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES edges (id) ON DELETE CASCADE;
+
+";

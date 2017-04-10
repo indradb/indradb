@@ -16,6 +16,7 @@ use std::i64;
 use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
+use super::schema;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
@@ -63,6 +64,23 @@ impl PostgresDatastore {
             secret: secret,
             secure_uuids: secure_uuids,
         }
+    }
+
+    /// Creates a new postgres-backed datastore.
+    ///
+    /// # Arguments
+    /// * `connetion_string` - The postgres database connection string.
+    pub fn create_schema(connection_string: String) -> Result<(), Error> {
+        let conn = match postgres::Connection::connect(connection_string, postgres::TlsMode::None) {
+            Ok(conn) => conn,
+            Err(err) => return Err(Error::Unexpected(format!("Could not connect to the postgres database: {}", err)))
+        };
+
+        for statement in schema::SCHEMA.split(";") {
+            conn.execute(statement, &vec![])?;
+        }
+
+        Ok(())
     }
 }
 
