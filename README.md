@@ -15,6 +15,12 @@ A graph database. This software is in the alpha state. Do not use this as your s
 * Pluggable underlying datastores, with built-in support for [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
 * Written in rust!
 
+For more details, see:
+
+* [An overview of the concepts in braid.](https://braidery.github.io/concepts.html)
+* [The HTTP API.](https://braidery.github.io/http-api.html)
+* [The scripting API.](https://braidery.github.io/scripting.html)
+
 ## Getting started
 
 * Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
@@ -47,15 +53,3 @@ Applications are configured via environment variables:
 * `PORT` - The port to run the server on. Defaults to `8000`.
 * `SECRET` - The postgres implementation uses this as a [pepper](https://en.wikipedia.org/wiki/Pepper_%28cryptography%29) for increased security. Defaults to an empty string.
 * `BRAID_SCRIPT_ROOT` - The directory housing the lua scripts. Defaults to `./scripts`.
-
-## Concepts
-
-[See the website.](https://braidery.github.io/concepts.html)
-
-## HTTP API
-
-[See the website.](https://braidery.github.io/http-api.html)
-
-## Scripting
-
-[See the website.](https://braidery.github.io/scripting.html)
