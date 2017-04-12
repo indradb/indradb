@@ -50,12 +50,12 @@ Applications are configured via environment variables:
 
 ## Concepts
 
-[See the website.](braidery.github.io/concepts.html)
+[See the website.](https://braidery.github.io/concepts.html)
 
 ## HTTP API
 
-[See the website.](braidery.github.io/http-api.html)
+[See the website.](https://braidery.github.io/http-api.html)
 
 ## Scripting
 
-[See the website.](braidery.github.io/scripting.html)
+[See the website.](https://braidery.github.io/scripting.html)
