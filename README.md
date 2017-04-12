@@ -20,6 +20,8 @@ For more details, see:
 * [An overview of the concepts in braid.](https://braidery.github.io/concepts.html)
 * [The HTTP API.](https://braidery.github.io/http-api.html)
 * [The scripting API.](https://braidery.github.io/scripting.html)
+* [The library.](https://github.com/braidery/lib)
+* [The python client.](https://github.com/braidery/python-client)
 
 ## Getting started
 
