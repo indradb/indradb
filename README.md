@@ -44,6 +44,8 @@ If you want to use the postgres-backed datastore, following these steps:
 
 ### RocksDB
 
+If you want to use the rocksdb-backed datastore, follow these steps:
+
 * Make sure you have liblua5.1 installed.
 * Build a release version: `cargo build --release`.
 * Create a new account: `DATABASE_URL=rocksdb://database.rdb target/release/braid-user add email_address@gmail.com`.
