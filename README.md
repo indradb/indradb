@@ -26,12 +26,25 @@ For more details, see:
 ## Getting started
 
 * Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
-* Make sure you have liblua5.1 installed
-* If you want to use the rocksdb datastore:
-    * Make sure you have gcc 5+ installed
-* If you want to use the postgres datastore:
-    * Make sure you have postgres 9.5+ installed
 * Clone the repo: `git clone git@github.com:braidery/braid.git`.
+
+Now it's time to choose your own adventure...
+
+### Postgres
+
+If you want to use the postgres-backed datastore, following these steps:
+
+* Make sure you have postgres 9.5+ installed.
+* Build a release version: `cargo build --release`.
+* Create a database: `createdb braid`
+* Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/braid target/release/braid-db init`
+* Create a new account: `DATABASE_URL=postgres://localhost:5432/braid target/release/braid-user add email_address@gmail.com`.
+* Start the server: `DATABASE_URL=postgres://localhost:5432/braid PORT=8000 target/release/braid-server`.
+* Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
+
+### RocksDB
+
+* Make sure you have liblua5.1 installed.
 * Build a release version: `cargo build --release`.
 * Create a new account: `DATABASE_URL=rocksdb://database.rdb target/release/braid-user add email_address@gmail.com`.
 * Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 target/release/braid-server`.
