@@ -10,7 +10,7 @@ use serde_json::value::Value as JsonValue;
 use common::ProxyTransaction;
 use std::path::Path;
 use uuid::Uuid;
-use self::errors::ScriptError;
+pub use self::errors::ScriptError;
 use statics;
 
 /// Runs a script.
@@ -22,7 +22,7 @@ use statics;
 /// We try to avoid panics, but there is a lot of unsafe code here.
 pub fn run(mut trans: &ProxyTransaction,
            account_id: Uuid,
-           source: &str,
+           path: &Path,
            arg: JsonValue)
            -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
@@ -52,8 +52,8 @@ pub fn run(mut trans: &ProxyTransaction,
     l.register("set_edge_metadata", api::set_edge_metadata);
     l.register("delete_edge_metadata", api::delete_edge_metadata);
 
-    if let Err(err) = l.loadstring(source) {
-        return Err(ScriptError::new_from_loaderror(&mut l, err));
+    if let Err(err) = l.loadfile(Some(path)) {
+        return Err(ScriptError::new_from_load_file_error(&mut l, err));
     }
 
     // Update the `package.path` to include the script root, so it's easier

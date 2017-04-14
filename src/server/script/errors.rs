@@ -40,15 +40,21 @@ pub enum ScriptError {
     Memory,
     Runtime(String),
     Panicked(String),
+    File
 }
 
 impl ScriptError {
-    pub fn new_from_loaderror(state: &mut lua::State, err: lua::LoadError) -> ScriptError {
+    pub fn new_from_load_file_error(state: &mut lua::State, err: lua::LoadFileError) -> ScriptError {
         match err {
-            lua::LoadError::ErrSyntax => {
+            lua::LoadFileError::ErrSyntax => {
                 ScriptError::Syntax(String::from(state.checkstring(-1).unwrap()))
+            },
+            lua::LoadFileError::ErrMem => {
+                ScriptError::Memory
+            },
+            lua::LoadFileError::ErrFile => {
+                ScriptError::File
             }
-            lua::LoadError::ErrMem => ScriptError::Memory,
         }
     }
 

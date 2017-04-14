@@ -22,7 +22,6 @@ use statics;
 use uuid::Uuid;
 use regex;
 use std::path::Path;
-use std::fs::File;
 use script;
 
 lazy_static! {
@@ -353,25 +352,18 @@ pub fn execute_script(name: String, payload: JsonValue, trans: &ProxyTransaction
 
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
-    let mut f = match File::open(path) {
-        Ok(f) => f,
-        Err(_) => {
-            return Err(create_iron_error(status::NotFound, "Could not load script".to_string()))
-        }
-    };
-
-    let mut contents = String::new();
-
-    if let Err(err) = f.read_to_string(&mut contents) {
-        return Err(create_iron_error(status::InternalServerError,
-                                     format!("Could not read script contents: {}", err)));
-    }
-
-    match script::run(trans, account_id, &contents[..], payload) {
+    match script::run(trans, account_id, &path, payload) {
         Ok(val) => Ok(val),
         Err(err) => {
-            Err(create_iron_error(status::InternalServerError,
-                                  format!("Script failed: {:?}", err)))
+            match err {
+                script::ScriptError::File => {
+                    Err(create_iron_error(status::NotFound, "Could not load script".to_string()))
+                },
+                _ => {
+                    let error_message = format!("Script failed: {:?}", err);
+                    Err(create_iron_error(status::InternalServerError, error_message))
+                }
+            }
         }
     }
 }
