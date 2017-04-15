@@ -4,15 +4,13 @@ use chrono::{DateTime, UTC};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountValue {
-    pub email: String,
     pub salt: String,
     pub hash: String,
 }
 
 impl AccountValue {
-    pub fn new(email: String, salt: String, hash: String) -> Self {
+    pub fn new(salt: String, hash: String) -> Self {
         AccountValue {
-            email: email,
             salt: salt,
             hash: hash,
         }

@@ -219,8 +219,7 @@ pub fn should_not_delete_an_unowned_vertex<D, T>(mut sandbox: &mut DatastoreTest
     let vertex_id = trans.create_vertex(t).unwrap();
     trans.commit().unwrap();
 
-    let email = sandbox.generate_unique_string("isolated");
-    let (account_id, _) = sandbox.register_account(&email[..]);
+    let (account_id, _) = sandbox.register_account();
     let trans = sandbox.datastore.transaction(account_id).unwrap();
     let q = VertexQuery::Vertex(vertex_id);
     trans.delete_vertices(q.clone()).unwrap();

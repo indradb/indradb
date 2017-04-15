@@ -142,12 +142,12 @@ impl AccountManager {
         get_bincode(&self.db, self.cf, self.key(id))
     }
 
-    pub fn create(&self, email: String) -> Result<(Uuid, String), Error> {
+    pub fn create(&self) -> Result<(Uuid, String), Error> {
         let id = parent_uuid();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
-        let value = AccountValue::new(email, salt, hash);
+        let value = AccountValue::new(salt, hash);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok((id, secret))
     }

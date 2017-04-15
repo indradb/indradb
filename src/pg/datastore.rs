@@ -92,7 +92,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
         Ok(!results.is_empty())
     }
 
-    fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
+    fn create_account(&self) -> Result<(Uuid, String), Error> {
         let id = parent_uuid();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
@@ -100,9 +100,9 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
         let conn = self.pool.get()?;
         
         conn.execute("
-            INSERT INTO accounts(id, email, salt, api_secret_hash)
-            VALUES ($1, $2, $3, $4)
-            ", &[&id, &email, &salt, &hash]
+            INSERT INTO accounts(id, salt, api_secret_hash)
+            VALUES ($1, $2, $3)
+            ", &[&id, &salt, &hash]
         )?;
 
         Ok((id, secret))

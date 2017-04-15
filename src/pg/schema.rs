@@ -2,14 +2,12 @@ pub const SCHEMA: &'static str = "
 /* Accounts */
 CREATE TABLE accounts (
     id UUID NOT NULL,
-    email VARCHAR(250) NOT NULL,
     salt VARCHAR(150) NOT NULL,
     api_secret_hash VARCHAR(150) NOT NULL
 );
 
 ALTER TABLE accounts
-    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id),
-    ADD CONSTRAINT accounts_email_ukey UNIQUE (email);
+    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
 
 /* Vertices */
 CREATE TABLE vertices (

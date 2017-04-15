@@ -34,10 +34,8 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
         self.datastore.transaction(self.owner_id).unwrap()
     }
 
-    pub fn register_account(&mut self, email: &str) -> (Uuid, String) {
-        let (id, secret) = self.datastore
-            .create_account(email.to_string())
-            .expect("Expected to be able to create an account");
+    pub fn register_account(&mut self) -> (Uuid, String) {
+        let (id, secret) = self.datastore.create_account().expect("Expected to be able to create an account");
         self.accounts.push(id);
         (id, secret)
     }
@@ -47,8 +45,7 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
         self.name = name.to_string();
 
         // Create an account
-        let owner_email = self.generate_unique_string("owner");
-        let (owner_id, owner_secret) = self.register_account(&owner_email[..]);
+        let (owner_id, owner_secret) = self.register_account();
         self.owner_id = owner_id;
         self.owner_secret = owner_secret;
     }

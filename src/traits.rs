@@ -21,10 +21,7 @@ pub trait Datastore<T: Transaction> {
     fn has_account(&self, account_id: Uuid) -> Result<bool, Error>;
 
     /// Creates a new account, returning a tuple of its ID and secret.
-    ///
-    /// # Arguments
-    /// * `email` - The email of the account.
-    fn create_account(&self, email: String) -> Result<(Uuid, String), Error>;
+    fn create_account(&self) -> Result<(Uuid, String), Error>;
 
     /// Deletes an account.
     ///

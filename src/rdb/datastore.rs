@@ -108,8 +108,8 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
         AccountManager::new(self.db.clone(), self.secure_uuids).exists(account_id)
     }
 
-    fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        AccountManager::new(self.db.clone(), self.secure_uuids).create(email)
+    fn create_account(&self) -> Result<(Uuid, String), Error> {
+        AccountManager::new(self.db.clone(), self.secure_uuids).create()
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {

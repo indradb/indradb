@@ -146,8 +146,7 @@ pub fn should_not_create_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Da
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     trans.commit().unwrap();
 
-    let email = sandbox.generate_unique_string("isolated");
-    let (id, _) = sandbox.register_account(&email[..]);
+    let (id, _) = sandbox.register_account();
     let trans = sandbox.datastore.transaction(id).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t, inbound_id);
@@ -170,8 +169,7 @@ pub fn should_not_update_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Da
     trans.create_edge(key.clone(), weight).unwrap();
     trans.commit().unwrap();
 
-    let email = sandbox.generate_unique_string("isolated");
-    let (id, _) = sandbox.register_account(&email[..]);
+    let (id, _) = sandbox.register_account();
     let trans = sandbox.datastore.transaction(id).unwrap();
     trans.set_edges(EdgeQuery::Edge(key.clone()), models::Weight::new(-0.5).unwrap()).unwrap();
     let e = trans.get_edges(EdgeQuery::Edge(key)).unwrap();
@@ -223,8 +221,7 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(mut sandbox: &mut Da
     trans.create_edge(key, weight).unwrap();
     trans.commit().unwrap();
 
-    let email = sandbox.generate_unique_string("isolated");
-    let (id, _) = sandbox.register_account(&email[..]);
+    let (id, _) = sandbox.register_account();
     let trans = sandbox.datastore.transaction(id).unwrap();
     trans.delete_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t.clone(), inbound_id))).unwrap();
     let e = trans.get_edges(EdgeQuery::Edge(EdgeKey::new(outbound_id, edge_t, inbound_id))).unwrap();
