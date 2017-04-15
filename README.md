@@ -26,8 +26,9 @@ For more details, see:
 ## Getting started
 
 * Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
-* Make sure you have liblua5.1 installed.
+* Make sure you have liblua5.1, gcc 5+, and postgres 9.5+ installed.
 * Clone the repo: `git clone git@github.com:braidery/braid.git`.
+* Install it: `cargo install`.
 
 Now it's time to choose your own adventure...
 
@@ -35,22 +36,18 @@ Now it's time to choose your own adventure...
 
 If you want to use the postgres-backed datastore, following these steps:
 
-* Make sure you have postgres 9.5+ installed.
-* Build a release version: `cargo build --release`.
 * Create a database: `createdb braid`
-* Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/braid target/release/braid-db init`
-* Create a new account: `DATABASE_URL=postgres://localhost:5432/braid target/release/braid-user add email_address@gmail.com`.
-* Start the server: `DATABASE_URL=postgres://localhost:5432/braid PORT=8000 target/release/braid-server`.
+* Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/braid braid-db init`
+* Create a new account: `DATABASE_URL=postgres://localhost:5432/braid braid-user add email_address@gmail.com`.
+* Start the server: `DATABASE_URL=postgres://localhost:5432/braid PORT=8000 braid-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
 ### RocksDB
 
 If you want to use the rocksdb-backed datastore, follow these steps:
 
-* Make sure you have gcc 5+ installed
-* Build a release version: `cargo build --release`.
-* Create a new account: `DATABASE_URL=rocksdb://database.rdb target/release/braid-user add email_address@gmail.com`.
-* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 target/release/braid-server`.
+* Create a new account: `DATABASE_URL=rocksdb://database.rdb braid-user add email_address@gmail.com`.
+* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 braid-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
 ## Applications
