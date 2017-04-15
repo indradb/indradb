@@ -38,7 +38,7 @@ If you want to use the postgres-backed datastore, following these steps:
 
 * Create a database: `createdb braid`
 * Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/braid braid-db init`
-* Create a new account: `DATABASE_URL=postgres://localhost:5432/braid braid-user add email_address@gmail.com`.
+* Create a new account: `DATABASE_URL=postgres://localhost:5432/braid braid-account add`.
 * Start the server: `DATABASE_URL=postgres://localhost:5432/braid PORT=8000 braid-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
@@ -46,7 +46,7 @@ If you want to use the postgres-backed datastore, following these steps:
 
 If you want to use the rocksdb-backed datastore, follow these steps:
 
-* Create a new account: `DATABASE_URL=rocksdb://database.rdb braid-user add email_address@gmail.com`.
+* Create a new account: `DATABASE_URL=rocksdb://database.rdb braid-account add`.
 * Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 braid-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
@@ -55,7 +55,7 @@ If you want to use the rocksdb-backed datastore, follow these steps:
 This exposes three applications:
 
 * `braid-server`: For running the HTTP server.
-* `braid-user`: Manages the creation and deletion of accounts.
+* `braid-account`: Manages the creation and deletion of accounts.
 * `braid-db`: For managing the databases underlying braid datastores. At the moment, this only has one function: to create the database schema for postgres-backed datastores, via `braid-db init`.
 
 ## Environment variables

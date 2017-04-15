@@ -12,25 +12,22 @@ use uuid::Uuid;
 
 /// App for managing accounts
 fn main() {
-    let matches = App::new("braid-user")
+    let matches = App::new("braid-account")
         .version("0.1")
         .about("User management for Braid")
-        .subcommand(SubCommand::with_name("add")
-            .arg(Arg::with_name("EMAIL").help("Email address").required(true).index(1)))
+        .subcommand(SubCommand::with_name("add"))
         .subcommand(SubCommand::with_name("remove")
             .arg(Arg::with_name("ID").help("ID of account").required(true).index(1)))
         .get_matches();
 
     let datastore = datastore();
 
-    if let Some(matches) = matches.subcommand_matches("add") {
-        let email = matches.value_of("EMAIL").unwrap().to_string();
-
-        match datastore.create_account(email) {
+    if let Some(_) = matches.subcommand_matches("add") {
+        match datastore.create_account() {
             Ok((id, secret)) => {
                 println!("Account ID: {}", id);
                 println!("Account secret: {}", secret);
-            }
+            },
             Err(err) => exit_with_err!("Could not create account: {:?}", err),
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {

@@ -12,8 +12,8 @@ name = "braid-server"
 path = "src/server/main.rs"
 
 [[bin]]
-name = "braid-user"
-path = "src/user/main.rs"
+name = "braid-account"
+path = "src/account/main.rs"
 
 [lib]
 name = "common"
@@ -42,7 +42,7 @@ features = ["serde"]
 
 [dependencies.braid]
 git = "https://github.com/braidery/lib.git"
-branch = "develop"
+branch = "master"
 
 [dependencies.lua]
 git = "https://github.com/kballard/rust-lua.git"

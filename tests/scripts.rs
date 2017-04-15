@@ -29,9 +29,7 @@ macro_rules! test_script {
 	($name:ident) => (
 		#[test]
 		fn $name() {
-			let email_rand = thread_rng().gen_ascii_chars().take(10).collect::<String>();
-			let email = format!("script-tests-{}@braid.com", email_rand);
-			let (account_id, secret) = create_account(email).unwrap();
+			let (account_id, secret) = create_account().unwrap();
 			run_script(account_id, secret, stringify!($name));
 		}
 	)

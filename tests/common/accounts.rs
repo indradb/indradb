@@ -10,18 +10,16 @@ lazy_static! {
     static ref ACCOUNT_SECRET_MATCHER: Regex = Regex::new(r"Account secret: (.+)").unwrap();
 }
 
-pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
-    let create_user_output = Command::new("./target/debug/braid-user")
+pub fn create_account() -> Result<(Uuid, String), Error> {
+    let create_user_output = Command::new("./target/debug/braid-account")
         .arg("add")
-        .arg(email)
         .output();
 
     match create_user_output {
         Ok(output) => {
             if !output.status.success() {
-                Err(Error::Unexpected(format!("Unexpected exit status running `braid-user \
-                                               add`: {}",
-                                              output.status)))
+                let message = format!("Unexpected exit status running `braid-account add`: {}", output.status);
+                Err(Error::Unexpected(message))
             } else {
                 let stdout = str::from_utf8(&output.stdout).unwrap();
                 let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().get(1).unwrap().as_str();
@@ -30,12 +28,12 @@ pub fn create_account(email: String) -> Result<(Uuid, String), Error> {
                 Ok((account_id, secret.to_string()))
             }
         }
-        Err(err) => Err(Error::Unexpected(format!("Could not run `braid-user`: {}", err))),
+        Err(err) => Err(Error::Unexpected(format!("Could not run `braid-account`: {}", err))),
     }
 }
 
 pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
-    let remove_user_status = Command::new("./target/debug/braid-user")
+    let remove_user_status = Command::new("./target/debug/braid-account")
         .arg("remove")
         .arg(account_id.to_string())
         .status();
@@ -45,13 +43,12 @@ pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
             if status.success() {
                 Ok(())
             } else {
-                Err(Error::Unexpected(format!("Unexpected exit status running `braid-user \
-                                               remove`: {}",
-                                              status.code().unwrap())))
+                let message = format!("Unexpected exit status running `braid-account remove`: {}", status.code().unwrap());
+                Err(Error::Unexpected(message))
             }
         }
         Err(err) => {
-            Err(Error::Unexpected(format!("Unexpected error running `braid-user`: {}", err)))
+            Err(Error::Unexpected(format!("Unexpected error running `braid-account`: {}", err)))
         }
     }
 }

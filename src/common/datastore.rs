@@ -34,8 +34,8 @@ impl Datastore<ProxyTransaction> for ProxyDatastore {
         proxy_datastore!(self, has_account, account_id)
     }
 
-    fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        proxy_datastore!(self, create_account, email)
+    fn create_account(&self) -> Result<(Uuid, String), Error> {
+        proxy_datastore!(self, create_account,)
     }
 
     fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {

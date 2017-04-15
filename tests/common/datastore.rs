@@ -37,8 +37,8 @@ impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
         panic!("Unimplemented")
     }
 
-    fn create_account(&self, email: String) -> Result<(Uuid, String), Error> {
-        let (account_id, secret) = create_account(email)?;
+    fn create_account(&self) -> Result<(Uuid, String), Error> {
+        let (account_id, secret) = create_account()?;
 
         ACCOUNT_IDS.with(|account_ids| {
             let mut account_ids: &mut BTreeMap<Uuid, String> = &mut (*account_ids.borrow_mut());
