@@ -345,7 +345,7 @@ pub fn get_weight_query_param(query_params: &HashMap<String, Vec<String>>) -> Re
 /// # Errors
 /// Returns an `IronError` if the script could not be loaded, or fialed to
 /// execute.
-pub fn execute_script(name: String, payload: JsonValue, trans: &ProxyTransaction, account_id: Uuid) -> Result<JsonValue, IronError> {
+pub fn execute_script(name: String, payload: &JsonValue, trans: &ProxyTransaction, account_id: Uuid) -> Result<JsonValue, IronError> {
     if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
         return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
     }

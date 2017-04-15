@@ -23,7 +23,7 @@ use statics;
 pub fn run(mut trans: &ProxyTransaction,
            account_id: Uuid,
            path: &Path,
-           arg: JsonValue)
+           arg: &JsonValue)
            -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();

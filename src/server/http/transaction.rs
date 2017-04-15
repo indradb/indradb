@@ -120,11 +120,11 @@ fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonV
 
 fn run_script(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>, account_id: Uuid) -> Result<JsonValue, IronError> {
     let name: String = get_required_json_string_param(item, "name")?;
-    let payload: JsonValue = match item.get("payload") {
-        Some(val) => val.clone(),
-        None => JsonValue::Null
-    };
-    execute_script(name, payload, trans, account_id)
+
+    match item.get("payload") {
+        Some(val) => execute_script(name, &val, trans, account_id),
+        None => execute_script(name, &JsonValue::Null, trans, account_id)
+    }
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {

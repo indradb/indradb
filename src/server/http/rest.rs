@@ -99,7 +99,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
 
     let trans = get_transaction(req)?;
     let account_id = get_account_id(req);
-    let response = execute_script(name, payload, &trans, account_id)?;
+    let response = execute_script(name, &payload, &trans, account_id)?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &response))
 }

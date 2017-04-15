@@ -75,7 +75,7 @@ lua_fn! {
 
     pub unsafe fn get_global_metadata(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
         let key = get_string_param(l, 1)?;
-        let result = trans.get_global_metadata(key.clone())?;
+        let result = trans.get_global_metadata(key)?;
         serialize_json(l, &result);
         Ok(1)
     }
