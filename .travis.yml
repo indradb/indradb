@@ -1,20 +1,89 @@
-language: rust
-cache: cargo
-rust:
-  - stable
-  - beta
-  - nightly
-matrix:
-  allow_failures:
-    - rust: nightly
-sudo: required
 dist: trusty
+language: rust
+services: docker
+cache: cargo
+sudo: required
+
 addons:
   postgresql: "9.5"
-before_install:
+
+matrix:
+  include:
+    # Builds for linux
+    - env: TARGET=i686-unknown-linux-gnu
+    - env: TARGET=i686-unknown-linux-musl
+    - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-musl
+
+    # Builds for OSX
+    - env: TARGET=i686-apple-darwin
+      os: osx
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+
+    # Testing rust stable
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: stable
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: stable
+
+    # Testing rust beta
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: beta
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: beta
+
+    # Testing rust nightly
+  allow_failures:
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: nightly
+
+before_install: set -e
+
+install:
+  - sh ci/install.sh
+  - source ~/.cargo/env || true
   - sudo apt-get -qq update
   - sudo apt-get install -y lua5.1 liblua5.1-0-dev
+
 before_script:
   - psql -c 'create database braid_test;' -U postgres
+
 script:
-  - ./test.sh
+  - if [ ! -z $DISABLE_TESTS ]; then ./test.sh; fi
+
+after_script: set +e
+
+before_deploy:
+  - sh ci/before_deploy.sh
+
+deploy:
+  api_key:
+    secure: "UPQgWuwa7SIGUBdwssTOqY9/qfV38KqnVpKvTNE2UNC0EFmBXEPxUl/qgLlWUdlDI87o7msH8+Ra8B6U8mhfGoNogkM3DAO2K8hPAq2FGzXlyRxumXcykgSwbnWernjx/T0/3dAizcBuaBVno0H1aMjXYu7wIShr3hQQZOgWwpQeNV8W4qasX76wLi/v36Gj9wiINRsKZj7wm9WQUXDbufoH4bBeN5m29LyuHkyEGGMCvh8W7TQW7lmu40jwoo7kAv+EMZ9yaQMYFl9fC+Q16zma+HqR/brZkdrurKu5GgOVZBRkObphNYGiD6g+1xoT3HCurWwnxHdHFk/a6TlirTnY8NJ9/31WBqgnfYbtKYoAIFn/J4mflEoKefxxZ2T5t9+Ell670zgiLoyTmS23z6zUvsEDCHX2pjQ/Nc6AZDIaMS4KtKxIPQsjEEbhr60MQ0b1yreU/u5WAyWUiEaBePPtyxmLzdMbQRUcPtMITUSo1E9q7IhkjltlR3htZ78BQ7DCCucs9sujrgXzNx4N28ekwdCpnPLaEhcHZyWfyLsGpv/tRurb00RSiuETg/0lOumRallpNE2c2I5svPWRGwdMCFTiMcqkAj3PmXbt5bxgpUR+d8FEE7RlbnHvcjtPcLCUtYWtV8Sh5WdUiapGmogo4+DhhSOboIwTkCVvxJE="
+  file_glob: true
+  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
+  on:
+    condition: $TRAVIS_RUST_VERSION = stable
+    tags: true
+  provider: releases
+  skip_cleanup: true
+
+cache: cargo
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+
+branches:
+  only:
+    # release tags
+    - /^v\d+\.\d+\.\d+.*$/
+    - master
+
+notifications:
+  email:
+on_success: never
