@@ -30,7 +30,11 @@ main() {
         sudo apt-get install -y lua5.1 liblua5.1-0-dev
     else
         brew update
-        brew install lua@5.1
+
+        # TODO: Currently `rustdoc` fails on osx/rust stable. Once it's fixed,
+        # remove this.
+        brew install lua@5.1 libjpeg
+        brew link libjpeg
     fi
 
     source ~/.cargo/env || true
