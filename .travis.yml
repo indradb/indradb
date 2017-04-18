@@ -42,9 +42,6 @@ before_install: set -e
 
 install:
   - sh ci/install.sh
-  - source ~/.cargo/env || true
-  - sudo apt-get -qq update
-  - sudo apt-get install -y lua5.1 liblua5.1-0-dev
 
 before_script:
   - psql -c 'create database braid_test;' -U postgres
