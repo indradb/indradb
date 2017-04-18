@@ -9,21 +9,14 @@ addons:
 
 matrix:
   include:
-    # Builds for linux
-    - env: TARGET=x86_64-unknown-linux-gnu
-
-    # Builds for OSX
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
-
-    # Testing rust stable
+    # Rust stable
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: stable
     - env: TARGET=x86_64-apple-darwin
       os: osx
       rust: stable
 
-    # Testing rust beta
+    # Rust beta
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: beta
     - env: TARGET=x86_64-apple-darwin
@@ -31,7 +24,7 @@ matrix:
       rust: beta
 
   allow_failures:
-    # Testing rust nightly
+    # Rust nightly
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
     - env: TARGET=x86_64-apple-darwin
