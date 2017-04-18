@@ -23,6 +23,13 @@ matrix:
       os: osx
       rust: beta
 
+    # Rust nightly
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: nightly
+
   allow_failures:
     # Rust nightly
     - env: TARGET=x86_64-unknown-linux-gnu
