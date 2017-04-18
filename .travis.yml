@@ -41,10 +41,10 @@ matrix:
 before_install: set -e
 
 install:
-  - sh ci/install.sh
+  - ci/install.sh
 
 before_script:
-  - psql -c 'create database braid_test;' -U postgres
+  - ci/before_script.sh
 
 script:
   - ./test.sh
@@ -52,7 +52,7 @@ script:
 after_script: set +e
 
 before_deploy:
-  - sh ci/before_deploy.sh
+  - ci/before_deploy.sh
 
 deploy:
   api_key:
