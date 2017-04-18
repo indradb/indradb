@@ -43,7 +43,7 @@ before_script:
   - psql -c 'create database braid_test;' -U postgres
 
 script:
-  - if [ ! -z $DISABLE_TESTS ]; then ./test.sh; fi
+  - ./test.sh
 
 after_script: set +e
 
