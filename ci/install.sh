@@ -35,6 +35,16 @@ main() {
         # remove this.
         brew install lua@5.1 libjpeg
         brew link libjpeg
+        pushd /usr/local/lib
+            rm libgif.dylib
+            ln -s /System/Library/Frameworks/ImageIO.framework/Resources/libGIF.dylib libGIF.dylib
+            rm libjpeg.dylib
+            ln -s /System/Library/Frameworks/ImageIO.framework/Resources/libJPEG.dylib libJPEG.dylib
+            rm libtiff.dylib
+            ln -s /System/Library/Frameworks/ImageIO.framework/Resources/libTIFF.dylib libTIFF.dylib
+            rm libpng.dylib
+            ln -s /System/Library/Frameworks/ImageIO.framework/Resources/libPng.dylib libPng.dylib
+        popd
     fi
 
     source ~/.cargo/env || true
