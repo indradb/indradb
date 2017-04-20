@@ -18,7 +18,7 @@ fn datastore() -> RocksdbDatastore {
     // Because Rust may run the tests in parallel, we need to add a random
     // secret to the test database directory to ensure we can have multiple
     // different database connections open simultaneously.
-	let test_rdb_directory = env::var("TEST_RDB_DIRECTORY").unwrap_or("/tmp/test-rdb".to_string());
+    let test_rdb_directory = env::var("TEST_RDB_DIRECTORY").unwrap_or("/tmp/test-rdb".to_string());
     let unique = generate_random_secret();
     let path = Path::new(&test_rdb_directory[..]).join(unique);
 
