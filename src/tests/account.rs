@@ -44,7 +44,7 @@ pub fn should_fail_to_lookup_invalid_accounts<D, T>(sandbox: &mut DatastoreTestS
 }
 
 pub fn should_fail_when_attempting_to_delete_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-	where D: Datastore<T>,
+    where D: Datastore<T>,
           T: Transaction
 {
     let result = sandbox.datastore.delete_account(Uuid::default());

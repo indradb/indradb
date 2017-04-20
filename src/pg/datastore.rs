@@ -588,10 +588,10 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload("
-			INSERT INTO vertex_metadata (owner_id, name, value)
+            INSERT INTO vertex_metadata (owner_id, name, value)
             SELECT id, %p, %p FROM %t
-			ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
-			DO UPDATE SET value=%p
+            ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
+            DO UPDATE SET value=%p
         ", vec![Box::new(name), Box::new(value.clone()), Box::new(value)]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
@@ -637,10 +637,10 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload("
-			INSERT INTO edge_metadata (owner_id, name, value)
+            INSERT INTO edge_metadata (owner_id, name, value)
             SELECT id, %p, %p FROM %t
-			ON CONFLICT ON CONSTRAINT edge_metadata_pkey
-			DO UPDATE SET value=%p
+            ON CONFLICT ON CONSTRAINT edge_metadata_pkey
+            DO UPDATE SET value=%p
         ", vec![Box::new(name), Box::new(value.clone()), Box::new(value)]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
