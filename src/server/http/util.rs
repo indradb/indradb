@@ -25,7 +25,7 @@ use std::path::Path;
 use script;
 
 lazy_static! {
-	static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
     static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
 }
 

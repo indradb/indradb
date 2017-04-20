@@ -26,13 +26,13 @@ lazy_static! {
 }
 
 macro_rules! test_script {
-	($name:ident) => (
-		#[test]
-		fn $name() {
-			let (account_id, secret) = create_account().unwrap();
-			run_script(account_id, secret, stringify!($name));
-		}
-	)
+    ($name:ident) => (
+        #[test]
+        fn $name() {
+            let (account_id, secret) = create_account().unwrap();
+            run_script(account_id, secret, stringify!($name));
+        }
+    )
 }
 
 fn run_script(account_id: Uuid, secret: String, name: &str) {
@@ -42,15 +42,15 @@ fn run_script(account_id: Uuid, secret: String, name: &str) {
 
     let client = Client::new();
     let req = request(
-		&client,
-		8000,
-		account_id,
-		secret,
-		"POST",
-		format!("/script/{}.lua", name),
-		vec![]
-	);
-	let mut res = req.send().unwrap();
+        &client,
+        8000,
+        account_id,
+        secret,
+        "POST",
+        format!("/script/{}.lua", name),
+        vec![]
+    );
+    let mut res = req.send().unwrap();
 
     let mut payload = String::new();
     res.read_to_string(&mut payload).unwrap();

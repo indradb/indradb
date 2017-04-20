@@ -30,7 +30,7 @@ use std::collections::HashMap;
 use serde_json::Number as JsonNumber;
 
 lazy_static! {
-	static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
+    static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
 }
 
 pub struct BatchTransaction {
@@ -92,9 +92,9 @@ impl BatchTransaction {
 impl Transaction for BatchTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("create_vertex".to_string()),
-			"type".to_string() => JsonValue::String(t.0)
-		})
+            "action".to_string() => JsonValue::String("create_vertex".to_string()),
+            "type".to_string() => JsonValue::String(t.0)
+        })
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
@@ -106,54 +106,54 @@ impl Transaction for BatchTransaction {
 
     fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("set_vertices".to_string()),
-			"query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-			"type".to_string() => JsonValue::String(t.0)
-		})
+            "action".to_string() => JsonValue::String("set_vertices".to_string()),
+            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
+            "type".to_string() => JsonValue::String(t.0)
+        })
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("delete_vertices".to_string()),
-			"query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-		})
+            "action".to_string() => JsonValue::String("delete_vertices".to_string()),
+            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
+        })
     }
 
     fn create_edge(&self, e: EdgeKey, weight: Weight) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("create_edge".to_string()),
-			"key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
-			"weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
-		})
+            "action".to_string() => JsonValue::String("create_edge".to_string()),
+            "key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
+            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
+        })
     }
     
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_edges".to_string()),
-			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-		})
+            "action".to_string() => JsonValue::String("get_edges".to_string()),
+            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+        })
     }
 
     fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("set_edges".to_string()),
-			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+            "action".to_string() => JsonValue::String("set_edges".to_string()),
+            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
             "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
-		})
+        })
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("delete_edges".to_string()),
-			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-		})
+            "action".to_string() => JsonValue::String("delete_edges".to_string()),
+            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+        })
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         self.request(btreemap!{
-			"action".to_string() => JsonValue::String("get_edge_count".to_string()),
-			"query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-		})
+            "action".to_string() => JsonValue::String("get_edge_count".to_string()),
+            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
+        })
     }
 
     fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {
