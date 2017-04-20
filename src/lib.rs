@@ -41,10 +41,10 @@ pub mod tests;
 mod errors;
 mod models;
 mod traits;
-mod util;
+pub mod util;
 
-pub use models::*;
 pub use errors::*;
+pub use models::*;
 pub use traits::*;
 
 #[cfg(feature="postgres-datastore")]
