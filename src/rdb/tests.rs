@@ -7,7 +7,7 @@ pub use std::env;
 use std::path::Path;
 
 fn datastore() -> RocksdbDatastore {
-	let test_rdb_directory = env::var("TEST_RDB_DIRECTORY").unwrap_or("/tmp/test-rdb".to_string());
+    let test_rdb_directory = env::var("TEST_RDB_DIRECTORY").unwrap_or("/tmp/test-rdb".to_string());
     let unique = generate_random_secret();
     let path = Path::new(&test_rdb_directory[..]).join(unique);
 

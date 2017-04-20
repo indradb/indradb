@@ -5,7 +5,7 @@ use uuid::Uuid;
 use chrono::{UTC, DateTime};
 
 lazy_static! {
-	static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
+    static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
 }
 
 /// A vertex.
