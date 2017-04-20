@@ -73,13 +73,6 @@ pub trait Transaction {
     /// * `q` - The query to run.
     fn get_vertices(&self, q: models::VertexQuery) -> Result<Vec<models::Vertex>, Error>;
 
-    /// Sets the type of existing vertices specified by a query.
-    ///
-    /// # Arguments
-    /// * `q` - The query to run.
-    /// * `t` - The type to set.
-    fn set_vertices(&self, q: models::VertexQuery, t: models::Type) -> Result<(), Error>;
-
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
@@ -106,13 +99,6 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     fn get_edges(&self, q: models::EdgeQuery) -> Result<Vec<models::Edge>, Error>;
-
-    /// Updates an existing set of edges specified by a query.
-    ///
-    /// # Arguments
-    /// * `q` - The query to run.
-    /// * `weight` - The edge weight to set.
-    fn set_edges(&self, q: models::EdgeQuery, weight: models::Weight) -> Result<(), Error>;
 
     /// Deletes a set of edges specified by a query.
     ///

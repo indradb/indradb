@@ -353,18 +353,6 @@ impl Transaction for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
-        let mut sql_query_builder = CTEQueryBuilder::new();
-        self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload(
-            "UPDATE vertices SET type=%p WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)",
-            vec![Box::new(t.0), Box::new(self.account_id)]
-        );
-        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
-        self.trans.execute(&query[..], &params_refs[..])?;
-        Ok(())
-    }
-
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
@@ -444,16 +432,6 @@ impl Transaction for PostgresTransaction {
         }
 
         Ok(edges)
-    }
-
-    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
-        let mut sql_query_builder = CTEQueryBuilder::new();
-        self.edge_query_to_sql(q, &mut sql_query_builder);
-        self.ensure_edges_are_owned_by_account(&mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload("UPDATE edges SET weight=%p, update_timestamp=NOW() WHERE id IN (SELECT id FROM %t)", vec![Box::new(weight.0)]);
-        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
-        self.trans.execute(&query[..], &params_refs[..])?;
-        Ok(())
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {

@@ -40,8 +40,6 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_vertices_piped, $code);
 
 		// Vertex updates
-		define_test!(should_update_a_valid_vertex, $code);
-		define_test!(should_not_update_an_invalid_vertex, $code);
 		define_test!(should_delete_a_valid_vertex, $code);
 		define_test!(should_not_delete_an_invalid_vertex, $code);
 		define_test!(should_not_delete_an_unowned_vertex, $code);
@@ -50,10 +48,8 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_a_valid_edge, $code);
 		define_test!(should_not_get_an_invalid_edge, $code);
 		define_test!(should_create_a_valid_edge, $code);
-		define_test!(should_update_a_valid_edge, $code);
 		define_test!(should_not_create_an_invalid_edge, $code);
 		define_test!(should_not_create_an_edge_with_bad_permissions, $code);
-		define_test!(should_not_update_an_edge_with_bad_permissions, $code);
 		define_test!(should_delete_a_valid_edge, $code);
 		define_test!(should_not_delete_an_invalid_edge, $code);
 		define_test!(should_not_delete_an_edge_with_bad_permissions, $code);
