@@ -1,10 +1,17 @@
-#![cfg(test)]
+#![feature(test)]
 
-pub use super::datastore::RocksdbDatastore;
-pub use super::super::tests;
-pub use super::super::util::generate_random_secret;
+extern crate test;
+extern crate braid;
+
+#[macro_use]
+mod common;
+
+pub use braid::RocksdbDatastore;
+pub use braid::util::generate_random_secret;
 pub use std::env;
 use std::path::Path;
+pub use test::Bencher;
+pub use braid::tests;
 
 fn datastore() -> RocksdbDatastore {
     // RocksDB can only have one connection open to a database at a time.
@@ -21,6 +28,4 @@ fn datastore() -> RocksdbDatastore {
     RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files), false).unwrap()
 }
 
-test_account_impl!(datastore());
-test_transaction_impl!(datastore());
-test_metadata_impl!(datastore());
+bench_transaction_impl!(datastore());
