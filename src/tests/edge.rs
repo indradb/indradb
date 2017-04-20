@@ -36,8 +36,8 @@ pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(e[0].key.t, edge_t);
     assert_eq!(e[0].key.inbound_id, inbound_id);
     assert!(e[0].weight.0 > 0.0);
-    assert!(e[0].update_datetime >= start_time);
-    assert!(e[0].update_datetime <= end_time);
+    assert!(e[0].created_datetime >= start_time);
+    assert!(e[0].created_datetime <= end_time);
 }
 
 pub fn should_not_get_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)

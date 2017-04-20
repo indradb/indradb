@@ -86,8 +86,8 @@ pub struct Edge {
     /// The weight of the edge.
     pub weight: Weight,
 
-    /// When the edge was last updated.
-    pub update_datetime: DateTime<UTC>
+    /// When the edge was created.
+    pub created_datetime: DateTime<UTC>
 }
 
 impl Edge {
@@ -106,12 +106,12 @@ impl Edge {
     /// # Arguments
     /// * `key` - The key to the edge.
     /// * `weight` - The weight of the edge.
-    /// * `update_datetime` - When the edge was last updated.
-    pub fn new(key: EdgeKey, weight: Weight, update_datetime: DateTime<UTC>) -> Edge {
+    /// * `created_datetime` - When the edge was created.
+    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<UTC>) -> Edge {
         Edge {
             key: key,
             weight: weight,
-            update_datetime: update_datetime
+            created_datetime: created_datetime
         }
     }
 }
