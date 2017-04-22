@@ -28,6 +28,14 @@ main() {
     if [ $TRAVIS_OS_NAME = linux ]; then
         sudo apt-get -qq update
         sudo apt-get install -y lua5.1 liblua5.1-0-dev
+
+        # Needed so that `lua.pc` can be found when building via `cross`
+        pushd /usr/lib/pkgconfig
+            sudo ln -s lua5.1.pc lua.pc
+        popd
+
+        # Verify that `lua.pc` is there
+        pkg-config --cflags "lua"
     else
         brew update
 
