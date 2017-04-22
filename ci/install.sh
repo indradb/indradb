@@ -31,8 +31,8 @@ main() {
     else
         brew update
 
-        # TODO: Currently `rustdoc` fails on osx/rust stable. Once it's fixed,
-        # remove this.
+        # TODO: Currently `rustdoc` fails on osx/rust stable due to an issue
+        # with `libjpeg`. Once it's fixed, remove the manually tweaking here.
         brew install lua@5.1 libjpeg
         brew link libjpeg
         pushd /usr/local/lib
