@@ -15,12 +15,10 @@ pub fn start(port: u16) {
 
     router.put("/edge/:outbound_id/:t/:inbound_id", rest::create_edge, "create_edge");
     router.get("/edge", rest::get_edges, "get_edges");
-    router.put("/edge", rest::set_edges, "set_edges");
     router.delete("/edge", rest::delete_edges, "delete_edges");
 
     router.get("/vertex", rest::get_vertices, "get_vertices");
     router.post("/vertex", rest::create_vertex, "create_vertex");
-    router.put("/vertex", rest::set_vertices, "set_vertices");
     router.delete("/vertex", rest::delete_vertices, "delete_vertices");
 
     router.post("/script/:name", rest::script, "script");

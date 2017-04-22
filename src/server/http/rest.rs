@@ -23,16 +23,6 @@ pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &response))
 }
 
-pub fn set_vertices(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
-    let query_params = get_query_params(req)?;
-    let q = get_obj_query_param::<VertexQuery>(query_params)?;
-    let t = get_query_param::<Type>(query_params, "type", true)?.unwrap();
-    datastore_request(trans.set_vertices(q, t))?;
-    datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &()))    
-}
-
 pub fn delete_vertices(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
@@ -68,16 +58,6 @@ pub fn get_edges(req: &mut Request) -> IronResult<Response> {
         let response = datastore_request(trans.get_edges(q))?;
         Ok(to_response(status::Ok, &response))
     }
-}
-
-pub fn set_edges(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
-    let query_params = get_query_params(req)?;
-    let q = get_obj_query_param::<EdgeQuery>(query_params)?;
-    let weight = get_weight_query_param(query_params)?;
-    datastore_request(trans.set_edges(q, weight))?;
-    datastore_request(trans.commit())?;
-    Ok(to_response(status::Ok, &()))
 }
 
 pub fn delete_edges(req: &mut Request) -> IronResult<Response> {

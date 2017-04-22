@@ -104,14 +104,6 @@ impl Transaction for BatchTransaction {
         })
     }
 
-    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("set_vertices".to_string()),
-            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-            "type".to_string() => JsonValue::String(t.0)
-        })
-    }
-
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("delete_vertices".to_string()),
@@ -131,14 +123,6 @@ impl Transaction for BatchTransaction {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("get_edges".to_string()),
             "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-        })
-    }
-
-    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("set_edges".to_string()),
-            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
         })
     }
 

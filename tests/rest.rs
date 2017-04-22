@@ -72,14 +72,6 @@ impl Transaction for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
-        let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "PUT", "/vertex".to_string(), vec![("q", q_json), ("type", t.0)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
@@ -100,14 +92,6 @@ impl Transaction for RestTransaction {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
         let req = self.request(&client, "GET", "/edge".to_string(), vec![("q", q_json)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
-    }
-
-    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
-        let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "PUT", "/edge".to_string(), vec![("q", q_json), ("weight", weight.0.to_string())]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }

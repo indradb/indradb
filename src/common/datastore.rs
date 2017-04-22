@@ -86,10 +86,6 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, create_vertex, t)
     }
 
-    fn set_vertices(&self, q: VertexQuery, t: Type) -> Result<(), Error> {
-        proxy_transaction!(self, set_vertices, q, t)
-    }
-
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         proxy_transaction!(self, delete_vertices, q)
     }
@@ -100,10 +96,6 @@ impl Transaction for ProxyTransaction {
     
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(self, get_edges, q)
-    }
-
-    fn set_edges(&self, q: EdgeQuery, weight: Weight) -> Result<(), Error> {
-        proxy_transaction!(self, set_edges, q, weight)
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
