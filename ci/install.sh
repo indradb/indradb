@@ -33,9 +33,6 @@ main() {
         pushd /usr/lib/pkgconfig
             sudo ln -s lua5.1.pc lua.pc
         popd
-
-        # Verify that `lua.pc` is there
-        pkg-config --cflags "lua"
     else
         brew update
 
