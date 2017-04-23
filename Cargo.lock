@@ -2,7 +2,7 @@
 name = "braid-bin"
 version = "0.1.0"
 dependencies = [
- "braid 0.1.0 (git+https://github.com/braidery/lib.git)",
+ "braid 0.1.0 (git+https://github.com/braidery/lib.git?branch=feature/no-updates)",
  "chrono 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.20.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -69,7 +69,7 @@ dependencies = [
 [[package]]
 name = "braid"
 version = "0.1.0"
-source = "git+https://github.com/braidery/lib.git#2493b02b9a59116d15a83ed95691ab81f358755b"
+source = "git+https://github.com/braidery/lib.git?branch=feature/no-updates#0827fb3319cc456afb6357fa6139e61d68b5d1f4"
 dependencies = [
  "bincode 1.0.0-alpha2 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -821,7 +821,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bincode 1.0.0-alpha2 (registry+https://github.com/rust-lang/crates.io-index)" = "62650bb5651ba8f0580cebf4ef255d791b8b0ef53800322661e1bb5791d42966"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bodyparser 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6928e817538b74a73d1dd6e9a942a2a35c632a597b6bb14fd009480f859a6bf5"
-"checksum braid 0.1.0 (git+https://github.com/braidery/lib.git)" = "<none>"
+"checksum braid 0.1.0 (git+https://github.com/braidery/lib.git?branch=feature/no-updates)" = "<none>"
 "checksum bufstream 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7b48dbe2ff0e98fa2f03377d204a9637d3c9816cd431bfe05a8abbd0ea11d074"
 "checksum byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0fc10e8cc6b2580fda3f36eb6dc5316657f812a3df879a44a66fc9f0fdbc4855"
 "checksum byteorder 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c40977b0ee6b9885c9013cd41d9feffdd22deb3bb4dc3a71d901cc7a77de18c8"

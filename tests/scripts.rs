@@ -89,5 +89,4 @@ test_script!(return_number);
 test_script!(return_obj);
 test_script!(return_string);
 test_script!(set_and_get_edge);
-test_script!(set_vertices);
 test_script!(vertex_metadata);

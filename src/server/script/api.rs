@@ -3,7 +3,7 @@
 
 use lua;
 use common::ProxyTransaction;
-use braid::{Transaction, VertexQuery, EdgeKey};
+use braid::{Transaction, EdgeKey};
 use std::i32;
 use super::util::*;
 use super::errors::LuaError;
@@ -21,13 +21,6 @@ lua_fn! {
         let result = trans.get_vertices(q)?;
         serialize_vertices(l, result);
         Ok(1)
-    }
-
-    pub unsafe fn set_vertex(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let id = get_uuid_param(l, 1)?;
-        let t = get_type_param(l, 2)?;
-        trans.set_vertices(VertexQuery::Vertex(id), t)?;
-        Ok(0)
     }
 
     pub unsafe fn delete_vertices(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
@@ -51,13 +44,6 @@ lua_fn! {
         let result = trans.get_edges(q)?;
         serialize_edges(l, result);
         Ok(1)
-    }
-
-    pub unsafe fn set_edges(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
-        let q = get_edge_query_param(l, 1)?;
-        let weight = get_weight_param(l, 2)?;
-        trans.set_edges(q, weight)?;
-        Ok(0)
     }
 
     pub unsafe fn delete_edges(trans: &mut ProxyTransaction, l: &mut lua::ExternState) -> Result<i32, LuaError> {
