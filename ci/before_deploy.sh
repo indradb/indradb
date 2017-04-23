@@ -25,7 +25,7 @@ main() {
     cp target/release/braid-account $stage/
 
     pushd $stage
-        tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
+        tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
     popd
 
     rm -rf $stage
