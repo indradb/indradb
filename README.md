@@ -75,5 +75,5 @@ If you don't want to use the pre-built releases, you can build/install from sour
 
 ## Running tests
 
-* Use `./test.sh` to run the test suite.
+Use `./test.sh` to run the test suite.
 
