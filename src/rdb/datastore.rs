@@ -6,7 +6,6 @@ use util::{get_salted_hash, next_uuid};
 use serde_json::Value as JsonValue;
 use chrono::{UTC};
 use rocksdb::{DB, Options, WriteBatch, DBCompactionStyle};
-use super::models::VertexValue;
 use std::sync::Arc;
 use std::usize;
 use std::i32;
@@ -376,26 +375,6 @@ impl Transaction for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn set_vertices(&self, q: VertexQuery, t: models::Type) -> Result<(), Error> {
-        let iterator = self.vertex_query_to_iterator(q)?;
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
-        let mut batch = WriteBatch::default();
-        let new_value = VertexValue::new(self.account_id, t);
-
-        for item in iterator {
-            let (id, old_value) = item?;
-
-            if old_value.owner_id != self.account_id {
-                continue;
-            }
-
-            vertex_manager.update(&mut batch, id, &new_value)?;
-        }
-
-        self.db.write(batch)?;
-        Ok(())
-    }
-
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
         let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
@@ -445,27 +424,6 @@ impl Transaction for RocksdbTransaction {
         });
 
         mapped.collect()
-    }
-
-    fn set_edges(&self, q: EdgeQuery, weight: models::Weight) -> Result<(), Error> {
-        let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
-        let iterator = self.edge_query_to_iterator(q)?;
-        let mut batch = WriteBatch::default();
-        let new_update_datetime = UTC::now();
-
-        for item in iterator {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
-
-            if let Some(vertex_value) = vertex_manager.get(outbound_id)? {
-                if vertex_value.owner_id == self.account_id {
-                    edge_manager.set(&mut batch, outbound_id, &t, inbound_id, new_update_datetime, weight)?;
-                }
-            };
-        }
-
-        self.db.write(batch)?;
-        Ok(())
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {

@@ -164,29 +164,6 @@ pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
     assert_eq!(range[0].id, inserted_id_5);
 }
 
-pub fn should_update_a_valid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-    where D: Datastore<T>,
-          T: Transaction
-{
-    let trans = sandbox.transaction();
-    let original_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let id = trans.create_vertex(original_t).unwrap();
-    let updated_t = models::Type::new("test_vertex_type_2".to_string()).unwrap();
-    trans.set_vertices(VertexQuery::Vertex(id), updated_t.clone()).unwrap();
-    let v = trans.get_vertices(VertexQuery::Vertex(id)).unwrap();
-    assert_eq!(v[0].id, id);
-    assert_eq!(v[0].t, updated_t);
-}
-
-pub fn should_not_update_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-    where D: Datastore<T>,
-          T: Transaction
-{
-    let trans = sandbox.transaction();
-    let t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    trans.set_vertices(VertexQuery::Vertex(Uuid::default()), t).unwrap();
-}
-
 pub fn should_delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
     where D: Datastore<T>,
           T: Transaction
