@@ -25,12 +25,7 @@ For more details, see:
 
 ## Getting started
 
-* Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
-* Make sure you have liblua5.1, gcc 5+, and postgres 9.5+ installed.
-* Clone the repo: `git clone git@github.com:braidery/braid.git`.
-* Install it: `cargo install`.
-
-Now it's time to choose your own adventure...
+First, [download the latest release for your platform.](https://github.com/braidery/braid/releases) Now it's time to choose your own adventure...
 
 ### Postgres
 
@@ -68,3 +63,17 @@ Applications are configured via environment variables:
 * `PORT` - The port to run the server on. Defaults to `8000`.
 * `SECRET` - The postgres implementation uses this as a [pepper](https://en.wikipedia.org/wiki/Pepper_%28cryptography%29) for increased security. Defaults to an empty string.
 * `BRAID_SCRIPT_ROOT` - The directory housing the lua scripts. Defaults to `./scripts`.
+
+## Install from source
+
+If you don't want to use the pre-built releases, you can build/install from source:
+
+* Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
+* Make sure you have liblua5.1, gcc 5+, and postgres 9.5+ installed.
+* Clone the repo: `git clone git@github.com:braidery/braid.git`.
+* Build/install it: `cargo install`.
+
+## Running tests
+
+* Use `./test.sh` to run the test suite.
+
