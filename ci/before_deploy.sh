@@ -18,17 +18,15 @@ main() {
 
     test -f Cargo.lock || cargo generate-lockfile
 
-    cross rustc --bin braid-db --target $TARGET --release -- -C lto
-    cross rustc --bin braid-server --target $TARGET --release -- -C lto
-    cross rustc --bin braid-account --target $TARGET --release -- -C lto
+    cargo build --release
 
-    cp target/$TARGET/release/braid-db $stage/
-    cp target/$TARGET/release/braid-server $stage/
-    cp target/$TARGET/release/braid-account $stage/
+    cp target/release/braid-db $stage/
+    cp target/release/braid-server $stage/
+    cp target/release/braid-account $stage/
 
-    cd $stage
-    tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
-    cd $src
+    pushd $stage
+        tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
+    popd
 
     rm -rf $stage
 }
