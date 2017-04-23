@@ -37,3 +37,8 @@ To help you get off the ground faster, we've defined some standard tests that ca
 ## Running tests
 
 Use `./test.sh` to run the test suite.
+
+## Running tests
+
+Use `./test.sh` to run the test suite.
+
