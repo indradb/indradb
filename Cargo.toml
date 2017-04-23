@@ -1,6 +1,6 @@
 [package]
 name = "braid-bin"
-version = "0.1.0"
+version = "0.1.4"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 
 [[bin]]
