@@ -1,3 +1,5 @@
+//! Utility functions.
+
 use rand::{Rng, OsRng};
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
@@ -26,6 +28,13 @@ pub fn generate_random_secret() -> String {
 
 /// Generates a SHA256 hash, based off of a salt, an optional pepper, and a
 /// secret value.
+///
+/// # Arguments
+///
+/// * `salt` - A randomly generated value tied to the account to prevent brute
+///   force.
+/// * `pepper` - A global random value, to further prevent brute force attacks.
+/// * `secret` - A secret random value or password for the account.
 pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String {
     let mut sha = Sha256::new();
     sha.input(salt.as_bytes());
@@ -38,7 +47,15 @@ pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String
     return format!("1:{}", sha.result_str());
 }
 
-/// Gets the next UUID that would occur after the given one
+/// Gets the next UUID that would occur after the given one.
+///
+/// # Arguments
+///
+/// * `uuid` - The input UUID.
+///
+/// # Errors
+/// Returns a `ValidationError` if the input UUID is the great possible value
+/// (i.e., FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF)
 pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
     let mut bytes = *uuid.as_bytes();
 
@@ -54,7 +71,7 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
     Err(ValidationError::new("Could not increment the UUID".to_string()))
 }
 
-/// Gets the number of nanoseconds since unix epoch for a given datetime
+/// Gets the number of nanoseconds since unix epoch for a given datetime.
 ///
 /// # Arguments
 /// * `datetime` - The datetime to convert.
