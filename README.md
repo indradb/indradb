@@ -25,7 +25,11 @@ For more details, see:
 
 ## Getting started
 
-First, [download the latest release for your platform.](https://github.com/braidery/braid/releases) Now it's time to choose your own adventure...
+* Make sure you have lua 5.1 installed.
+* [Download the latest release for your platform.](https://github.com/braidery/braid/releases)
+* Add the binaries to your `PATH`.
+
+Now it's time to choose your own adventure...
 
 ### Postgres
 
