@@ -5,7 +5,6 @@ set -e
 postgresuser='postgres'
 unamestr=`uname`
 if [[ "$unamestr" == 'Darwin' ]]; then
-    # use the current user if the
     postgresuser=`whoami`
     echo "Using user '${postgresuser}' for postgres" 
 fi
