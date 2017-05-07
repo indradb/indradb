@@ -1,3 +1,5 @@
 target
 *.pyc
 *.egg-info
+*.swp
+*.rdb
