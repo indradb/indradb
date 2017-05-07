@@ -41,7 +41,7 @@ version = "~0.3.0"
 features = ["serde"]
 
 [dependencies.braid-lib]
-git = "https://github.com/braidery/lib.git"
+git = "https://github.com/braidery/braid-lib.git"
 branch = "master"
 
 [dependencies.lua]
