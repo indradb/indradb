@@ -1,6 +1,6 @@
 # braid library
 
-[![Build Status](https://travis-ci.org/braidery/lib.svg?branch=master)](https://travis-ci.org/braidery/lib) [rustdoc](https://braidery.github.io/apis/lib/braid)
+[![Build Status](https://travis-ci.org/braidery/braid-lib.svg?branch=master)](https://travis-ci.org/braidery/braid-lib) [rustdoc](https://braidery.github.io/apis/lib/braid)
 
 This is the braid library. Most users can use the [server](https://github.com/braidery/braid), which provides higher-level methods for working with braid databases. Linking directly against the library would be necessary if you want to make a new datastore implementation, or if you want to work at a lower-level than the server affords.
 
