@@ -75,5 +75,16 @@ If you don't want to use the pre-built releases, you can build/install from sour
 
 ## Running tests
 
+### Set up Postgres
+
+Run the following commands to set up Postgres on MacOS:
+
+* `initdb /usr/local/var/postgres`
+* `pg_ctl -D /usr/loca/var/postgres -w start`
+* `createuser postgres`
+* `psql -c 'create database braid_test;' -U postgres`
+
+### Run the tests
+
 Use `./test.sh` to run the test suite.
 
