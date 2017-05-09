@@ -26,4 +26,5 @@ trap cleanup EXIT
 
 dropdb --if-exists braid_test
 createdb --owner=postgres braid_test
+cargo update
 cargo $ACTION $TEST_NAME
