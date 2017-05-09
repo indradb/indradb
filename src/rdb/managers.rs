@@ -4,17 +4,15 @@ use errors::Error;
 use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
 use serde_json::Value as JsonValue;
 use chrono::{DateTime, UTC};
-use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator};
+use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, ColumnFamily};
 use super::models::{AccountValue, EdgeValue, VertexValue};
-use bincode::SizeLimit;
 use std::sync::Arc;
 use std::u8;
 use serde_json;
 use super::keys::*;
-use librocksdb_sys::rocksdb_column_family_handle_t;
 use std::io::Cursor;
 use bincode;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
 pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
@@ -23,13 +21,8 @@ pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<UTC>, Uuid), mode
 pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
-    let result = bincode::serialize(value, SizeLimit::Infinite)?;
+    let result = bincode::serialize(value, bincode::Infinite)?;
     Ok(result.into_boxed_slice())
-}
-
-fn bincode_deserialize_value<T: Deserialize>(value: &[u8]) -> Result<T, Error> {
-    let result = bincode::deserialize(value)?;
-    Ok(result)
 }
 
 fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>, Error> {
@@ -46,16 +39,6 @@ fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool, Error> {
     match db.get_cf(cf, &key)? {
         Some(_) => Ok(true),
         None => Ok(false),
-    }
-}
-
-fn get_bincode<T: Deserialize>(db: &DB,
-                               cf: ColumnFamily,
-                               key: Box<[u8]>)
-                               -> Result<Option<T>, Error> {
-    match db.get_cf(cf, &key)? {
-        Some(value_bytes) => Ok(Some(bincode_deserialize_value(&value_bytes)?)),
-        None => Ok(None),
     }
 }
 
@@ -113,8 +96,6 @@ fn iterate_metadata_for_owner<'a>
     Ok(Box::new(mapped))
 }
 
-type ColumnFamily = *mut rocksdb_column_family_handle_t;
-
 pub struct AccountManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
@@ -124,7 +105,7 @@ pub struct AccountManager {
 impl AccountManager {
     pub fn new(db: Arc<DB>, secure_uuids: bool) -> Self {
         AccountManager {
-            cf: *db.cf_handle("accounts:v1").unwrap(),
+            cf: db.cf_handle("accounts:v1").unwrap(),
             db: db,
             secure_uuids: secure_uuids
         }
@@ -139,7 +120,10 @@ impl AccountManager {
     }
 
     pub fn get(&self, id: Uuid) -> Result<Option<AccountValue>, Error> {
-        get_bincode(&self.db, self.cf, self.key(id))
+        match self.db.get_cf(self.cf, &self.key(id))? {
+            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn create(&self) -> Result<(Uuid, String), Error> {
@@ -188,7 +172,7 @@ pub struct VertexManager {
 impl VertexManager {
     pub fn new(db: Arc<DB>, secure_uuids: bool) -> Self {
         VertexManager {
-            cf: *db.cf_handle("vertices:v1").unwrap(),
+            cf: db.cf_handle("vertices:v1").unwrap(),
             db: db,
             secure_uuids: secure_uuids
         }
@@ -203,14 +187,17 @@ impl VertexManager {
     }
 
     pub fn get(&self, id: Uuid) -> Result<Option<VertexValue>, Error> {
-        get_bincode(&self.db, self.cf, self.key(id))
+        match self.db.get_cf(self.cf, &self.key(id))? {
+            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            None => Ok(None),
+        }
     }
 
     fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item=VertexItem> + 'a>, Error> {
         let mapped = iterator.map(|item| -> VertexItem {
             let (k, v) = item;
             let id = parse_uuid_key(k);
-            let value = bincode_deserialize_value::<VertexValue>(&v.to_owned()[..])?;
+            let value: VertexValue = bincode::deserialize(&v.to_owned()[..])?;
             Ok((id, value))
         });
 
@@ -301,7 +288,7 @@ pub struct EdgeManager {
 impl EdgeManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeManager {
-            cf: *db.cf_handle("edges:v1").unwrap(),
+            cf: db.cf_handle("edges:v1").unwrap(),
             db: db,
         }
     }
@@ -317,7 +304,10 @@ impl EdgeManager {
                t: &models::Type,
                inbound_id: Uuid)
                -> Result<Option<EdgeValue>, Error> {
-        get_bincode(&self.db, self.cf, self.key(outbound_id, t, inbound_id))
+        match self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
+            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn set(&self,
@@ -397,14 +387,14 @@ pub struct EdgeRangeManager {
 impl EdgeRangeManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeRangeManager {
-            cf: *db.cf_handle("edge_ranges:v1").unwrap(),
+            cf: db.cf_handle("edge_ranges:v1").unwrap(),
             db: db,
         }
     }
 
     pub fn new_reversed(db: Arc<DB>) -> Self {
         EdgeRangeManager {
-            cf: *db.cf_handle("reversed_edge_ranges:v1").unwrap(),
+            cf: db.cf_handle("reversed_edge_ranges:v1").unwrap(),
             db: db,
         }
     }
@@ -432,7 +422,7 @@ impl EdgeRangeManager {
                 let t = read_type(&mut cursor);
                 let update_datetime = read_datetime(&mut cursor);
                 let second_id = read_uuid(&mut cursor);
-                let weight = bincode_deserialize_value::<models::Weight>(&v.to_owned()[..])?;
+                let weight: models::Weight = bincode::deserialize(&v.to_owned()[..])?;
                 Ok(((first_id, t, update_datetime, second_id), weight))
             });
 
@@ -518,7 +508,7 @@ pub struct GlobalMetadataManager {
 impl GlobalMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         GlobalMetadataManager {
-            cf: *db.cf_handle("global_metadata:v1").unwrap(),
+            cf: db.cf_handle("global_metadata:v1").unwrap(),
             db: db,
         }
     }
@@ -549,7 +539,7 @@ pub struct AccountMetadataManager {
 impl AccountMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         AccountMetadataManager {
-            cf: *db.cf_handle("account_metadata:v1").unwrap(),
+            cf: db.cf_handle("account_metadata:v1").unwrap(),
             db: db,
         }
     }
@@ -595,7 +585,7 @@ pub struct VertexMetadataManager {
 impl VertexMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         VertexMetadataManager {
-            cf: *db.cf_handle("vertex_metadata:v1").unwrap(),
+            cf: db.cf_handle("vertex_metadata:v1").unwrap(),
             db: db,
         }
     }
@@ -640,7 +630,7 @@ pub struct EdgeMetadataManager {
 impl EdgeMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeMetadataManager {
-            cf: *db.cf_handle("edge_metadata:v1").unwrap(),
+            cf: db.cf_handle("edge_metadata:v1").unwrap(),
             db: db,
         }
     }
