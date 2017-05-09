@@ -6,15 +6,13 @@ use serde_json::Value as JsonValue;
 use chrono::{DateTime, UTC};
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, ColumnFamily};
 use super::models::{AccountValue, EdgeValue, VertexValue};
-use bincode::SizeLimit;
 use std::sync::Arc;
 use std::u8;
 use serde_json;
 use super::keys::*;
-use librocksdb_sys::rocksdb_column_family_handle_t;
 use std::io::Cursor;
 use bincode;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
 pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
@@ -23,7 +21,7 @@ pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<UTC>, Uuid), mode
 pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
-    let result = bincode::serialize(value, SizeLimit::Infinite)?;
+    let result = bincode::serialize(value, bincode::Infinite)?;
     Ok(result.into_boxed_slice())
 }
 
