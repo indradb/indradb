@@ -141,7 +141,8 @@ pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, na
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_obj_param<T: Deserialize>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError> {
+pub fn get_required_json_obj_param<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError>
+    where for<'a> T: Deserialize<'a> {
     if let Some(obj) = json.get(name) {
         match serde_json::from_value::<T>(obj.clone()) {
             Ok(val) => Ok(val),
@@ -316,7 +317,8 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &
 ///
 /// # Errors
 /// Returns an `IronError if the query could be parsed, or was not specified.
-pub fn get_obj_query_param<T: Deserialize>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError> {
+pub fn get_obj_query_param<T>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError>
+    where for<'a> T: Deserialize<'a> {
     let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
     
     match serde_json::from_value::<T>(q_json) {
