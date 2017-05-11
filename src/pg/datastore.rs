@@ -203,7 +203,7 @@ impl PostgresTransaction {
 
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
          match q {
-            VertexQuery::All(start_id, limit) => {
+            VertexQuery::All { start_id, limit } => {
                 match start_id {
                     Some(start_id) => {
                         let query_template = "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
@@ -217,16 +217,16 @@ impl PostgresTransaction {
                     }
                 }
             },
-            VertexQuery::Vertex(id) => {
+            VertexQuery::Vertex { id } => {
                 let query_template = "SELECT id, owner_id, type FROM %t WHERE id=%p LIMIT 1";
                 let params: Vec<Box<ToSql>> = vec![Box::new(id)];
                 sql_query_builder.push(query_template, "vertices", params);
             },
-            VertexQuery::Vertices(vertices) => {
+            VertexQuery::Vertices { ids } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
-                for id in vertices {
+                for id in ids {
                     params_template_builder.push("%p");
                     params.push(Box::new(id));
                 }
@@ -234,7 +234,7 @@ impl PostgresTransaction {
                 let query_template = format!("SELECT id, owner_id, type FROM %t WHERE id IN ({}) ORDER BY id", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "vertices", params);
             },
-            VertexQuery::Pipe(edge_query, converter, limit) => {
+            VertexQuery::Pipe { edge_query, converter, limit } => {
                 self.edge_query_to_sql(*edge_query, sql_query_builder);
                 let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
 
@@ -250,7 +250,7 @@ impl PostgresTransaction {
 
     fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::Edge(key) => {
+            EdgeQuery::Edge { key } => {
                 let params: Vec<Box<ToSql>> = vec![Box::new(key.outbound_id), Box::new(key.t.0), Box::new(key.inbound_id)];
 
                 sql_query_builder.push(
@@ -259,11 +259,11 @@ impl PostgresTransaction {
                     params
                 )
             },
-            EdgeQuery::Edges(edges) => {
+            EdgeQuery::Edges { keys } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
-                for key in edges {
+                for key in keys {
                     params_template_builder.push("(%p, %p, %p)");
                     params.push(Box::new(key.outbound_id));
                     params.push(Box::new(key.t.0));
@@ -273,25 +273,25 @@ impl PostgresTransaction {
                 let query_template = format!("SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE (outbound_id, type, inbound_id) IN ({})", params_template_builder.join(", "));
                 sql_query_builder.push(&query_template[..], "edges", params);
             },
-            EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
+            EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
                 self.vertex_query_to_sql(*vertex_query, sql_query_builder);
 
                 let mut where_clause_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
-                if let Some(t) = t {
+                if let Some(type_filter) = type_filter {
                     where_clause_template_builder.push("type = %p");
-                    params.push(Box::new(t.0));
+                    params.push(Box::new(type_filter.0));
                 }
 
-                if let Some(high) = high {
+                if let Some(high_filter) = high_filter {
                     where_clause_template_builder.push("update_timestamp <= %p");
-                    params.push(Box::new(high));
+                    params.push(Box::new(high_filter));
                 }
 
-                if let Some(low) = low {
+                if let Some(low_filter) = low_filter {
                     where_clause_template_builder.push("update_timestamp >= %p");
-                    params.push(Box::new(low));
+                    params.push(Box::new(low_filter));
                 }
 
                 params.push(Box::new(limit as i64));
@@ -395,7 +395,7 @@ impl Transaction for PostgresTransaction {
         if let Err(pg_error::Error::Db(ref err)) = results {
             if err.code == pg_error::SqlState::NotNullViolation {
                 // This should only happen when the inner select fails
-                let v = self.get_vertices(VertexQuery::Vertex(key.outbound_id))?;
+                let v = self.get_vertices(VertexQuery::Vertex { id: key.outbound_id })?;
                 if v.is_empty() {
                     return Err(Error::VertexNotFound);
                 } else {

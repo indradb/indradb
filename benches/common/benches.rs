@@ -24,7 +24,7 @@ pub fn bench_get_vertices<D, T>(b: &mut Bencher, sandbox: &mut DatastoreTestSand
 
     b.iter(|| {
         let trans = sandbox.transaction();
-        let q = VertexQuery::Vertex(id);
+        let q = VertexQuery::Vertex { id: id };
         trans.get_vertices(q).unwrap();
     });
 }
@@ -63,7 +63,9 @@ pub fn bench_get_edges<D, T>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox
     b.iter(|| {
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let q = EdgeQuery::Edge(EdgeKey::new(outbound_id.clone(), edge_t, inbound_id));
+        let q = EdgeQuery::Edge {
+            key: EdgeKey::new(outbound_id.clone(), edge_t, inbound_id)
+        };
         trans.get_edges(q).unwrap();
     });
 }
@@ -83,7 +85,9 @@ pub fn bench_get_edge_count<D, T>(b: &mut Bencher, sandbox: &mut DatastoreTestSa
     b.iter(|| {
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let q = EdgeQuery::Edge(EdgeKey::new(outbound_id.clone(), edge_t, inbound_id));
+        let q = EdgeQuery::Edge { 
+            key: EdgeKey::new(outbound_id.clone(), edge_t, inbound_id)
+        };
         trans.get_edge_count(q).unwrap();
     });
 }
