@@ -42,7 +42,7 @@ features = ["serde"]
 
 [dependencies.braid-lib]
 git = "https://github.com/braidery/braid-lib.git"
-branch = "master"
+branch = "feature/better-queries"
 
 [dependencies.lua]
 git = "https://github.com/kballard/rust-lua.git"
