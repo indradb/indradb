@@ -197,7 +197,7 @@ pub enum QueryTypeConverter {
 /// This is used by transactions to get, set and delete vertices and vertex
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(untagged)]
+#[serde(tag="type", rename_all="snake_case")]
 pub enum VertexQuery {
     All {
         start_id: Option<Uuid>,
@@ -245,7 +245,7 @@ impl VertexQuery {
 /// This is used by transactions to get, set and delete edges and edge
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(untagged)]
+#[serde(tag="type", rename_all="snake_case")]
 pub enum EdgeQuery {
     Edge {
         key: EdgeKey
