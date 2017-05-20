@@ -92,7 +92,7 @@ pub fn should_handle_vertex_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D,
     let t = Type::new("test_edge_type".to_string()).unwrap();
     let owner_id = trans.create_vertex(t).unwrap();
     let name = sandbox.generate_unique_string("vertex-metadata");
-    let q = VertexQuery::Vertex(owner_id);
+    let q = VertexQuery::Vertex { id: owner_id };
 
     // Check to make sure there's no initial value
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
@@ -119,7 +119,7 @@ pub fn should_not_set_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTestS
           T: Transaction
 {
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertex(Uuid::default());
+    let q = VertexQuery::Vertex { id: Uuid::default() };
     trans.set_vertex_metadata(q.clone(), "foo".to_string(), JsonValue::Null).unwrap();
     let result = trans.get_vertex_metadata(q, "foo".to_string()).unwrap();
     assert_eq!(result.len(), 0);
@@ -130,11 +130,11 @@ pub fn should_not_delete_invalid_vertex_metadata<D, T>(sandbox: &mut DatastoreTe
           T: Transaction
 {
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertex(Uuid::default());
+    let q = VertexQuery::Vertex { id: Uuid::default() };
     trans.delete_vertex_metadata(q, "foo".to_string()).unwrap();
 
     let vertex_id = trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
-    let q = VertexQuery::Vertex(vertex_id);
+    let q = VertexQuery::Vertex { id: vertex_id };
     trans.delete_vertex_metadata(q, "foo".to_string()).unwrap();
 }
 
@@ -149,7 +149,7 @@ pub fn should_handle_edge_metadata<D, T>(sandbox: &mut DatastoreTestSandbox<D, T
     let edge_t = Type::new("test_edge_type".to_string()).unwrap();
     let weight = Weight::new(0.5).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    let q = EdgeQuery::Edge(key.clone());
+    let q = EdgeQuery::Edge { key: key.clone() };
     let name = sandbox.generate_unique_string("edge-metadata");
 
     trans.create_edge(key.clone(), weight).unwrap();
@@ -179,7 +179,9 @@ pub fn should_not_set_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTestSan
           T: Transaction
 {
     let trans = sandbox.transaction();
-    let q = EdgeQuery::Edge(EdgeKey::new(Uuid::default(), Type::new("foo".to_string()).unwrap(), Uuid::default()));
+    let q = EdgeQuery::Edge {
+        key: EdgeKey::new(Uuid::default(), Type::new("foo".to_string()).unwrap(), Uuid::default())
+    };
     trans.set_edge_metadata(q.clone(), "bar".to_string(), JsonValue::Null).unwrap();
     let result = trans.get_edge_metadata(q, "bar".to_string()).unwrap();
     assert_eq!(result.len(), 0);
@@ -190,7 +192,9 @@ pub fn should_not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTest
           T: Transaction
 {
     let trans = sandbox.transaction();
-    let q = EdgeQuery::Edge(EdgeKey::new(Uuid::default(), Type::new("foo".to_string()).unwrap(), Uuid::default()));
+    let q = EdgeQuery::Edge {
+        key: EdgeKey::new(Uuid::default(), Type::new("foo".to_string()).unwrap(), Uuid::default())
+    };
     trans.delete_edge_metadata(q, "bar".to_string()).unwrap();
 
     let outbound_id = trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
@@ -198,5 +202,5 @@ pub fn should_not_delete_invalid_edge_metadata<D, T>(sandbox: &mut DatastoreTest
     let key = EdgeKey::new(outbound_id, Type::new("baz".to_string()).unwrap(), inbound_id);
     let weight = Weight::new(1.0).unwrap();
     trans.create_edge(key.clone(), weight).unwrap();
-    trans.delete_edge_metadata(EdgeQuery::Edge(key), "bleh".to_string()).unwrap();
+    trans.delete_edge_metadata(EdgeQuery::Edge { key: key }, "bleh".to_string()).unwrap();
 }

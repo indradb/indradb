@@ -197,24 +197,46 @@ pub enum QueryTypeConverter {
 /// This is used by transactions to get, set and delete vertices and vertex
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
+#[serde(tag="type", rename_all="snake_case")]
 pub enum VertexQuery {
-    #[serde(rename="all")]
-    All(Option<Uuid>, u32),
-    #[serde(rename="vertex")]
-    Vertex(Uuid),
-    #[serde(rename="vertices")]
-    Vertices(Vec<Uuid>),
-    #[serde(rename="pipe")]
-    Pipe(Box<EdgeQuery>, QueryTypeConverter, u32)
+    All {
+        start_id: Option<Uuid>,
+        limit: u32
+    },
+    Vertex {
+        id: Uuid
+    },
+    Vertices {
+        ids: Vec<Uuid>
+    },
+    Pipe {
+        edge_query: Box<EdgeQuery>,
+        converter: QueryTypeConverter,
+        limit: u32
+    }
 }
 
 impl VertexQuery {
     pub fn outbound_edges(self, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> EdgeQuery {
-        EdgeQuery::Pipe(Box::new(self), QueryTypeConverter::Outbound, t, high, low, limit)
+        EdgeQuery::Pipe {
+            vertex_query: Box::new(self),
+            converter: QueryTypeConverter::Outbound,
+            type_filter: t,
+            high_filter: high,
+            low_filter: low,
+            limit: limit
+        }
     }
 
     pub fn inbound_edges(self, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> EdgeQuery {
-        EdgeQuery::Pipe(Box::new(self), QueryTypeConverter::Inbound, t, high, low, limit)
+        EdgeQuery::Pipe {
+            vertex_query: Box::new(self),
+            converter: QueryTypeConverter::Inbound,
+            type_filter: t,
+            high_filter: high,
+            low_filter: low,
+            limit: limit
+        }
     }
 }
 
@@ -223,21 +245,38 @@ impl VertexQuery {
 /// This is used by transactions to get, set and delete edges and edge
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
+#[serde(tag="type", rename_all="snake_case")]
 pub enum EdgeQuery {
-    #[serde(rename="edge")]
-    Edge(EdgeKey),
-    #[serde(rename="edges")]
-    Edges(Vec<EdgeKey>),
-    #[serde(rename="pipe")]
-    Pipe(Box<VertexQuery>, QueryTypeConverter, Option<Type>, Option<DateTime<UTC>>, Option<DateTime<UTC>>, u32)
+    Edge {
+        key: EdgeKey
+    },
+    Edges {
+        keys: Vec<EdgeKey>
+    },
+    Pipe {
+        vertex_query: Box<VertexQuery>,
+        converter: QueryTypeConverter,
+        type_filter: Option<Type>,
+        high_filter: Option<DateTime<UTC>>,
+        low_filter: Option<DateTime<UTC>>,
+        limit: u32
+    }
 }
 
 impl EdgeQuery {
     pub fn outbound_vertices(self, limit: u32) -> VertexQuery {
-        VertexQuery::Pipe(Box::new(self), QueryTypeConverter::Outbound, limit)
+        VertexQuery::Pipe {
+            edge_query: Box::new(self),
+            converter: QueryTypeConverter::Outbound,
+            limit: limit
+        }
     }
 
     pub fn inbound_vertices(self, limit: u32) -> VertexQuery {
-        VertexQuery::Pipe(Box::new(self), QueryTypeConverter::Inbound, limit)
+        VertexQuery::Pipe {
+            edge_query: Box::new(self),
+            converter: QueryTypeConverter::Inbound,
+            limit: limit
+        }
     }
 }

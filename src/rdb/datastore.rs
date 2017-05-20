@@ -183,7 +183,7 @@ impl RocksdbTransaction {
         let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
 
         match q {
-            VertexQuery::All(start_id, limit) => {
+            VertexQuery::All { start_id, limit } => {
                 let next_uuid = match start_id {
                     Some(start_id) => {
                         match next_uuid(start_id) {
@@ -204,20 +204,20 @@ impl RocksdbTransaction {
                 let iterator = vertex_manager.iterate_for_range(next_uuid)?;
                 Ok(Box::new(iterator.take(limit as usize)))
             },
-            VertexQuery::Vertex(id) => {
+            VertexQuery::Vertex { id } => {
                 match vertex_manager.get(id)? {
                     Some(value) => Ok(Box::new(vec![Ok((id, value))].into_iter())),
                     None => Ok(Box::new(vec![].into_iter()))
                 }
             },
-            VertexQuery::Vertices(vertices) => {
-                let iterator = Box::new(vertices.into_iter().map(|item| {
+            VertexQuery::Vertices { ids } => {
+                let iterator = Box::new(ids.into_iter().map(|item| {
                     Ok(item)
                 }));
 
                 Ok(self.handle_vertex_id_iterator(iterator))
             },
-            VertexQuery::Pipe(edge_query, converter, limit) => {
+            VertexQuery::Pipe { edge_query, converter, limit } => {
                 let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
 
                 let vertex_id_iterator = Box::new(edge_iterator.map(move |item| {
@@ -236,7 +236,7 @@ impl RocksdbTransaction {
 
     fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
         match q {
-            EdgeQuery::Edge(key) => {
+            EdgeQuery::Edge { key } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
                 match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
@@ -247,10 +247,10 @@ impl RocksdbTransaction {
                     None => Ok(Box::new(vec![].into_iter()))
                 }
             },
-            EdgeQuery::Edges(edges) => {
+            EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let iterator = edges.into_iter().map(move |key| {
+                let iterator = keys.into_iter().map(move |key| {
                     match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                         Some(value) => {
                             Ok(Some(((key.outbound_id, key.t, value.update_datetime, key.inbound_id), value.weight)))
@@ -261,7 +261,7 @@ impl RocksdbTransaction {
 
                 Ok(self.remove_nones_from_iterator(Box::new(iterator)))
             },
-            EdgeQuery::Pipe(vertex_query, converter, t, high, low, limit) => {
+            EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
                 let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
 
                 let edge_range_manager = match converter {
@@ -276,15 +276,15 @@ impl RocksdbTransaction {
                 // just resort to building a vector.
                 let mut edges: Vec<EdgeRangeItem> = Vec::new();
 
-                if let Some(low) = low {
+                if let Some(low_filter) = low_filter {
                     for item in vertex_iterator {
                         let (id, _) = item?;
-                        let edge_iterator = edge_range_manager.iterate_for_range(id, &t, high)?;
+                        let edge_iterator = edge_range_manager.iterate_for_range(id, &type_filter, high_filter)?;
 
                         for item in edge_iterator {
                             match item {
                                 Ok(((_, _, edge_range_update_datetime, _), _)) => {
-                                    if edge_range_update_datetime >= low {
+                                    if edge_range_update_datetime >= low_filter {
                                         edges.push(item);
                                     } else {
                                         break;
@@ -301,7 +301,7 @@ impl RocksdbTransaction {
                 } else {
                     for item in vertex_iterator {
                         let (id, _) = item?;
-                        let edge_iterator = edge_range_manager.iterate_for_range(id, &t, high)?;
+                        let edge_iterator = edge_range_manager.iterate_for_range(id, &type_filter, high_filter)?;
 
                         for edge in edge_iterator {
                             edges.push(edge);
