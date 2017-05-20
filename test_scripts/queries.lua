@@ -36,9 +36,9 @@ function VertexQuery:inbound_edges(t, high, low, limit)
     return edge_query_pipe(self.query, "inbound", t, high, low, limit)
 end
 
-function edge(outbound_id, t, inbound_id)
+function edge(outbound_id, type, inbound_id)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {type="edge", key={outbound_id=outbound_id, t=t, inbound_id=inbound_id}}
+    self.query = {type="edge", key={outbound_id=outbound_id, type=type, inbound_id=inbound_id}}
     return self
 end
 
