@@ -169,7 +169,8 @@ impl Transaction for RestTransaction {
     }
 }
 
-pub fn response_to_obj<T: Deserialize>(res: &mut Response) -> Result<T, Error> {
+pub fn response_to_obj<T>(res: &mut Response) -> Result<T, Error>
+    where for<'a> T: Deserialize<'a> {
     match res.status {
         StatusCode::Ok => {
             let mut payload = String::new();

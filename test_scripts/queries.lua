@@ -4,27 +4,27 @@ VertexQuery.__index = VertexQuery
 local EdgeQuery = {}
 EdgeQuery.__index = EdgeQuery
 
-function all_vertices(from_id, limit)
+function all_vertices(start_id, limit)
     local self = setmetatable({}, VertexQuery)
-    self.query = {all={from_id, limit}}
+    self.query = {type="all", start_id=start_id, limit=limit}
     return self
 end
 
 function vertex(id)
     local self = setmetatable({}, VertexQuery)
-    self.query = {vertex=id}
+    self.query = {type="vertex", id=id}
     return self
 end
 
 function vertices(ids)
     local self = setmetatable({}, VertexQuery)
-    self.query = {vertices=ids}
+    self.query = {type="vertices", ids=ids}
     return self
 end
 
-function vertex_query_pipe(previous_query, type_converter, limit)
+function vertex_query_pipe(edge_query, converter, limit)
     local self = setmetatable({}, VertexQuery)
-    self.query = {pipe={previous_query, type_converter, limit}}
+    self.query = {type="pipe", edge_query=edge_query, converter=converter, limit=limit}
     return self
 end
 
@@ -36,27 +36,29 @@ function VertexQuery:inbound_edges(t, high, low, limit)
     return edge_query_pipe(self.query, "inbound", t, high, low, limit)
 end
 
-function all_edges(t, high, low, limit)
+function edge(outbound_id, type, inbound_id)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {all={t, high, low, limit}}
+    self.query = {type="edge", key={outbound_id=outbound_id, type=type, inbound_id=inbound_id}}
     return self
 end
 
-function edge(outbound_id, t, inbound_id)
+function edges(keys)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {edge={outbound_id, t, inbound_id}}
+    self.query = {keys=keys}
     return self
 end
 
-function edges(edges)
+function edge_query_pipe(vertex_query, converter, type_filter, high_filter, low_filter, limit)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {edges=edges}
-    return self
-end
-
-function edge_query_pipe(previous_query, type_converter, t, high, low, limit)
-    local self = setmetatable({}, EdgeQuery)
-    self.query = {pipe={previous_query, type_converter, t, high, low, limit}}
+    self.query = {
+        type="pipe",
+        vertex_query=vertex_query,
+        converter=converter,
+        type_filter=type_filter,
+        high_filter=high_filter,
+        low_filter=low_filter,
+        limit=limit
+    }
     return self
 end
 

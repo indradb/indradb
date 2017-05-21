@@ -50,7 +50,8 @@ impl HttpTransaction for BatchTransaction {
 }
 
 impl BatchTransaction {
-    fn request<T: Deserialize>(&self, d: BTreeMap<String, JsonValue>) -> Result<T, Error> {
+    fn request<T>(&self, d: BTreeMap<String, JsonValue>) -> Result<T, Error>
+        where for<'a> T: Deserialize<'a> {
         let body = serde_json::to_string(&vec![d]).unwrap();
         let client = Client::new();
         let req = request(

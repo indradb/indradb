@@ -32,7 +32,16 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
     Ok(match l.type_(offset) {
         Some(lua::Type::Nil) | None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(offset)),
-        Some(lua::Type::Number) => JsonValue::Number(Number::from_f64(l.tonumber(offset)).unwrap()),
+        Some(lua::Type::Number) => {
+            let num = l.tonumber(offset);
+            let num_floored = num.floor();
+
+            if num_floored == num {
+                JsonValue::Number(Number::from(num_floored as i64))
+            } else {
+                JsonValue::Number(Number::from_f64(num).unwrap())
+            }
+        },
         Some(lua::Type::String) => {
             JsonValue::String(l.checkstring(offset).unwrap().to_string().clone())
         }
