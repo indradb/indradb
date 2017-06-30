@@ -49,7 +49,7 @@ pub trait Datastore<T: Transaction> {
 
 /// Specifies a transaction implementation, which are returned by datastores.
 /// Transactions are responsible for managing:
-/// 
+///
 /// 1. Vertices.
 /// 2. Edges, which connect two vertices.
 /// 3. Global metadata: metadata that is not owned by anything, and as a
@@ -93,7 +93,7 @@ pub trait Transaction {
     /// not exist. Returns `Error::Unauthorized` if the account tied to the
     /// current transaction does not own the source vertex.
     fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error>;
-    
+
     /// Gets a range of edges specified by a query.
     ///
     /// # Arguments
@@ -158,7 +158,12 @@ pub trait Transaction {
     /// # Errors
     /// Returns `Error::AccountNotFound` if the specified account ID does not
     /// exist.
-    fn set_account_metadata(&self, account_id: Uuid, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_account_metadata(
+        &self,
+        account_id: Uuid,
+        name: String,
+        value: JsonValue,
+    ) -> Result<(), Error>;
 
     /// Deletes an account metadata value.
     ///
@@ -175,7 +180,11 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_vertex_metadata(&self, q: models::VertexQuery, name: String) -> Result<HashMap<Uuid, JsonValue>, Error>;
+    fn get_vertex_metadata(
+        &self,
+        q: models::VertexQuery,
+        name: String,
+    ) -> Result<HashMap<Uuid, JsonValue>, Error>;
 
     /// Sets a vertex metadata value.
     ///
@@ -183,7 +192,12 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_vertex_metadata(&self, q: models::VertexQuery, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_vertex_metadata(
+        &self,
+        q: models::VertexQuery,
+        name: String,
+        value: JsonValue,
+    ) -> Result<(), Error>;
 
     /// Deletes a vertex metadata value.
     ///
@@ -197,7 +211,11 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<HashMap<models::EdgeKey, JsonValue>, Error>;
+    fn get_edge_metadata(
+        &self,
+        q: models::EdgeQuery,
+        name: String,
+    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error>;
 
     /// Sets an edge metadata value.
     ///
@@ -205,7 +223,12 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_edge_metadata(&self, q: models::EdgeQuery, name: String, value: JsonValue) -> Result<(), Error>;
+    fn set_edge_metadata(
+        &self,
+        q: models::EdgeQuery,
+        name: String,
+        value: JsonValue,
+    ) -> Result<(), Error>;
 
     /// Deletes an edge metadata value.
     ///

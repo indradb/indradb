@@ -1,5 +1,5 @@
 //! Unit tests for datastore implementations.
-//! 
+//!
 //! These are exported so that datastore implementations outside of the
 //! `braid` crate can reuse them. Generally you can use the convenience macros
 //! `test_account_impl`, `test_metadata_impl`, and `test_transaction_impl`

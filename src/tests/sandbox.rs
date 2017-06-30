@@ -35,7 +35,9 @@ impl<D: Datastore<T>, T: Transaction> DatastoreTestSandbox<D, T> {
     }
 
     pub fn register_account(&mut self) -> (Uuid, String) {
-        let (id, secret) = self.datastore.create_account().expect("Expected to be able to create an account");
+        let (id, secret) = self.datastore
+            .create_account()
+            .expect("Expected to be able to create an account");
         self.accounts.push(id);
         (id, secret)
     }

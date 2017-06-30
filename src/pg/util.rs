@@ -17,16 +17,21 @@ pub fn pg_error_to_description(err: pg_error::Error) -> String {
 fn get_from_table_name(root_table_name: &str, table_number: usize) -> String {
     match table_number {
         0 => root_table_name.to_string(),
-        _ => format!("pipe_{}", table_number)
+        _ => format!("pipe_{}", table_number),
     }
 }
 
-fn format_query(template: &str, from_table_name: &str, cur_params_length: usize, param_number: usize) -> String {
+fn format_query(
+    template: &str,
+    from_table_name: &str,
+    cur_params_length: usize,
+    param_number: usize,
+) -> String {
     // Turn the query template into an actual query.
     // TODO: This could be made much more efficient.
     let mut query = template.replace("%t", from_table_name);
 
-    for i in 1..cur_params_length+1 {
+    for i in 1..cur_params_length + 1 {
         query = query.replacen("%p", &format!("${}", param_number + i)[..], 1);
     }
 
@@ -35,14 +40,14 @@ fn format_query(template: &str, from_table_name: &str, cur_params_length: usize,
 
 pub struct CTEQueryBuilder {
     queries: Vec<String>,
-    params: Vec<Box<ToSql>>
+    params: Vec<Box<ToSql>>,
 }
 
 impl CTEQueryBuilder {
     pub fn new() -> CTEQueryBuilder {
-        CTEQueryBuilder{
+        CTEQueryBuilder {
             queries: Vec::new(),
-            params: Vec::new()
+            params: Vec::new(),
         }
     }
 
@@ -52,22 +57,36 @@ impl CTEQueryBuilder {
         // times. Fix this.
 
         let from_table_name = get_from_table_name(root_table_name, self.queries.len());
-        let query = format_query(query_template, &from_table_name[..], params.len(), self.params.len());
+        let query = format_query(
+            query_template,
+            &from_table_name[..],
+            params.len(),
+            self.params.len(),
+        );
         self.queries.push(query);
         self.params.extend(params);
     }
 
-    pub fn into_query_payload(self, query_template: &str, params: Vec<Box<ToSql>>) -> (String, Vec<Box<ToSql>>) {
+    pub fn into_query_payload(
+        self,
+        query_template: &str,
+        params: Vec<Box<ToSql>>,
+    ) -> (String, Vec<Box<ToSql>>) {
         if self.queries.is_empty() {
             panic!("No queries");
         }
 
         let from_table_name = get_from_table_name("", self.queries.len());
-        let query = format_query(query_template, &from_table_name[..], params.len(), self.params.len());
+        let query = format_query(
+            query_template,
+            &from_table_name[..],
+            params.len(),
+            self.params.len(),
+        );
 
         let mut full_params = self.params;
         full_params.extend(params);
-        
+
         let mut buffer: Vec<String> = Vec::new();
         buffer.push("WITH ".to_string());
 
@@ -76,7 +95,7 @@ impl CTEQueryBuilder {
                 buffer.push(", ".to_string());
             }
 
-            buffer.push(format!("pipe_{} AS (", i+1));
+            buffer.push(format!("pipe_{} AS (", i + 1));
             buffer.push(query);
             buffer.push(")".to_string());
         }

@@ -5,8 +5,9 @@ use models;
 use uuid::Uuid;
 
 pub fn create_edge_from<D, T>(trans: &T, outbound_id: Uuid) -> Uuid
-    where D: Datastore<T>,
-          T: Transaction
+where
+    D: Datastore<T>,
+    T: Transaction,
 {
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type".to_string()).unwrap();
     let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
@@ -18,8 +19,9 @@ pub fn create_edge_from<D, T>(trans: &T, outbound_id: Uuid) -> Uuid
 }
 
 pub fn create_edges<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>) -> (Uuid, [Uuid; 5])
-    where D: Datastore<T>,
-          T: Transaction
+where
+    D: Datastore<T>,
+    T: Transaction,
 {
     let trans = sandbox.transaction();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
@@ -29,7 +31,7 @@ pub fn create_edges<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>) -> (Uuid, [U
         create_edge_from::<D, T>(&trans, outbound_id),
         create_edge_from::<D, T>(&trans, outbound_id),
         create_edge_from::<D, T>(&trans, outbound_id),
-        create_edge_from::<D, T>(&trans, outbound_id)
+        create_edge_from::<D, T>(&trans, outbound_id),
     ];
 
     trans.commit().unwrap();
@@ -37,9 +39,12 @@ pub fn create_edges<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>) -> (Uuid, [U
     (outbound_id, inbound_ids)
 }
 
-pub fn create_time_range_queryable_edges<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>) -> (Uuid, DateTime<UTC>, DateTime<UTC>, [Uuid; 5])
-    where D: Datastore<T>,
-          T: Transaction
+pub fn create_time_range_queryable_edges<D, T>(
+    sandbox: &mut DatastoreTestSandbox<D, T>,
+) -> (Uuid, DateTime<UTC>, DateTime<UTC>, [Uuid; 5])
+where
+    D: Datastore<T>,
+    T: Transaction,
 {
     let trans = sandbox.transaction();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
@@ -52,11 +57,13 @@ pub fn create_time_range_queryable_edges<D, T>(sandbox: &mut DatastoreTestSandbo
     create_edge_from::<D, T>(&trans, outbound_id);
 
     let start_time = UTC::now();
-    let inbound_ids = [create_edge_from::<D, T>(&trans, outbound_id),
-                       create_edge_from::<D, T>(&trans, outbound_id),
-                       create_edge_from::<D, T>(&trans, outbound_id),
-                       create_edge_from::<D, T>(&trans, outbound_id),
-                       create_edge_from::<D, T>(&trans, outbound_id)];
+    let inbound_ids = [
+        create_edge_from::<D, T>(&trans, outbound_id),
+        create_edge_from::<D, T>(&trans, outbound_id),
+        create_edge_from::<D, T>(&trans, outbound_id),
+        create_edge_from::<D, T>(&trans, outbound_id),
+        create_edge_from::<D, T>(&trans, outbound_id),
+    ];
     let end_time = UTC::now();
 
     create_edge_from::<D, T>(&trans, outbound_id);
