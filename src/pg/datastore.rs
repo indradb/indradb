@@ -85,7 +85,7 @@ impl PostgresDatastore {
                 Ok(conn) => conn,
                 Err(err) => {
                     let message = format!("Could not connect to the postgres database: {}", err);
-                    return Err(Error::Unexpected(message))
+                    return Err(Error::Unexpected(message));
                 }
             };
 
@@ -546,18 +546,22 @@ impl Transaction for PostgresTransaction {
         // back to, rather than spoiling the entire transaction
         let trans = self.trans.savepoint("set_global_metadata")?;
 
-        let results = trans.query("
+        let results = trans.query(
+            "
             INSERT INTO global_metadata (name, value)
             VALUES ($1, $2)
             ON CONFLICT ON CONSTRAINT global_metadata_pkey
             DO UPDATE SET value=$2
             RETURNING 1
-        ", &[&name, &value]);
+            ",
+            &[&name, &value],
+        );
 
         match results {
             Err(err) => {
                 trans.set_rollback();
-                let foreign_key_err = Error::Unexpected("Unexpected error when setting global metadata".to_string());
+                let foreign_key_err =
+                    Error::Unexpected("Unexpected error when setting global metadata".to_string());
                 Err(self.handle_set_metadata_error(err, foreign_key_err))
             }
             Ok(_) => {
@@ -595,13 +599,16 @@ impl Transaction for PostgresTransaction {
         // back to, rather than spoiling the entire transaction
         let trans = self.trans.savepoint("set_account_metadata")?;
 
-        let results = trans.query("
+        let results = trans.query(
+            "
             INSERT INTO account_metadata (owner_id, name, value)
             VALUES ($1, $2, $3)
             ON CONFLICT ON CONSTRAINT account_metadata_pkey
             DO UPDATE SET value=$3
             RETURNING 1
-        ", &[&owner_id, &name, &value]);
+            ",
+            &[&owner_id, &name, &value],
+        );
 
         match results {
             Err(err) => {
@@ -657,12 +664,15 @@ impl Transaction for PostgresTransaction {
     ) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload("
+        let (query, params) = sql_query_builder.into_query_payload(
+            "
             INSERT INTO vertex_metadata (owner_id, name, value)
             SELECT id, %p, %p FROM %t
             ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
             DO UPDATE SET value=%p
-        ", vec![Box::new(name), Box::new(value.clone()), Box::new(value)]);
+            ",
+            vec![Box::new(name), Box::new(value.clone()), Box::new(value)],
+        );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
@@ -688,11 +698,14 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 
-        let (query, params) = sql_query_builder.into_query_payload("
+        let (query, params) = sql_query_builder.into_query_payload(
+            "
             SELECT edges.outbound_id, edges.type, edges.inbound_id, edge_metadata.value
             FROM edge_metadata JOIN edges ON edge_metadata.owner_id=edges.id
             WHERE owner_id IN (SELECT id FROM %t) AND name=%p
-        ", vec![Box::new(name)]);
+            ",
+            vec![Box::new(name)],
+        );
 
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
@@ -714,12 +727,15 @@ impl Transaction for PostgresTransaction {
     fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload("
+        let (query, params) = sql_query_builder.into_query_payload(
+            "
             INSERT INTO edge_metadata (owner_id, name, value)
             SELECT id, %p, %p FROM %t
             ON CONFLICT ON CONSTRAINT edge_metadata_pkey
             DO UPDATE SET value=%p
-        ", vec![Box::new(name), Box::new(value.clone()), Box::new(value)]);
+            ",
+            vec![Box::new(name), Box::new(value.clone()), Box::new(value)],
+        );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
