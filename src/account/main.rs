@@ -16,8 +16,14 @@ fn main() {
         .version("0.1")
         .about("User management for Braid")
         .subcommand(SubCommand::with_name("add"))
-        .subcommand(SubCommand::with_name("remove")
-            .arg(Arg::with_name("ID").help("ID of account").required(true).index(1)))
+        .subcommand(
+            SubCommand::with_name("remove").arg(
+                Arg::with_name("ID")
+                    .help("ID of account")
+                    .required(true)
+                    .index(1),
+            ),
+        )
         .get_matches();
 
     let datastore = datastore();
@@ -27,7 +33,7 @@ fn main() {
             Ok((id, secret)) => {
                 println!("Account ID: {}", id);
                 println!("Account secret: {}", secret);
-            },
+            }
             Err(err) => exit_with_err!("Could not create account: {:?}", err),
         }
     } else if let Some(matches) = matches.subcommand_matches("remove") {

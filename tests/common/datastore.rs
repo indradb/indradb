@@ -17,7 +17,7 @@ thread_local! {
 #[derive(Clone, Debug)]
 pub struct HttpDatastore<H: HttpTransaction> {
     port: i32,
-    phantom_http_transaction: PhantomData<H>
+    phantom_http_transaction: PhantomData<H>,
 }
 
 impl<H: HttpTransaction> HttpDatastore<H> {

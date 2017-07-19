@@ -33,7 +33,13 @@ pub struct RestTransaction {
 }
 
 impl RestTransaction {
-    fn request<'a>(&self, client: &'a Client, method_str: &str, path: String, query_pairs: Vec<(&str, String)>) -> RequestBuilder<'a> {
+    fn request<'a>(
+        &self,
+        client: &'a Client,
+        method_str: &str,
+        path: String,
+        query_pairs: Vec<(&str, String)>,
+    ) -> RequestBuilder<'a> {
         request(
             client,
             self.port,
@@ -41,7 +47,7 @@ impl RestTransaction {
             self.secret.clone(),
             method_str,
             path,
-            query_pairs
+            query_pairs,
         )
     }
 }
@@ -75,7 +81,12 @@ impl Transaction for RestTransaction {
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "DELETE", "/vertex".to_string(), vec![("q", q_json)]);
+        let req = self.request(
+            &client,
+            "DELETE",
+            "/vertex".to_string(),
+            vec![("q", q_json)],
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -87,7 +98,7 @@ impl Transaction for RestTransaction {
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
-    
+
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
@@ -107,7 +118,12 @@ impl Transaction for RestTransaction {
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "GET", "/edge".to_string(), vec![("action", "count".to_string()), ("q", q_json)]);
+        let req = self.request(
+            &client,
+            "GET",
+            "/edge".to_string(),
+            vec![("action", "count".to_string()), ("q", q_json)],
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -136,7 +152,11 @@ impl Transaction for RestTransaction {
         unimplemented!();
     }
 
-    fn get_vertex_metadata(&self, _: VertexQuery, _: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    fn get_vertex_metadata(
+        &self,
+        _: VertexQuery,
+        _: String,
+    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
         unimplemented!();
     }
 
@@ -148,7 +168,11 @@ impl Transaction for RestTransaction {
         unimplemented!();
     }
 
-    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    fn get_edge_metadata(
+        &self,
+        _: EdgeQuery,
+        _: String,
+    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         unimplemented!();
     }
 
@@ -165,12 +189,16 @@ impl Transaction for RestTransaction {
     }
 
     fn rollback(self) -> Result<(), Error> {
-        Err(Error::Unexpected("Cannot rollback an HTTP-based transaction".to_string()))
+        Err(Error::Unexpected(
+            "Cannot rollback an HTTP-based transaction".to_string(),
+        ))
     }
 }
 
 pub fn response_to_obj<T>(res: &mut Response) -> Result<T, Error>
-    where for<'a> T: Deserialize<'a> {
+where
+    for<'a> T: Deserialize<'a>,
+{
     match res.status {
         StatusCode::Ok => {
             let mut payload = String::new();

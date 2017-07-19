@@ -48,7 +48,7 @@ fn run_script(account_id: Uuid, secret: String, name: &str) {
         secret,
         "POST",
         format!("/script/{}.lua", name),
-        vec![]
+        vec![],
     );
     let mut res = req.send().unwrap();
 
@@ -63,7 +63,11 @@ fn run_script(account_id: Uuid, secret: String, name: &str) {
             assert_eq!(expected_result, actual_result)
         }
     } else {
-        panic!("Unexpected status code: {} - payload: {}", res.status, payload)
+        panic!(
+            "Unexpected status code: {} - payload: {}",
+            res.status,
+            payload
+        )
     }
 }
 

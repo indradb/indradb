@@ -17,7 +17,7 @@ fn main() {
 
     if let Some(_) = matches.subcommand_matches("init") {
         let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "".to_string());
-        
+
         if !connection_string.starts_with("postgres://") {
             panic!("`braid-db init` can only be run on postgres datastores");
         }
