@@ -65,7 +65,11 @@ pub fn create_iron_error(status_code: status::Status, err: String) -> IronError 
 
 /// Returns a JSON content type specification
 pub fn get_json_mime() -> Mime {
-    Mime(TopLevel::Application, SubLevel::Json, vec![(Attr::Charset, Value::Utf8)])
+    Mime(
+        TopLevel::Application,
+        SubLevel::Json,
+        vec![(Attr::Charset, Value::Utf8)],
+    )
 }
 
 /// Serializes a given body and status code into a response
@@ -93,7 +97,7 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
         Err(_) => {
             Err(create_iron_error(
                 status::BadRequest,
-                format!("Invalid value for URL param {}", name)
+                format!("Invalid value for URL param {}", name),
             ))
         }
     }
@@ -104,14 +108,23 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_string_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<String, IronError> {
+pub fn get_required_json_string_param(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<String, IronError> {
     match json.get(name) {
         Some(&JsonValue::String(ref val)) => Ok(val.clone()),
         None |
         Some(&JsonValue::Null) => {
-            Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+            Err(create_iron_error(
+                status::BadRequest,
+                format!("Missing `{}`", name),
+            ))
         }
-        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
+        _ => Err(create_iron_error(
+            status::BadRequest,
+            format!("Invalid type for `{}`", name),
+        )),
     }
 }
 
@@ -120,19 +133,32 @@ pub fn get_required_json_string_param(json: &serde_json::Map<String, JsonValue>,
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<f64, IronError> {
+pub fn get_required_json_f64_param(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<f64, IronError> {
     match json.get(name) {
         Some(&JsonValue::Number(ref val)) => {
             if val.is_f64() {
                 Ok(val.as_f64().unwrap())
             } else {
-                Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+                Err(create_iron_error(
+                    status::BadRequest,
+                    format!("Invalid type for `{}`", name),
+                ))
             }
-        },
-        None | Some(&JsonValue::Null) => {
-            Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
         }
-        _ => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))),
+        None |
+        Some(&JsonValue::Null) => {
+            Err(create_iron_error(
+                status::BadRequest,
+                format!("Missing `{}`", name),
+            ))
+        }
+        _ => Err(create_iron_error(
+            status::BadRequest,
+            format!("Invalid type for `{}`", name),
+        )),
     }
 }
 
@@ -141,15 +167,26 @@ pub fn get_required_json_f64_param(json: &serde_json::Map<String, JsonValue>, na
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_obj_param<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError>
-    where for<'a> T: Deserialize<'a> {
+pub fn get_required_json_obj_param<T>(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<T, IronError>
+where
+    for<'a> T: Deserialize<'a>,
+{
     if let Some(obj) = json.get(name) {
         match serde_json::from_value::<T>(obj.clone()) {
             Ok(val) => Ok(val),
-            Err(_) => Err(create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))
+            Err(_) => Err(create_iron_error(
+                status::BadRequest,
+                format!("Invalid type for `{}`", name),
+            )),
         }
     } else {
-        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
+        Err(create_iron_error(
+            status::BadRequest,
+            format!("Missing `{}`", name),
+        ))
     }
 }
 
@@ -158,7 +195,10 @@ pub fn get_required_json_obj_param<T>(json: &serde_json::Map<String, JsonValue>,
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_type_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Type, IronError> {
+pub fn get_required_json_type_param(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<Type, IronError> {
     let s = get_required_json_string_param(json, name)?;
 
     match Type::from_str(&s[..]) {
@@ -166,7 +206,7 @@ pub fn get_required_json_type_param(json: &serde_json::Map<String, JsonValue>, n
         Err(_) => {
             Err(create_iron_error(
                 status::BadRequest,
-                format!("Invalid type format for `{}`", name)
+                format!("Invalid type format for `{}`", name),
             ))
         }
     }
@@ -177,7 +217,10 @@ pub fn get_required_json_type_param(json: &serde_json::Map<String, JsonValue>, n
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_weight_param(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Weight, IronError> {
+pub fn get_required_json_weight_param(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<Weight, IronError> {
     let w = get_required_json_f64_param(json, name)?;
 
     match Weight::new(w as f32) {
@@ -185,7 +228,10 @@ pub fn get_required_json_weight_param(json: &serde_json::Map<String, JsonValue>,
         Err(_) => {
             Err(create_iron_error(
                 status::BadRequest,
-                format!("Invalid weight format for `{}`: it should be a float between -1.0 and 1.0 inclusive.", name)
+                format!(
+                    "Invalid weight format for `{}`: it should be a float between -1.0 and 1.0 inclusive.",
+                    name
+                ),
             ))
         }
     }
@@ -198,7 +244,7 @@ pub fn get_required_json_weight_param(json: &serde_json::Map<String, JsonValue>,
 pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
     match result {
         Ok(result) => Ok(result),
-        Err(err) => Err(convert_to_iron_error(err))
+        Err(err) => Err(convert_to_iron_error(err)),
     }
 }
 
@@ -219,7 +265,7 @@ pub fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
         Err(err) => {
             Err(create_iron_error(
                 status::InternalServerError,
-                format!("Could not create datastore transaction: {}", err)
+                format!("Could not create datastore transaction: {}", err),
             ))
         }
     }
@@ -237,7 +283,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     if let Err(err) = read_result {
         return Err(create_iron_error(
             status::BadRequest,
-            format!("Could not read JSON body: {}", err)
+            format!("Could not read JSON body: {}", err),
         ));
     }
 
@@ -249,7 +295,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
             Err(err) => {
                 Err(create_iron_error(
                     status::BadRequest,
-                    format!("Could not parse JSON payload: {}", err.description())
+                    format!("Could not parse JSON payload: {}", err.description()),
                 ))
             }
         }
@@ -263,7 +309,10 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
 pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
     match read_optional_json(&mut body)? {
         Some(value) => Ok(value),
-        None => Err(create_iron_error(status::BadRequest, "Missing JSON payload".to_string())),
+        None => Err(create_iron_error(
+            status::BadRequest,
+            "Missing JSON payload".to_string(),
+        )),
     }
 }
 
@@ -278,7 +327,7 @@ pub fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, 
         Err(_) => {
             Err(create_iron_error(
                 status::BadRequest,
-                "Could not parse query parameters".to_string()
+                "Could not parse query parameters".to_string(),
             ))
         }
     }
@@ -288,7 +337,11 @@ pub fn get_query_params<'a>(req: &'a mut Request) -> Result<&'a HashMap<String, 
 ///
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &str, required: bool) -> Result<Option<T>, IronError> {
+pub fn get_query_param<T: FromStr>(
+    params: &HashMap<String, Vec<String>>,
+    key: &str,
+    required: bool,
+) -> Result<Option<T>, IronError> {
     if let Some(values) = params.get(key) {
         if let Some(first_value) = values.get(0) {
             match first_value.parse::<T>() {
@@ -296,7 +349,7 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &
                 Err(_) => {
                     return Err(create_iron_error(
                         status::BadRequest,
-                        format!("Could not parse query parameter `{}`", key)
+                        format!("Could not parse query parameter `{}`", key),
                     ))
                 }
             }
@@ -306,7 +359,7 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &
     if required {
         Err(create_iron_error(
             status::BadRequest,
-            format!("Missing required query parameter `{}`", key)
+            format!("Missing required query parameter `{}`", key),
         ))
     } else {
         Ok(None)
@@ -318,13 +371,19 @@ pub fn get_query_param<T: FromStr>(params: &HashMap<String, Vec<String>>, key: &
 /// # Errors
 /// Returns an `IronError if the query could be parsed, or was not specified.
 pub fn get_obj_query_param<T>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError>
-    where for<'a> T: Deserialize<'a> {
-    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
-    
+where
+    for<'a> T: Deserialize<'a>,
+{
+    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?
+        .unwrap();
+
     match serde_json::from_value::<T>(q_json) {
         Ok(q) => Ok(q),
         Err(_) => {
-            Err(create_iron_error(status::BadRequest, "Invalid type for `q`: expected edge query".to_string()))
+            Err(create_iron_error(
+                status::BadRequest,
+                "Invalid type for `q`: expected edge query".to_string(),
+            ))
         }
     }
 }
@@ -333,12 +392,18 @@ pub fn get_obj_query_param<T>(query_params: &HashMap<String, Vec<String>>) -> Re
 ///
 /// # Errors
 /// Returns an `IronError` if the weight could be parsed, or was not specified.
-pub fn get_weight_query_param(query_params: &HashMap<String, Vec<String>>) -> Result<Weight, IronError> {
-    let weight_f32 = get_query_param::<f32>(query_params, "weight", true)?.unwrap();
+pub fn get_weight_query_param(
+    query_params: &HashMap<String, Vec<String>>,
+) -> Result<Weight, IronError> {
+    let weight_f32 = get_query_param::<f32>(query_params, "weight", true)?
+        .unwrap();
 
     match Weight::new(weight_f32) {
         Ok(weight) => Ok(weight),
-        Err(_) => Err(create_iron_error(status::BadRequest, "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string()))
+        Err(_) => Err(create_iron_error(
+            status::BadRequest,
+            "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string(),
+        )),
     }
 }
 
@@ -347,9 +412,17 @@ pub fn get_weight_query_param(query_params: &HashMap<String, Vec<String>>) -> Re
 /// # Errors
 /// Returns an `IronError` if the script could not be loaded, or fialed to
 /// execute.
-pub fn execute_script(name: String, payload: &JsonValue, trans: &ProxyTransaction, account_id: Uuid) -> Result<JsonValue, IronError> {
+pub fn execute_script(
+    name: String,
+    payload: &JsonValue,
+    trans: &ProxyTransaction,
+    account_id: Uuid,
+) -> Result<JsonValue, IronError> {
     if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
-        return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
+        return Err(create_iron_error(
+            status::BadRequest,
+            "Invalid script name".to_string(),
+        ));
     }
 
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
@@ -359,11 +432,17 @@ pub fn execute_script(name: String, payload: &JsonValue, trans: &ProxyTransactio
         Err(err) => {
             match err {
                 script::ScriptError::File => {
-                    Err(create_iron_error(status::NotFound, "Could not load script".to_string()))
-                },
+                    Err(create_iron_error(
+                        status::NotFound,
+                        "Could not load script".to_string(),
+                    ))
+                }
                 _ => {
                     let error_message = format!("Script failed: {:?}", err);
-                    Err(create_iron_error(status::InternalServerError, error_message))
+                    Err(create_iron_error(
+                        status::InternalServerError,
+                        error_message,
+                    ))
                 }
             }
         }

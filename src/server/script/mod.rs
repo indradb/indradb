@@ -20,11 +20,12 @@ use statics;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(mut trans: &ProxyTransaction,
-           account_id: Uuid,
-           path: &Path,
-           arg: &JsonValue)
-           -> Result<JsonValue, ScriptError> {
+pub fn run(
+    mut trans: &ProxyTransaction,
+    account_id: Uuid,
+    path: &Path,
+    arg: &JsonValue,
+) -> Result<JsonValue, ScriptError> {
     let mut l = lua::State::new();
     l.openlibs();
 
@@ -60,8 +61,11 @@ pub fn run(mut trans: &ProxyTransaction,
         l.getglobal("package");
         l.getfield(-1, "path");
         let old_path = l.checkstring(-1).unwrap().to_string();
-        let script_path =
-            Path::new(&statics::SCRIPT_ROOT[..]).join("?.lua").to_str().unwrap().to_string();
+        let script_path = Path::new(&statics::SCRIPT_ROOT[..])
+            .join("?.lua")
+            .to_str()
+            .unwrap()
+            .to_string();
         let new_path = format!("{};{}", old_path, script_path);
         l.pop(1);
         l.pushstring(&new_path[..]);

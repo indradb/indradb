@@ -13,7 +13,11 @@ pub fn start(port: u16) {
 
     router.post("/transaction", transaction::transaction, "transaction");
 
-    router.put("/edge/:outbound_id/:t/:inbound_id", rest::create_edge, "create_edge");
+    router.put(
+        "/edge/:outbound_id/:t/:inbound_id",
+        rest::create_edge,
+        "create_edge",
+    );
     router.get("/edge", rest::get_edges, "get_edges");
     router.delete("/edge", rest::delete_edges, "delete_edges");
 

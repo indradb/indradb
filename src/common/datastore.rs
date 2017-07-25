@@ -4,9 +4,8 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore,
-            Error, Vertex, Edge, PostgresTransaction, RocksdbTransaction,
-            Type, VertexQuery, EdgeQuery, Weight, EdgeKey};
+use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
+            PostgresTransaction, RocksdbTransaction, Type, VertexQuery, EdgeQuery, Weight, EdgeKey};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -93,7 +92,7 @@ impl Transaction for ProxyTransaction {
     fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
         proxy_transaction!(self, create_edge, key, weight)
     }
-    
+
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(self, get_edges, q)
     }
@@ -122,7 +121,12 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_account_metadata, owner_id, key)
     }
 
-    fn set_account_metadata(&self, owner_id: Uuid, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_account_metadata(
+        &self,
+        owner_id: Uuid,
+        key: String,
+        value: JsonValue,
+    ) -> Result<(), Error> {
         proxy_transaction!(self, set_account_metadata, owner_id, key, value)
     }
 
@@ -130,11 +134,20 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_account_metadata, owner_id, key)
     }
 
-    fn get_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    fn get_vertex_metadata(
+        &self,
+        q: VertexQuery,
+        key: String,
+    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
-    fn set_vertex_metadata(&self, q: VertexQuery, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_vertex_metadata(
+        &self,
+        q: VertexQuery,
+        key: String,
+        value: JsonValue,
+    ) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex_metadata, q, key, value)
     }
 
@@ -142,7 +155,11 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    fn get_edge_metadata(
+        &self,
+        q: EdgeQuery,
+        key: String,
+    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
@@ -180,16 +197,20 @@ impl Transaction for ProxyTransaction {
 /// Returns an error if we are unable to figure out what kind of datastore to
 /// use.
 pub fn datastore() -> ProxyDatastore {
-    let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "rocksdb://.rdb".to_string());
-    let secure_uuids = env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
+    let connection_string = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "rocksdb://.rdb".to_string());
+    let secure_uuids = env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) ==
+        "true";
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
-        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
-        let max_open_files = max_open_files_str.parse::<i32>()
-            .expect("Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
-                     i32");
+        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES")
+            .unwrap_or_else(|_| "512".to_string());
+        let max_open_files = max_open_files_str.parse::<i32>().expect(
+            "Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
+             i32",
+        );
 
         let datastore = match RocksdbDatastore::new(path, Some(max_open_files), secure_uuids) {
             Ok(datastore) => datastore,
@@ -200,9 +221,10 @@ pub fn datastore() -> ProxyDatastore {
     } else if connection_string.starts_with("postgres://") {
         let pool_size = match env::var("DATABASE_POOL_SIZE") {
             Ok(str_val) => {
-                Some(str_val.parse()
-                    .expect("Could not parse environment variable `DATABASE_POOL_SIZE`: must be \
-                             a u32"))
+                Some(str_val.parse().expect(
+                    "Could not parse environment variable `DATABASE_POOL_SIZE`: must be \
+                     a u32",
+                ))
             }
             Err(_) => None,
         };

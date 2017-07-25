@@ -51,7 +51,9 @@ impl HttpTransaction for BatchTransaction {
 
 impl BatchTransaction {
     fn request<T>(&self, d: BTreeMap<String, JsonValue>) -> Result<T, Error>
-        where for<'a> T: Deserialize<'a> {
+    where
+        for<'a> T: Deserialize<'a>,
+    {
         let body = serde_json::to_string(&vec![d]).unwrap();
         let client = Client::new();
         let req = request(
@@ -61,7 +63,7 @@ impl BatchTransaction {
             self.secret.clone(),
             "POST",
             "/transaction".to_string(),
-            vec![]
+            vec![],
         ).body(&body[..]);
         let mut res = req.send().unwrap();
 
@@ -119,7 +121,7 @@ impl Transaction for BatchTransaction {
             "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
         })
     }
-    
+
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("get_edges".to_string()),
@@ -165,7 +167,11 @@ impl Transaction for BatchTransaction {
         unimplemented!();
     }
 
-    fn get_vertex_metadata(&self, _: VertexQuery, _: String) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    fn get_vertex_metadata(
+        &self,
+        _: VertexQuery,
+        _: String,
+    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
         unimplemented!();
     }
 
@@ -177,7 +183,11 @@ impl Transaction for BatchTransaction {
         unimplemented!();
     }
 
-    fn get_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    fn get_edge_metadata(
+        &self,
+        _: EdgeQuery,
+        _: String,
+    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
         unimplemented!();
     }
 
@@ -194,7 +204,9 @@ impl Transaction for BatchTransaction {
     }
 
     fn rollback(self) -> Result<(), Error> {
-        Err(Error::Unexpected("Cannot rollback an HTTP-based transaction".to_string()))
+        Err(Error::Unexpected(
+            "Cannot rollback an HTTP-based transaction".to_string(),
+        ))
     }
 }
 

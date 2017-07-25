@@ -14,8 +14,7 @@ use core::str::FromStr;
 use iron::headers::ContentType;
 
 /// Basic HTTP auth middleware.
-pub struct BasicAuthMiddleware {
-}
+pub struct BasicAuthMiddleware {}
 
 impl BasicAuthMiddleware {
     pub fn new() -> BasicAuthMiddleware {
@@ -48,8 +47,12 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         let secret = self.get_secret(auth);
 
         if account_id.is_some() && secret.is_some() &&
-           statics::DATASTORE.auth(account_id.unwrap(), secret.unwrap()).unwrap_or(false) {
-            req.extensions.insert::<AccountKey>(AccountKey { account_id: account_id.unwrap() });
+            statics::DATASTORE
+                .auth(account_id.unwrap(), secret.unwrap())
+                .unwrap_or(false)
+        {
+            req.extensions
+                .insert::<AccountKey>(AccountKey { account_id: account_id.unwrap() });
 
             return Ok(());
         }
@@ -69,12 +72,15 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         let mut response = Response::new();
         response.status = Some(status::Unauthorized);
         response.headers.set(ContentType(get_json_mime()));
-        response.headers.set_raw("WWW-Authenticate", vec!("Basic realm=\"main\"".as_bytes().to_vec()));
+        response.headers.set_raw(
+            "WWW-Authenticate",
+            vec!["Basic realm=\"main\"".as_bytes().to_vec()],
+        );
         response.body = Some(Box::new(body));
 
-        let error = IronError{
+        let error = IronError {
             error: Box::new(SimpleError::new(error_message)),
-            response: response
+            response: response,
         };
 
         Err(error)
@@ -85,8 +91,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
 ///
 /// This produces a standard JSON body if an error occurred, and no JSON
 /// body has been specified yet.
-pub struct ErrorMiddleware {
-}
+pub struct ErrorMiddleware {}
 
 impl ErrorMiddleware {
     pub fn new() -> ErrorMiddleware {
@@ -101,7 +106,10 @@ impl AfterMiddleware for ErrorMiddleware {
 
     fn catch(&self, _: &mut Request, err: IronError) -> IronResult<Response> {
         if err.error.is::<NoRoute>() {
-            Err(create_iron_error(status::Status::NotFound, "No route found".to_string()))
+            Err(create_iron_error(
+                status::Status::NotFound,
+                "No route found".to_string(),
+            ))
         } else {
             Err(err)
         }

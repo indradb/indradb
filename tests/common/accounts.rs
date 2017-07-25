@@ -18,17 +18,32 @@ pub fn create_account() -> Result<(Uuid, String), Error> {
     match create_user_output {
         Ok(output) => {
             if !output.status.success() {
-                let message = format!("Unexpected exit status running `braid-account add`: {}", output.status);
+                let message = format!(
+                    "Unexpected exit status running `braid-account add`: {}",
+                    output.status
+                );
                 Err(Error::Unexpected(message))
             } else {
                 let stdout = str::from_utf8(&output.stdout).unwrap();
-                let account_id_str = ACCOUNT_ID_MATCHER.captures(stdout).unwrap().get(1).unwrap().as_str();
+                let account_id_str = ACCOUNT_ID_MATCHER
+                    .captures(stdout)
+                    .unwrap()
+                    .get(1)
+                    .unwrap()
+                    .as_str();
                 let account_id = Uuid::from_str(account_id_str).unwrap();
-                let secret = ACCOUNT_SECRET_MATCHER.captures(stdout).unwrap().get(1).unwrap().as_str();
+                let secret = ACCOUNT_SECRET_MATCHER
+                    .captures(stdout)
+                    .unwrap()
+                    .get(1)
+                    .unwrap()
+                    .as_str();
                 Ok((account_id, secret.to_string()))
             }
         }
-        Err(err) => Err(Error::Unexpected(format!("Could not run `braid-account`: {}", err))),
+        Err(err) => Err(Error::Unexpected(
+            format!("Could not run `braid-account`: {}", err),
+        )),
     }
 }
 
@@ -43,12 +58,17 @@ pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
             if status.success() {
                 Ok(())
             } else {
-                let message = format!("Unexpected exit status running `braid-account remove`: {}", status.code().unwrap());
+                let message = format!(
+                    "Unexpected exit status running `braid-account remove`: {}",
+                    status.code().unwrap()
+                );
                 Err(Error::Unexpected(message))
             }
         }
         Err(err) => {
-            Err(Error::Unexpected(format!("Unexpected error running `braid-account`: {}", err)))
+            Err(Error::Unexpected(
+                format!("Unexpected error running `braid-account`: {}", err),
+            ))
         }
     }
 }

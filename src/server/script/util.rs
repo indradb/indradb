@@ -13,13 +13,13 @@ use std::collections::BTreeMap;
 unsafe fn debug_stack(l: &mut lua::ExternState) {
     let top = l.gettop();
 
-    for i in 1..top+1 {
+    for i in 1..top + 1 {
         match l.type_(i) {
             Some(lua::Type::Nil) => println!("{}: nil", i),
             Some(lua::Type::Boolean) => println!("{}: boolean: {:?}", i, l.toboolean(i)),
             Some(lua::Type::Number) => println!("{}: number: {:?}", i, l.tonumber(i)),
             Some(lua::Type::String) => println!("{}: string: {:?}", i, l.tostring(i)),
-            _ => println!("{}: {:?}", i, l.type_(i))
+            _ => println!("{}: {:?}", i, l.type_(i)),
         }
     }
 }
@@ -28,9 +28,13 @@ unsafe fn debug_stack(l: &mut lua::ExternState) {
 /// NOTE: `l.checkstring` doesn't seem to properly handle `nil` values, so in
 /// functions that accept optional lua strings, we take empty strings instead
 /// of nil values.
-pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<JsonValue, LuaError> {
+pub unsafe fn deserialize_json(
+    l: &mut lua::ExternState,
+    offset: i32,
+) -> Result<JsonValue, LuaError> {
     Ok(match l.type_(offset) {
-        Some(lua::Type::Nil) | None => JsonValue::Null,
+        Some(lua::Type::Nil) |
+        None => JsonValue::Null,
         Some(lua::Type::Boolean) => JsonValue::Bool(l.toboolean(offset)),
         Some(lua::Type::Number) => {
             let num = l.tonumber(offset);
@@ -41,7 +45,7 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
             } else {
                 JsonValue::Number(Number::from_f64(num).unwrap())
             }
-        },
+        }
         Some(lua::Type::String) => {
             JsonValue::String(l.checkstring(offset).unwrap().to_string().clone())
         }
@@ -85,7 +89,9 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 // Check for a special null value. We need to do this because
                 // it's not possible to put a lua nil into some places, such as
                 // inside of an array.
-                if v.len() == 1 && v[0].is_string() && v[0].as_str().unwrap() == "__braid_json_null" {
+                if v.len() == 1 && v[0].is_string() &&
+                    v[0].as_str().unwrap() == "__braid_json_null"
+                {
                     return Ok(JsonValue::Null);
                 }
 
@@ -105,7 +111,12 @@ pub unsafe fn deserialize_json(l: &mut lua::ExternState, offset: i32) -> Result<
                 JsonValue::Object(o)
             }
         }
-        _ => return Err(LuaError::Generic(format!("Could not deserialize value to json: unexpected type: {:?}", l.type_(offset)))),
+        _ => {
+            return Err(LuaError::Generic(format!(
+                "Could not deserialize value to json: unexpected type: {:?}",
+                l.type_(offset)
+            )))
+        }
     })
 }
 
@@ -120,7 +131,7 @@ pub unsafe fn serialize_json(l: &mut lua::ExternState, json: &JsonValue) {
             } else {
                 l.pushstring(&v.to_string()[..]);
             }
-        },
+        }
         &JsonValue::String(ref v) => l.pushstring(v),
         &JsonValue::Array(ref v) => {
             l.newtable();
@@ -183,7 +194,11 @@ pub unsafe fn serialize_edge(l: &mut lua::ExternState, edge: &Edge) {
         add_string_field_to_table(l, "inbound_id", &edge.key.inbound_id.to_string()[..]);
         l.settable(-3);
     }
-    add_string_field_to_table(l, "created_datetime", &edge.created_datetime.to_string()[..]);
+    add_string_field_to_table(
+        l,
+        "created_datetime",
+        &edge.created_datetime.to_string()[..],
+    );
     add_number_field_to_table(l, "weight", edge.weight.0 as f64);
 }
 
@@ -200,22 +215,34 @@ pub unsafe fn add_number_field_to_table(l: &mut lua::ExternState, k: &str, v: f6
 }
 
 /// Gets a vertex query from lua by its offset
-pub unsafe fn get_vertex_query_param(l: &mut lua::ExternState, narg: i32) -> Result<VertexQuery, LuaError> {
+pub unsafe fn get_vertex_query_param(
+    l: &mut lua::ExternState,
+    narg: i32,
+) -> Result<VertexQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
 
     match serde_json::from_value::<VertexQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(err) => Err(LuaError::Arg(narg, format!("Expected vertex query table: {}", err)))
+        Err(err) => Err(LuaError::Arg(
+            narg,
+            format!("Expected vertex query table: {}", err),
+        )),
     }
 }
 
 /// Gets an edge query from lua by its offset
-pub unsafe fn get_edge_query_param(l: &mut lua::ExternState, narg: i32) -> Result<EdgeQuery, LuaError> {
+pub unsafe fn get_edge_query_param(
+    l: &mut lua::ExternState,
+    narg: i32,
+) -> Result<EdgeQuery, LuaError> {
     let q_json = deserialize_json(l, 1)?;
 
     match serde_json::from_value::<EdgeQuery>(q_json) {
         Ok(val) => Ok(val),
-        Err(err) => Err(LuaError::Arg(narg, format!("Expected edge query table: {}", err)))
+        Err(err) => Err(LuaError::Arg(
+            narg,
+            format!("Expected edge query table: {}", err),
+        )),
     }
 }
 
@@ -237,12 +264,15 @@ pub unsafe fn get_type_param(l: &mut lua::ExternState, narg: i32) -> Result<Type
 pub unsafe fn get_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Uuid, LuaError> {
     match get_optional_uuid_param(l, narg)? {
         Some(val) => Ok(val),
-        None => Err(LuaError::Arg(narg, "Expected uuid as string".to_string()))
+        None => Err(LuaError::Arg(narg, "Expected uuid as string".to_string())),
     }
 }
 
 /// Gets a string value that represents a uuid from lua by its offset
-pub unsafe fn get_optional_uuid_param(l: &mut lua::ExternState, narg: i32) -> Result<Option<Uuid>, LuaError> {
+pub unsafe fn get_optional_uuid_param(
+    l: &mut lua::ExternState,
+    narg: i32,
+) -> Result<Option<Uuid>, LuaError> {
     let s = get_string_param(l, narg)?;
 
     if s == "" {
