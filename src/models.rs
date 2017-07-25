@@ -2,7 +2,8 @@ use regex::Regex;
 use errors::ValidationError;
 use core::str::FromStr;
 use uuid::Uuid;
-use chrono::{UTC, DateTime};
+use chrono::DateTime;
+use chrono::offset::Utc;
 
 lazy_static! {
     static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
@@ -18,7 +19,7 @@ pub struct Vertex {
     pub id: Uuid,
 
     /// The type of the vertex.
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub t: Type,
 }
 
@@ -26,7 +27,7 @@ impl Vertex {
     /// Creates a new vertex.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
     pub fn new(id: Uuid, t: Type) -> Vertex {
@@ -49,18 +50,18 @@ pub struct EdgeKey {
     pub outbound_id: Uuid,
 
     /// The type of the edge.
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub t: Type,
 
     /// The id of the inbound vertex.
-    pub inbound_id: Uuid
+    pub inbound_id: Uuid,
 }
 
 impl EdgeKey {
     /// Creates a new edge key.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `outbound_id` - The id of the outbound vertex.
     /// * `t` - The type of the edge.
     /// * `inbound_id` - The id of the inbound vertex.
@@ -68,7 +69,7 @@ impl EdgeKey {
         EdgeKey {
             outbound_id: outbound_id,
             t: t,
-            inbound_id: inbound_id
+            inbound_id: inbound_id,
         }
     }
 }
@@ -87,7 +88,7 @@ pub struct Edge {
     pub weight: Weight,
 
     /// When the edge was created.
-    pub created_datetime: DateTime<UTC>
+    pub created_datetime: DateTime<Utc>,
 }
 
 impl Edge {
@@ -98,7 +99,7 @@ impl Edge {
     /// * `weight` - The edge weight.
     /// * `inbound_id` - The id of the inbound vertex.
     pub fn new_with_current_datetime(key: EdgeKey, weight: Weight) -> Edge {
-        Self::new(key, weight, UTC::now())
+        Self::new(key, weight, Utc::now())
     }
 
     /// Creates a new edge with a specified datetime.
@@ -107,11 +108,11 @@ impl Edge {
     /// * `key` - The key to the edge.
     /// * `weight` - The weight of the edge.
     /// * `created_datetime` - When the edge was created.
-    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<UTC>) -> Edge {
+    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<Utc>) -> Edge {
         Edge {
             key: key,
             weight: weight,
-            created_datetime: created_datetime
+            created_datetime: created_datetime,
         }
     }
 }
@@ -126,7 +127,7 @@ impl Weight {
     /// Constructs a new edge weight.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `weight` - The weight, between -1.0 and 1.0.
     ///
     /// # Errors
@@ -151,7 +152,7 @@ impl Type {
     /// Constructs a new type.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `t` - The type, which must be less than 256 characters long.
     ///
     /// # Errors
@@ -186,10 +187,10 @@ impl FromStr for Type {
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum QueryTypeConverter {
-    #[serde(rename="outbound")]
+    #[serde(rename = "outbound")]
     Outbound,
-    #[serde(rename="inbound")]
-    Inbound
+    #[serde(rename = "inbound")]
+    Inbound,
 }
 
 /// A query for vertices.
@@ -197,45 +198,50 @@ pub enum QueryTypeConverter {
 /// This is used by transactions to get, set and delete vertices and vertex
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(tag="type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum VertexQuery {
-    All {
-        start_id: Option<Uuid>,
-        limit: u32
-    },
-    Vertex {
-        id: Uuid
-    },
-    Vertices {
-        ids: Vec<Uuid>
-    },
+    All { start_id: Option<Uuid>, limit: u32 },
+    Vertex { id: Uuid },
+    Vertices { ids: Vec<Uuid> },
     Pipe {
         edge_query: Box<EdgeQuery>,
         converter: QueryTypeConverter,
-        limit: u32
-    }
+        limit: u32,
+    },
 }
 
 impl VertexQuery {
-    pub fn outbound_edges(self, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> EdgeQuery {
+    pub fn outbound_edges(
+        self,
+        t: Option<Type>,
+        high: Option<DateTime<Utc>>,
+        low: Option<DateTime<Utc>>,
+        limit: u32,
+    ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: QueryTypeConverter::Outbound,
             type_filter: t,
             high_filter: high,
             low_filter: low,
-            limit: limit
+            limit: limit,
         }
     }
 
-    pub fn inbound_edges(self, t: Option<Type>, high: Option<DateTime<UTC>>, low: Option<DateTime<UTC>>, limit: u32) -> EdgeQuery {
+    pub fn inbound_edges(
+        self,
+        t: Option<Type>,
+        high: Option<DateTime<Utc>>,
+        low: Option<DateTime<Utc>>,
+        limit: u32,
+    ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: QueryTypeConverter::Inbound,
             type_filter: t,
             high_filter: high,
             low_filter: low,
-            limit: limit
+            limit: limit,
         }
     }
 }
@@ -245,22 +251,18 @@ impl VertexQuery {
 /// This is used by transactions to get, set and delete edges and edge
 /// metadata.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(tag="type", rename_all="snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum EdgeQuery {
-    Edge {
-        key: EdgeKey
-    },
-    Edges {
-        keys: Vec<EdgeKey>
-    },
+    Edge { key: EdgeKey },
+    Edges { keys: Vec<EdgeKey> },
     Pipe {
         vertex_query: Box<VertexQuery>,
         converter: QueryTypeConverter,
         type_filter: Option<Type>,
-        high_filter: Option<DateTime<UTC>>,
-        low_filter: Option<DateTime<UTC>>,
-        limit: u32
-    }
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
+        limit: u32,
+    },
 }
 
 impl EdgeQuery {
@@ -268,7 +270,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: QueryTypeConverter::Outbound,
-            limit: limit
+            limit: limit,
         }
     }
 
@@ -276,7 +278,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: QueryTypeConverter::Inbound,
-            limit: limit
+            limit: limit,
         }
     }
 }

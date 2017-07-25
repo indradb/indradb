@@ -7,20 +7,21 @@ use std::u8;
 use std::io::Read;
 use std::io::{Cursor, Error as IoError};
 use models;
-use chrono::{NaiveDateTime, DateTime, UTC};
+use chrono::{NaiveDateTime, DateTime};
+use chrono::offset::Utc;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use util::nanos_since_epoch;
 use chrono::{Timelike, Duration};
 
 lazy_static! {
-    pub static ref MAX_DATETIME: DateTime<UTC> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), UTC).with_nanosecond(1999999999u32).unwrap();
+    pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();
 }
 
 pub enum KeyComponent<'a> {
     Uuid(Uuid),
     UnsizedString(&'a str),
     Type(&'a models::Type),
-    DateTime(DateTime<UTC>),
+    DateTime(DateTime<Utc>),
 }
 
 impl<'a> KeyComponent<'a> {
@@ -56,7 +57,9 @@ impl<'a> KeyComponent<'a> {
 }
 
 pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
-    let len = components.iter().fold(0, |len, component| len + component.len());
+    let len = components
+        .iter()
+        .fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
     for component in &components {
@@ -103,7 +106,7 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 
 }
 
-pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<UTC> {
+pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
     *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
