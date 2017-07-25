@@ -2,7 +2,8 @@ use regex::Regex;
 use errors::ValidationError;
 use core::str::FromStr;
 use uuid::Uuid;
-use chrono::{UTC, DateTime};
+use chrono::DateTime;
+use chrono::offset::Utc;
 
 lazy_static! {
     static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
@@ -87,7 +88,7 @@ pub struct Edge {
     pub weight: Weight,
 
     /// When the edge was created.
-    pub created_datetime: DateTime<UTC>,
+    pub created_datetime: DateTime<Utc>,
 }
 
 impl Edge {
@@ -98,7 +99,7 @@ impl Edge {
     /// * `weight` - The edge weight.
     /// * `inbound_id` - The id of the inbound vertex.
     pub fn new_with_current_datetime(key: EdgeKey, weight: Weight) -> Edge {
-        Self::new(key, weight, UTC::now())
+        Self::new(key, weight, Utc::now())
     }
 
     /// Creates a new edge with a specified datetime.
@@ -107,7 +108,7 @@ impl Edge {
     /// * `key` - The key to the edge.
     /// * `weight` - The weight of the edge.
     /// * `created_datetime` - When the edge was created.
-    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<UTC>) -> Edge {
+    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<Utc>) -> Edge {
         Edge {
             key: key,
             weight: weight,
@@ -213,8 +214,8 @@ impl VertexQuery {
     pub fn outbound_edges(
         self,
         t: Option<Type>,
-        high: Option<DateTime<UTC>>,
-        low: Option<DateTime<UTC>>,
+        high: Option<DateTime<Utc>>,
+        low: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
@@ -230,8 +231,8 @@ impl VertexQuery {
     pub fn inbound_edges(
         self,
         t: Option<Type>,
-        high: Option<DateTime<UTC>>,
-        low: Option<DateTime<UTC>>,
+        high: Option<DateTime<Utc>>,
+        low: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
@@ -258,8 +259,8 @@ pub enum EdgeQuery {
         vertex_query: Box<VertexQuery>,
         converter: QueryTypeConverter,
         type_filter: Option<Type>,
-        high_filter: Option<DateTime<UTC>>,
-        low_filter: Option<DateTime<UTC>>,
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
         limit: u32,
     },
 }

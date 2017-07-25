@@ -3,7 +3,8 @@ use uuid::Uuid;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
 use serde_json::Value as JsonValue;
-use chrono::{DateTime, UTC};
+use chrono::DateTime;
+use chrono::offset::Utc;
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, ColumnFamily};
 use super::models::{AccountValue, EdgeValue, VertexValue};
 use std::sync::Arc;
@@ -17,7 +18,7 @@ use serde::Serialize;
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
 pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
 pub type VertexItem = Result<(Uuid, VertexValue), Error>;
-pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<UTC>, Uuid), models::Weight), Error>;
+pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<Utc>, Uuid), models::Weight), Error>;
 pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
@@ -344,7 +345,7 @@ impl EdgeManager {
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
-        new_update_datetime: DateTime<UTC>,
+        new_update_datetime: DateTime<Utc>,
         weight: models::Weight,
     ) -> Result<(), Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
@@ -399,7 +400,7 @@ impl EdgeManager {
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
-        update_datetime: DateTime<UTC>,
+        update_datetime: DateTime<Utc>,
     ) -> Result<(), Error> {
         batch
             .delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
@@ -462,7 +463,7 @@ impl EdgeRangeManager {
         &self,
         first_id: Uuid,
         t: &models::Type,
-        update_datetime: DateTime<UTC>,
+        update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Box<[u8]> {
         build_key(vec![
@@ -498,7 +499,7 @@ impl EdgeRangeManager {
         &self,
         id: Uuid,
         t: &Option<models::Type>,
-        high: Option<DateTime<UTC>>,
+        high: Option<DateTime<Utc>>,
     ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>, Error> {
         match *t {
             Some(ref t) => {
@@ -554,7 +555,7 @@ impl EdgeRangeManager {
         mut batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
-        update_datetime: DateTime<UTC>,
+        update_datetime: DateTime<Utc>,
         second_id: Uuid,
         weight: models::Weight,
     ) -> Result<(), Error> {
@@ -569,7 +570,7 @@ impl EdgeRangeManager {
         mut batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
-        update_datetime: DateTime<UTC>,
+        update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<(), Error> {
         batch

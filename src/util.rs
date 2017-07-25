@@ -5,7 +5,8 @@ use crypto::sha2::Sha256;
 use crypto::digest::Digest;
 use errors::ValidationError;
 use uuid::Uuid;
-use chrono::{DateTime, UTC};
+use chrono::DateTime;
+use chrono::offset::Utc;
 use byteorder::BigEndian;
 use std::io::Cursor;
 use std::io::Write;
@@ -77,7 +78,7 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
 ///
 /// # Arguments
 /// * `datetime` - The datetime to convert.
-pub fn nanos_since_epoch(datetime: &DateTime<UTC>) -> u64 {
+pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     let timestamp: u64 = datetime.timestamp() as u64;
     let nanoseconds: u64 = datetime.timestamp_subsec_nanos() as u64;
     timestamp * 1000000000 + nanoseconds
@@ -104,7 +105,7 @@ pub fn child_uuid(parent: Uuid) -> Uuid {
     let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
     cursor.write(&parent.as_bytes()[0..8]).unwrap();
     cursor
-        .write_u64::<BigEndian>(nanos_since_epoch(&UTC::now()))
+        .write_u64::<BigEndian>(nanos_since_epoch(&Utc::now()))
         .unwrap();
     Uuid::from_bytes(&cursor.into_inner()).unwrap()
 }
@@ -116,7 +117,7 @@ mod tests {
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
-    use chrono::{DateTime, NaiveDateTime, UTC};
+    use chrono::{DateTime, NaiveDateTime, Utc};
 
     #[test]
     fn should_generate_random_secret() {
@@ -159,7 +160,7 @@ mod tests {
 
     #[test]
     fn should_generate_nanos_since_epoch() {
-        let datetime = DateTime::<UTC>::from_utc(NaiveDateTime::from_timestamp(61, 62), UTC);
+        let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 62), Utc);
         assert_eq!(nanos_since_epoch(&datetime), 61000000062);
     }
 

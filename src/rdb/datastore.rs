@@ -4,7 +4,7 @@ use uuid::Uuid;
 use errors::Error;
 use util::{get_salted_hash, next_uuid};
 use serde_json::Value as JsonValue;
-use chrono::UTC;
+use chrono::offset::Utc;
 use rocksdb::{DB, Options, WriteBatch, DBCompactionStyle};
 use std::sync::Arc;
 use std::usize;
@@ -444,7 +444,7 @@ impl Transaction for RocksdbTransaction {
             return Err(Error::VertexNotFound);
         }
 
-        let new_update_datetime = UTC::now();
+        let new_update_datetime = Utc::now();
         let mut batch = WriteBatch::default();
         EdgeManager::new(self.db.clone()).set(
             &mut batch,

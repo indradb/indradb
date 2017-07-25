@@ -3,7 +3,7 @@ use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
 use uuid::Uuid;
-use chrono::UTC;
+use chrono::offset::Utc;
 use chrono::Timelike;
 use super::util::{create_edges, create_time_range_queryable_edges};
 use std::collections::HashSet;
@@ -27,9 +27,9 @@ where
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
     // accuracy.
-    let start_time = UTC::now().with_nanosecond(0).unwrap();
+    let start_time = Utc::now().with_nanosecond(0).unwrap();
     trans.create_edge(key, weight).unwrap();
-    let end_time = UTC::now();
+    let end_time = Utc::now();
 
     let e = trans
         .get_edges(EdgeQuery::Edge {

@@ -7,7 +7,8 @@ use errors::Error;
 use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
 use postgres;
 use postgres::rows::Rows;
-use chrono::{UTC, DateTime};
+use chrono::DateTime;
+use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
@@ -219,9 +220,9 @@ impl PostgresTransaction {
     }
 
     fn handle_set_metadata_error(&self, err: pg_error::Error, foreign_key_err: Error) -> Error {
-        if let pg_error::Error::Db(ref err) = err {
-            if err.code == pg_error::SqlState::ForeignKeyViolation ||
-                err.code == pg_error::SqlState::NotNullViolation
+        if let Some(state) = err.code() {
+            if state == &pg_error::FOREIGN_KEY_VIOLATION ||
+                state == &pg_error::NOT_NULL_VIOLATION
             {
                 // This should only happen when we couldn't get the
                 // "owning" resource for the metadata
@@ -462,18 +463,20 @@ impl Transaction for PostgresTransaction {
             }
         };
 
-        if let Err(pg_error::Error::Db(ref err)) = results {
-            if err.code == pg_error::SqlState::NotNullViolation {
-                // This should only happen when the inner select fails
-                let v = self.get_vertices(VertexQuery::Vertex { id: key.outbound_id })?;
-                if v.is_empty() {
+        if let Err(err) = results {
+            if let Some(state) = err.code() {
+                if state == &pg_error::NOT_NULL_VIOLATION {
+                    // This should only happen when the inner select fails
+                    let v = self.get_vertices(VertexQuery::Vertex { id: key.outbound_id })?;
+                    if v.is_empty() {
+                        return Err(Error::VertexNotFound);
+                    } else {
+                        return Err(Error::Unauthorized);
+                    }
+                } else if state == &pg_error::FOREIGN_KEY_VIOLATION {
+                    // This should only happen when there is no vertex with id=inbound_id
                     return Err(Error::VertexNotFound);
-                } else {
-                    return Err(Error::Unauthorized);
                 }
-            } else if err.code == pg_error::SqlState::ForeignKeyViolation {
-                // This should only happen when there is no vertex with id=inbound_id
-                return Err(Error::VertexNotFound);
             }
         }
 
@@ -498,7 +501,7 @@ impl Transaction for PostgresTransaction {
             let inbound_id: Uuid = row.get(2);
             let weight_f32: f32 = row.get(3);
             let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<UTC> = row.get(4);
+            let update_datetime: DateTime<Utc> = row.get(4);
             let t = models::Type::new(t_str).unwrap();
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
             let edge = models::Edge::new(key, weight, update_datetime);

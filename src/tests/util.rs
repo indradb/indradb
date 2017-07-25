@@ -1,4 +1,5 @@
-use chrono::{UTC, DateTime};
+use chrono::DateTime;
+use chrono::offset::Utc;
 use super::super::{Datastore, Transaction};
 use super::sandbox::DatastoreTestSandbox;
 use models;
@@ -41,7 +42,7 @@ where
 
 pub fn create_time_range_queryable_edges<D, T>(
     sandbox: &mut DatastoreTestSandbox<D, T>,
-) -> (Uuid, DateTime<UTC>, DateTime<UTC>, [Uuid; 5])
+) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5])
 where
     D: Datastore<T>,
     T: Transaction,
@@ -56,7 +57,7 @@ where
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);
 
-    let start_time = UTC::now();
+    let start_time = Utc::now();
     let inbound_ids = [
         create_edge_from::<D, T>(&trans, outbound_id),
         create_edge_from::<D, T>(&trans, outbound_id),
@@ -64,7 +65,7 @@ where
         create_edge_from::<D, T>(&trans, outbound_id),
         create_edge_from::<D, T>(&trans, outbound_id),
     ];
-    let end_time = UTC::now();
+    let end_time = Utc::now();
 
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);
