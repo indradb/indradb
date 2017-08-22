@@ -41,8 +41,7 @@ version = "0.3.1"
 features = ["serde"]
 
 [dependencies.braid-lib]
-git = "https://github.com/braidery/braid-lib.git"
-branch = "master"
+path = "../lib"
 
 [dependencies.lua]
 git = "https://github.com/kballard/rust-lua.git"
