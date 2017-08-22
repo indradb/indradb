@@ -4,3 +4,4 @@ target
 lib/Cargo.lock
 *.swp
 *.rdb
+/Cargo.lock
