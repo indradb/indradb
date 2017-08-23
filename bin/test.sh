@@ -18,5 +18,5 @@ export BRAID_SCRIPT_ROOT=`pwd`/test_scripts
 dropdb --if-exists braid_test
 createdb --owner=$PG_USER braid_test
 cargo build
-./target/debug/braid-db init
+../target/debug/braid-db init
 ./support/with_server.sh cargo test $TEST_NAME

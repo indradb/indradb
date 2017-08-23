@@ -11,7 +11,7 @@ lazy_static! {
 }
 
 pub fn create_account() -> Result<(Uuid, String), Error> {
-    let create_user_output = Command::new("./target/debug/braid-account")
+    let create_user_output = Command::new("../target/debug/braid-account")
         .arg("add")
         .output();
 
@@ -48,7 +48,7 @@ pub fn create_account() -> Result<(Uuid, String), Error> {
 }
 
 pub fn delete_account(account_id: Uuid) -> Result<(), Error> {
-    let remove_user_status = Command::new("./target/debug/braid-account")
+    let remove_user_status = Command::new("../target/debug/braid-account")
         .arg("remove")
         .arg(account_id.to_string())
         .status();
