@@ -16,19 +16,21 @@ main() {
             ;;
     esac
 
-    test -f Cargo.lock || cargo generate-lockfile
+    pushd bin
+        test -f Cargo.lock || cargo generate-lockfile
 
-    cargo build --release
+        cargo build --release
 
-    cp target/release/braid-db $stage/
-    cp target/release/braid-server $stage/
-    cp target/release/braid-account $stage/
+        cp target/release/braid-db $stage/
+        cp target/release/braid-server $stage/
+        cp target/release/braid-account $stage/
 
-    pushd $stage
-        tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
+        pushd $stage
+            tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
+        popd
+
+        rm -rf $stage
     popd
-
-    rm -rf $stage
 }
 
 main
