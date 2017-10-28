@@ -239,7 +239,7 @@ where
         .unwrap();
 }
 
-pub fn should_not_delete_an_unowned_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_an_unowned_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
 where
     D: Datastore<T>,
     T: Transaction,

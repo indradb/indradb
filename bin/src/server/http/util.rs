@@ -23,6 +23,7 @@ use uuid::Uuid;
 use regex;
 use std::path::Path;
 use script;
+use std::fs::File;
 
 lazy_static! {
     static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
@@ -414,7 +415,7 @@ pub fn get_weight_query_param(
 /// execute.
 pub fn execute_script(
     name: String,
-    payload: &JsonValue,
+    payload: JsonValue,
     trans: &ProxyTransaction,
     account_id: Uuid,
 ) -> Result<JsonValue, IronError> {
@@ -427,24 +428,36 @@ pub fn execute_script(
 
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
-    match script::run(trans, account_id, &path, payload) {
-        Ok(val) => Ok(val),
-        Err(err) => {
-            match err {
-                script::ScriptError::File => {
+    let contents = match File::open(&path) {
+        Ok(mut file) => {
+            let mut contents = String::new();
+
+            match file.read_to_string(&mut contents) {
+                Ok(_) => Ok(contents),
+                Err(_) => {
                     Err(create_iron_error(
                         status::NotFound,
-                        "Could not load script".to_string(),
-                    ))
-                }
-                _ => {
-                    let error_message = format!("Script failed: {:?}", err);
-                    Err(create_iron_error(
-                        status::InternalServerError,
-                        error_message,
+                        "Could not read script".to_string(),
                     ))
                 }
             }
+        },
+        Err(_) => {
+            Err(create_iron_error(
+                status::NotFound,
+                "Could not load script".to_string(),
+            ))
+        }
+    }?;
+
+    match script::run(trans, account_id, &contents, &path, payload) {
+        Ok(val) => Ok(val),
+        Err(err) => {
+            let error_message = format!("Script failed: {:?}", err);
+            Err(create_iron_error(
+                status::InternalServerError,
+                error_message,
+            ))
         }
     }
 }

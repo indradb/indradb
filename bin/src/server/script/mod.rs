@@ -1,17 +1,31 @@
-#[macro_use]
-mod macros;
 mod api;
-mod errors;
-mod util;
+mod converters;
 
-use lua;
-use libc;
+#[cfg(test)]
+mod tests;
+
+use rlua::{Table, LightUserData, Error, Value};
+use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
-use common::ProxyTransaction;
 use std::path::Path;
 use uuid::Uuid;
-pub use self::errors::ScriptError;
 use statics;
+use std::os::raw::c_void;
+use std::sync::Arc;
+use common::ProxyTransaction;
+
+macro_rules! proxy_fn {
+    ($globals:expr, $name:expr, $l:expr, $func:expr) => {
+        let f = $l.create_function(|_, args| {
+            match $func(args) {
+                Ok(val) => Ok(val),
+                Err(err) => Err(Error::ExternalError(Arc::new(err)))
+            }
+        });
+
+        $globals.set($name, f).expect("Expected to be able to set a global function");
+    }
+}
 
 /// Runs a script.
 ///
@@ -23,85 +37,57 @@ use statics;
 pub fn run(
     mut trans: &ProxyTransaction,
     account_id: Uuid,
+    contents: &str,
     path: &Path,
-    arg: &JsonValue,
-) -> Result<JsonValue, ScriptError> {
-    let mut l = lua::State::new();
-    l.openlibs();
+    arg: JsonValue,
+) -> Result<JsonValue, LuaError> {
+    let l = Lua::new();
+    let globals = l.globals();
 
-    l.register("create_vertex", api::create_vertex);
-    l.register("get_vertices", api::get_vertices);
-    l.register("delete_vertices", api::delete_vertices);
+    proxy_fn!(globals, "create_vertex", &l, api::create_vertex);
+    proxy_fn!(globals, "get_vertices", &l, api::get_vertices);
+    proxy_fn!(globals, "delete_vertices", &l, api::delete_vertices);
 
-    l.register("create_edge", api::create_edge);
-    l.register("get_edges", api::get_edges);
-    l.register("delete_edges", api::delete_edges);
-    l.register("get_edge_count", api::get_edge_count);
+    proxy_fn!(globals, "create_edge", &l, api::create_edge);
+    proxy_fn!(globals, "get_edges", &l, api::get_edges);
+    proxy_fn!(globals, "delete_edges", &l, api::delete_edges);
+    proxy_fn!(globals, "get_edge_count", &l, api::get_edge_count);
 
-    l.register("get_global_metadata", api::get_global_metadata);
-    l.register("set_global_metadata", api::set_global_metadata);
-    l.register("delete_global_metadata", api::delete_global_metadata);
-    l.register("get_account_metadata", api::get_account_metadata);
-    l.register("set_account_metadata", api::set_account_metadata);
-    l.register("delete_account_metadata", api::delete_account_metadata);
-    l.register("get_vertex_metadata", api::get_vertex_metadata);
-    l.register("set_vertex_metadata", api::set_vertex_metadata);
-    l.register("delete_vertex_metadata", api::delete_vertex_metadata);
-    l.register("get_edge_metadata", api::get_edge_metadata);
-    l.register("set_edge_metadata", api::set_edge_metadata);
-    l.register("delete_edge_metadata", api::delete_edge_metadata);
+    proxy_fn!(globals, "get_global_metadata", &l, api::get_global_metadata);
+    proxy_fn!(globals, "set_global_metadata", &l, api::set_global_metadata);
+    proxy_fn!(globals, "delete_global_metadata", &l, api::delete_global_metadata);
+    proxy_fn!(globals, "get_account_metadata", &l, api::get_account_metadata);
+    proxy_fn!(globals, "set_account_metadata", &l, api::set_account_metadata);
+    proxy_fn!(globals, "delete_account_metadata", &l, api::delete_account_metadata);
+    proxy_fn!(globals, "get_vertex_metadata", &l, api::get_vertex_metadata);
+    proxy_fn!(globals, "set_vertex_metadata", &l, api::set_vertex_metadata);
+    proxy_fn!(globals, "delete_vertex_metadata", &l, api::delete_vertex_metadata);
+    proxy_fn!(globals, "get_edge_metadata", &l, api::get_edge_metadata);
+    proxy_fn!(globals, "set_edge_metadata", &l, api::set_edge_metadata);
+    proxy_fn!(globals, "delete_edge_metadata", &l, api::delete_edge_metadata);
 
-    if let Err(err) = l.loadfile(Some(path)) {
-        return Err(ScriptError::new_from_load_file_error(&mut l, err));
-    }
+    let fun = l.load(contents, path.to_str())?;
 
     // Update the `package.path` to include the script root, so it's easier
     // for scripts to require each other.
     {
-        l.getglobal("package");
-        l.getfield(-1, "path");
-        let old_path = l.checkstring(-1).unwrap().to_string();
+        let package: Table = globals.get("package")?;
+        let old_path: String = package.get("path")?;
         let script_path = Path::new(&statics::SCRIPT_ROOT[..])
-            .join("?.lua")
-            .to_str()
-            .unwrap()
-            .to_string();
-        let new_path = format!("{};{}", old_path, script_path);
-        l.pop(1);
-        l.pushstring(&new_path[..]);
-        l.setfield(-2, "path");
-        l.pop(1);
+                .join("?.lua")
+                .to_str()
+                .unwrap()
+                .to_string();
+        package.set("path", format!("{};{}", old_path, script_path))?;
     }
-
+    
     // Add the transaction as a global variable.
-    {
-        let trans_ptr: *mut libc::c_void = &mut trans as *mut _ as *mut libc::c_void;
-        l.pushlightuserdata(trans_ptr);
-        l.setglobal("trans");
-    }
+    let trans_ptr: *mut c_void = &mut trans as *mut _ as *mut c_void;
+    globals.set("trans", Value::LightUserData(LightUserData(trans_ptr)))?;
 
     // Add the account id as a global variable.
-    {
-        l.pushstring(&account_id.to_string()[..]);
-        l.setglobal("account_id");
-    }
+    globals.set("account_id", account_id.to_string())?;
 
-    // Add the input arg as a global variable.
-    {
-        unsafe {
-            util::serialize_json(l.as_extern(), &arg);
-        }
-        l.setglobal("arg");
-    }
-
-    if let Err(err) = l.pcall(0, lua::MULTRET, 0) {
-        return Err(ScriptError::new_from_pcallerror(&mut l, err));
-    }
-
-    if l.gettop() == 0 {
-        Ok(JsonValue::Null)
-    } else {
-        let payload = unsafe { util::deserialize_json(l.as_extern(), -1)? };
-        Ok(payload)
-    }
+    let value: converters::JsonValue = fun.call(converters::JsonValue::new(arg))?;
+    Ok(value.0)
 }

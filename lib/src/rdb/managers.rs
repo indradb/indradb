@@ -552,7 +552,7 @@ impl EdgeRangeManager {
 
     pub fn set(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
         update_datetime: DateTime<Utc>,
@@ -567,7 +567,7 @@ impl EdgeRangeManager {
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
         update_datetime: DateTime<Utc>,
@@ -604,7 +604,7 @@ impl GlobalMetadataManager {
         set_json(&self.db, self.cf, self.key(name), value)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, name: &str) -> Result<(), Error> {
+    pub fn delete(&self, batch: &mut WriteBatch, name: &str) -> Result<(), Error> {
         batch.delete_cf(self.cf, &self.key(name))?;
         Ok(())
     }
@@ -651,7 +651,7 @@ impl AccountMetadataManager {
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         account_id: Uuid,
         name: &str,
     ) -> Result<(), Error> {
@@ -693,7 +693,7 @@ impl VertexMetadataManager {
 
     pub fn set(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         vertex_id: Uuid,
         name: &str,
         value: &JsonValue,
@@ -706,7 +706,7 @@ impl VertexMetadataManager {
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         vertex_id: Uuid,
         name: &str,
     ) -> Result<(), Error> {
@@ -799,7 +799,7 @@ impl EdgeMetadataManager {
 
     pub fn set(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
@@ -814,7 +814,7 @@ impl EdgeMetadataManager {
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,

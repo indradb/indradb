@@ -142,8 +142,8 @@ fn run_script(
     let name: String = get_required_json_string_param(item, "name")?;
 
     match item.get("payload") {
-        Some(val) => execute_script(name, &val, trans, account_id),
-        None => execute_script(name, &JsonValue::Null, trans, account_id),
+        Some(val) => execute_script(name, val.clone(), trans, account_id),
+        None => execute_script(name, JsonValue::Null, trans, account_id),
     }
 }
 

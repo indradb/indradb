@@ -32,6 +32,7 @@ urlencoded = "0.5.0"
 clap = "^2.24.1"
 lazy_static = "~0.2.8"
 router = "~0.5.1"
+rlua = "0.9.1"
 
 [dev-dependencies]
 maplit = "0.1.4"
@@ -42,9 +43,6 @@ features = ["serde"]
 
 [dependencies.braid-lib]
 path = "../lib"
-
-[dependencies.lua]
-git = "https://github.com/kballard/rust-lua.git"
 
 [dependencies.uuid]
 version = "0.5.0"

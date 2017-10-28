@@ -41,7 +41,7 @@ impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
         let (account_id, secret) = create_account()?;
 
         ACCOUNT_IDS.with(|account_ids| {
-            let mut account_ids: &mut BTreeMap<Uuid, String> = &mut (*account_ids.borrow_mut());
+            let account_ids: &mut BTreeMap<Uuid, String> = &mut (*account_ids.borrow_mut());
             account_ids.insert(account_id, secret.clone());
         });
 

@@ -1,81 +1,96 @@
+local EdgeKey = {}
+EdgeKey.__index = EdgeKey
+
 local VertexQuery = {}
 VertexQuery.__index = VertexQuery
 
 local EdgeQuery = {}
 EdgeQuery.__index = EdgeQuery
 
-function all_vertices(start_id, limit)
-    local self = setmetatable({}, VertexQuery)
-    self.query = {type="all", start_id=start_id, limit=limit}
+function EdgeKey.new(outbound_id, type, inbound_id)
+    local self = setmetatable({}, EdgeKey)
+    self.outbound_id = outbound_id
+    self.type = type
+    self.inbound_id = inbound_id
     return self
 end
 
-function vertex(id)
+function VertexQuery.all(start_id, limit)
     local self = setmetatable({}, VertexQuery)
-    self.query = {type="vertex", id=id}
+    self.type = "all"
+    self.start_id = start_id
+    self.limit = limit
     return self
 end
 
-function vertices(ids)
+function VertexQuery.vertex(id)
     local self = setmetatable({}, VertexQuery)
-    self.query = {type="vertices", ids=ids}
+    self.type = "vertex"
+    self.id = id
     return self
 end
 
-function vertex_query_pipe(edge_query, converter, limit)
+function VertexQuery.vertices(ids)
     local self = setmetatable({}, VertexQuery)
-    self.query = {type="pipe", edge_query=edge_query, converter=converter, limit=limit}
+    self.type = "vertices"
+    self.ids = ids
     return self
 end
 
-function VertexQuery:outbound_edges(t, high, low, limit)
-    return edge_query_pipe(self.query, "outbound", t, high, low, limit)
+function VertexQuery.pipe(edge_query, converter, limit)
+    local self = setmetatable({}, VertexQuery)
+    self.type = "pipe"
+    self.edge_query = edge_query
+    self.converter = converter
+    self.limit = limit
+    return self
 end
 
-function VertexQuery:inbound_edges(t, high, low, limit)
-    return edge_query_pipe(self.query, "inbound", t, high, low, limit)
+function VertexQuery:outbound_edges(type, high, low, limit)
+    return EdgeQuery.pipe(self, "outbound", type, high, low, limit)
 end
 
-function edge(outbound_id, type, inbound_id)
+function VertexQuery:inbound_edges(type, high, low, limit)
+    return EdgeQuery.pipe(self, "inbound", type, high, low, limit)
+end
+
+function EdgeQuery.edge(outbound_id, type, inbound_id)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {type="edge", key={outbound_id=outbound_id, type=type, inbound_id=inbound_id}}
+    self.type = "edge"
+    self.key = EdgeKey.new(outbound_id, type, inbound_id)
     return self
 end
 
-function edges(keys)
+function EdgeQuery.edges(keys)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {keys=keys}
+    self.type = "edges"
+    self.keys = keys
     return self
 end
 
-function edge_query_pipe(vertex_query, converter, type_filter, high_filter, low_filter, limit)
+function EdgeQuery.pipe(vertex_query, converter, type_filter, high_filter, low_filter, limit)
     local self = setmetatable({}, EdgeQuery)
-    self.query = {
-        type="pipe",
-        vertex_query=vertex_query,
-        converter=converter,
-        type_filter=type_filter,
-        high_filter=high_filter,
-        low_filter=low_filter,
-        limit=limit
-    }
+    self.type = "pipe"
+    self.vertex_query = vertex_query
+    self.converter = converter
+    self.type_filter = type_filter
+    self.high_filter = high_filter
+    self.low_filter = low_filter
+    self.limit = limit
     return self
 end
 
 function EdgeQuery:outbound_vertices(limit)
-    return vertex_query_pipe(self.query, "outbound", limit)
+    return VertexQuery.pipe(self, "outbound", limit)
 end
 
 function EdgeQuery:inbound_vertices(limit)
-    return vertex_query_pipe(self.query, "inbound", limit)
+    return VertexQuery.pipe(self, "inbound", limit)
 end
 
 return {
-    all_vertices=all_vertices,
-    vertex=vertex,
-    vertices=vertices,
-    all_edges=all_edges,
-    edge=edge,
-    edges=edges,
+    EdgeKey=EdgeKey,
+    VertexQuery=VertexQuery,
+    EdgeQuery=EdgeQuery,
     json_null={"__braid_json_null"}
 }

@@ -9,7 +9,7 @@ extern crate libc;
 extern crate regex;
 extern crate uuid;
 extern crate braid;
-extern crate lua;
+extern crate rlua;
 extern crate hyper;
 extern crate common;
 #[macro_use]
