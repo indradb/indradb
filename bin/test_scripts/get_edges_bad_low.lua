@@ -1,7 +1,7 @@
 local queries = require("queries");
 
 local id = create_vertex(trans, "foo");
-local q = queries.VertexQuery.vertex(id):outbound_edges("purchased", 10, "bar", 10);
+local q = queries.VertexQuery.vertices({id}):outbound_edges("purchased", 10, "bar", 10);
 
 function test_get_edge_range_bad_high()
     get_edges(trans, q);

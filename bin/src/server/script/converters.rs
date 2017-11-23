@@ -348,9 +348,6 @@ impl<'lua> FromLua<'lua> for VertexQuery {
 
                 let limit = limit_from_table(&value, l)?;
                 Ok(VertexQuery::new(ExternalVertexQuery::All { start_id, limit }))
-            } else if t == "vertex" {
-                let id = uuid_from_value(get_table_value(&value, "id")?)?;
-                Ok(VertexQuery::new(ExternalVertexQuery::Vertex { id }))
             } else if t == "vertices" {
                 if let Value::Table(ids_values) = get_table_value(&value, "ids")? {
                     let mut ids = vec![];
@@ -392,11 +389,8 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
         if let Value::Table(value) = value {
             let t = string_from_value(get_table_value(&value, "type")?)?;
 
-            if t == "edge" {
-                let key = EdgeKey::from_lua(get_table_value(&value, "key")?, l)?.0;
-                Ok(EdgeQuery::new(ExternalEdgeQuery::Edge { key }))
-            } else if t == "edges" {
-                if let Value::Table(edges) = get_table_value(&value, "edges")? {
+            if t == "edges" {
+                if let Value::Table(edges) = get_table_value(&value, "keys")? {
                     let mut keys = vec![];
 
                     for pair in edges.pairs::<Value, Value>() {

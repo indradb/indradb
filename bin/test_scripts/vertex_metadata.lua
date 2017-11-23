@@ -1,7 +1,7 @@
 local queries = require("queries");
 
 local id = create_vertex(trans, "foo");
-local q = queries.VertexQuery.vertex(id);
+local q = queries.VertexQuery.vertices({id});
 
 set_vertex_metadata(trans, q, "script-test-vertex", {foo={true, false}});
 

@@ -34,7 +34,7 @@ local vertices = get_vertices(trans, queries.VertexQuery.all("00000000-0000-0000
 check_vertices(vertices, 5, {[id_1]=true, [id_2]=true, [id_3]=true, [id_4]=true, [id_5]=true});
 
 -- Ensure we can get a single vertex
-local vertices = get_vertices(trans, queries.VertexQuery.vertex(id_1));
+local vertices = get_vertices(trans, queries.VertexQuery.vertices({id_1}));
 check_vertices(vertices, 1, {[id_1]=true});
 
 -- Ensure we can get a specific set of vertices
@@ -42,7 +42,7 @@ local vertices = get_vertices(trans, queries.VertexQuery.vertices({id_1, id_2, i
 check_vertices(vertices, 3, {[id_1]=true, [id_2]=true, [id_3]=true});
 
 -- Ensure we can do a piped query
-local query = queries.VertexQuery.vertex(id_1)
+local query = queries.VertexQuery.vertices({id_1})
     :outbound_edges("bar", nil, nil, 1):inbound_vertices(1)
     :outbound_edges(nil, nil, nil, 1):inbound_vertices(1)
     :outbound_edges(nil, nil, nil, 1):inbound_vertices(1)

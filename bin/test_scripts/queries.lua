@@ -23,13 +23,6 @@ function VertexQuery.all(start_id, limit)
     return self
 end
 
-function VertexQuery.vertex(id)
-    local self = setmetatable({}, VertexQuery)
-    self.type = "vertex"
-    self.id = id
-    return self
-end
-
 function VertexQuery.vertices(ids)
     local self = setmetatable({}, VertexQuery)
     self.type = "vertices"
@@ -52,13 +45,6 @@ end
 
 function VertexQuery:inbound_edges(type, high, low, limit)
     return EdgeQuery.pipe(self, "inbound", type, high, low, limit)
-end
-
-function EdgeQuery.edge(outbound_id, type, inbound_id)
-    local self = setmetatable({}, EdgeQuery)
-    self.type = "edge"
-    self.key = EdgeKey.new(outbound_id, type, inbound_id)
-    return self
 end
 
 function EdgeQuery.edges(keys)

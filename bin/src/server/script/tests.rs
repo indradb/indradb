@@ -19,9 +19,9 @@ macro_rules! test_script {
 		fn $name() {
             let file_path_str = format!("test_scripts/{}.lua", stringify!($name));
             let file_path = Path::new(&file_path_str[..]);
-            let mut file = File::open(file_path).unwrap();
+            let mut file = File::open(file_path).expect("Could not open script file");
             let mut contents = String::new();
-            file.read_to_string(&mut contents).unwrap();
+            file.read_to_string(&mut contents).expect("Could not get script file contents");
 
             // NOTE: we construct a new datastore for each test, and tests are
             // run in parallel by default, but not all datastores support
@@ -30,19 +30,19 @@ macro_rules! test_script {
             // another datastore (i.e. by changing the `DATASTORE_URL` env
             // var), then you may need to disable parallel execution of tests.
             let datastore = datastore();
-            let trans = datastore.transaction(Uuid::default()).unwrap();
+            let trans = datastore.transaction(Uuid::default()).expect("Could not get a transaction");
             let result = run(&trans, Uuid::default(), &contents[..], file_path, JsonValue::Null);
 
             match result {
                 Ok(actual_result) => {
                     if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
                         let s = cap.get(1).unwrap().as_str();
-                        let expected_result: JsonValue = serde_json::from_str(s).unwrap();
+                        let expected_result: JsonValue = serde_json::from_str(s).expect("Could not parse expected JSON response");
                         assert_eq!(expected_result, actual_result);
                     }
                 },
                 Err(err) => {
-                    panic!(err);
+                    panic!(format!("Script failed to execute: {}", err));
                 }
             }
 		}

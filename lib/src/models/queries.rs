@@ -28,7 +28,6 @@ pub enum QueryTypeConverter {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VertexQuery {
     All { start_id: Option<Uuid>, limit: u32 },
-    Vertex { id: Uuid },
     Vertices { ids: Vec<Uuid> },
     Pipe {
         edge_query: Box<EdgeQuery>,
@@ -80,7 +79,6 @@ impl VertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EdgeQuery {
-    Edge { key: EdgeKey },
     Edges { keys: Vec<EdgeKey> },
     Pipe {
         vertex_query: Box<VertexQuery>,

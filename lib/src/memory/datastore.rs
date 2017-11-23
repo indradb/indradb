@@ -34,16 +34,6 @@ impl InternalMemoryDatastore {
                     Ok(self.vertices.iter().take(limit as usize).map(|(k, v)| (k.clone(), v.clone())).collect())
                 }
             },
-            VertexQuery::Vertex { id } => {
-                let mut results = Vec::new();
-                let value = self.vertices.get(&id);
-
-                if let Some(value) = value {
-                    results.push((id, value.clone()));
-                }
-
-                Ok(results)
-            },
             VertexQuery::Vertices { ids } => {
                 let mut results = Vec::new();
 
@@ -85,16 +75,6 @@ impl InternalMemoryDatastore {
 
     fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<Vec<(models::EdgeKey, models::Weight, DateTime<Utc>)>, Error> {
         match q {
-            EdgeQuery::Edge { key } => {
-                let mut results = Vec::new();
-                let value = self.edges.get(&key);
-
-                if let Some(&(ref weight, ref update_datetime)) = value {
-                    results.push((key, *weight, *update_datetime));
-                }
-
-                Ok(results)
-            },
             EdgeQuery::Edges { keys } => {
                 let mut results = Vec::new();
 
