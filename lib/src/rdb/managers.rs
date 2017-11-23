@@ -1,4 +1,3 @@
-use models;
 use uuid::Uuid;
 use errors::Error;
 use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
@@ -6,7 +5,7 @@ use serde_json::Value as JsonValue;
 use chrono::DateTime;
 use chrono::offset::Utc;
 use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, ColumnFamily};
-use super::models::{AccountValue, EdgeValue, VertexValue};
+use models;
 use std::sync::Arc;
 use std::u8;
 use serde_json;
@@ -17,7 +16,7 @@ use serde::Serialize;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
 pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
-pub type VertexItem = Result<(Uuid, VertexValue), Error>;
+pub type VertexItem = Result<(Uuid, models::VertexValue), Error>;
 pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<Utc>, Uuid), models::Weight), Error>;
 pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
@@ -122,7 +121,7 @@ impl AccountManager {
         exists(&self.db, self.cf, self.key(id))
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<AccountValue>, Error> {
+    pub fn get(&self, id: Uuid) -> Result<Option<models::AccountValue>, Error> {
         match self.db.get_cf(self.cf, &self.key(id))? {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
             None => Ok(None),
@@ -134,7 +133,7 @@ impl AccountManager {
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
-        let value = AccountValue::new(salt, hash);
+        let value = models::AccountValue::new(salt, hash);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok((id, secret))
     }
@@ -191,7 +190,7 @@ impl VertexManager {
         exists(&self.db, self.cf, self.key(id))
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<VertexValue>, Error> {
+    pub fn get(&self, id: Uuid) -> Result<Option<models::VertexValue>, Error> {
         match self.db.get_cf(self.cf, &self.key(id))? {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
             None => Ok(None),
@@ -205,7 +204,7 @@ impl VertexManager {
         let mapped = iterator.map(|item| -> VertexItem {
             let (k, v) = item;
             let id = parse_uuid_key(k);
-            let value: VertexValue = bincode::deserialize(&v.to_owned()[..])?;
+            let value: models::VertexValue = bincode::deserialize(&v.to_owned()[..])?;
             Ok((id, value))
         });
 
@@ -235,7 +234,7 @@ impl VertexManager {
             child_uuid(account_id)
         };
 
-        let value = VertexValue::new(account_id, t);
+        let value = models::VertexValue::new(account_id, t);
         set_bincode(&self.db, self.cf, self.key(id), &value)?;
         Ok(id)
     }
@@ -331,7 +330,7 @@ impl EdgeManager {
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
-    ) -> Result<Option<EdgeValue>, Error> {
+    ) -> Result<Option<models::EdgeValue>, Error> {
         match self.db
             .get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
@@ -368,7 +367,7 @@ impl EdgeManager {
             )?;
         }
 
-        let new_edge_value = EdgeValue::new(new_update_datetime, weight);
+        let new_edge_value = models::EdgeValue::new(new_update_datetime, weight);
         set_bincode(
             &self.db,
             self.cf,

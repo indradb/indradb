@@ -5,7 +5,8 @@
 
 use std::env;
 use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
-            PostgresTransaction, RocksdbTransaction, Type, VertexQuery, EdgeQuery, Weight, EdgeKey};
+            PostgresTransaction, RocksdbTransaction, Type, VertexQuery, EdgeQuery, Weight, EdgeKey,
+            MemoryDatastore, MemoryTransaction};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -16,7 +17,8 @@ macro_rules! proxy_datastore {
         {
             match *$this {
                 ProxyDatastore::Postgres(ref pg) => pg.$name($($arg)*),
-                ProxyDatastore::Rocksdb(ref r) => r.$name($($arg)*)
+                ProxyDatastore::Rocksdb(ref r) => r.$name($($arg)*),
+                ProxyDatastore::Memory(ref r) => r.$name($($arg)*)
             }
         }
     )
@@ -26,6 +28,7 @@ macro_rules! proxy_datastore {
 pub enum ProxyDatastore {
     Postgres(PostgresDatastore),
     Rocksdb(RocksdbDatastore),
+    Memory(MemoryDatastore)
 }
 
 impl Datastore<ProxyTransaction> for ProxyDatastore {
@@ -54,6 +57,10 @@ impl Datastore<ProxyTransaction> for ProxyDatastore {
             ProxyDatastore::Rocksdb(ref r) => {
                 let transaction = r.transaction(account_id)?;
                 Ok(ProxyTransaction::Rocksdb(transaction))
+            },
+            ProxyDatastore::Memory(ref mem) => {
+                let transaction = mem.transaction(account_id)?;
+                Ok(ProxyTransaction::Memory(transaction))
             }
         }
     }
@@ -64,7 +71,8 @@ macro_rules! proxy_transaction {
         {
             match *$this {
                 ProxyTransaction::Postgres(ref pg) => pg.$name($($arg)*),
-                ProxyTransaction::Rocksdb(ref r) => r.$name($($arg)*)
+                ProxyTransaction::Rocksdb(ref r) => r.$name($($arg)*),
+                ProxyTransaction::Memory(ref mem) => mem.$name($($arg)*)
             }
         }
     )
@@ -74,6 +82,7 @@ macro_rules! proxy_transaction {
 pub enum ProxyTransaction {
     Postgres(PostgresTransaction),
     Rocksdb(RocksdbTransaction),
+    Memory(MemoryTransaction)
 }
 
 impl Transaction for ProxyTransaction {
@@ -175,6 +184,7 @@ impl Transaction for ProxyTransaction {
         match self {
             ProxyTransaction::Postgres(pg) => pg.commit(),
             ProxyTransaction::Rocksdb(r) => r.commit(),
+            ProxyTransaction::Memory(mem) => mem.commit()
         }
     }
 
@@ -182,6 +192,7 @@ impl Transaction for ProxyTransaction {
         match self {
             ProxyTransaction::Postgres(pg) => pg.rollback(),
             ProxyTransaction::Rocksdb(r) => r.rollback(),
+            ProxyTransaction::Memory(mem) => mem.rollback()
         }
     }
 }
@@ -198,7 +209,7 @@ impl Transaction for ProxyTransaction {
 /// use.
 pub fn datastore() -> ProxyDatastore {
     let connection_string = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "rocksdb://.rdb".to_string());
+        .unwrap_or_else(|_| "memory://".to_string());
     let secure_uuids = env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) ==
         "true";
 
@@ -232,6 +243,9 @@ pub fn datastore() -> ProxyDatastore {
         let secret = env::var("SECRET").unwrap_or_else(|_| "".to_string());
         let datastore = PostgresDatastore::new(pool_size, connection_string, secret, secure_uuids);
         ProxyDatastore::Postgres(datastore)
+    } else if connection_string == "memory://" {
+        let datastore = MemoryDatastore::new(true);
+        ProxyDatastore::Memory(datastore)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     }

@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 
 pub fn request<'a>(
     client: &'a Client,
-    port: i32,
+    port: usize,
     account_id: Uuid,
     secret: String,
     method_str: &str,

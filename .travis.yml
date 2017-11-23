@@ -47,8 +47,7 @@ before_script:
   - ci/before_script.sh
 
 script:
-  - pushd lib && ./test.sh && popd
-  - pushd bin && ./test.sh && popd
+  - ./test.sh
 
 after_script: set +e
 

@@ -43,6 +43,7 @@ features = ["serde"]
 
 [dependencies.braid-lib]
 path = "../lib"
+features = ["postgres-datastore", "rocksdb-datastore"]
 
 [dependencies.uuid]
 version = "0.5.0"

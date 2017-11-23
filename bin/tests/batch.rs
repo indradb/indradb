@@ -34,13 +34,13 @@ lazy_static! {
 }
 
 pub struct BatchTransaction {
-    port: i32,
+    port: usize,
     account_id: Uuid,
     secret: String,
 }
 
 impl HttpTransaction for BatchTransaction {
-    fn new(port: i32, account_id: Uuid, secret: String) -> Self {
+    fn new(port: usize, account_id: Uuid, secret: String) -> Self {
         BatchTransaction {
             port: port,
             account_id: account_id,
@@ -81,9 +81,12 @@ impl BatchTransaction {
 
                 match o.get("error") {
                     Some(&JsonValue::String(ref error)) => {
-                        let cap = ITEM_ERROR_MESSAGE_PATTERN.captures(error).unwrap();
-                        let message = cap.get(1).unwrap().as_str();
-                        Err(Error::description_to_error(message))
+                        if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(error) {
+                            let message = cap.get(1).unwrap().as_str();
+                            Err(Error::description_to_error(message))
+                        } else {
+                            panic!(format!("Unexpected error received: {}", error))
+                        }
                     }
                     _ => panic!("Could not unpack error message"),
                 }
@@ -211,7 +214,37 @@ impl Transaction for BatchTransaction {
 }
 
 pub fn datastore() -> HttpDatastore<BatchTransaction> {
-    HttpDatastore::<BatchTransaction>::new(8000)
+    HttpDatastore::<BatchTransaction>::new()
 }
 
-test_transaction_impl!(datastore());
+// Vertex queries
+define_test!(should_get_all_vertices, datastore());
+define_test!(should_get_all_vertices_with_zero_limit, datastore());
+define_test!(should_get_all_vertices_out_of_range, datastore());
+define_test!(should_get_single_vertices, datastore());
+define_test!(should_get_single_vertices_nonexisting, datastore());
+define_test!(should_get_vertices, datastore());
+define_test!(should_get_vertices_piped, datastore());
+
+// Vertex updates
+define_test!(should_delete_a_valid_vertex, datastore());
+define_test!(should_not_delete_an_invalid_vertex, datastore());
+
+// Edges
+define_test!(should_get_a_valid_edge, datastore());
+define_test!(should_not_get_an_invalid_edge, datastore());
+define_test!(should_create_a_valid_edge, datastore());
+define_test!(should_not_create_an_invalid_edge, datastore());
+define_test!(should_delete_a_valid_edge, datastore());
+define_test!(should_not_delete_an_invalid_edge, datastore());
+define_test!(should_get_an_edge_count, datastore());
+define_test!(should_get_an_edge_count_with_no_type, datastore());
+define_test!(should_get_an_edge_count_for_an_invalid_edge, datastore());
+define_test!(should_get_an_edge_range, datastore());
+define_test!(should_get_edges_with_no_type, datastore());
+define_test!(should_get_no_edges_for_an_invalid_range, datastore());
+define_test!(should_get_edges_with_no_high, datastore());
+define_test!(should_get_edges_with_no_low, datastore());
+define_test!(should_get_edges_with_no_time, datastore());
+define_test!(should_get_no_edges_for_reversed_time, datastore());
+define_test!(should_get_edges, datastore());

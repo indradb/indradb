@@ -34,4 +34,4 @@ trap cleanup EXIT
 dropdb --if-exists braid_test
 createdb --owner=$PG_USER braid_test
 cargo update
-cargo $ACTION $TEST_NAME
+cargo $ACTION --all-features $TEST_NAME
