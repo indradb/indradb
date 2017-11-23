@@ -109,7 +109,7 @@ where
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans
-        .get_vertices(VertexQuery::Vertex { id: inserted_id })
+        .get_vertices(VertexQuery::Vertices { ids: vec![inserted_id] })
         .unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 1);
@@ -126,7 +126,7 @@ where
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans
-        .get_vertices(VertexQuery::Vertex { id: Uuid::default() })
+        .get_vertices(VertexQuery::Vertices { ids: vec![Uuid::default()] })
         .unwrap();
     trans.commit().unwrap();
     assert_eq!(range.len(), 0);
@@ -187,7 +187,7 @@ where
     let inserted_id_4 = create_edge_from::<D, T>(&trans, inserted_id_3);
     let inserted_id_5 = create_edge_from::<D, T>(&trans, inserted_id_4);
 
-    let query = VertexQuery::Vertex { id: inserted_id_1 }
+    let query = VertexQuery::Vertices { ids: vec![inserted_id_1] }
         .outbound_edges(
             Some(models::Type::new("test_edge_type".to_string()).unwrap()),
             None,
@@ -215,14 +215,14 @@ where
 {
     let (outbound_id, _) = create_edges(&mut sandbox);
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertex { id: outbound_id };
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] };
     trans.delete_vertices(q.clone()).unwrap();
     let v = trans.get_vertices(q.clone()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
     let count = trans
         .get_edge_count(
-            VertexQuery::Vertex { id: outbound_id }.outbound_edges(Some(t), None, None, 10),
+            VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), None, None, 10),
         )
         .unwrap();
     assert_eq!(count, 0);
@@ -235,7 +235,7 @@ where
 {
     let trans = sandbox.transaction();
     trans
-        .delete_vertices(VertexQuery::Vertex { id: Uuid::default() })
+        .delete_vertices(VertexQuery::Vertices { ids: vec![Uuid::default()] })
         .unwrap();
 }
 
@@ -251,7 +251,7 @@ where
 
     let (account_id, _) = sandbox.register_account();
     let trans = sandbox.datastore.transaction(account_id).unwrap();
-    let q = VertexQuery::Vertex { id: vertex_id };
+    let q = VertexQuery::Vertices { ids: vec![vertex_id] };
     trans.delete_vertices(q.clone()).unwrap();
     let result = trans.get_vertices(q).unwrap();
     assert_eq!(result.len(), 1);

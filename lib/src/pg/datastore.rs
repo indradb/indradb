@@ -249,12 +249,7 @@ impl PostgresTransaction {
                         sql_query_builder.push(query_template, "vertices", params);
                     }
                 }
-            }
-            VertexQuery::Vertex { id } => {
-                let query_template = "SELECT id, owner_id, type FROM %t WHERE id=%p LIMIT 1";
-                let params: Vec<Box<ToSql>> = vec![Box::new(id)];
-                sql_query_builder.push(query_template, "vertices", params);
-            }
+            },
             VertexQuery::Vertices { ids } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
@@ -269,7 +264,7 @@ impl PostgresTransaction {
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "vertices", params);
-            }
+            },
             VertexQuery::Pipe {
                 edge_query,
                 converter,
@@ -294,19 +289,6 @@ impl PostgresTransaction {
 
     fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::Edge { key } => {
-                let params: Vec<Box<ToSql>> = vec![
-                    Box::new(key.outbound_id),
-                    Box::new(key.t.0),
-                    Box::new(key.inbound_id),
-                ];
-
-                sql_query_builder.push(
-                    "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE outbound_id=%p AND type=%p AND inbound_id=%p",
-                    "edges",
-                    params
-                )
-            }
             EdgeQuery::Edges { keys } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
@@ -323,7 +305,7 @@ impl PostgresTransaction {
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "edges", params);
-            }
+            },
             EdgeQuery::Pipe {
                 vertex_query,
                 converter,
@@ -467,7 +449,7 @@ impl Transaction for PostgresTransaction {
             if let Some(state) = err.code() {
                 if state == &pg_error::NOT_NULL_VIOLATION {
                     // This should only happen when the inner select fails
-                    let v = self.get_vertices(VertexQuery::Vertex { id: key.outbound_id })?;
+                    let v = self.get_vertices(VertexQuery::Vertices { ids: vec![key.outbound_id] })?;
                     if v.is_empty() {
                         return Err(Error::VertexNotFound);
                     } else {

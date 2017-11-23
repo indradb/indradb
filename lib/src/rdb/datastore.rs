@@ -209,18 +209,12 @@ impl RocksdbTransaction {
 
                 let iterator = vertex_manager.iterate_for_range(next_uuid)?;
                 Ok(Box::new(iterator.take(limit as usize)))
-            }
-            VertexQuery::Vertex { id } => {
-                match vertex_manager.get(id)? {
-                    Some(value) => Ok(Box::new(vec![Ok((id, value))].into_iter())),
-                    None => Ok(Box::new(vec![].into_iter())),
-                }
-            }
+            },
             VertexQuery::Vertices { ids } => {
                 let iterator = Box::new(ids.into_iter().map(|item| Ok(item)));
 
                 Ok(self.handle_vertex_id_iterator(iterator))
-            }
+            },
             VertexQuery::Pipe {
                 edge_query,
                 converter,
@@ -250,25 +244,6 @@ impl RocksdbTransaction {
         q: EdgeQuery,
     ) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
         match q {
-            EdgeQuery::Edge { key } => {
-                let edge_manager = EdgeManager::new(self.db.clone());
-
-                match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                    Some(value) => {
-                        let item = Ok((
-                            (
-                                key.outbound_id,
-                                key.t,
-                                value.update_datetime,
-                                key.inbound_id,
-                            ),
-                            value.weight,
-                        ));
-                        Ok(Box::new(vec![item].into_iter()))
-                    }
-                    None => Ok(Box::new(vec![].into_iter())),
-                }
-            }
             EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
@@ -290,7 +265,7 @@ impl RocksdbTransaction {
                 });
 
                 Ok(self.remove_nones_from_iterator(Box::new(iterator)))
-            }
+            },
             EdgeQuery::Pipe {
                 vertex_query,
                 converter,

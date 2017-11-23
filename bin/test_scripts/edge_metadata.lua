@@ -2,9 +2,10 @@ local queries = require("queries");
 
 local outbound_id = create_vertex(trans, "foo");
 local inbound_id = create_vertex(trans, "bar");
-create_edge(trans, queries.EdgeKey.new(outbound_id, "baz", inbound_id), 0.5);
+local key = queries.EdgeKey.new(outbound_id, "baz", inbound_id);
+create_edge(trans, key, 0.5);
 
-local q = queries.EdgeQuery.edge(outbound_id, "baz", inbound_id);
+local q = queries.EdgeQuery.edges({key});
 set_edge_metadata(trans, q, "script-test-edge", {foo={true, false}});
 local val = get_edge_metadata(trans, q, "script-test-edge");
 local already_iterated = false;
