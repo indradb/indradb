@@ -14,8 +14,11 @@ extern crate serde_json;
 extern crate libc;
 extern crate rand;
 extern crate regex;
+extern crate byteorder;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
 
 #[cfg(feature = "postgres-datastore")]
 extern crate postgres;
@@ -26,27 +29,32 @@ extern crate r2d2_postgres;
 #[cfg(feature = "postgres-datastore")]
 extern crate num_cpus;
 #[cfg(feature = "rocksdb-datastore")]
-#[macro_use]
-extern crate lazy_static;
-#[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 #[cfg(feature = "rocksdb-datastore")]
-extern crate librocksdb_sys;
-#[cfg(feature = "rocksdb-datastore")]
 extern crate bincode;
-#[cfg(feature = "rocksdb-datastore")]
-extern crate byteorder;
 
 #[macro_use]
 pub mod tests;
 mod errors;
+mod memory;
 mod models;
 mod traits;
 pub mod util;
 
 pub use errors::*;
-pub use models::*;
 pub use traits::*;
+pub use models::{
+    EdgeKey,
+    Edge,
+    QueryTypeConverter,
+    VertexQuery,
+    EdgeQuery,
+    Type,
+    Vertex,
+    Weight
+};
+
+pub use memory::{MemoryDatastore, MemoryTransaction};
 
 #[cfg(feature = "postgres-datastore")]
 mod pg;

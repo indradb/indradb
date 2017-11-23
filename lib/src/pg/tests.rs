@@ -7,7 +7,7 @@ use std::sync::{Once, ONCE_INIT};
 
 static START: Once = ONCE_INIT;
 
-fn datastore() -> PostgresDatastore {
+full_test_impl!({
     let connection_string = env::var("TEST_POSTGRES_URL").expect("Expected a TEST_POSTGRES_URL");
 
     START.call_once(|| {
@@ -16,8 +16,4 @@ fn datastore() -> PostgresDatastore {
 
     let secret = "OME88YorohonzPNWEFsi0dIsouXWqeO$".to_string();
     PostgresDatastore::new(Some(1), connection_string, secret, false)
-}
-
-test_account_impl!(datastore());
-test_transaction_impl!(datastore());
-test_metadata_impl!(datastore());
+});

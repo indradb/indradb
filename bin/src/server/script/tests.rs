@@ -6,11 +6,11 @@ use braid::Datastore;
 use super::run;
 use serde_json;
 use std::path::Path;
-use common::{datastore, ProxyDatastore};
+use uuid::Uuid;
+use common::datastore;
 
 lazy_static! {
     static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: (.+)$").unwrap();
-    pub static ref DATASTORE: ProxyDatastore = datastore();
 }
 
 macro_rules! test_script {
@@ -23,9 +23,15 @@ macro_rules! test_script {
             let mut contents = String::new();
             file.read_to_string(&mut contents).unwrap();
 
-            let (owner_id, _) = DATASTORE.create_account().unwrap();
-            let trans = DATASTORE.transaction(owner_id).unwrap();
-            let result = run(&trans, owner_id, &contents[..], file_path, JsonValue::Null);
+            // NOTE: we construct a new datastore for each test, and tests are
+            // run in parallel by default, but not all datastores support
+            // multiple concurrent instances. This should use the in-memory
+            // datastore by default which works fine. If you swap that out for
+            // another datastore (i.e. by changing the `DATASTORE_URL` env
+            // var), then you may need to disable parallel execution of tests.
+            let datastore = datastore();
+            let trans = datastore.transaction(Uuid::default()).unwrap();
+            let result = run(&trans, Uuid::default(), &contents[..], file_path, JsonValue::Null);
 
             match result {
                 Ok(actual_result) => {

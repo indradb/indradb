@@ -13,23 +13,18 @@ macro_rules! define_test {
 	)
 }
 
-/// Use this macro to enable the standard test suite for accounts.
+/// Use this macro to enable the entire standard test suite.
 #[macro_export]
-macro_rules! test_account_impl {
+macro_rules! full_test_impl {
 	($code:expr) => (
+		// Accounts
 		define_test!(should_fail_auth_with_a_bad_username, $code);
 		define_test!(should_fail_auth_with_a_bad_password, $code);
 		define_test!(should_successfully_auth_with_good_credentials, $code);
 		define_test!(should_lookup_valid_accounts, $code);
 		define_test!(should_fail_to_lookup_invalid_accounts, $code);
 		define_test!(should_fail_when_attempting_to_delete_invalid_accounts, $code);
-	)
-}
 
-/// Use this macro to enable the standard test suite for transactions.
-#[macro_export]
-macro_rules! test_transaction_impl {
-	($code:expr) => (
 		// Vertex queries
 		define_test!(should_get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, $code);
@@ -64,13 +59,7 @@ macro_rules! test_transaction_impl {
 		define_test!(should_get_edges_with_no_time, $code);
 		define_test!(should_get_no_edges_for_reversed_time, $code);
 		define_test!(should_get_edges, $code);
-	)
-}
 
-/// Use this macro to enable the standard test suite for metadata.
-#[macro_export]
-macro_rules! test_metadata_impl {
-	($code:expr) => (
 		// Metadata
 		define_test!(should_handle_global_metadata, $code);
 		define_test!(should_handle_account_metadata, $code);

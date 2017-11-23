@@ -5,7 +5,6 @@ use rlua::{
     FromLua,
     ToLua,
     Error as LuaError,
-    LightUserData,
     Number,
     Table
 };
@@ -26,7 +25,6 @@ use braid::{
     QueryTypeConverter
 };
 use uuid::Uuid as ExternalUuid;
-use std::os::raw::c_void;
 use core::str::FromStr;
 use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};

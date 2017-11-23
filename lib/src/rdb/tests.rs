@@ -6,7 +6,7 @@ pub use super::super::util::generate_random_secret;
 pub use std::env;
 use std::path::Path;
 
-fn datastore() -> RocksdbDatastore {
+full_test_impl!({
     // RocksDB can only have one connection open to a database at a time.
     // Because Rust may run the tests in parallel, we need to add a random
     // secret to the test database directory to ensure we can have multiple
@@ -19,8 +19,4 @@ fn datastore() -> RocksdbDatastore {
     let max_open_files = max_open_files_str.parse::<i32>().unwrap();
 
     RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files), false).unwrap()
-}
-
-test_account_impl!(datastore());
-test_transaction_impl!(datastore());
-test_metadata_impl!(datastore());
+});

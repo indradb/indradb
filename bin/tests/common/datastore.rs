@@ -1,22 +1,24 @@
 use braid::*;
-use std::collections::BTreeMap;
 use std::marker::PhantomData;
-use std::cell::RefCell;
+use std::process::{Command, Child};
 use uuid::Uuid;
+use std::sync::Mutex;
+use super::http::request;
+use std::thread::sleep;
+use hyper::client::Client;
+use std::time::Duration;
+use hyper::status::StatusCode;
 
-use super::accounts::{create_account, delete_account};
+const START_PORT: usize = 1024;
 
-// We need to remember all of the secrets for the accounts that were created, to make
-// authenticated requests. This is stored in TLS to avoid storing it in the struct. We cannot
-// store this in the struct because it'd make `create_account` require a mutable self reference,
-// which the `Datastore` trait does not define.
-thread_local! {
-    static ACCOUNT_IDS: RefCell<BTreeMap<Uuid, String>> = RefCell::new(BTreeMap::new());
+lazy_static! {
+    static ref PORT: Mutex<usize> = Mutex::new(START_PORT);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HttpDatastore<H: HttpTransaction> {
-    port: i32,
+    port: usize,
+    server: Child,
     phantom_http_transaction: PhantomData<H>,
 }
 
@@ -24,48 +26,73 @@ impl<H: HttpTransaction> HttpDatastore<H> {
     // Ignore is here because otherwise we get noisy results - it's used in
     // macros which the compiler doesn't seem to pick up on
     #[allow(dead_code)]
-    pub fn new(port: i32) -> HttpDatastore<H> {
-        HttpDatastore {
-            port: port,
-            phantom_http_transaction: PhantomData,
+    pub fn new() -> HttpDatastore<H> {
+        let port = {
+            let mut port = PORT.lock().unwrap();
+            *port += 1;
+            (*port).clone()
+        };
+
+        let server = Command::new("../target/debug/braid-server")
+            .envs(hashmap!{"PORT" => port.to_string()})
+            .spawn()
+            .expect("Server failed to start");
+
+        let client = Client::new();
+
+        for _ in 0..5 {
+            let req = request(&client, port, Uuid::default(), "".to_string(), "GET", "/".to_string(), vec![]);
+            let res = req.send();
+
+            if let Ok(res) = res {
+                if res.status == StatusCode::NotFound {
+                    return  HttpDatastore {
+                        port: port,
+                        server: server,
+                        phantom_http_transaction: PhantomData,
+                    };
+                }
+            }
+
+            sleep(Duration::from_secs(1));
+        }
+
+        panic!("Server failed to initialize after a few seconds");
+    }
+}
+
+impl<H: HttpTransaction> Drop for HttpDatastore<H> {
+    fn drop(&mut self) {
+        if let Err(err) = self.server.kill() {
+            panic!(format!("Could not drop server instance: {}", err))
         }
     }
 }
 
 impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
-    fn has_account(&self, _: Uuid) -> Result<bool, Error> {
-        panic!("Unimplemented")
+    fn has_account(&self, id: Uuid) -> Result<bool, Error> {
+        return Ok(id == Uuid::default())
     }
 
     fn create_account(&self) -> Result<(Uuid, String), Error> {
-        let (account_id, secret) = create_account()?;
-
-        ACCOUNT_IDS.with(|account_ids| {
-            let account_ids: &mut BTreeMap<Uuid, String> = &mut (*account_ids.borrow_mut());
-            account_ids.insert(account_id, secret.clone());
-        });
-
-        Ok((account_id, secret))
+        Ok((Uuid::default(), "".to_string()))
     }
 
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        delete_account(account_id)
+    fn delete_account(&self, _: Uuid) -> Result<(), Error> {
+        // Don't actually do anything, because all data is process-local and
+        // will die with the process.
+        Ok(())
     }
 
-    fn auth(&self, _: Uuid, _: String) -> Result<bool, Error> {
-        panic!("Unimplemented")
+    fn auth(&self, id: Uuid, secret: String) -> Result<bool, Error> {
+        return Ok(id == Uuid::default() && &secret[..] == "")
     }
 
     fn transaction(&self, account_id: Uuid) -> Result<H, Error> {
-        let secret = ACCOUNT_IDS.with(|account_ids| {
-            let account_ids: &BTreeMap<Uuid, String> = &(*account_ids.borrow());
-            account_ids.get(&account_id).unwrap().clone()
-        });
-
-        Ok(H::new(self.port, account_id, secret))
+        Ok(H::new(self.port, account_id, "".to_string()))
     }
 }
 
 pub trait HttpTransaction: Transaction {
-    fn new(i32, Uuid, String) -> Self;
+    fn new(usize, Uuid, String) -> Self;
 }

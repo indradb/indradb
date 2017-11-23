@@ -47,8 +47,7 @@ before_script:
   - ci/before_script.sh
 
 script:
-  - pushd lib && ./test.sh && popd
-  - pushd bin && ./test.sh && popd
+  - ./test.sh
 
 after_script: set +e
 
@@ -66,7 +65,12 @@ deploy:
   provider: releases
   skip_cleanup: true
 
-cache: cargo
+cache:
+  directories:
+  - bin/target
+  - lib/target
+  - $HOME/.cargo
+  - $TRAVIS_BUILD_DIR/target
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
