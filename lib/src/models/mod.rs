@@ -5,9 +5,9 @@ mod types;
 mod vertices;
 mod weights;
 
-pub use self::edges::{EdgeKey, Edge};
-pub use self::internal::{AccountValue, VertexValue, EdgeValue};
-pub use self::queries::{QueryTypeConverter, VertexQuery, EdgeQuery};
+pub use self::edges::{Edge, EdgeKey};
+pub use self::internal::{AccountValue, EdgeValue, VertexValue};
+pub use self::queries::{EdgeQuery, QueryTypeConverter, VertexQuery};
 pub use self::types::Type;
 pub use self::vertices::Vertex;
 pub use self::weights::Weight;

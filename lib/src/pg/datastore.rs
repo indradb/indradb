@@ -1,10 +1,10 @@
-use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use r2d2::{Config, Pool, PooledConnection};
 use std::mem;
-use super::super::{Datastore, Transaction, VertexQuery, EdgeQuery, QueryTypeConverter};
+use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
+use util::{child_uuid, generate_random_secret, get_salted_hash, parent_uuid};
 use postgres;
 use postgres::rows::Rows;
 use chrono::DateTime;
@@ -81,14 +81,13 @@ impl PostgresDatastore {
     /// # Arguments
     /// * `connetion_string` - The postgres database connection string.
     pub fn create_schema(connection_string: String) -> Result<(), Error> {
-        let conn =
-            match postgres::Connection::connect(connection_string, postgres::TlsMode::None) {
-                Ok(conn) => conn,
-                Err(err) => {
-                    let message = format!("Could not connect to the postgres database: {}", err);
-                    return Err(Error::Unexpected(message));
-                }
-            };
+        let conn = match postgres::Connection::connect(connection_string, postgres::TlsMode::None) {
+            Ok(conn) => conn,
+            Err(err) => {
+                let message = format!("Could not connect to the postgres database: {}", err);
+                return Err(Error::Unexpected(message));
+            }
+        };
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;
@@ -221,9 +220,7 @@ impl PostgresTransaction {
 
     fn handle_set_metadata_error(&self, err: pg_error::Error, foreign_key_err: Error) -> Error {
         if let Some(state) = err.code() {
-            if state == &pg_error::FOREIGN_KEY_VIOLATION ||
-                state == &pg_error::NOT_NULL_VIOLATION
-            {
+            if state == &pg_error::FOREIGN_KEY_VIOLATION || state == &pg_error::NOT_NULL_VIOLATION {
                 // This should only happen when we couldn't get the
                 // "owning" resource for the metadata
                 return foreign_key_err;
@@ -235,19 +232,17 @@ impl PostgresTransaction {
 
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            VertexQuery::All { start_id, limit } => {
-                match start_id {
-                    Some(start_id) => {
-                        let query_template = "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
-                        let params: Vec<Box<ToSql>> =
-                            vec![Box::new(start_id), Box::new(limit as i64)];
-                        sql_query_builder.push(query_template, "vertices", params);
-                    }
-                    None => {
-                        let query_template = "SELECT id, owner_id, type FROM %t ORDER BY id LIMIT %p";
-                        let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
-                        sql_query_builder.push(query_template, "vertices", params);
-                    }
+            VertexQuery::All { start_id, limit } => match start_id {
+                Some(start_id) => {
+                    let query_template =
+                        "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                    let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
+                    sql_query_builder.push(query_template, "vertices", params);
+                }
+                None => {
+                    let query_template = "SELECT id, owner_id, type FROM %t ORDER BY id LIMIT %p";
+                    let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
+                    sql_query_builder.push(query_template, "vertices", params);
                 }
             },
             VertexQuery::Vertices { ids } => {
@@ -264,7 +259,7 @@ impl PostgresTransaction {
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "vertices", params);
-            },
+            }
             VertexQuery::Pipe {
                 edge_query,
                 converter,
@@ -305,7 +300,7 @@ impl PostgresTransaction {
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "edges", params);
-            },
+            }
             EdgeQuery::Pipe {
                 vertex_query,
                 converter,
@@ -386,8 +381,8 @@ impl Transaction for PostgresTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder
-            .into_query_payload("SELECT id, type FROM %t", vec![]);
+        let (query, params) =
+            sql_query_builder.into_query_payload("SELECT id, type FROM %t", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
         let results = self.trans.query(&query[..], &params_refs[..])?;
@@ -449,7 +444,9 @@ impl Transaction for PostgresTransaction {
             if let Some(state) = err.code() {
                 if state == &pg_error::NOT_NULL_VIOLATION {
                     // This should only happen when the inner select fails
-                    let v = self.get_vertices(VertexQuery::Vertices { ids: vec![key.outbound_id] })?;
+                    let v = self.get_vertices(VertexQuery::Vertices {
+                        ids: vec![key.outbound_id],
+                    })?;
                     if v.is_empty() {
                         return Err(Error::VertexNotFound);
                     } else {
@@ -507,8 +504,8 @@ impl Transaction for PostgresTransaction {
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder
-            .into_query_payload("SELECT COUNT(id) FROM %t", vec![]);
+        let (query, params) =
+            sql_query_builder.into_query_payload("SELECT COUNT(id) FROM %t", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
 

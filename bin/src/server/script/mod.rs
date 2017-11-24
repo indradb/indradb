@@ -4,7 +4,7 @@ mod converters;
 #[cfg(test)]
 mod tests;
 
-use rlua::{Table, LightUserData, Error, Value};
+use rlua::{Error, LightUserData, Table, Value};
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 use std::path::Path;
@@ -55,16 +55,46 @@ pub fn run(
 
     proxy_fn!(globals, "get_global_metadata", &l, api::get_global_metadata);
     proxy_fn!(globals, "set_global_metadata", &l, api::set_global_metadata);
-    proxy_fn!(globals, "delete_global_metadata", &l, api::delete_global_metadata);
-    proxy_fn!(globals, "get_account_metadata", &l, api::get_account_metadata);
-    proxy_fn!(globals, "set_account_metadata", &l, api::set_account_metadata);
-    proxy_fn!(globals, "delete_account_metadata", &l, api::delete_account_metadata);
+    proxy_fn!(
+        globals,
+        "delete_global_metadata",
+        &l,
+        api::delete_global_metadata
+    );
+    proxy_fn!(
+        globals,
+        "get_account_metadata",
+        &l,
+        api::get_account_metadata
+    );
+    proxy_fn!(
+        globals,
+        "set_account_metadata",
+        &l,
+        api::set_account_metadata
+    );
+    proxy_fn!(
+        globals,
+        "delete_account_metadata",
+        &l,
+        api::delete_account_metadata
+    );
     proxy_fn!(globals, "get_vertex_metadata", &l, api::get_vertex_metadata);
     proxy_fn!(globals, "set_vertex_metadata", &l, api::set_vertex_metadata);
-    proxy_fn!(globals, "delete_vertex_metadata", &l, api::delete_vertex_metadata);
+    proxy_fn!(
+        globals,
+        "delete_vertex_metadata",
+        &l,
+        api::delete_vertex_metadata
+    );
     proxy_fn!(globals, "get_edge_metadata", &l, api::get_edge_metadata);
     proxy_fn!(globals, "set_edge_metadata", &l, api::set_edge_metadata);
-    proxy_fn!(globals, "delete_edge_metadata", &l, api::delete_edge_metadata);
+    proxy_fn!(
+        globals,
+        "delete_edge_metadata",
+        &l,
+        api::delete_edge_metadata
+    );
 
     let fun = l.load(contents, path.to_str())?;
 
@@ -74,13 +104,13 @@ pub fn run(
         let package: Table = globals.get("package")?;
         let old_path: String = package.get("path")?;
         let script_path = Path::new(&statics::SCRIPT_ROOT[..])
-                .join("?.lua")
-                .to_str()
-                .unwrap()
-                .to_string();
+            .join("?.lua")
+            .to_str()
+            .unwrap()
+            .to_string();
         package.set("path", format!("{};{}", old_path, script_path))?;
     }
-    
+
     // Add the transaction as a global variable.
     let trans_ptr: *mut c_void = &mut trans as *mut _ as *mut c_void;
     globals.set("trans", Value::LightUserData(LightUserData(trans_ptr)))?;

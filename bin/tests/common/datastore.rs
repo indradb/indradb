@@ -1,6 +1,6 @@
 use braid::*;
 use std::marker::PhantomData;
-use std::process::{Command, Child};
+use std::process::{Child, Command};
 use uuid::Uuid;
 use std::sync::Mutex;
 use super::http::request;
@@ -30,7 +30,7 @@ impl<H: HttpTransaction> HttpDatastore<H> {
         let port = {
             let mut port = PORT.lock().unwrap();
             *port += 1;
-            (*port).clone()
+            *port
         };
 
         let server = Command::new("../target/debug/braid-server")
@@ -41,12 +41,20 @@ impl<H: HttpTransaction> HttpDatastore<H> {
         let client = Client::new();
 
         for _ in 0..5 {
-            let req = request(&client, port, Uuid::default(), "".to_string(), "GET", "/".to_string(), vec![]);
+            let req = request(
+                &client,
+                port,
+                Uuid::default(),
+                "".to_string(),
+                "GET",
+                "/",
+                vec![],
+            );
             let res = req.send();
 
             if let Ok(res) = res {
                 if res.status == StatusCode::NotFound {
-                    return  HttpDatastore {
+                    return HttpDatastore {
                         port: port,
                         server: server,
                         phantom_http_transaction: PhantomData,
@@ -71,7 +79,7 @@ impl<H: HttpTransaction> Drop for HttpDatastore<H> {
 
 impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
     fn has_account(&self, id: Uuid) -> Result<bool, Error> {
-        return Ok(id == Uuid::default())
+        Ok(id == Uuid::default())
     }
 
     fn create_account(&self) -> Result<(Uuid, String), Error> {
@@ -85,7 +93,7 @@ impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
     }
 
     fn auth(&self, id: Uuid, secret: String) -> Result<bool, Error> {
-        return Ok(id == Uuid::default() && &secret[..] == "")
+        Ok(id == Uuid::default() && &secret[..] == "")
     }
 
     fn transaction(&self, account_id: Uuid) -> Result<H, Error> {

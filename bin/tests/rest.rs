@@ -1,15 +1,15 @@
 #[macro_use]
-extern crate maplit;
-#[macro_use]
 extern crate braid;
+extern crate chrono;
+extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde;
-extern crate serde_json;
-extern crate chrono;
+#[macro_use]
+extern crate maplit;
 extern crate rand;
 extern crate regex;
-extern crate hyper;
+extern crate serde;
+extern crate serde_json;
 extern crate uuid;
 
 #[macro_use]
@@ -39,7 +39,7 @@ impl RestTransaction {
         &self,
         client: &'a Client,
         method_str: &str,
-        path: String,
+        path: &str,
         query_pairs: Vec<(&str, String)>,
     ) -> RequestBuilder<'a> {
         request(
@@ -67,7 +67,7 @@ impl HttpTransaction for RestTransaction {
 impl Transaction for RestTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
         let client = Client::new();
-        let req = self.request(&client, "POST", "/vertex".to_string(), vec![("type", t.0)]);
+        let req = self.request(&client, "POST", "/vertex", vec![("type", t.0)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -75,7 +75,7 @@ impl Transaction for RestTransaction {
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "GET", "/vertex".to_string(), vec![("q", q_json)]);
+        let req = self.request(&client, "GET", "/vertex", vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -83,12 +83,7 @@ impl Transaction for RestTransaction {
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(
-            &client,
-            "DELETE",
-            "/vertex".to_string(),
-            vec![("q", q_json)],
-        );
+        let req = self.request(&client, "DELETE", "/vertex", vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -96,7 +91,12 @@ impl Transaction for RestTransaction {
     fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
         let client = Client::new();
         let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
-        let req = self.request(&client, "PUT", path, vec![("weight", weight.0.to_string())]);
+        let req = self.request(
+            &client,
+            "PUT",
+            &path[..],
+            vec![("weight", weight.0.to_string())],
+        );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -104,7 +104,7 @@ impl Transaction for RestTransaction {
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "GET", "/edge".to_string(), vec![("q", q_json)]);
+        let req = self.request(&client, "GET", "/edge", vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -112,7 +112,7 @@ impl Transaction for RestTransaction {
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         let client = Client::new();
-        let req = self.request(&client, "DELETE", "/edge".to_string(), vec![("q", q_json)]);
+        let req = self.request(&client, "DELETE", "/edge", vec![("q", q_json)]);
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)
     }
@@ -123,7 +123,7 @@ impl Transaction for RestTransaction {
         let req = self.request(
             &client,
             "GET",
-            "/edge".to_string(),
+            "/edge",
             vec![("action", "count".to_string()), ("q", q_json)],
         );
         let mut res = req.send().unwrap();

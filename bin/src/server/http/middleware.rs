@@ -4,7 +4,7 @@ use braid::Datastore;
 use std::collections::BTreeMap;
 use statics;
 use uuid::Uuid;
-use iron::middleware::{BeforeMiddleware, AfterMiddleware};
+use iron::middleware::{AfterMiddleware, BeforeMiddleware};
 use serde_json;
 use iron::status;
 use router::NoRoute;
@@ -46,13 +46,14 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         let account_id = self.get_account_id(auth);
         let secret = self.get_secret(auth);
 
-        if account_id.is_some() && secret.is_some() &&
-            statics::DATASTORE
+        if account_id.is_some() && secret.is_some()
+            && statics::DATASTORE
                 .auth(account_id.unwrap(), secret.unwrap())
                 .unwrap_or(false)
         {
-            req.extensions
-                .insert::<AccountKey>(AccountKey { account_id: account_id.unwrap() });
+            req.extensions.insert::<AccountKey>(AccountKey {
+                account_id: account_id.unwrap(),
+            });
 
             return Ok(());
         }
@@ -74,7 +75,7 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         response.headers.set(ContentType(get_json_mime()));
         response.headers.set_raw(
             "WWW-Authenticate",
-            vec!["Basic realm=\"main\"".as_bytes().to_vec()],
+            vec![b"Basic realm=\"main\"".to_vec()],
         );
         response.body = Some(Box::new(body));
 

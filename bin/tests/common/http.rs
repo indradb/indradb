@@ -19,7 +19,7 @@ pub fn request<'a>(
     account_id: Uuid,
     secret: String,
     method_str: &str,
-    path: String,
+    path: &str,
     query_params: Vec<(&str, String)>,
 ) -> RequestBuilder<'a> {
     let method = Method::from_str(method_str).unwrap();

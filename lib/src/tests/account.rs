@@ -25,8 +25,9 @@ where
     assert!(!auth.unwrap());
 }
 
-pub fn should_successfully_auth_with_good_credentials<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-where
+pub fn should_successfully_auth_with_good_credentials<D, T>(
+    sandbox: &mut DatastoreTestSandbox<D, T>,
+) where
     D: Datastore<T>,
     T: Transaction,
 {
@@ -54,7 +55,9 @@ where
     assert!(!results.unwrap());
 }
 
-pub fn should_fail_when_attempting_to_delete_invalid_accounts<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>) where
+pub fn should_fail_when_attempting_to_delete_invalid_accounts<D, T>(
+    sandbox: &mut DatastoreTestSandbox<D, T>,
+) where
     D: Datastore<T>,
     T: Transaction,
 {

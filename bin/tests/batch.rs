@@ -1,15 +1,15 @@
 #[macro_use]
-extern crate maplit;
-#[macro_use]
 extern crate braid;
+extern crate chrono;
+extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde;
-extern crate serde_json;
-extern crate chrono;
+#[macro_use]
+extern crate maplit;
 extern crate rand;
 extern crate regex;
-extern crate hyper;
+extern crate serde;
+extern crate serde_json;
 extern crate uuid;
 
 #[macro_use]
@@ -62,7 +62,7 @@ impl BatchTransaction {
             self.account_id,
             self.secret.clone(),
             "POST",
-            "/transaction".to_string(),
+            "/transaction",
             vec![],
         ).body(&body[..]);
         let mut res = req.send().unwrap();
@@ -121,7 +121,7 @@ impl Transaction for BatchTransaction {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("create_edge".to_string()),
             "key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
-            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(weight.0 as f64).unwrap())
+            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(f64::from(weight.0)).unwrap())
         })
     }
 

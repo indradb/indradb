@@ -1,10 +1,10 @@
 use uuid::Uuid;
 use errors::Error;
-use util::{generate_random_secret, get_salted_hash, parent_uuid, child_uuid};
+use util::{child_uuid, generate_random_secret, get_salted_hash, parent_uuid};
 use serde_json::Value as JsonValue;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use rocksdb::{DB, IteratorMode, Direction, WriteBatch, DBIterator, ColumnFamily};
+use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use models;
 use std::sync::Arc;
 use std::u8;
@@ -332,7 +332,8 @@ impl EdgeManager {
         inbound_id: Uuid,
     ) -> Result<Option<models::EdgeValue>, Error> {
         match self.db
-            .get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
+            .get_cf(self.cf, &self.key(outbound_id, t, inbound_id))?
+        {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
             None => Ok(None),
         }
@@ -401,21 +402,22 @@ impl EdgeManager {
         inbound_id: Uuid,
         update_datetime: DateTime<Utc>,
     ) -> Result<(), Error> {
-        batch
-            .delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
+        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        edge_range_manager
-            .delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
+        edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        reversed_edge_range_manager
-            .delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
+        reversed_edge_range_manager.delete(
+            &mut batch,
+            inbound_id,
+            t,
+            update_datetime,
+            outbound_id,
+        )?;
 
         let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
-        for item in edge_metadata_manager
-            .iterate_for_owner(outbound_id, t, inbound_id)?
-        {
+        for item in edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
             let (
                 (
                     edge_metadata_outbound_id,
@@ -572,8 +574,7 @@ impl EdgeRangeManager {
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<(), Error> {
-        batch
-            .delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
+        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
         Ok(())
     }
 }
@@ -703,12 +704,7 @@ impl VertexMetadataManager {
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        batch: &mut WriteBatch,
-        vertex_id: Uuid,
-        name: &str,
-    ) -> Result<(), Error> {
+    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<(), Error> {
         batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
         Ok(())
     }
@@ -819,8 +815,7 @@ impl EdgeMetadataManager {
         inbound_id: Uuid,
         name: &str,
     ) -> Result<(), Error> {
-        batch
-            .delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))?;
+        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))?;
         Ok(())
     }
 }
