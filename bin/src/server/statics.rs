@@ -1,4 +1,4 @@
-use common::{ProxyDatastore, datastore};
+use common::{datastore, ProxyDatastore};
 use std::env;
 use std::path::Path;
 

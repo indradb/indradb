@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Transaction, Error, EdgeKey, VertexQuery, EdgeQuery};
+use braid::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -40,12 +40,10 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                         run_script(&trans, &obj, account_id)
                     }
 
-                    _ => {
-                        Err(create_iron_error(
-                            status::BadRequest,
-                            "Unknown action".to_string(),
-                        ))
-                    }
+                    _ => Err(create_iron_error(
+                        status::BadRequest,
+                        "Unknown action".to_string(),
+                    )),
                 };
 
                 match result {

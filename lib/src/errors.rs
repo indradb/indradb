@@ -23,13 +23,11 @@ impl Error {
             "Edge does not exist" => Error::EdgeNotFound,
             "Metadata does not exist" => Error::MetadataNotFound,
             "Unauthorized" => Error::Unauthorized,
-            _ => {
-                if message.starts_with("Value out of range: ") {
-                    Error::OutOfRange(message[20..message.len()].to_string())
-                } else {
-                    Error::Unexpected(message.to_string())
-                }
-            }
+            _ => if message.starts_with("Value out of range: ") {
+                Error::OutOfRange(message[20..message.len()].to_string())
+            } else {
+                Error::Unexpected(message.to_string())
+            },
         }
     }
 }
@@ -56,7 +54,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Unexpected(ref msg) => write!(f, "{}", msg),
-            Error::OutOfRange(ref name) => write!(f, "Value out of range: {}", name), 
+            Error::OutOfRange(ref name) => write!(f, "Value out of range: {}", name),
             _ => write!(f, "{}", self.description()),
         }
     }
@@ -76,7 +74,9 @@ impl ValidationError {
     /// # Arguments
     /// * `description` - A description of the error.
     pub fn new(description: String) -> ValidationError {
-        ValidationError { description: description }
+        ValidationError {
+            description: description,
+        }
     }
 }
 

@@ -4,9 +4,9 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use braid::{Datastore, Transaction, RocksdbDatastore, PostgresDatastore, Error, Vertex, Edge,
-            PostgresTransaction, RocksdbTransaction, Type, VertexQuery, EdgeQuery, Weight, EdgeKey,
-            MemoryDatastore, MemoryTransaction};
+use braid::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
+            PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
+            Transaction, Type, Vertex, VertexQuery, Weight};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ macro_rules! proxy_datastore {
 pub enum ProxyDatastore {
     Postgres(PostgresDatastore),
     Rocksdb(RocksdbDatastore),
-    Memory(MemoryDatastore)
+    Memory(MemoryDatastore),
 }
 
 impl Datastore<ProxyTransaction> for ProxyDatastore {
@@ -57,7 +57,7 @@ impl Datastore<ProxyTransaction> for ProxyDatastore {
             ProxyDatastore::Rocksdb(ref r) => {
                 let transaction = r.transaction(account_id)?;
                 Ok(ProxyTransaction::Rocksdb(transaction))
-            },
+            }
             ProxyDatastore::Memory(ref mem) => {
                 let transaction = mem.transaction(account_id)?;
                 Ok(ProxyTransaction::Memory(transaction))
@@ -82,7 +82,7 @@ macro_rules! proxy_transaction {
 pub enum ProxyTransaction {
     Postgres(PostgresTransaction),
     Rocksdb(RocksdbTransaction),
-    Memory(MemoryTransaction)
+    Memory(MemoryTransaction),
 }
 
 impl Transaction for ProxyTransaction {
@@ -184,7 +184,7 @@ impl Transaction for ProxyTransaction {
         match self {
             ProxyTransaction::Postgres(pg) => pg.commit(),
             ProxyTransaction::Rocksdb(r) => r.commit(),
-            ProxyTransaction::Memory(mem) => mem.commit()
+            ProxyTransaction::Memory(mem) => mem.commit(),
         }
     }
 
@@ -192,7 +192,7 @@ impl Transaction for ProxyTransaction {
         match self {
             ProxyTransaction::Postgres(pg) => pg.rollback(),
             ProxyTransaction::Rocksdb(r) => r.rollback(),
-            ProxyTransaction::Memory(mem) => mem.rollback()
+            ProxyTransaction::Memory(mem) => mem.rollback(),
         }
     }
 }
@@ -208,16 +208,15 @@ impl Transaction for ProxyTransaction {
 /// Returns an error if we are unable to figure out what kind of datastore to
 /// use.
 pub fn datastore() -> ProxyDatastore {
-    let connection_string = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "memory://".to_string());
-    let secure_uuids = env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) ==
-        "true";
+    let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
+    let secure_uuids =
+        env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
-        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES")
-            .unwrap_or_else(|_| "512".to_string());
+        let max_open_files_str =
+            env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
         let max_open_files = max_open_files_str.parse::<i32>().expect(
             "Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
              i32",
@@ -231,12 +230,10 @@ pub fn datastore() -> ProxyDatastore {
         ProxyDatastore::Rocksdb(datastore)
     } else if connection_string.starts_with("postgres://") {
         let pool_size = match env::var("DATABASE_POOL_SIZE") {
-            Ok(str_val) => {
-                Some(str_val.parse().expect(
-                    "Could not parse environment variable `DATABASE_POOL_SIZE`: must be \
-                     a u32",
-                ))
-            }
+            Ok(str_val) => Some(str_val.parse().expect(
+                "Could not parse environment variable `DATABASE_POOL_SIZE`: must be \
+                 a u32",
+            )),
             Err(_) => None,
         };
 

@@ -1,6 +1,6 @@
 //! Utility functions.
 
-use rand::{Rng, OsRng};
+use rand::{OsRng, Rng};
 use crypto::sha2::Sha256;
 use crypto::digest::Digest;
 use errors::ValidationError;
@@ -79,9 +79,9 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
 /// # Arguments
 /// * `datetime` - The datetime to convert.
 pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
-    let timestamp: u64 = datetime.timestamp() as u64;
-    let nanoseconds: u64 = datetime.timestamp_subsec_nanos() as u64;
-    timestamp * 1000000000 + nanoseconds
+    let timestamp = datetime.timestamp() as u64;
+    let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());
+    timestamp * 1_000_000_000 + nanoseconds
 }
 
 /// Returns a new UUID.
@@ -103,17 +103,17 @@ pub fn parent_uuid() -> Uuid {
 pub fn child_uuid(parent: Uuid) -> Uuid {
     let mut buf = [0u8; 16];
     let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
-    cursor.write(&parent.as_bytes()[0..8]).unwrap();
+    cursor.write_all(&parent.as_bytes()[0..8]).unwrap();
     cursor
         .write_u64::<BigEndian>(nanos_since_epoch(&Utc::now()))
         .unwrap();
-    Uuid::from_bytes(&cursor.into_inner()).unwrap()
+    Uuid::from_bytes(cursor.into_inner()).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, get_salted_hash, next_uuid, nanos_since_epoch,
-                parent_uuid, child_uuid};
+    use super::{child_uuid, generate_random_secret, get_salted_hash, nanos_since_epoch, next_uuid,
+                parent_uuid};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
@@ -145,9 +145,7 @@ mod tests {
 
     #[test]
     fn should_generate_next_uuid() {
-        let result = next_uuid(
-            Uuid::from_str("16151dea-a538-4bf1-9559-851e256cf139").unwrap(),
-        );
+        let result = next_uuid(Uuid::from_str("16151dea-a538-4bf1-9559-851e256cf139").unwrap());
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),

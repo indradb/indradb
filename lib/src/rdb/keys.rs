@@ -7,11 +7,11 @@ use std::u8;
 use std::io::Read;
 use std::io::{Cursor, Error as IoError};
 use models;
-use chrono::{NaiveDateTime, DateTime};
+use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use util::nanos_since_epoch;
-use chrono::{Timelike, Duration};
+use chrono::{Duration, Timelike};
 
 lazy_static! {
     pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();
@@ -29,7 +29,7 @@ impl<'a> KeyComponent<'a> {
         match *self {
             KeyComponent::Uuid(_) => 16,
             KeyComponent::UnsizedString(s) => s.len(),
-            KeyComponent::Type(t) => t.0.len() + 1, 
+            KeyComponent::Type(t) => t.0.len() + 1,
             KeyComponent::DateTime(_) => 8,
         }
     }
@@ -103,7 +103,6 @@ pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
     let mut buf = String::new();
     cursor.read_to_string(&mut buf).unwrap();
     buf
-
 }
 
 pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<Utc> {

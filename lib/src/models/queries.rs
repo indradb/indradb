@@ -14,10 +14,8 @@ use super::edges::EdgeKey;
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum QueryTypeConverter {
-    #[serde(rename = "outbound")]
-    Outbound,
-    #[serde(rename = "inbound")]
-    Inbound,
+    #[serde(rename = "outbound")] Outbound,
+    #[serde(rename = "inbound")] Inbound,
 }
 
 /// A query for vertices.
@@ -27,8 +25,13 @@ pub enum QueryTypeConverter {
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VertexQuery {
-    All { start_id: Option<Uuid>, limit: u32 },
-    Vertices { ids: Vec<Uuid> },
+    All {
+        start_id: Option<Uuid>,
+        limit: u32,
+    },
+    Vertices {
+        ids: Vec<Uuid>,
+    },
     Pipe {
         edge_query: Box<EdgeQuery>,
         converter: QueryTypeConverter,
@@ -79,7 +82,9 @@ impl VertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EdgeQuery {
-    Edges { keys: Vec<EdgeKey> },
+    Edges {
+        keys: Vec<EdgeKey>,
+    },
     Pipe {
         vertex_query: Box<VertexQuery>,
         converter: QueryTypeConverter,

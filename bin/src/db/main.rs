@@ -1,11 +1,11 @@
-extern crate clap;
 extern crate braid;
-#[macro_use]
+extern crate clap;
 extern crate common;
 
 use clap::{App, SubCommand};
 use braid::PostgresDatastore;
 use std::env;
+use std::process::exit;
 
 /// App for managing databases
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
         .subcommand(SubCommand::with_name("init"))
         .get_matches();
 
-    if let Some(_) = matches.subcommand_matches("init") {
+    if matches.subcommand_matches("init").is_some() {
         let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "".to_string());
 
         if !connection_string.starts_with("postgres://") {
@@ -23,9 +23,11 @@ fn main() {
         }
 
         if let Err(err) = PostgresDatastore::create_schema(connection_string) {
-            exit_with_err!("Could not create the database schema: {:?}", err);
+            eprintln!("Could not create the database schema: {:?}", err);
+            exit(1);
         }
     } else {
-        exit_with_err!("No action specified");
+        eprintln!("No action specified");
+        exit(1);
     }
 }

@@ -5,9 +5,18 @@ use std::error::Error;
 pub fn pg_error_to_description(err: pg_error::Error) -> String {
     if let Some(err) = err.as_db() {
         if let Some(ref detail) = err.detail {
-            format!("Internal database error: [{}] {}: {}", err.code.code(), err.message, detail)
+            format!(
+                "Internal database error: [{}] {}: {}",
+                err.code.code(),
+                err.message,
+                detail
+            )
         } else {
-            format!("Internal database error: [{}] {}", err.code.code(), err.message)
+            format!(
+                "Internal database error: [{}] {}",
+                err.code.code(),
+                err.message
+            )
         }
     } else if let Some(err) = err.as_io() {
         format!("Database I/O error: {}", err.description())

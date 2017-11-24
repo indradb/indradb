@@ -3,6 +3,4 @@
 pub use super::datastore::MemoryDatastore;
 pub use super::super::tests;
 
-full_test_impl!({
-    MemoryDatastore::new(false)
-});
+full_test_impl!({ MemoryDatastore::new(false) });

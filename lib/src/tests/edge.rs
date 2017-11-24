@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction, EdgeQuery, VertexQuery, EdgeKey};
+use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, VertexQuery};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use models;
@@ -87,7 +87,9 @@ where
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     trans.create_edge(key.clone(), weight).unwrap();
     let e = trans
-        .get_edges(EdgeQuery::Edges { keys: vec![key.clone()] })
+        .get_edges(EdgeQuery::Edges {
+            keys: vec![key.clone()],
+        })
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
@@ -100,7 +102,9 @@ where
 
     // First check that getting a single edge will still...get a single edge
     let e = trans
-        .get_edges(EdgeQuery::Edges { keys: vec![key.clone()] })
+        .get_edges(EdgeQuery::Edges {
+            keys: vec![key.clone()],
+        })
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
@@ -110,7 +114,9 @@ where
     // single edge
     let e = trans
         .get_edges(
-            VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(None, None, None, 10),
+            VertexQuery::Vertices {
+                ids: vec![outbound_id],
+            }.outbound_edges(None, None, None, 10),
         )
         .unwrap();
     assert_eq!(e.len(), 1);
@@ -133,8 +139,9 @@ where
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
-pub fn should_not_create_an_edge_with_bad_permissions<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-where
+pub fn should_not_create_an_edge_with_bad_permissions<D, T>(
+    sandbox: &mut DatastoreTestSandbox<D, T>,
+) where
     D: Datastore<T>,
     T: Transaction,
 {
@@ -168,9 +175,13 @@ where
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     trans.create_edge(key.clone(), weight).unwrap();
     trans
-        .delete_edges(EdgeQuery::Edges { keys: vec![key.clone()] })
+        .delete_edges(EdgeQuery::Edges {
+            keys: vec![key.clone()],
+        })
         .unwrap();
-    let e = trans.get_edges(EdgeQuery::Edges { keys: vec![key] }).unwrap();
+    let e = trans
+        .get_edges(EdgeQuery::Edges { keys: vec![key] })
+        .unwrap();
     assert_eq!(e.len(), 0);
 }
 
@@ -190,8 +201,9 @@ where
         .unwrap();
 }
 
-pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-where
+pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(
+    sandbox: &mut DatastoreTestSandbox<D, T>,
+) where
     D: Datastore<T>,
     T: Transaction,
 {
@@ -229,7 +241,9 @@ where
     let (outbound_id, _) = create_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), None, None, u32::MAX);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), None, None, u32::MAX);
     let count = trans.get_edge_count(q).unwrap();
     assert_eq!(count, 5);
 }
@@ -241,7 +255,9 @@ where
 {
     let (outbound_id, _) = create_edges(&mut sandbox);
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(None, None, None, u32::MAX);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(None, None, None, u32::MAX);
     let count = trans.get_edge_count(q).unwrap();
     assert_eq!(count, 5);
 }
@@ -253,8 +269,9 @@ where
 {
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![Uuid::default()] }
-        .outbound_edges(Some(t), None, None, u32::MAX);
+    let q = VertexQuery::Vertices {
+        ids: vec![Uuid::default()],
+    }.outbound_edges(Some(t), None, None, u32::MAX);
     let count = trans.get_edge_count(q).unwrap();
     assert_eq!(count, 0);
 }
@@ -267,10 +284,11 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 5);
+    check_edge_range(&range, outbound_id, 5);
 }
 
 pub fn should_get_edges_with_no_type<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -280,10 +298,11 @@ where
 {
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(None, Some(end_time), Some(start_time), 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(None, Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 5);
+    check_edge_range(&range, outbound_id, 5);
 }
 
 pub fn should_get_no_edges_for_an_invalid_range<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -294,10 +313,11 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("foo".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 0);
+    check_edge_range(&range, outbound_id, 0);
 }
 
 pub fn should_get_edges_with_no_high<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -308,10 +328,11 @@ where
     let (outbound_id, start_time, _, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(Some(t), None, Some(start_time), 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), None, Some(start_time), 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 10);
+    check_edge_range(&range, outbound_id, 10);
 }
 
 pub fn should_get_edges_with_no_low<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -322,10 +343,11 @@ where
     let (outbound_id, _, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(Some(t), Some(end_time), None, 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), Some(end_time), None, 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 10);
+    check_edge_range(&range, outbound_id, 10);
 }
 
 pub fn should_get_edges_with_no_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -336,9 +358,11 @@ where
     let (outbound_id, _, _, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), None, None, 100);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), None, None, 100);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 15);
+    check_edge_range(&range, outbound_id, 15);
 }
 
 pub fn should_get_no_edges_for_reversed_time<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -349,10 +373,11 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(&mut sandbox);
     let trans = sandbox.transaction();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices { ids: vec![outbound_id] }
-        .outbound_edges(Some(t), Some(start_time), Some(end_time), 10);
+    let q = VertexQuery::Vertices {
+        ids: vec![outbound_id],
+    }.outbound_edges(Some(t), Some(start_time), Some(end_time), 10);
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 0);
+    check_edge_range(&range, outbound_id, 0);
 }
 
 pub fn should_get_edges<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -373,15 +398,15 @@ where
         ],
     };
     let range = trans.get_edges(q).unwrap();
-    check_edge_range(range, outbound_id, 5);
+    check_edge_range(&range, outbound_id, 5);
 }
 
-fn check_edge_range(range: Vec<models::Edge>, expected_outbound_id: Uuid, expected_length: usize) {
+fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
     let mut covered_ids: HashSet<Uuid> = HashSet::new();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
 
-    for edge in &range {
+    for edge in range {
         assert_eq!(edge.key.outbound_id, expected_outbound_id);
         assert_eq!(edge.key.t, t);
         assert!(edge.weight.0 <= 1.0 + f32::EPSILON && edge.weight.0 >= 1.0 - f32::EPSILON);

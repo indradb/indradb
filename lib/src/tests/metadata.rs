@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction, EdgeQuery, VertexQuery, EdgeKey, Type, Weight};
+use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, Weight};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use uuid::Uuid;
@@ -107,7 +107,9 @@ where
     let t = Type::new("test_edge_type".to_string()).unwrap();
     let owner_id = trans.create_vertex(t).unwrap();
     let name = sandbox.generate_unique_string("vertex-metadata");
-    let q = VertexQuery::Vertices { ids: vec![owner_id] };
+    let q = VertexQuery::Vertices {
+        ids: vec![owner_id],
+    };
 
     // Check to make sure there's no initial value
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
@@ -118,14 +120,14 @@ where
         .set_vertex_metadata(q.clone(), name.clone(), JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(*result.get(&owner_id).unwrap(), JsonValue::Bool(true));
+    assert_eq!(result[&owner_id], JsonValue::Bool(true));
 
     // Set and get the value as false
     trans
         .set_vertex_metadata(q.clone(), name.clone(), JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(*result.get(&owner_id).unwrap(), JsonValue::Bool(false));
+    assert_eq!(result[&owner_id], JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans
@@ -141,7 +143,9 @@ where
     T: Transaction,
 {
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertices { ids: vec![Uuid::default()] };
+    let q = VertexQuery::Vertices {
+        ids: vec![Uuid::default()],
+    };
     trans
         .set_vertex_metadata(q.clone(), "foo".to_string(), JsonValue::Null)
         .unwrap();
@@ -155,13 +159,17 @@ where
     T: Transaction,
 {
     let trans = sandbox.transaction();
-    let q = VertexQuery::Vertices { ids: vec![Uuid::default()] };
+    let q = VertexQuery::Vertices {
+        ids: vec![Uuid::default()],
+    };
     trans.delete_vertex_metadata(q, "foo".to_string()).unwrap();
 
     let vertex_id = trans
         .create_vertex(Type::new("foo".to_string()).unwrap())
         .unwrap();
-    let q = VertexQuery::Vertices { ids: vec![vertex_id] };
+    let q = VertexQuery::Vertices {
+        ids: vec![vertex_id],
+    };
     trans.delete_vertex_metadata(q, "foo".to_string()).unwrap();
 }
 
@@ -177,7 +185,9 @@ where
     let edge_t = Type::new("test_edge_type".to_string()).unwrap();
     let weight = Weight::new(0.5).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    let q = EdgeQuery::Edges { keys: vec![key.clone()] };
+    let q = EdgeQuery::Edges {
+        keys: vec![key.clone()],
+    };
     let name = sandbox.generate_unique_string("edge-metadata");
 
     trans.create_edge(key.clone(), weight).unwrap();
@@ -191,14 +201,14 @@ where
         .set_edge_metadata(q.clone(), name.clone(), JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_edge_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(*result.get(&key).unwrap(), JsonValue::Bool(true));
+    assert_eq!(result[&key], JsonValue::Bool(true));
 
     // Set and get the value as false
     trans
         .set_edge_metadata(q.clone(), name.clone(), JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_edge_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(*result.get(&key).unwrap(), JsonValue::Bool(false));
+    assert_eq!(result[&key], JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_edge_metadata(q.clone(), name.clone()).unwrap();
@@ -213,11 +223,13 @@ where
 {
     let trans = sandbox.transaction();
     let q = EdgeQuery::Edges {
-        keys: vec![EdgeKey::new(
-            Uuid::default(),
-            Type::new("foo".to_string()).unwrap(),
-            Uuid::default(),
-        )],
+        keys: vec![
+            EdgeKey::new(
+                Uuid::default(),
+                Type::new("foo".to_string()).unwrap(),
+                Uuid::default(),
+            ),
+        ],
     };
     trans
         .set_edge_metadata(q.clone(), "bar".to_string(), JsonValue::Null)
@@ -233,11 +245,13 @@ where
 {
     let trans = sandbox.transaction();
     let q = EdgeQuery::Edges {
-        keys: vec![EdgeKey::new(
-            Uuid::default(),
-            Type::new("foo".to_string()).unwrap(),
-            Uuid::default(),
-        )],
+        keys: vec![
+            EdgeKey::new(
+                Uuid::default(),
+                Type::new("foo".to_string()).unwrap(),
+                Uuid::default(),
+            ),
+        ],
     };
     trans.delete_edge_metadata(q, "bar".to_string()).unwrap();
 

@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{Transaction, Type, EdgeKey, VertexQuery, EdgeQuery};
+use braid::{EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use super::util::*;
@@ -8,8 +8,7 @@ use super::util::*;
 pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
     let query_params = get_query_params(req)?;
-    let t = get_query_param::<Type>(query_params, "type", true)?
-        .unwrap();
+    let t = get_query_param::<Type>(query_params, "type", true)?.unwrap();
     let response = datastore_request(trans.create_vertex(t))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &response))

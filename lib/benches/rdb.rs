@@ -1,7 +1,8 @@
 #![feature(test)]
+#![cfg(feature = "rocksdb-datastore")]
 
-extern crate test;
 extern crate braid;
+extern crate test;
 
 #[macro_use]
 mod common;
