@@ -25,15 +25,17 @@ For more details, see:
 
 ## Getting started
 
-* Make sure you have lua 5.1 installed.
 * [Download the latest release for your platform.](https://github.com/braidery/braid/releases)
 * Add the binaries to your `PATH`.
+* Start the app: `braid-server`
 
-Now it's time to choose your own adventure...
+This should start an in-memory-only datastore, where all work will be wiped
+out when the server is shutdown. You can persist your work with one of the
+alternative datastores.
 
 ### Postgres
 
-If you want to use the postgres-backed datastore, following these steps:
+If you want to use the postgres-backed datastore, follow these steps:
 
 * Create a database: `createdb braid`
 * Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/braid braid-db init`
@@ -73,7 +75,7 @@ Applications are configured via environment variables:
 If you don't want to use the pre-built releases, you can build/install from source:
 
 * Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
-* Make sure you have liblua5.1, gcc 5+, and postgres 9.5+ installed.
+* Make sure you have gcc 5+ and postgres 9.5+ installed.
 * Clone the repo: `git clone git@github.com:braidery/braid.git`.
 * Build/install it: `cargo install`.
 

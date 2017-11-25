@@ -6,7 +6,16 @@ This is the braid library. Most users can use the [server](https://github.com/br
 
 ## Pluggable datastores
 
-Braid stores graph data in datastores. Datastores are pluggable: there is built in support for postgres and rocksdb, but you can implement a new custom datastore.
+Braid stores graph data in datastores. Datastores are pluggable: there is built in support for in-memory-only, postgres, and rocksdb, but you can implement a new custom datastore.
+
+### In-Memory
+
+To use the in-memory datastore, add this to your `Cargo.toml`:
+
+```toml
+[dependencies.braid]
+git = "https://github.com/braidery/braid-lib"
+```
 
 ### Postgres
 

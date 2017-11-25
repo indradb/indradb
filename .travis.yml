@@ -29,12 +29,8 @@ matrix:
     - env: TARGET=x86_64-unknown-linux-gnu PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       rust: nightly
 
-before_install: set -e
-
-install:
-  - ci/install.sh
-
 before_script:
+  - set -e
   - ci/before_script.sh
 
 script:
