@@ -3,34 +3,30 @@
 
 set -ex
 
-main() {
-    local src=$(pwd) \
-          stage=
+local src=$(pwd) \
+        stage=
 
-    case $TRAVIS_OS_NAME in
-        linux)
-            stage=$(mktemp -d)
-            ;;
-        osx)
-            stage=$(mktemp -d -t tmp)
-            ;;
-    esac
+case $TRAVIS_OS_NAME in
+    linux)
+        stage=$(mktemp -d)
+        ;;
+    osx)
+        stage=$(mktemp -d -t tmp)
+        ;;
+esac
 
-    test -f Cargo.lock || cargo generate-lockfile
+test -f Cargo.lock || cargo generate-lockfile
 
-    pushd bin
-        cargo build --release
-    popd
+pushd bin
+    cargo build --release
+popd
 
-    cp target/release/braid-db $stage/
-    cp target/release/braid-server $stage/
-    cp target/release/braid-account $stage/
+cp target/release/braid-db $stage/
+cp target/release/braid-server $stage/
+cp target/release/braid-account $stage/
 
-    pushd $stage
-        tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
-    popd
+pushd $stage
+    tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
+popd
 
-    rm -rf $stage
-}
-
-main
+rm -rf $stage

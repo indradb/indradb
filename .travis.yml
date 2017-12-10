@@ -1,45 +1,79 @@
 dist: trusty
 language: rust
 services: docker
-cache: cargo
 sudo: required
 
 addons:
   postgresql: "9.5"
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+      - libiberty-dev
 
 matrix:
   include:
     # Rust stable
-    - env: TARGET=x86_64-unknown-linux-gnu PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+    - rust: stable
+      env:
+      - TARGET=x86_64-unknown-linux-gnu
+      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - PG_USER=postgres
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+    - os: osx
       rust: stable
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
-      rust: stable
+      env:
+      - TARGET=x86_64-apple-darwin
+      - PG_USER=travis
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-master/build:$PATH
 
     # Rust beta
-    - env: TARGET=x86_64-unknown-linux-gnu PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      rust: beta
+    - rust: beta
+      env:
+      - TARGET=x86_64-unknown-linux-gnu
+      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - PG_USER=postgres
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
 
     # Rust nightly
-    - env: TARGET=x86_64-unknown-linux-gnu PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      rust: nightly
+    - rust: nightly
+      env:
+      - TARGET=x86_64-unknown-linux-gnu
+      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - PG_USER=postgres
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - RUSTFLAGS="-C link-dead-code"
 
   allow_failures:
     # Rust nightly
-    - env: TARGET=x86_64-unknown-linux-gnu PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      rust: nightly
+    - rust: nightly
+      env:
+      - TARGET=x86_64-unknown-linux-gnu
+      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - PG_USER=postgres
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - RUSTFLAGS="-C link-dead-code"
 
-before_script:
-  - set -e
-  - ci/before_script.sh
+env:
+  global:
+    - TEST_RDB_DIRECTORY=/tmp/braid
+    - RUST_BACKTRACE=1
+    - SECRET=QkrDxgVJCT
+    - BRAID_SCRIPT_ROOT=~/build/braidery/braid/bin/test_scripts
 
-script:
-  - ./test.sh
+install: ./ci/install.sh
 
-after_script: set +e
+before_script: ./ci/before_script.sh
+script: ./ci/test.py
 
-before_deploy:
-  - ci/before_deploy.sh
+before_deploy: ./ci/before_deploy.sh
 
 deploy:
   api_key:
@@ -58,6 +92,7 @@ cache:
   - lib/target
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
+  - /usr/local/bin/kcov
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo

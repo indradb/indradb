@@ -3,9 +3,9 @@
 set -e
 
 pushd lib
-    ./test.sh
+    ./test.sh $@
 popd
 
 pushd bin
-    ./test.sh
+    ./test.sh $@
 popd

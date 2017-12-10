@@ -1,4 +1,4 @@
-# braid [![Build Status](https://travis-ci.org/braidery/braid.svg?branch=master)](https://travis-ci.org/braidery/braid)
+# braid [![Build Status](https://travis-ci.org/braidery/braid.svg?branch=master)](https://travis-ci.org/braidery/braid) [![Coverage Status](https://coveralls.io/repos/github/braidery/braid/badge.svg?branch=master)](https://coveralls.io/github/braidery/braid?branch=master)
 
 A graph database. This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
 

@@ -1,7 +1,3 @@
 target
-*.pyc
-*.egg-info
 lib/Cargo.lock
-*.swp
-*.rdb
 /Cargo.lock

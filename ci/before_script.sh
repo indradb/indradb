@@ -7,4 +7,6 @@ if [ $TRAVIS_OS_NAME = osx ]; then
     createuser -s postgres
 fi
 
-psql -c 'create database braid_test;' -U postgres
+mkdir -p $TEST_RDB_DIRECTORY
+dropdb --if-exists braid_test
+createdb --owner=$PG_USER braid_test
