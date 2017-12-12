@@ -2,7 +2,7 @@
 
 A graph database. This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
 
-## Use cases of graph databases
+[Graph databases](https://en.wikipedia.org/wiki/Graph_database) facilitate all sorts of use cases, such as:
 
 * Recommendation engines: graph databases make collaborative filtering and other recommendation algorithms easy to build and easy to understand.
 * Fraud and threat detection: You can use graph databases to find strange/atypical user behavior.
