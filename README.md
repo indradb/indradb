@@ -7,7 +7,7 @@ A graph database. This software is in the alpha state. Do not use this as your s
 * Recommendation engines: graph databases make collaborative filtering and other recommendation algorithms easy to build and easy to understand.
 * Fraud and threat detection: You can use graph databases to find strange/atypical user behavior.
 * Social networking: Graphs provide a natural representation of people and the relationships between them.
-* Bayesian networks, Markov networks, and similar data science systems
+* Bayesian networks, Markov networks, and similar data science systems.
 
 ## Features at a glance
 
