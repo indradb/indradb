@@ -2,6 +2,13 @@
 
 A graph database. This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
 
+## Use cases of graph databases
+
+* Recommendation engines: graph databases make collaborative filtering and other recommendation algorithms easy to build and easy to understand.
+* Fraud and threat detection: You can use graph databases to find strange/atypical user behavior.
+* Social networking: Graphs provide a natural representation of people and the relationships between them.
+* Bayesian networks, Markov networks, and similar data science systems
+
 ## Features at a glance
 
 * Support for directed, weighted, and typed graphs.
@@ -12,7 +19,7 @@ A graph database. This software is in the alpha state. Do not use this as your s
     * By embedding braid directly as a library.
 * Multitenancy / support for multiple accounts.
 * Support for metadata.
-* Pluggable underlying datastores, with built-in support for [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
+* Pluggable underlying datastores, with built-in support for in-memory-only, [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
 * Written in rust!
 
 For more details, see:
