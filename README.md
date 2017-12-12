@@ -40,6 +40,19 @@ This should start an in-memory-only datastore, where all work will be wiped
 out when the server is shutdown. You can persist your work with one of the
 alternative datastores.
 
+### In-memory
+
+By default, braid starts an in-memory datastore that does not persist to
+disk, and does not support multitenancy. This is useful for kicking the tires,
+or if your graph does not need to be persisted.
+
+If you want to use the in-memory datastore, follow these steps:
+
+* Start the server: `PORT=8000 braid-server`
+* Make a sample HTTP request to `http://localhost:8000`. Use a UUID with all
+0's (i.e. `00000000-0000-0000-0000-000000000000`) for the username, and no
+password.
+
 ### Postgres
 
 If you want to use the postgres-backed datastore, follow these steps:
