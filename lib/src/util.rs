@@ -84,17 +84,6 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     timestamp * 1_000_000_000 + nanoseconds
 }
 
-/// Returns a new UUID.
-pub fn parent_uuid() -> Uuid {
-    loop {
-        let id = Uuid::new_v4();
-
-        if id != Uuid::default() {
-            return id;
-        }
-    }
-}
-
 /// Creates a new ID that is based in part off a parent ID.
 ///
 /// # Arguments
@@ -112,8 +101,7 @@ pub fn child_uuid(parent: Uuid) -> Uuid {
 
 #[cfg(test)]
 mod tests {
-    use super::{child_uuid, generate_random_secret, get_salted_hash, nanos_since_epoch, next_uuid,
-                parent_uuid};
+    use super::{child_uuid, generate_random_secret, get_salted_hash, nanos_since_epoch, next_uuid};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
@@ -163,14 +151,8 @@ mod tests {
     }
 
     #[test]
-    fn should_generate_parent_uuid() {
-        let uuid = parent_uuid();
-        assert!(uuid != Uuid::default());
-    }
-
-    #[test]
     fn should_generate_child_uuid() {
-        let pid = parent_uuid();
+        let pid = Uuid::new_v4();
         let cid1 = child_uuid(pid);
         let cid2 = child_uuid(pid);
         assert!(pid != cid1);

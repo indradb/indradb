@@ -1,6 +1,6 @@
 use uuid::Uuid;
 use errors::Error;
-use util::{child_uuid, generate_random_secret, get_salted_hash, parent_uuid};
+use util::{child_uuid, generate_random_secret, get_salted_hash};
 use serde_json::Value as JsonValue;
 use chrono::DateTime;
 use chrono::offset::Utc;
@@ -129,7 +129,7 @@ impl AccountManager {
     }
 
     pub fn create(&self) -> Result<(Uuid, String), Error> {
-        let id = parent_uuid();
+        let id = Uuid::new_v4();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], None, &secret[..]);
@@ -229,7 +229,7 @@ impl VertexManager {
 
     pub fn create(&self, t: models::Type, account_id: Uuid) -> Result<Uuid, Error> {
         let id = if self.secure_uuids {
-            parent_uuid()
+            Uuid::new_v4()
         } else {
             child_uuid(account_id)
         };

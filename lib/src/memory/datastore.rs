@@ -7,7 +7,7 @@ use chrono::offset::Utc;
 use std::sync::{Arc, RwLock};
 use serde_json::Value as JsonValue;
 use errors::Error;
-use util::{child_uuid, generate_random_secret, parent_uuid};
+use util::{child_uuid, generate_random_secret};
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -263,7 +263,7 @@ impl Datastore<MemoryTransaction> for MemoryDatastore {
     }
 
     fn create_account(&self) -> Result<(Uuid, String), Error> {
-        let id = parent_uuid();
+        let id = Uuid::new_v4();
         let secret = generate_random_secret();
         self.0.write().unwrap().accounts.insert(id, secret.clone());
         Ok((id, secret))

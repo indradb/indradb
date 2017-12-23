@@ -4,7 +4,7 @@ use std::mem;
 use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
 use errors::Error;
-use util::{child_uuid, generate_random_secret, get_salted_hash, parent_uuid};
+use util::{child_uuid, generate_random_secret, get_salted_hash};
 use postgres;
 use postgres::rows::Rows;
 use chrono::DateTime;
@@ -106,7 +106,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
     }
 
     fn create_account(&self) -> Result<(Uuid, String), Error> {
-        let id = parent_uuid();
+        let id = Uuid::new_v4();
         let salt = generate_random_secret();
         let secret = generate_random_secret();
         let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
@@ -366,7 +366,7 @@ impl PostgresTransaction {
 impl Transaction for PostgresTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
         let id = if self.secure_uuids {
-            parent_uuid()
+            Uuid::new_v4()
         } else {
             child_uuid(self.account_id)
         };
@@ -412,7 +412,7 @@ impl Transaction for PostgresTransaction {
 
     fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
         let id = if self.secure_uuids {
-            parent_uuid()
+            Uuid::new_v4()
         } else {
             child_uuid(key.outbound_id)
         };
