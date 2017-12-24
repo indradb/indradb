@@ -77,6 +77,5 @@ end
 return {
     EdgeKey=EdgeKey,
     VertexQuery=VertexQuery,
-    EdgeQuery=EdgeQuery,
-    json_null={"__braid_json_null"}
+    EdgeQuery=EdgeQuery
 }

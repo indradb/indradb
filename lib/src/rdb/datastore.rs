@@ -291,9 +291,16 @@ impl RocksdbTransaction {
 
                         for item in edge_iterator {
                             match item {
-                                Ok(((_, _, edge_range_update_datetime, _), _)) => {
+                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight)) => {
                                     if edge_range_update_datetime >= low_filter {
-                                        edges.push(item);
+                                        edges.push(match converter {
+                                            QueryTypeConverter::Outbound => {
+                                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight))
+                                            },
+                                            QueryTypeConverter::Inbound => {
+                                                Ok(((edge_range_second_id, edge_range_t, edge_range_update_datetime, edge_range_first_id), edge_range_weight))
+                                            }
+                                        });
                                     } else {
                                         break;
                                     }
@@ -312,8 +319,20 @@ impl RocksdbTransaction {
                         let edge_iterator =
                             edge_range_manager.iterate_for_range(id, &type_filter, high_filter)?;
 
-                        for edge in edge_iterator {
-                            edges.push(edge);
+                        for item in edge_iterator {
+                            match item {
+                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight)) => {
+                                    edges.push(match converter {
+                                        QueryTypeConverter::Outbound => {
+                                            Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight))
+                                        },
+                                        QueryTypeConverter::Inbound => {
+                                            Ok(((edge_range_second_id, edge_range_t, edge_range_update_datetime, edge_range_first_id), edge_range_weight))
+                                        }
+                                    });
+                                }
+                                Err(_) => edges.push(item),
+                            }
 
                             if edges.len() == limit as usize {
                                 break;

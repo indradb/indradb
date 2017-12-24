@@ -105,15 +105,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
                 // the shape
                 if is_array {
                     let vec: Vec<ExternalJsonValue> = map.values().cloned().collect();
-
-                    if vec.len() == 1
-                        && vec.get(0)
-                            == Some(&ExternalJsonValue::String("__braid_json_null".to_string()))
-                    {
-                        Ok(Self::new(ExternalJsonValue::Null))
-                    } else {
-                        Ok(Self::new(ExternalJsonValue::Array(vec)))
-                    }
+                    Ok(Self::new(ExternalJsonValue::Array(vec)))
                 } else {
                     let mut obj = Map::new();
 
@@ -138,11 +130,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
 impl<'lua> ToLua<'lua> for JsonValue {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         match self.0 {
-            ExternalJsonValue::Null => {
-                let table = l.create_table();
-                table.set(1, "__braid_json_null")?;
-                Ok(Value::Table(table))
-            }
+            ExternalJsonValue::Null => Ok(Value::Nil),
             ExternalJsonValue::Bool(value) => Ok(Value::Boolean(value)),
             ExternalJsonValue::Number(value) => {
                 let value_float = value

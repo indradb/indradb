@@ -10,7 +10,8 @@ use uuid::Uuid;
 use common::datastore;
 
 lazy_static! {
-    static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: (.+)$").unwrap();
+    static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: ([^\n]+)").unwrap();
+    static ref ERR_EXPECTED_PATTERN: Regex = Regex::new(r"-- err: ([^\n]+)").unwrap();
 }
 
 macro_rules! test_script {
@@ -42,7 +43,12 @@ macro_rules! test_script {
                     }
                 },
                 Err(err) => {
-                    panic!(format!("Script failed to execute: {}", err));
+                    if let Some(cap) = ERR_EXPECTED_PATTERN.captures(&contents[..]) {
+                        let s = cap.get(1).unwrap().as_str();
+                        assert_eq!(format!("{}", err), s);
+                    } else {
+                        panic!(format!("Script failed to execute: {}", err));
+                    }
                 }
             }
 		}
@@ -65,7 +71,10 @@ test_script!(global_metadata);
 test_script!(regression_float_serialization);
 test_script!(return_array);
 test_script!(return_boolean);
+test_script!(return_coroutine);
+test_script!(return_function);
 test_script!(return_int);
+test_script!(return_light_userdata);
 test_script!(return_nil);
 test_script!(return_number);
 test_script!(return_obj);

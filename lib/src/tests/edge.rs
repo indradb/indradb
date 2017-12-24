@@ -5,7 +5,7 @@ use models;
 use uuid::Uuid;
 use chrono::offset::Utc;
 use chrono::Timelike;
-use super::util::{create_edges, create_time_range_queryable_edges};
+use super::util::{create_edges, create_time_range_queryable_edges, create_edge_from};
 use std::collections::HashSet;
 use std::f32;
 use std::u32;
@@ -399,6 +399,54 @@ where
     };
     let range = trans.get_edges(q).unwrap();
     check_edge_range(&range, outbound_id, 5);
+}
+
+pub fn should_get_edges_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+where
+    D: Datastore<T>,
+    T: Transaction,
+{
+    let trans = sandbox.transaction();
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+
+    let inserted_id_1 = trans.create_vertex(vertex_t.clone()).unwrap();
+    let inserted_id_2 = create_edge_from::<D, T>(&trans, inserted_id_1);
+
+    // This query should get `inserted_id_2`
+    let query_1 = VertexQuery::Vertices {
+        ids: vec![inserted_id_1],
+    }
+        .outbound_edges(
+            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+            None,
+            None,
+            1,
+        );
+    let range = trans.get_edges(query_1.clone()).unwrap();
+    assert_eq!(range.len(), 1);
+    assert_eq!(range[0].key, models::EdgeKey::new(
+        inserted_id_1,
+        models::Type::new("test_edge_type".to_string()).unwrap(),
+        inserted_id_2
+    ));
+
+    // This query should get `inserted_id_1`
+    let query_2 = 
+        query_1
+        .inbound_vertices(1)
+        .inbound_edges(
+            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+            None,
+            None,
+            1,
+        );
+    let range = trans.get_edges(query_2).unwrap();
+    assert_eq!(range.len(), 1);
+    assert_eq!(range[0].key, models::EdgeKey::new(
+        inserted_id_1,
+        models::Type::new("test_edge_type".to_string()).unwrap(),
+        inserted_id_2
+    ));
 }
 
 fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {
