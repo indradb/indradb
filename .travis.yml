@@ -21,14 +21,14 @@ matrix:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
     - os: osx
       rust: stable
       env:
       - TARGET=x86_64-apple-darwin
       - PG_USER=travis
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-master/build:$PATH
 
     # Rust beta
@@ -37,7 +37,7 @@ matrix:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
 
     # Rust nightly
@@ -46,7 +46,7 @@ matrix:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
@@ -57,16 +57,16 @@ matrix:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/braid_test"
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
 env:
   global:
-    - TEST_RDB_DIRECTORY=/tmp/braid
+    - TEST_RDB_DIRECTORY=/tmp/indradb
     - RUST_BACKTRACE=1
     - SECRET=QkrDxgVJCT
-    - BRAID_SCRIPT_ROOT=~/build/braidery/braid/bin/test_scripts
+    - INDRADB_SCRIPT_ROOT=~/build/indradb/indradb/bin/test_scripts
 
 install: ./ci/install.sh
 
@@ -79,7 +79,7 @@ deploy:
   api_key:
     secure: "WXzCg216P0XkcvLQJnqYshRWtBNC/RMTF/SUAvWobMQVy24RComncqsvkmUlERz/inncrSTyQF7mYf3Z2FKHcYvuYKybo5eql/hU112jEdkN/j6IDZ7xN6lXgYfiG4mGakay13WFsLw6ZnqHxYl3X7cyBtaUe27id7Q0wlNUK4rkMGgK2j48cSN2Qrh4LaIwsUHfDUrkEJ1E3n8CWR59BSC9NBSm4d+TtO7feiDHmlHrQ3rCP3i3ARAR1mwRkob5GdTCtilDIjv78aPQFWLDoUS0MGSMRFWiyaef36bsbIxGrhWSaIPPxCRO+VTTqFCF+BZLtLKFe4oYiCnAEJVgenhOKwkfeSE1jPwh6IBHS6DONjy/5QrY3+cRAKjjzDtsbfq6hiPWAE4oO3p/P8PBleBB+b6K3bwWKNPvEHtsb2bt8TqEyr+9R3T+Pbl+E0BFM1wnnm/8cS566788AzIBobbM4XQizbooOL5+AqgxsDiVw/TPzEgieK3LrFRowdtQ8e+5wGUO/Bc4xQKQAZd4NlK9vCKtfNK8mk6OvHzLSN+Waf0kAWZ202VgTXKJLOGq5mlzHc6J8mpsESqiqwIQ/Ljm8GyXHIkKBRZzJGtXNmvofvnNqIdVJ8rrJ51FXlha8fkOF8UYSPHMd/eTSXIxchIv/gd4pzkc50OSTpIp5vg="
   file_glob: true
-  file: braid-$TRAVIS_TAG-$TARGET.*
+  file: indradb-$TRAVIS_TAG-$TARGET.*
   on:
     condition: $TRAVIS_RUST_VERSION = stable
     tags: true

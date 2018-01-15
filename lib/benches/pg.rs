@@ -1,14 +1,14 @@
 #![feature(test)]
 #![cfg(feature = "postgres-datastore")]
 
-extern crate braid;
+extern crate indradb;
 extern crate test;
 
 #[macro_use]
 mod common;
 
-pub use braid::PostgresDatastore;
-pub use braid::tests;
+pub use indradb::PostgresDatastore;
+pub use indradb::tests;
 pub use std::env;
 use std::sync::{Once, ONCE_INIT};
 pub use test::Bencher;

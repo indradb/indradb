@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery};
+use indradb::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;

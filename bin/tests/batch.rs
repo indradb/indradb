@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate braid;
+extern crate indradb;
 extern crate chrono;
 extern crate hyper;
 #[macro_use]
@@ -23,7 +23,7 @@ use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
-pub use braid::*;
+pub use indradb::*;
 pub use common::*;
 use std::io::Read;
 use std::collections::HashMap;

@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{ContentType, Headers};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use braid::{Datastore, Error, Type, Weight};
+use indradb::{Datastore, Error, Type, Weight};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -39,7 +39,7 @@ impl Key for AccountKey {
     type Value = AccountKey;
 }
 
-/// Converts a braid error to an `IronError`. We need to use this strategy
+/// Converts an indradb error to an `IronError`. We need to use this strategy
 /// rather than a `From` impl because both traits are implemented outside of
 /// this crate.
 pub fn convert_to_iron_error(err: &Error) -> IronError {

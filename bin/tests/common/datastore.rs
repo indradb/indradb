@@ -1,4 +1,4 @@
-use braid::*;
+use indradb::*;
 use std::marker::PhantomData;
 use std::process::{Child, Command};
 use uuid::Uuid;
@@ -33,7 +33,7 @@ impl<H: HttpTransaction> HttpDatastore<H> {
             *port
         };
 
-        let server = Command::new("../target/debug/braid-server")
+        let server = Command::new("../target/debug/indradb-server")
             .envs(hashmap!{"PORT" => port.to_string()})
             .spawn()
             .expect("Server failed to start");

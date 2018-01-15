@@ -1,4 +1,4 @@
-extern crate braid;
+extern crate indradb;
 extern crate chrono;
 extern crate serde_json;
 extern crate uuid;

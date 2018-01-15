@@ -1,18 +1,18 @@
 [package]
-name = "braid"
+name = "indradb"
 version = "0.5.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 
 [[bin]]
-name = "braid-db"
-path = "src/db/main.rs"
+name = "indradb-admin"
+path = "src/admin/main.rs"
 
 [[bin]]
-name = "braid-server"
+name = "indradb-server"
 path = "src/server/main.rs"
 
 [[bin]]
-name = "braid-account"
+name = "indradb-account"
 path = "src/account/main.rs"
 
 [lib]
@@ -41,7 +41,7 @@ maplit = "0.1.4"
 version = "0.4.0"
 features = ["serde"]
 
-[dependencies.braid-lib]
+[dependencies.indradb-lib]
 path = "../lib"
 features = ["postgres-datastore", "rocksdb-datastore"]
 

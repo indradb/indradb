@@ -1,18 +1,18 @@
 #![feature(test)]
 #![cfg(feature = "rocksdb-datastore")]
 
-extern crate braid;
+extern crate indradb;
 extern crate test;
 
 #[macro_use]
 mod common;
 
-pub use braid::RocksdbDatastore;
-pub use braid::util::generate_random_secret;
+pub use indradb::RocksdbDatastore;
+pub use indradb::util::generate_random_secret;
 pub use std::env;
 use std::path::Path;
 pub use test::Bencher;
-pub use braid::tests;
+pub use indradb::tests;
 
 fn datastore() -> RocksdbDatastore {
     // RocksDB can only have one connection open to a database at a time.

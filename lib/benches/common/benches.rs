@@ -1,5 +1,5 @@
-use braid::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, Weight};
-use braid::tests::DatastoreTestSandbox;
+use indradb::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, Weight};
+use indradb::tests::DatastoreTestSandbox;
 use test::Bencher;
 
 pub fn bench_create_vertex<D, T>(b: &mut Bencher, sandbox: &mut DatastoreTestSandbox<D, T>)

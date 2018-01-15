@@ -8,5 +8,5 @@ if [ $TRAVIS_OS_NAME = osx ]; then
 fi
 
 mkdir -p $TEST_RDB_DIRECTORY
-dropdb --if-exists braid_test
-createdb --owner=$PG_USER braid_test
+dropdb --if-exists indradb_test
+createdb --owner=$PG_USER indradb_test

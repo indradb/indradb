@@ -1,17 +1,17 @@
-extern crate braid;
+extern crate indradb;
 extern crate clap;
 extern crate common;
 
 use clap::{App, SubCommand};
-use braid::PostgresDatastore;
+use indradb::PostgresDatastore;
 use std::env;
 use std::process::exit;
 
 /// App for managing databases
 fn main() {
-    let matches = App::new("braid-db")
+    let matches = App::new("indradb-admin")
         .version("0.1")
-        .about("Manages braid datastores, and their underlying databases")
+        .about("Manages indradb datastores, and their underlying databases")
         .subcommand(SubCommand::with_name("init"))
         .get_matches();
 
@@ -19,7 +19,7 @@ fn main() {
         let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "".to_string());
 
         if !connection_string.starts_with("postgres://") {
-            panic!("`braid-db init` can only be run on postgres datastores");
+            panic!("`indradb-admin init` can only be run on postgres datastores");
         }
 
         if let Err(err) = PostgresDatastore::create_schema(connection_string) {

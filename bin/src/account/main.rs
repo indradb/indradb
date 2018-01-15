@@ -1,4 +1,4 @@
-extern crate braid;
+extern crate indradb;
 #[macro_use]
 extern crate clap;
 extern crate common;
@@ -6,15 +6,15 @@ extern crate uuid;
 
 use clap::{App, Arg, SubCommand};
 use common::datastore;
-use braid::Datastore;
+use indradb::Datastore;
 use uuid::Uuid;
 use std::process::exit;
 
 /// App for managing accounts
 fn main() {
-    let matches = App::new("braid-account")
+    let matches = App::new("indradb-account")
         .version("0.1")
-        .about("User management for Braid")
+        .about("User management for indradb")
         .subcommand(SubCommand::with_name("add"))
         .subcommand(
             SubCommand::with_name("remove").arg(

@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate braid;
+extern crate indradb;
 extern crate chrono;
 extern crate hyper;
 #[macro_use]
@@ -25,7 +25,7 @@ use hyper::client::response::Response;
 use uuid::Uuid;
 use std::collections::HashMap;
 
-pub use braid::*;
+pub use indradb::*;
 pub use common::*;
 
 pub struct RestTransaction {

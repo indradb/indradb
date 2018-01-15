@@ -7,7 +7,7 @@ lazy_static! {
     pub static ref DATASTORE: ProxyDatastore = datastore();
 
     /// The path to the script root directory
-    pub static ref SCRIPT_ROOT: String = match env::var("BRAID_SCRIPT_ROOT") {
+    pub static ref SCRIPT_ROOT: String = match env::var("INDRADB_SCRIPT_ROOT") {
         Ok(s) => s,
         Err(_) => Path::new(".").join("scripts").to_str().unwrap().to_string()
     };

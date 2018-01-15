@@ -21,12 +21,12 @@ pushd bin
     cargo build --release
 popd
 
-cp target/release/braid-db $stage/
-cp target/release/braid-server $stage/
-cp target/release/braid-account $stage/
+cp target/release/indradb-db $stage/
+cp target/release/indradb-server $stage/
+cp target/release/indradb-account $stage/
 
 pushd $stage
-    tar czf $src/braid-$TRAVIS_TAG-$TARGET.tar.gz *
+    tar czf $src/indradb-$TRAVIS_TAG-$TARGET.tar.gz *
 popd
 
 rm -rf $stage

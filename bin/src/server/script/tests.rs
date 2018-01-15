@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use regex::Regex;
 use serde_json::Value as JsonValue;
-use braid::Datastore;
+use indradb::Datastore;
 use super::run;
 use serde_json;
 use std::path::Path;

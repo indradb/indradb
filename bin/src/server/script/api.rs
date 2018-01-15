@@ -2,7 +2,7 @@
 // Above ignore is there because otherwise the macro is noisy
 
 use super::converters::*;
-use braid::{Error, Transaction};
+use indradb::{Error, Transaction};
 use std::collections::HashMap;
 
 pub fn create_vertex((trans, t): (ProxyTransaction, Type)) -> Result<Uuid, Error> {

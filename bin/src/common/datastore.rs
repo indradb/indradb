@@ -4,7 +4,7 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use braid::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
+use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
             PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
             Transaction, Type, Vertex, VertexQuery, Weight};
 use uuid::Uuid;
@@ -210,7 +210,7 @@ impl Transaction for ProxyTransaction {
 pub fn datastore() -> ProxyDatastore {
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
     let secure_uuids =
-        env::var("BRAID_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
+        env::var("INDRADB_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];

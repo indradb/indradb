@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use braid::{EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
+use indradb::{EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use super::util::*;

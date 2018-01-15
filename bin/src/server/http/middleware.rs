@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::headers::{Authorization, Basic};
-use braid::Datastore;
+use indradb::Datastore;
 use std::collections::BTreeMap;
 use statics;
 use uuid::Uuid;

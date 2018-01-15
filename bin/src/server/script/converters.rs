@@ -1,7 +1,7 @@
 use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
-use braid::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
+use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
             QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
             VertexQuery as ExternalVertexQuery, Weight as ExternalWeight};
 use uuid::Uuid as ExternalUuid;
