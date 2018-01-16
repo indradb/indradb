@@ -11,7 +11,7 @@ IndraDB stores graph data in datastores. Datastores are pluggable: there is buil
 To use the in-memory datastore, add this to your `Cargo.toml`:
 
 ```toml
-[dependencies.indradb]
+[dependencies.indradb-lib]
 git = "https://github.com/indradb/indradb"
 ```
 
@@ -20,7 +20,7 @@ git = "https://github.com/indradb/indradb"
 To use the postgres datastore, add this to your `Cargo.toml`:
 
 ```toml
-[dependencies.indradb]
+[dependencies.indradb-lib]
 git = "https://github.com/indradb/indradb"
 features = ["postgres-datastore"]
 ```
@@ -30,7 +30,7 @@ features = ["postgres-datastore"]
 To use the rocksdb datastore, add this to your `Cargo.toml`:
 
 ```toml
-[dependencies.indradb]
+[dependencies.indradb-lib]
 git = "https://github.com/indradb/indradb"
 features = ["rocksdb-datastore"]
 ```
