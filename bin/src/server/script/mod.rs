@@ -118,6 +118,8 @@ pub fn run(
     // Add the account id as a global variable.
     globals.set("account_id", account_id.to_string())?;
 
-    let value: converters::JsonValue = fun.call(converters::JsonValue::new(arg))?;
+    globals.set("arg", converters::JsonValue::new(arg))?;
+
+    let value: converters::JsonValue = fun.call(Value::Nil)?;
     Ok(value.0)
 }
