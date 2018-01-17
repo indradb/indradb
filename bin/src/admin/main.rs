@@ -1,9 +1,10 @@
 extern crate indradb;
+#[macro_use]
 extern crate clap;
 extern crate common;
 extern crate uuid;
 
-use clap::{App, SubCommand};
+use clap::{Arg, App, SubCommand};
 use indradb::{Datastore, PostgresDatastore};
 use common::datastore;
 use std::env;
