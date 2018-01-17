@@ -59,7 +59,7 @@ If you want to use the postgres-backed datastore, follow these steps:
 
 * Create a database: `createdb indradb`
 * Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/indradb indradb-admin init`
-* Create a new account: `DATABASE_URL=postgres://localhost:5432/indradb indradb-account add`.
+* Create a new account: `DATABASE_URL=postgres://localhost:5432/indradb indradb-admin add-account`.
 * Start the server: `DATABASE_URL=postgres://localhost:5432/indradb PORT=8000 indradb-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
@@ -67,7 +67,7 @@ If you want to use the postgres-backed datastore, follow these steps:
 
 If you want to use the rocksdb-backed datastore, follow these steps:
 
-* Create a new account: `DATABASE_URL=rocksdb://database.rdb indradb-account add`.
+* Create a new account: `DATABASE_URL=rocksdb://database.rdb indradb-admin add-account`.
 * Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 indradb-server`.
 * Make a sample HTTP request to `http://localhost:8000`, with the credentials supplied when you created the account.
 
@@ -76,8 +76,7 @@ If you want to use the rocksdb-backed datastore, follow these steps:
 This exposes three applications:
 
 * `indradb-server`: For running the HTTP server.
-* `indradb-account`: Manages the creation and deletion of accounts.
-* `indradb-admin`: For managing the databases underlying IndraDB datastores. At the moment, this only has one function: to create the database schema for postgres-backed datastores, via `indradb-admin init`.
+* `indradb-admin`: For managing databases and accounts.
 
 ## Environment variables
 
