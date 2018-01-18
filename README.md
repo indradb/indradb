@@ -2,7 +2,7 @@
  	<img src="https://indradb.github.io/logo.png">
 </p>
 
-# IndraDB [![Build Status](https://travis-ci.org/indradb/indradb.svg?branch=master)](https://travis-ci.org/indradb/indradb) [![Coverage Status](https://coveralls.io/repos/github/indradb/indradb/badge.svg?branch=master)](https://coveralls.io/github/indradb/indradb?branch=master)
+# IndraDB [![Build Status](https://travis-ci.org/indradb/indradb.svg?branch=master)](https://travis-ci.org/indradb/indradb) [![Coverage Status](https://coveralls.io/repos/github/indradb/indradb/badge.svg?branch=master)](https://coveralls.io/github/indradb/indradb?branch=master) [![Slack Status](https://indradb-slackin.herokuapp.com/badge.svg)](https://indradb-slackin.herokuapp.com/)
 
 A graph database written in rust. [Graph databases](https://en.wikipedia.org/wiki/Graph_database) facilitate all sorts of use cases, such as:
 
