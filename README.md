@@ -99,7 +99,7 @@ Applications are configured via environment variables:
 
 If you don't want to use the pre-built releases, you can build/install from source:
 
-* Install [rust](https://www.rust-lang.org/en-US/install.html) 1.16+ stable or nightly.
+* Install [rust](https://www.rust-lang.org/en-US/install.html). IndraDB should work with any of the rust variants (stable, nightly, beta.)
 * Make sure you have gcc 5+ and postgres 9.5+ installed.
 * Clone the repo: `git clone git@github.com:indradb/indradb.git`.
 * Build/install it: `cargo install`.
