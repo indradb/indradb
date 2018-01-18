@@ -11,12 +11,14 @@ A graph database written in rust. [Graph databases](https://en.wikipedia.org/wik
 * Social networking: Graphs provide a natural representation of people and the relationships between them.
 * Bayesian networks, Markov networks, and similar data science systems.
 
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge.
+
 This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
 
 ## Features at a glance
 
 * Support for directed, weighted, and typed graphs.
-* An advanced query DSL.
+* A simple, JSON-based query DSL with support for multiple hops.
 * Multiple ways to work with the database:
     * Via HTTP API, and the clients that build off of it.
     * Via lua-based scripting.
