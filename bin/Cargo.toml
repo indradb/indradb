@@ -11,10 +11,6 @@ path = "src/admin/main.rs"
 name = "indradb-server"
 path = "src/server/main.rs"
 
-[[bin]]
-name = "indradb-account"
-path = "src/account/main.rs"
-
 [lib]
 name = "common"
 path = "src/common/lib.rs"
