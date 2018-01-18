@@ -11,11 +11,9 @@ A graph database written in rust. [Graph databases](https://en.wikipedia.org/wik
 * Social networking: Graphs provide a natural representation of people and the relationships between them.
 * Bayesian networks, Markov networks, and similar data science systems.
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge.
-
 This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
 
-## Features at a glance
+## Features
 
 * Support for directed, weighted, and typed graphs.
 * A simple, JSON-based query DSL with support for multiple hops.
@@ -24,9 +22,11 @@ This software is in the alpha state. Do not use this as your single source of tr
     * Via lua-based scripting.
     * By embedding IndraDB directly as a library.
 * Multitenancy / support for multiple accounts.
-* Support for metadata.
+* Support for metadata: key/value data tied to graph items that can be used for supporting things like caching results from graph processing algorithms executed offline.
 * Pluggable underlying datastores, with built-in support for in-memory-only, [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
 * Written in rust!
+
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for edge weights, which are pivotal for things like user reviews, as well as its support for metadata, multitenancy, and a number of other conveniences.
 
 For more details, see:
 
