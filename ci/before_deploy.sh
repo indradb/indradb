@@ -3,29 +3,33 @@
 
 set -ex
 
-local src=$(pwd) \
+main() {
+	local src=$(pwd) \
         stage=
 
-case $TRAVIS_OS_NAME in
-    linux)
-        stage=$(mktemp -d)
-        ;;
-    osx)
-        stage=$(mktemp -d -t tmp)
-        ;;
-esac
+	case $TRAVIS_OS_NAME in
+	    linux)
+	        stage=$(mktemp -d)
+	        ;;
+	    osx)
+	        stage=$(mktemp -d -t tmp)
+	        ;;
+	esac
 
-test -f Cargo.lock || cargo generate-lockfile
+	test -f Cargo.lock || cargo generate-lockfile
 
-pushd bin
-    cargo build --release
-popd
+	pushd bin
+	    cargo build --release
+	popd
 
-cp target/release/indradb-admin $stage/
-cp target/release/indradb-server $stage/
+	cp target/release/indradb-admin $stage/
+	cp target/release/indradb-server $stage/
 
-pushd $stage
-    tar czf $src/indradb-$TRAVIS_TAG-$TARGET.tar.gz *
-popd
+	pushd $stage
+	    tar czf $src/indradb-$TRAVIS_TAG-$TARGET.tar.gz *
+	popd
 
-rm -rf $stage
+	rm -rf $stage
+}
+
+main
