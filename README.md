@@ -33,7 +33,6 @@ For more details, see:
 * [An overview of the concepts in IndraDB.](https://indradb.github.io/concepts.html)
 * [The HTTP API.](https://indradb.github.io/http-api.html)
 * [The scripting API.](https://indradb.github.io/scripting.html)
-* [The library.](https://github.com/indradb/indradb)
 * [The python client.](https://github.com/indradb/python-client)
 
 ## Getting started
