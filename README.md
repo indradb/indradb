@@ -78,7 +78,7 @@ If you want to use the rocksdb-backed datastore, follow these steps:
 
 ## Applications
 
-This exposes three applications:
+There's two applications:
 
 * `indradb-server`: For running the HTTP server.
 * `indradb-admin`: For managing databases and accounts.
