@@ -4,14 +4,7 @@
 
 # [IndraDB](https://indradb.github.io) [![Build Status](https://travis-ci.org/indradb/indradb.svg?branch=master)](https://travis-ci.org/indradb/indradb) [![Coverage Status](https://coveralls.io/repos/github/indradb/indradb/badge.svg?branch=master)](https://coveralls.io/github/indradb/indradb?branch=master)
 
-A graph database written in rust. [Graph databases](https://en.wikipedia.org/wiki/Graph_database) facilitate all sorts of use cases, such as:
-
-* Recommendation engines: graph databases make collaborative filtering and other recommendation algorithms easy to build and easy to understand.
-* Fraud and threat detection: You can use graph databases to find strange/atypical user behavior.
-* Social networking: Graphs provide a natural representation of people and the relationships between them.
-* Bayesian networks, Markov networks, and similar data science systems.
-
-This software is in the alpha state. Do not use this as your single source of truth, and do not expect peak performance.
+A graph database written in rust. This software is in the alpha state.
 
 ## Features
 
