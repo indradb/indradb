@@ -2,6 +2,15 @@
 name = "indradb-lib"
 version = "0.6.2"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
+description = "A graph database library"
+homepage = "https://indradb.github.io"
+repository = "https://github.com/indradb/indradb"
+keywords = ["graph", "database"]
+categories = ["database", "database-implementations"]
+license = "AGPL-1.0"
+
+[badges]
+travis-ci = { repository = "indradb/indradb", branch = "master" }
 
 [lib]
 name = "indradb"
