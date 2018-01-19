@@ -28,12 +28,7 @@ This software is in the alpha state. Do not use this as your single source of tr
 
 IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for edge weights, which are pivotal for things like user reviews, as well as its support for metadata, multitenancy, and a number of other conveniences.
 
-For more details, see:
-
-* [An overview of the concepts in IndraDB.](https://indradb.github.io/concepts.html)
-* [The HTTP API.](https://indradb.github.io/http-api.html)
-* [The scripting API.](https://indradb.github.io/scripting.html)
-* [The python client.](https://github.com/indradb/python-client)
+For more details, see the [homepage](https://indradb.github.io).
 
 ## Getting started
 
