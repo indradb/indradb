@@ -1,8 +1,8 @@
-extern crate indradb;
 extern crate chrono;
 extern crate common;
 extern crate core;
 extern crate hyper;
+extern crate indradb;
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;

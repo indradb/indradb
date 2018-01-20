@@ -45,7 +45,7 @@ where
     b.iter(|| {
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let k = EdgeKey::new(outbound_id.clone(), edge_t, inbound_id.clone());
+        let k = EdgeKey::new(outbound_id, edge_t, inbound_id);
         let w = Weight::new(0.5).unwrap();
         trans.create_edge(k, w).unwrap();
     });
@@ -70,7 +70,7 @@ where
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let q = EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id.clone(), edge_t, inbound_id)],
+            keys: vec![EdgeKey::new(outbound_id, edge_t, inbound_id)],
         };
         trans.get_edges(q).unwrap();
     });
@@ -86,8 +86,6 @@ where
     let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
-    let key = EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    let weight = Weight::new(0.5).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t, inbound_id);
     let weight = Weight::new(0.5).unwrap();
     trans.create_edge(key, weight).unwrap();
@@ -97,7 +95,7 @@ where
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let q = EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id.clone(), edge_t, inbound_id)],
+            keys: vec![EdgeKey::new(outbound_id, edge_t, inbound_id)],
         };
         trans.get_edge_count(q).unwrap();
     });

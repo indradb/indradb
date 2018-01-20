@@ -1,7 +1,7 @@
-#[macro_use]
-extern crate indradb;
 extern crate chrono;
 extern crate hyper;
+#[macro_use]
+extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -216,7 +216,7 @@ where
 }
 
 pub fn datastore() -> HttpDatastore<RestTransaction> {
-    HttpDatastore::<RestTransaction>::new()
+    HttpDatastore::<RestTransaction>::default()
 }
 
 // Vertex queries

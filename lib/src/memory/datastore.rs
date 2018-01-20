@@ -31,21 +31,17 @@ impl InternalMemoryDatastore {
     ) -> Result<Vec<(Uuid, models::VertexValue)>, Error> {
         match q {
             VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
-                Ok(
-                    self.vertices
-                        .range(start_id..)
-                        .take(limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect(),
-                )
+                Ok(self.vertices
+                    .range(start_id..)
+                    .take(limit as usize)
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect())
             } else {
-                Ok(
-                    self.vertices
-                        .iter()
-                        .take(limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect(),
-                )
+                Ok(self.vertices
+                    .iter()
+                    .take(limit as usize)
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect())
             },
             VertexQuery::Vertices { ids } => {
                 let mut results = Vec::new();
@@ -374,9 +370,7 @@ impl Transaction for MemoryTransaction {
 
         let iter = edge_values
             .into_iter()
-            .map(|(key, weight, update_datetime)| {
-                models::Edge::new(key, weight, update_datetime)
-            });
+            .map(|(key, weight, update_datetime)| models::Edge::new(key, weight, update_datetime));
         Ok(iter.collect())
     }
 

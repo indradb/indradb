@@ -5,8 +5,8 @@
 
 use std::env;
 use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
-            PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-            Transaction, Type, Vertex, VertexQuery, Weight};
+              PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
+              Transaction, Type, Vertex, VertexQuery, Weight};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;

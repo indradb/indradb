@@ -10,14 +10,12 @@ pub fn create_vertex((trans, t): (ProxyTransaction, Type)) -> Result<Uuid, Error
 }
 
 pub fn get_vertices((trans, q): (ProxyTransaction, VertexQuery)) -> Result<Vec<Vertex>, Error> {
-    Ok(
-        trans
-            .trans
-            .get_vertices(q.0)?
-            .into_iter()
-            .map(Vertex::new)
-            .collect(),
-    )
+    Ok(trans
+        .trans
+        .get_vertices(q.0)?
+        .into_iter()
+        .map(Vertex::new)
+        .collect())
 }
 
 pub fn delete_vertices((trans, q): (ProxyTransaction, VertexQuery)) -> Result<(), Error> {
@@ -30,14 +28,12 @@ pub fn create_edge((trans, key, weight): (ProxyTransaction, EdgeKey, Weight)) ->
 }
 
 pub fn get_edges((trans, q): (ProxyTransaction, EdgeQuery)) -> Result<Vec<Edge>, Error> {
-    Ok(
-        trans
-            .trans
-            .get_edges(q.0)?
-            .into_iter()
-            .map(Edge::new)
-            .collect(),
-    )
+    Ok(trans
+        .trans
+        .get_edges(q.0)?
+        .into_iter()
+        .map(Edge::new)
+        .collect())
 }
 
 pub fn delete_edges((trans, q): (ProxyTransaction, EdgeQuery)) -> Result<(), Error> {
@@ -68,9 +64,9 @@ pub fn delete_global_metadata((trans, key): (ProxyTransaction, String)) -> Resul
 pub fn get_account_metadata(
     (trans, owner_id, key): (ProxyTransaction, Uuid, String),
 ) -> Result<JsonValue, Error> {
-    Ok(JsonValue::new(
-        trans.trans.get_account_metadata(owner_id.0, key)?,
-    ))
+    Ok(JsonValue::new(trans
+        .trans
+        .get_account_metadata(owner_id.0, key)?))
 }
 
 pub fn set_account_metadata(

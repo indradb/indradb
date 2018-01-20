@@ -2,7 +2,7 @@ use indradb::*;
 use std::marker::PhantomData;
 use std::process::{Child, Command};
 use uuid::Uuid;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use super::http::request;
 use std::thread::sleep;
 use hyper::client::Client;
@@ -12,7 +12,7 @@ use hyper::status::StatusCode;
 const START_PORT: usize = 1024;
 
 lazy_static! {
-    static ref PORT: Mutex<usize> = Mutex::new(START_PORT);
+    static ref PORT: AtomicUsize = AtomicUsize::new(START_PORT);
 }
 
 #[derive(Debug)]
@@ -22,16 +22,12 @@ pub struct HttpDatastore<H: HttpTransaction> {
     phantom_http_transaction: PhantomData<H>,
 }
 
-impl<H: HttpTransaction> HttpDatastore<H> {
+impl<H: HttpTransaction> Default for HttpDatastore<H> {
     // Ignore is here because otherwise we get noisy results - it's used in
     // macros which the compiler doesn't seem to pick up on
     #[allow(dead_code)]
-    pub fn new() -> HttpDatastore<H> {
-        let port = {
-            let mut port = PORT.lock().unwrap();
-            *port += 1;
-            *port
-        };
+    fn default() -> Self {
+        let port = PORT.fetch_add(1, Ordering::SeqCst);
 
         let server = Command::new("../target/debug/indradb-server")
             .envs(hashmap!{"PORT" => port.to_string()})

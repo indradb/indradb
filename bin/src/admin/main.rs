@@ -1,10 +1,10 @@
-extern crate indradb;
 #[macro_use]
 extern crate clap;
 extern crate common;
+extern crate indradb;
 extern crate uuid;
 
-use clap::{Arg, App, SubCommand};
+use clap::{App, Arg, SubCommand};
 use indradb::{Datastore, PostgresDatastore};
 use common::datastore;
 use std::env;
@@ -39,7 +39,7 @@ fn main() {
             eprintln!("Could not create the database schema: {:?}", err);
             exit(1);
         }
-    } else if let Some(_) = matches.subcommand_matches("add-account") {
+    } else if matches.subcommand_matches("add-account").is_some() {
         let datastore = datastore();
 
         match datastore.create_account() {
@@ -50,7 +50,7 @@ fn main() {
             Err(err) => {
                 eprintln!("Could not create account: {:?}", err);
                 exit(1);
-            },
+            }
         }
     } else if let Some(matches) = matches.subcommand_matches("remove-account") {
         let datastore = datastore();

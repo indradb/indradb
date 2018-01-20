@@ -2,8 +2,8 @@ use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, V
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
-            QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
-            VertexQuery as ExternalVertexQuery, Weight as ExternalWeight};
+              QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
+              VertexQuery as ExternalVertexQuery, Weight as ExternalWeight};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -31,9 +31,9 @@ impl<'lua> FromLua<'lua> for JsonValue {
             Value::Nil => Ok(Self::new(ExternalJsonValue::Null)),
             Value::Boolean(value) => Ok(Self::new(ExternalJsonValue::Bool(value))),
             Value::LightUserData(_) => Err(new_from_lua_error("light userdata", "JSON", None)),
-            Value::Integer(value) => Ok(Self::new(
-                ExternalJsonValue::Number(JsonNumber::from(value)),
-            )),
+            Value::Integer(value) => Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(
+                value,
+            )))),
             Value::Number(value) => {
                 let num = JsonNumber::from_f64(value)
                     .expect("Expected to be able to create a JSON number from a float");
@@ -213,9 +213,11 @@ impl<'lua> FromLua<'lua> for EdgeKey {
             let outbound_id = uuid_from_value(get_table_value(&value, "outbound_id")?)?;
             let t = type_from_value(get_table_value(&value, "type")?)?;
             let inbound_id = uuid_from_value(get_table_value(&value, "inbound_id")?)?;
-            Ok(EdgeKey::new(
-                ExternalEdgeKey::new(outbound_id, t, inbound_id),
-            ))
+            Ok(EdgeKey::new(ExternalEdgeKey::new(
+                outbound_id,
+                t,
+                inbound_id,
+            )))
         } else {
             Err(new_from_lua_error("non-table", "edge key", None))
         }
@@ -350,16 +352,17 @@ impl<'lua> FromLua<'lua> for VertexQuery {
             if t == "all" {
                 let start_id =
                     match optional_string_from_value(get_table_value(&value, "start_id")?)? {
-                        Some(start_id) => Some(ExternalUuid::from_str(&start_id[..]).map_err(|e| {
-                            new_from_lua_error("string", "uuid", Some(format!("{}", e)))
-                        })?),
+                        Some(start_id) => Some(ExternalUuid::from_str(&start_id[..]).map_err(
+                            |e| new_from_lua_error("string", "uuid", Some(format!("{}", e))),
+                        )?),
                         None => None,
                     };
 
                 let limit = limit_from_table(&value, l)?;
-                Ok(VertexQuery::new(
-                    ExternalVertexQuery::All { start_id, limit },
-                ))
+                Ok(VertexQuery::new(ExternalVertexQuery::All {
+                    start_id,
+                    limit,
+                }))
             } else if t == "vertices" {
                 if let Value::Table(ids_values) = get_table_value(&value, "ids")? {
                     let mut ids = vec![];
@@ -436,17 +439,17 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
                     Box::new(VertexQuery::from_lua(get_table_value(&value, "vertex_query")?, l)?.0);
                 let converter = converter_from_table(&value)?;
 
-                let type_filter = match optional_string_from_value(
-                    get_table_value(&value, "type_filter")?,
-                )? {
-                    Some(type_filter_str) => {
-                        let type_filter = ExternalType::new(type_filter_str.to_string()).map_err(
-                            |e| new_from_lua_error("string", "type", Some(format!("{}", e))),
-                        )?;
-                        Some(type_filter)
-                    }
-                    None => None,
-                };
+                let type_filter =
+                    match optional_string_from_value(get_table_value(&value, "type_filter")?)? {
+                        Some(type_filter_str) => {
+                            let type_filter = ExternalType::new(type_filter_str.to_string())
+                                .map_err(|e| {
+                                    new_from_lua_error("string", "type", Some(format!("{}", e)))
+                                })?;
+                            Some(type_filter)
+                        }
+                        None => None,
+                    };
 
                 let high_filter =
                     optional_datetime_from_value(&get_table_value(&value, "high_filter")?)?;
@@ -483,9 +486,9 @@ fn new_from_lua_error(from: &'static str, to: &'static str, message: Option<Stri
 }
 
 fn get_table_value<'lua>(table: &'lua Table, name: &str) -> LuaResult<Value<'lua>> {
-    table.get(name).map_err(|_| {
-        new_from_lua_error("", "", Some(format!("missing `{}` in the table", name)))
-    })
+    table
+        .get(name)
+        .map_err(|_| new_from_lua_error("", "", Some(format!("missing `{}` in the table", name))))
 }
 
 fn string_from_value(value: Value) -> LuaResult<String> {
@@ -526,17 +529,15 @@ fn optional_datetime_from_value(value: &Value) -> LuaResult<Option<DateTime<Utc>
 
 fn uuid_from_value(value: Value) -> LuaResult<ExternalUuid> {
     let value_string = string_from_value(value)?;
-    let value_uuid = ExternalUuid::from_str(&value_string[..]).map_err(|e| {
-        new_from_lua_error("string", "uuid", Some(format!("{}", e)))
-    })?;
+    let value_uuid = ExternalUuid::from_str(&value_string[..])
+        .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?;
     Ok(value_uuid)
 }
 
 fn type_from_value(value: Value) -> LuaResult<ExternalType> {
     let value_string = string_from_value(value)?;
-    let value_type = ExternalType::new(value_string.to_string()).map_err(|e| {
-        new_from_lua_error("string", "type", Some(format!("{}", e)))
-    })?;
+    let value_type = ExternalType::new(value_string.to_string())
+        .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?;
     Ok(value_type)
 }
 

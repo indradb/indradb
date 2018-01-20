@@ -1,7 +1,7 @@
-#[macro_use]
-extern crate indradb;
 extern crate chrono;
 extern crate hyper;
+#[macro_use]
+extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -214,7 +214,7 @@ impl Transaction for BatchTransaction {
 }
 
 pub fn datastore() -> HttpDatastore<BatchTransaction> {
-    HttpDatastore::<BatchTransaction>::new()
+    HttpDatastore::<BatchTransaction>::default()
 }
 
 // Vertex queries
