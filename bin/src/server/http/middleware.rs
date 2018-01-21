@@ -73,10 +73,9 @@ impl BeforeMiddleware for BasicAuthMiddleware {
         let mut response = Response::new();
         response.status = Some(status::Unauthorized);
         response.headers.set(ContentType(get_json_mime()));
-        response.headers.set_raw(
-            "WWW-Authenticate",
-            vec![b"Basic realm=\"main\"".to_vec()],
-        );
+        response
+            .headers
+            .set_raw("WWW-Authenticate", vec![b"Basic realm=\"main\"".to_vec()]);
         response.body = Some(Box::new(body));
 
         let error = IronError {

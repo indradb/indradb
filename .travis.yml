@@ -88,8 +88,6 @@ deploy:
 
 cache:
   directories:
-  - bin/target
-  - lib/target
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
   - /usr/local/bin/kcov

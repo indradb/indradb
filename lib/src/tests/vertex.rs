@@ -191,21 +191,19 @@ where
     // This query should get `inserted_id_2`
     let query_1 = VertexQuery::Vertices {
         ids: vec![inserted_id_1],
-    }
-        .outbound_edges(
-            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-            None,
-            None,
-            1,
-        )
+    }.outbound_edges(
+        Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+        None,
+        None,
+        1,
+    )
         .inbound_vertices(1);
     let range = trans.get_vertices(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id_2);
 
     // This query should get `inserted_id_1`
-    let query_2 = 
-        query_1
+    let query_2 = query_1
         .inbound_edges(
             Some(models::Type::new("test_edge_type".to_string()).unwrap()),
             None,

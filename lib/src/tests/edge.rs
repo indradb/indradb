@@ -5,7 +5,7 @@ use models;
 use uuid::Uuid;
 use chrono::offset::Utc;
 use chrono::Timelike;
-use super::util::{create_edges, create_time_range_queryable_edges, create_edge_from};
+use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use std::collections::HashSet;
 use std::f32;
 use std::u32;
@@ -415,38 +415,40 @@ where
     // This query should get `inserted_id_2`
     let query_1 = VertexQuery::Vertices {
         ids: vec![inserted_id_1],
-    }
-        .outbound_edges(
-            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-            None,
-            None,
-            1,
-        );
+    }.outbound_edges(
+        Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+        None,
+        None,
+        1,
+    );
     let range = trans.get_edges(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0].key, models::EdgeKey::new(
-        inserted_id_1,
-        models::Type::new("test_edge_type".to_string()).unwrap(),
-        inserted_id_2
-    ));
+    assert_eq!(
+        range[0].key,
+        models::EdgeKey::new(
+            inserted_id_1,
+            models::Type::new("test_edge_type".to_string()).unwrap(),
+            inserted_id_2
+        )
+    );
 
     // This query should get `inserted_id_1`
-    let query_2 = 
-        query_1
-        .inbound_vertices(1)
-        .inbound_edges(
-            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-            None,
-            None,
-            1,
-        );
+    let query_2 = query_1.inbound_vertices(1).inbound_edges(
+        Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+        None,
+        None,
+        1,
+    );
     let range = trans.get_edges(query_2).unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0].key, models::EdgeKey::new(
-        inserted_id_1,
-        models::Type::new("test_edge_type".to_string()).unwrap(),
-        inserted_id_2
-    ));
+    assert_eq!(
+        range[0].key,
+        models::EdgeKey::new(
+            inserted_id_1,
+            models::Type::new("test_edge_type".to_string()).unwrap(),
+            inserted_id_2
+        )
+    );
 }
 
 fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {

@@ -291,15 +291,35 @@ impl RocksdbTransaction {
 
                         for item in edge_iterator {
                             match item {
-                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight)) => {
+                                Ok((
+                                    (
+                                        edge_range_first_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_second_id,
+                                    ),
+                                    edge_range_weight,
+                                )) => {
                                     if edge_range_update_datetime >= low_filter {
                                         edges.push(match converter {
-                                            QueryTypeConverter::Outbound => {
-                                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight))
-                                            },
-                                            QueryTypeConverter::Inbound => {
-                                                Ok(((edge_range_second_id, edge_range_t, edge_range_update_datetime, edge_range_first_id), edge_range_weight))
-                                            }
+                                            QueryTypeConverter::Outbound => Ok((
+                                                (
+                                                    edge_range_first_id,
+                                                    edge_range_t,
+                                                    edge_range_update_datetime,
+                                                    edge_range_second_id,
+                                                ),
+                                                edge_range_weight,
+                                            )),
+                                            QueryTypeConverter::Inbound => Ok((
+                                                (
+                                                    edge_range_second_id,
+                                                    edge_range_t,
+                                                    edge_range_update_datetime,
+                                                    edge_range_first_id,
+                                                ),
+                                                edge_range_weight,
+                                            )),
                                         });
                                     } else {
                                         break;
@@ -321,14 +341,34 @@ impl RocksdbTransaction {
 
                         for item in edge_iterator {
                             match item {
-                                Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight)) => {
+                                Ok((
+                                    (
+                                        edge_range_first_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_second_id,
+                                    ),
+                                    edge_range_weight,
+                                )) => {
                                     edges.push(match converter {
-                                        QueryTypeConverter::Outbound => {
-                                            Ok(((edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id), edge_range_weight))
-                                        },
-                                        QueryTypeConverter::Inbound => {
-                                            Ok(((edge_range_second_id, edge_range_t, edge_range_update_datetime, edge_range_first_id), edge_range_weight))
-                                        }
+                                        QueryTypeConverter::Outbound => Ok((
+                                            (
+                                                edge_range_first_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_second_id,
+                                            ),
+                                            edge_range_weight,
+                                        )),
+                                        QueryTypeConverter::Inbound => Ok((
+                                            (
+                                                edge_range_second_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_first_id,
+                                            ),
+                                            edge_range_weight,
+                                        )),
                                     });
                                 }
                                 Err(_) => edges.push(item),

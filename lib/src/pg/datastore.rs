@@ -186,9 +186,10 @@ impl PostgresTransaction {
             mem::transmute(match conn.transaction() {
                 Ok(trans) => trans,
                 Err(err) => {
-                    return Err(Error::Unexpected(
-                        format!("Could not create transaction: {}", err),
-                    ))
+                    return Err(Error::Unexpected(format!(
+                        "Could not create transaction: {}",
+                        err
+                    )))
                 }
             })
         };
