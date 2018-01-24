@@ -1,4 +1,4 @@
-# IndraDB library
+# IndraDB library [![Docs](https://docs.rs/indradb-lib/badge.svg)](https://docs.rs/indradb-lib)
 
 This is the IndraDB library. Most users can use the [server](https://github.com/indradb/indradb), which provides higher-level methods for working with IndraDB databases. Linking directly against the library would be necessary if you want to make a new datastore implementation, or if you want to work at a lower-level than the server affords.
 
