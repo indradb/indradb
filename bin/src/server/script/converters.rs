@@ -1,4 +1,4 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value, LightUserData};
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value, UserData, UserDataMethods};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
@@ -9,7 +9,19 @@ use core::str::FromStr;
 use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use std::os::raw::c_void;
+use std::sync::Arc;
+use super::api;
+
+macro_rules! proxy_fn {
+    ($methods:expr, $name:expr, $func:expr) => {
+        $methods.add_method($name, |_, this, args| {
+            match $func(&this.trans, args) {
+                Ok(val) => Ok(val),
+                Err(err) => Err(LuaError::ExternalError(Arc::new(err)))
+            }
+        });
+    }
+}
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 enum JsonMapKey {
@@ -156,31 +168,39 @@ impl<'lua> ToLua<'lua> for JsonValue {
 }
 
 #[derive(Debug)]
-pub struct ProxyTransaction<'a> {
-    pub trans: &'a ExternalProxyTransaction
+pub struct ProxyTransaction {
+    pub trans: ExternalProxyTransaction
 }
 
-impl<'lua> ProxyTransaction<'lua> {
-    pub fn new(value: &'lua ExternalProxyTransaction) -> Self {
-        Self { trans: value }
+impl ProxyTransaction {
+    pub fn new(trans: ExternalProxyTransaction) -> Self {
+        Self { trans: trans }
     }
 }
 
-impl<'lua> FromLua<'lua> for ProxyTransaction<'lua> {
-    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        if let Value::LightUserData(value) = value {
-            let trans_ptr = unsafe { *(value.0 as *mut &ExternalProxyTransaction) };
-            Ok(Self::new(trans_ptr))
-        } else {
-            Err(new_from_lua_error("non-lightuserdata", "transaction", None))
-        }
-    }
-}
+impl UserData for ProxyTransaction {
+    fn add_methods(methods: &mut UserDataMethods<Self>) {
+        proxy_fn!(methods, "create_vertex", api::create_vertex);
+        proxy_fn!(methods, "get_vertices", api::get_vertices);
+        proxy_fn!(methods, "delete_vertices", api::delete_vertices);
 
-impl<'lua> ToLua<'lua> for ProxyTransaction<'lua> {
-    fn to_lua(mut self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
-        let trans_ptr: *mut c_void = &mut self.trans as *mut _ as *mut c_void;
-        Ok(Value::LightUserData(LightUserData(trans_ptr)))
+        proxy_fn!(methods, "create_edge", api::create_edge);
+        proxy_fn!(methods, "get_edges", api::get_edges);
+        proxy_fn!(methods, "delete_edges", api::delete_edges);
+        proxy_fn!(methods, "get_edge_count", api::get_edge_count);
+
+        proxy_fn!(methods, "get_global_metadata", api::get_global_metadata);
+        proxy_fn!(methods, "set_global_metadata", api::set_global_metadata);
+        proxy_fn!(methods, "delete_global_metadata", api::delete_global_metadata);
+        proxy_fn!(methods, "get_account_metadata", api::get_account_metadata);
+        proxy_fn!(methods, "set_account_metadata", api::set_account_metadata);
+        proxy_fn!(methods, "delete_account_metadata", api::delete_account_metadata);
+        proxy_fn!(methods, "get_vertex_metadata", api::get_vertex_metadata);
+        proxy_fn!(methods, "set_vertex_metadata", api::set_vertex_metadata);
+        proxy_fn!(methods, "delete_vertex_metadata", api::delete_vertex_metadata);
+        proxy_fn!(methods, "get_edge_metadata", api::get_edge_metadata);
+        proxy_fn!(methods, "set_edge_metadata", api::set_edge_metadata);
+        proxy_fn!(methods, "delete_edge_metadata", api::delete_edge_metadata);
     }
 }
 
