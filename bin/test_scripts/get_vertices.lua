@@ -12,7 +12,9 @@ trans:create_edge(queries.EdgeKey.new(id_3, "bar", id_4), 1.0);
 trans:create_edge(queries.EdgeKey.new(id_4, "bar", id_5), 1.0);
 
 function check_vertices(vertices, expected_count, required_vertex_ids)
-    assert(#vertices >= expected_count);
+    if expected_count ~= nil then
+        assert(#vertices == expected_count);
+    end
 
     for _, vertex in pairs(vertices) do
         if required_vertex_ids[vertex.id] ~= nil then
@@ -30,12 +32,8 @@ function check_vertices(vertices, expected_count, required_vertex_ids)
 end
 
 -- Ensure we can get all of the vertices
-local vertices = trans:get_vertices(queries.VertexQuery.all("00000000-0000-0000-0000-000000000000", 10));
-check_vertices(vertices, 5, {[id_1]=true, [id_2]=true, [id_3]=true, [id_4]=true, [id_5]=true});
-
--- Ensure we can get a single vertex
-local vertices = trans:get_vertices(queries.VertexQuery.vertices({id_1}));
-check_vertices(vertices, 1, {[id_1]=true});
+local vertices = trans:get_vertices(queries.VertexQuery.all("00000000-0000-0000-0000-000000000000", 10000));
+check_vertices(vertices, nil, {[id_1]=true, [id_2]=true, [id_3]=true, [id_4]=true, [id_5]=true});
 
 -- Ensure we can get a specific set of vertices
 local vertices = trans:get_vertices(queries.VertexQuery.vertices({id_1, id_2, id_3}));

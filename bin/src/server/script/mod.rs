@@ -1,5 +1,6 @@
 mod api;
 mod converters;
+mod errors;
 
 #[cfg(test)]
 mod tests;
@@ -11,7 +12,8 @@ use std::path::Path;
 use uuid::Uuid;
 use indradb::Datastore;
 use statics;
-use std::sync::Arc;
+use common::ProxyTransaction;
+use std::convert::From;
 
 /// Runs a script.
 ///
@@ -25,7 +27,7 @@ pub fn run(
     contents: &str,
     path: &Path,
     arg: JsonValue,
-) -> Result<JsonValue, LuaError> {
+) -> Result<JsonValue, errors::ScriptError> {
     let l = Lua::new();
     let globals = l.globals();
 
@@ -44,18 +46,19 @@ pub fn run(
         package.set("path", format!("{};{}", old_path, script_path))?;
     }
 
-    // Add the transaction as a global variable.
-    let trans = statics::DATASTORE.transaction(account_id).map_err(|err| {
-        LuaError::ExternalError(Arc::new(err))
-    })?;
+    // Create a new transaction for the script
+    let trans = statics::DATASTORE.transaction(account_id)?;
 
+    // Add globals
     globals.set("trans", converters::ProxyTransaction::new(trans))?;
-
-    // Add the account id as a global variable.
     globals.set("account_id", account_id.to_string())?;
-
     globals.set("arg", converters::JsonValue::new(arg))?;
 
-    let value: converters::JsonValue = fun.call(Value::Nil)?;
-    Ok(value.0)
+    // Run the script
+    let value: Result<converters::JsonValue, LuaError> = fun.call(Value::Nil);
+
+    match value {
+        Ok(value) => Ok(value.0),
+        Err(err) => Err(errors::ScriptError::from(err))
+    }
 }

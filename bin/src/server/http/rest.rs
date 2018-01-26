@@ -117,7 +117,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
     }?;
 
     match script::run(account_id, &contents, &path, payload) {
-        Ok(val) => Ok(to_response(status::Ok, &val)),
+        Ok(value) => Ok(to_response(status::Ok, &value)),
         Err(err) => {
             let error_message = format!("Script failed: {:?}", err);
             Err(create_iron_error(
