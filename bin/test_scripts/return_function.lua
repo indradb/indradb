@@ -2,4 +2,4 @@ function foo()
 end
 
 return foo
--- err: error converting Lua function to JSON
+-- err: Lua(FromLuaConversionError { from: "function", to: "JSON", message: None })

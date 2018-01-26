@@ -1,13 +1,13 @@
 local queries = require("queries");
 
-local outbound_id = create_vertex(trans, "foo");
-local inbound_id = create_vertex(trans, "bar");
+local outbound_id = trans:create_vertex("foo");
+local inbound_id = trans:create_vertex("bar");
 local key = queries.EdgeKey.new(outbound_id, "baz", inbound_id);
-create_edge(trans, key, 0.5);
+trans:create_edge(key, 0.5);
 
 local q = queries.EdgeQuery.edges({key});
-set_edge_metadata(trans, q, "script-test-edge", {foo={true, false}});
-local val = get_edge_metadata(trans, q, "script-test-edge");
+trans:set_edge_metadata(q, "script-test-edge", {foo={true, false}});
+local val = trans:get_edge_metadata(q, "script-test-edge");
 local already_iterated = false;
 
 for k, v in pairs(val) do
@@ -23,8 +23,8 @@ for k, v in pairs(val) do
     already_iterated = true;
 end
 
-delete_edge_metadata(trans, q, "script-test-edge");
-local val = get_edge_metadata(trans, q, "script-test-edge");
+trans:delete_edge_metadata(q, "script-test-edge");
+local val = trans:get_edge_metadata(q, "script-test-edge");
 
 for id, value in pairs(val) do
     error("Unexpected item returned after deleting metadata: " .. id .. "->" .. value)
