@@ -112,8 +112,7 @@ pub fn run(
     }
 
     // Add the transaction as a global variable.
-    let trans_ptr: *mut c_void = &mut trans as *mut _ as *mut c_void;
-    globals.set("trans", Value::LightUserData(LightUserData(trans_ptr)))?;
+    globals.set("trans", converters::ProxyTransaction::new(trans))?;
 
     // Add the account id as a global variable.
     globals.set("account_id", account_id.to_string())?;

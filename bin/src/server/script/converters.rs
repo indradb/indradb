@@ -1,4 +1,4 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value};
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value, LightUserData};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
@@ -9,6 +9,7 @@ use core::str::FromStr;
 use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
+use std::os::raw::c_void;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 enum JsonMapKey {
@@ -156,11 +157,11 @@ impl<'lua> ToLua<'lua> for JsonValue {
 
 #[derive(Debug)]
 pub struct ProxyTransaction<'a> {
-    pub trans: &'a mut ExternalProxyTransaction,
+    pub trans: &'a ExternalProxyTransaction
 }
 
 impl<'lua> ProxyTransaction<'lua> {
-    pub fn new(value: &'lua mut ExternalProxyTransaction) -> Self {
+    pub fn new(value: &'lua ExternalProxyTransaction) -> Self {
         Self { trans: value }
     }
 }
@@ -168,11 +169,18 @@ impl<'lua> ProxyTransaction<'lua> {
 impl<'lua> FromLua<'lua> for ProxyTransaction<'lua> {
     fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
         if let Value::LightUserData(value) = value {
-            let trans_ptr = unsafe { &mut **(value.0 as *mut &mut ExternalProxyTransaction) };
+            let trans_ptr = unsafe { *(value.0 as *mut &ExternalProxyTransaction) };
             Ok(Self::new(trans_ptr))
         } else {
             Err(new_from_lua_error("non-lightuserdata", "transaction", None))
         }
+    }
+}
+
+impl<'lua> ToLua<'lua> for ProxyTransaction<'lua> {
+    fn to_lua(mut self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
+        let trans_ptr: *mut c_void = &mut self.trans as *mut _ as *mut c_void;
+        Ok(Value::LightUserData(LightUserData(trans_ptr)))
     }
 }
 
