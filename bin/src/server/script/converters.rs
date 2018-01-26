@@ -15,7 +15,7 @@ use super::api;
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
         $methods.add_method($name, |_, this, args| {
-            match $func(&this.trans, args) {
+            match $func(&this.0, args) {
                 Ok(val) => Ok(val),
                 Err(err) => Err(LuaError::ExternalError(Arc::new(err)))
             }
@@ -168,13 +168,11 @@ impl<'lua> ToLua<'lua> for JsonValue {
 }
 
 #[derive(Debug)]
-pub struct ProxyTransaction {
-    pub trans: ExternalProxyTransaction
-}
+pub struct ProxyTransaction(pub ExternalProxyTransaction);
 
 impl ProxyTransaction {
     pub fn new(trans: ExternalProxyTransaction) -> Self {
-        Self { trans: trans }
+        Self { 0: trans }
     }
 }
 

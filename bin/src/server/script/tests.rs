@@ -3,7 +3,7 @@ use std::fs::File;
 use regex::Regex;
 use serde_json::Value as JsonValue;
 use indradb::Datastore;
-use super::run;
+use super::execute;
 use serde_json;
 use std::path::Path;
 use uuid::Uuid;
@@ -18,7 +18,7 @@ macro_rules! test_script {
         #[test]
 		fn $name() {
             let file_path_str = format!("test_scripts/{}.lua", stringify!($name));
-            let file_path = Path::new(&file_path_str[..]);
+            let file_path = Path::new(&file_path_str);
             let mut file = File::open(file_path).expect("Could not open script file");
             let mut contents = String::new();
             file.read_to_string(&mut contents).expect("Could not get script file contents");
@@ -29,16 +29,16 @@ macro_rules! test_script {
             // datastore by default which works fine. If you swap that out for
             // another datastore (i.e. by changing the `DATASTORE_URL` env
             // var), then you may need to disable parallel execution of tests.
-            match run(Uuid::default(), &contents[..], file_path, JsonValue::Null) {
+            match execute(Uuid::default(), &contents, &file_path_str, JsonValue::Null) {
                 Ok(actual_result) => {
-                    if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
+                    if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents) {
                         let s = cap.get(1).unwrap().as_str();
                         let expected_result: JsonValue = serde_json::from_str(s).expect("Could not parse expected JSON response");
                         assert_eq!(expected_result, actual_result);
                     }
                 },
                 Err(err) => {
-                    if let Some(cap) = ERR_EXPECTED_PATTERN.captures(&contents[..]) {
+                    if let Some(cap) = ERR_EXPECTED_PATTERN.captures(&contents) {
                         let s = cap.get(1).unwrap().as_str();
                         assert_eq!(format!("{:?}", err), s);
                     } else {

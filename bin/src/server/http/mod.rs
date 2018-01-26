@@ -26,6 +26,7 @@ pub fn start(port: u16) {
     router.delete("/vertex", rest::delete_vertices, "delete_vertices");
 
     router.post("/script/:name", rest::script, "script");
+    router.post("/mapreduce/:name", rest::mapreduce, "mapreduce");
 
     let binding = format!("0.0.0.0:{}", port);
     println!("Listening on {}", binding);

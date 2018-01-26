@@ -1,12 +1,14 @@
 extern crate chrono;
 extern crate common;
 extern crate core;
+extern crate crossbeam_channel;
 extern crate hyper;
 extern crate indradb;
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
+extern crate num_cpus;
 extern crate regex;
 extern crate rlua;
 extern crate router;

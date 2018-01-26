@@ -38,6 +38,8 @@ clap = "^2.24.1"
 lazy_static = "~0.2.8"
 router = "~0.5.1"
 rlua = "0.9.1"
+num_cpus = "^1.4.0"
+crossbeam-channel = "0.1.2"
 
 [dev-dependencies]
 maplit = "0.1.4"

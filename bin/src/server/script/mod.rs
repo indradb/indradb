@@ -22,16 +22,16 @@ use std::convert::From;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(
+pub fn execute(
     account_id: Uuid,
     contents: &str,
-    path: &Path,
+    path: &str,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
     let l = Lua::new();
     let globals = l.globals();
 
-    let fun = l.load(contents, path.to_str())?;
+    let fun = l.load(contents, Some(path))?;
 
     // Update the `package.path` to include the script root, so it's easier
     // for scripts to require each other.
@@ -61,4 +61,20 @@ pub fn run(
         Ok(value) => Ok(value.0),
         Err(err) => Err(errors::ScriptError::from(err))
     }
+}
+
+/// Runs a mapreduce script.
+///
+/// # Errors
+/// Returns an error if the script produced an error.
+///
+/// # Panics
+/// We try to avoid panics, but there is a lot of unsafe code here.
+pub fn mapreduce(
+    account_id: Uuid,
+    contents: &str,
+    path: &str,
+    arg: JsonValue,
+) -> Result<JsonValue, errors::ScriptError> {
+    unimplemented!();
 }

@@ -20,8 +20,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use statics;
 use uuid::Uuid;
+use std::fs::File;
+use std::path::Path;
+use regex;
 
 lazy_static! {
+    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
     static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
 }
 
@@ -381,6 +385,45 @@ pub fn get_weight_query_param(
         Err(_) => Err(create_iron_error(
             status::BadRequest,
             "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string(),
+        )),
+    }
+}
+
+/// Gets the path to and the contents of a script by its name.
+///
+/// # Errors
+/// Returns an `IronError` if the script has an invalid name, does not exist,
+/// or could not be read.
+pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
+    if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
+        return Err(create_iron_error(
+            status::BadRequest,
+            "Invalid script name".to_string(),
+        ));
+    }
+
+    let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
+
+    let path_str = match path.to_str() {
+        Some(path_str) => path_str,
+        None => return Err(create_iron_error(status::InternalServerError, "Could not stringify script path".to_string()))
+    };
+
+    match File::open(&path) {
+        Ok(mut file) => {
+            let mut contents = String::new();
+
+            match file.read_to_string(&mut contents) {
+                Ok(_) => Ok((path_str.to_string(), contents)),
+                Err(_) => Err(create_iron_error(
+                    status::NotFound,
+                    "Could not read script".to_string(),
+                )),
+            }
+        }
+        Err(_) => Err(create_iron_error(
+            status::NotFound,
+            "Could not load script".to_string(),
         )),
     }
 }

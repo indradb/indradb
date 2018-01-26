@@ -18,6 +18,7 @@ use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
 use super::schema;
+use std::cmp::min;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
@@ -50,14 +51,7 @@ impl PostgresDatastore {
     ) -> PostgresDatastore {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
-            None => {
-                let cpus: usize = num_cpus::get();
-                if cpus > 512 {
-                    1024
-                } else {
-                    cpus as u32 * 2
-                }
-            }
+            None => min(num_cpus::get() as u32, 128u32)
         };
 
         let pool_config = Config::builder().pool_size(unwrapped_pool_size).build();
