@@ -2,12 +2,10 @@ use std::io::prelude::*;
 use std::fs::File;
 use regex::Regex;
 use serde_json::Value as JsonValue;
-use indradb::Datastore;
 use super::run;
 use serde_json;
 use std::path::Path;
 use uuid::Uuid;
-use common::datastore;
 
 lazy_static! {
     static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: ([^\n]+)").unwrap();
@@ -30,11 +28,7 @@ macro_rules! test_script {
             // datastore by default which works fine. If you swap that out for
             // another datastore (i.e. by changing the `DATASTORE_URL` env
             // var), then you may need to disable parallel execution of tests.
-            let datastore = datastore();
-            let trans = datastore.transaction(Uuid::default()).expect("Could not get a transaction");
-            let result = run(&trans, Uuid::default(), &contents[..], file_path, JsonValue::Null);
-
-            match result {
+            match run(Uuid::default(), &contents[..], file_path, JsonValue::Null) {
                 Ok(actual_result) => {
                     if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
                         let s = cap.get(1).unwrap().as_str();
@@ -45,9 +39,9 @@ macro_rules! test_script {
                 Err(err) => {
                     if let Some(cap) = ERR_EXPECTED_PATTERN.captures(&contents[..]) {
                         let s = cap.get(1).unwrap().as_str();
-                        assert_eq!(format!("{}", err), s);
+                        assert_eq!(format!("{:?}", err), s);
                     } else {
-                        panic!(format!("Script failed to execute: {}", err));
+                        panic!(format!("Script failed to execute: {:?}", err));
                     }
                 }
             }
@@ -74,7 +68,6 @@ test_script!(return_boolean);
 test_script!(return_coroutine);
 test_script!(return_function);
 test_script!(return_int);
-test_script!(return_light_userdata);
 test_script!(return_nil);
 test_script!(return_number);
 test_script!(return_obj);

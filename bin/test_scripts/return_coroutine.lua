@@ -2,4 +2,4 @@ foo = coroutine.create(function()
 end)
 
 return foo
--- err: error converting Lua thread to JSON
+-- err: Lua(FromLuaConversionError { from: "thread", to: "JSON", message: None })

@@ -27,7 +27,6 @@ pub use indradb::*;
 pub use common::*;
 use std::io::Read;
 use std::collections::HashMap;
-use serde_json::Number as JsonNumber;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();

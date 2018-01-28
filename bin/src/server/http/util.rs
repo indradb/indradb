@@ -20,13 +20,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use statics;
 use uuid::Uuid;
-use regex;
-use std::path::Path;
-use script;
-use std::fs::File;
 
 lazy_static! {
-    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
     static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
 }
 
@@ -315,55 +310,5 @@ where
             status::BadRequest,
             "Invalid type for `q`: expected edge query".to_string(),
         )),
-    }
-}
-
-/// Executes a script, returning its json output.
-///
-/// # Errors
-/// Returns an `IronError` if the script could not be loaded, or fialed to
-/// execute.
-pub fn execute_script(
-    name: String,
-    payload: JsonValue,
-    trans: &ProxyTransaction,
-    account_id: Uuid,
-) -> Result<JsonValue, IronError> {
-    if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
-        return Err(create_iron_error(
-            status::BadRequest,
-            "Invalid script name".to_string(),
-        ));
-    }
-
-    let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
-
-    let contents = match File::open(&path) {
-        Ok(mut file) => {
-            let mut contents = String::new();
-
-            match file.read_to_string(&mut contents) {
-                Ok(_) => Ok(contents),
-                Err(_) => Err(create_iron_error(
-                    status::NotFound,
-                    "Could not read script".to_string(),
-                )),
-            }
-        }
-        Err(_) => Err(create_iron_error(
-            status::NotFound,
-            "Could not load script".to_string(),
-        )),
-    }?;
-
-    match script::run(trans, account_id, &contents, &path, payload) {
-        Ok(val) => Ok(val),
-        Err(err) => {
-            let error_message = format!("Script failed: {:?}", err);
-            Err(create_iron_error(
-                status::InternalServerError,
-                error_message,
-            ))
-        }
     }
 }
