@@ -15,14 +15,27 @@ lazy_static! {
 
     /// Limits how many vertices are pulled at a time in mapreduce.
     pub static ref MAP_REDUCE_QUERY_LIMIT: u32 = match env::var("INDRADB_MAP_REDUCE_QUERY_LIMIT") {
-        Ok(s) => s.parse::<u32>().expect("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable is not a valid `u32`."),
+        Ok(s) => {
+            let value = s.parse::<u32>().expect("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable is not a valid `u32`.");
+            if value < 1 {
+                panic!("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable must be greater than or equal to 1.");
+            }
+
+            value
+        },
         Err(_) => u32::max_value()
     };
 
     /// The size of the mapreduce worker pool. "u32 ought to be enough for
     /// anybody..."
     pub static ref MAP_REDUCE_WORKER_POOL_SIZE: u32 = match env::var("MAP_REDUCE_WORKER_POOL_SIZE") {
-        Ok(s) => s.parse::<u32>().expect("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable is not a valid `u32`."),
+        Ok(s) => {
+            let value = s.parse::<u32>().expect("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable is not a valid `u32`.");
+            if value < 1 {
+                panic!("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable must be greater than or equal to 1.");
+            }
+            value
+        },
         Err(_) => num_cpus::get() as u32
     };
 }

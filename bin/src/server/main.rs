@@ -1,6 +1,7 @@
 extern crate chrono;
 extern crate common;
 extern crate core;
+#[macro_use]
 extern crate crossbeam_channel;
 extern crate hyper;
 extern crate indradb;
