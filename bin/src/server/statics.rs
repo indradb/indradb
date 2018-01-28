@@ -17,8 +17,8 @@ lazy_static! {
     pub static ref MAP_REDUCE_QUERY_LIMIT: u32 = match env::var("INDRADB_MAP_REDUCE_QUERY_LIMIT") {
         Ok(s) => {
             let value = s.parse::<u32>().expect("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable is not a valid `u32`.");
-            if value < 1 {
-                panic!("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable must be greater than or equal to 1.");
+            if value < 10 {
+                panic!("The `INDRADB_MAP_REDUCE_QUERY_LIMIT` environment variable must be greater than or equal to 10.");
             }
 
             value

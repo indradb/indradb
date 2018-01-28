@@ -97,7 +97,7 @@ fn mapreduce_worker(account_id: Uuid, reductions_left: Arc<Mutex<u64>>, contents
                 match (last_reducer_value, cur_reductions_left) {
                     (Some(last_reducer_value_inner), 0) => {
                         let reduced_value: converters::JsonValue = reducer.call((last_reducer_value_inner, value))?;
-                        return Ok(Some(reduced_value.0));
+                        return Ok(Some(reduced_value. 0));
                     },
                     (Some(last_reducer_value_inner), _) => {
                         let reduced_value: converters::JsonValue = reducer.call((last_reducer_value_inner, value))?;
@@ -140,9 +140,10 @@ fn mapreduce_query(account_id: Uuid, reductions_left: Arc<Mutex<u64>>, finished:
                 // Check for overflow
                 assert!(*reductions_left > old_reductions_left);
 
-                // The number of reductions is supposed to be the number of
-                // vertices minus 1, so subtract the 1 if this is the first query
-                if first_query {
+                // If there's more than one vertex, the number of reductions
+                // is supposed to be the number of vertices minus 1, so
+                // subtract the 1 if this is the first query
+                if first_query && num_vertices > 1 {
                     *reductions_left -= 1;
                 }
             }
