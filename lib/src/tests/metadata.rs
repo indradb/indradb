@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, Weight};
+use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use super::sandbox::DatastoreTestSandbox;
 use errors::Error;
 use uuid::Uuid;
@@ -183,14 +183,13 @@ where
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = Type::new("test_edge_type".to_string()).unwrap();
-    let weight = Weight::new(0.5).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
     let q = EdgeQuery::Edges {
         keys: vec![key.clone()],
     };
     let name = sandbox.generate_unique_string("edge-metadata");
 
-    trans.create_edge(key.clone(), weight).unwrap();
+    trans.create_edge(key.clone()).unwrap();
 
     // Check to make sure there's no initial value
     let result = trans.get_edge_metadata(q.clone(), name.clone()).unwrap();
@@ -266,8 +265,7 @@ where
         Type::new("baz".to_string()).unwrap(),
         inbound_id,
     );
-    let weight = Weight::new(1.0).unwrap();
-    trans.create_edge(key.clone(), weight).unwrap();
+    trans.create_edge(key.clone()).unwrap();
     trans
         .delete_edge_metadata(EdgeQuery::Edges { keys: vec![key] }, "bleh".to_string())
         .unwrap();

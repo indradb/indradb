@@ -17,7 +17,7 @@ use serde::Serialize;
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
 pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
 pub type VertexItem = Result<(Uuid, models::VertexValue), Error>;
-pub type EdgeRangeItem = Result<((Uuid, models::Type, DateTime<Utc>, Uuid), models::Weight), Error>;
+pub type EdgeRangeItem = Result<(Uuid, models::Type, DateTime<Utc>, Uuid), Error>;
 pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
@@ -258,13 +258,10 @@ impl VertexManager {
             let edge_range_manager = EdgeRangeManager::new(self.db.clone());
             for item in edge_range_manager.iterate_for_owner(id)? {
                 let (
-                    (
-                        edge_range_outbound_id,
-                        edge_range_t,
-                        edge_range_update_datetime,
-                        edge_range_inbound_id,
-                    ),
-                    _,
+                    edge_range_outbound_id,
+                    edge_range_t,
+                    edge_range_update_datetime,
+                    edge_range_inbound_id,
                 ) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
                 edge_manager.delete(
@@ -281,13 +278,10 @@ impl VertexManager {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
             for item in reversed_edge_range_manager.iterate_for_owner(id)? {
                 let (
-                    (
-                        reversed_edge_range_inbound_id,
-                        reversed_edge_range_t,
-                        reversed_edge_range_update_datetime,
-                        reversed_edge_range_outbound_id,
-                    ),
-                    _,
+                    reversed_edge_range_inbound_id,
+                    reversed_edge_range_t,
+                    reversed_edge_range_update_datetime,
+                    reversed_edge_range_outbound_id,
                 ) = item?;
                 debug_assert_eq!(reversed_edge_range_inbound_id, id);
                 edge_manager.delete(
@@ -346,7 +340,6 @@ impl EdgeManager {
         t: &models::Type,
         inbound_id: Uuid,
         new_update_datetime: DateTime<Utc>,
-        weight: models::Weight,
     ) -> Result<(), Error> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
@@ -368,7 +361,7 @@ impl EdgeManager {
             )?;
         }
 
-        let new_edge_value = models::EdgeValue::new(new_update_datetime, weight);
+        let new_edge_value = models::EdgeValue::new(new_update_datetime);
         set_bincode(
             &self.db,
             self.cf,
@@ -381,7 +374,6 @@ impl EdgeManager {
             t,
             new_update_datetime,
             inbound_id,
-            weight,
         )?;
         reversed_edge_range_manager.set(
             &mut batch,
@@ -389,7 +381,6 @@ impl EdgeManager {
             t,
             new_update_datetime,
             outbound_id,
-            weight,
         )?;
         Ok(())
     }
@@ -483,14 +474,13 @@ impl EdgeRangeManager {
         let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> EdgeRangeItem {
-            let (k, v) = item;
+            let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
             let t = read_type(&mut cursor);
             let update_datetime = read_datetime(&mut cursor);
             let second_id = read_uuid(&mut cursor);
-            let weight: models::Weight = bincode::deserialize(&v.to_owned()[..])?;
-            Ok(((first_id, t, update_datetime, second_id), weight))
+            Ok((first_id, t, update_datetime, second_id))
         });
 
         Ok(Box::new(mapped))
@@ -526,7 +516,7 @@ impl EdgeRangeManager {
                     // `high` via key prefix filtering, so instead we handle
                     // it here - after the key has been deserialized.
                     let filtered = mapped.filter(move |item| {
-                        if let Ok(((_, _, update_datetime, _), _)) = *item {
+                        if let Ok((_, _, update_datetime, _)) = *item {
                             update_datetime <= high
                         } else {
                             true
@@ -558,10 +548,9 @@ impl EdgeRangeManager {
         t: &models::Type,
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
-        weight: models::Weight,
     ) -> Result<(), Error> {
         let key = self.key(first_id, t, update_datetime, second_id);
-        let value = bincode_serialize_value(&weight)?;
+        let value = bincode_serialize_value(&())?;
         batch.put_cf(self.cf, &key, &value)?;
         Ok(())
     }

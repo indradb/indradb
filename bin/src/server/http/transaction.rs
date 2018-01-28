@@ -104,8 +104,7 @@ fn create_edge(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let key = get_required_json_obj_param::<EdgeKey>(item, "key")?;
-    let weight = get_required_json_weight_param(item, "weight")?;
-    execute_item(trans.create_edge(key, weight))
+    execute_item(trans.create_edge(key))
 }
 
 fn get_edges(

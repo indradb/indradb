@@ -22,8 +22,8 @@ pub fn delete_vertices((trans, q): (ProxyTransaction, VertexQuery)) -> Result<()
     trans.trans.delete_vertices(q.0)
 }
 
-pub fn create_edge((trans, key, weight): (ProxyTransaction, EdgeKey, Weight)) -> Result<(), Error> {
-    trans.trans.create_edge(key.0, weight.0)?;
+pub fn create_edge((trans, key): (ProxyTransaction, EdgeKey)) -> Result<(), Error> {
+    trans.trans.create_edge(key.0)?;
     Ok(())
 }
 

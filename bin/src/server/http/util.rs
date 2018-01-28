@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{ContentType, Headers};
 use iron::typemap::{Key, TypeMap};
 use router::Router;
-use indradb::{Datastore, Error, Type, Weight};
+use indradb::{Datastore, Error, Type};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -126,35 +126,6 @@ pub fn get_required_json_string_param(
     }
 }
 
-/// Gets a JSON i64 value
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_f64_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<f64, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::Number(ref val)) => if val.is_f64() {
-            Ok(val.as_f64().unwrap())
-        } else {
-            Err(create_iron_error(
-                status::BadRequest,
-                format!("Invalid type for `{}`", name),
-            ))
-        },
-        None | Some(&JsonValue::Null) => Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        )),
-        _ => Err(create_iron_error(
-            status::BadRequest,
-            format!("Invalid type for `{}`", name),
-        )),
-    }
-}
-
 /// Gets a JSON object value that represents an edge key
 ///
 /// # Errors
@@ -200,31 +171,6 @@ pub fn get_required_json_type_param(
             status::BadRequest,
             format!("Invalid type format for `{}`", name),
         )),
-    }
-}
-
-// Gets a JSON float value that represents a weight
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_weight_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<Weight, IronError> {
-    let w = get_required_json_f64_param(json, name)?;
-
-    match Weight::new(w as f32) {
-        Ok(w) => Ok(w),
-        Err(_) => {
-            Err(create_iron_error(
-                status::BadRequest,
-                format!(
-                    "Invalid weight format for `{}`: it should be a float between -1.0 and 1.0 inclusive.",
-                    name
-                ),
-            ))
-        }
     }
 }
 
@@ -368,24 +314,6 @@ where
         Err(_) => Err(create_iron_error(
             status::BadRequest,
             "Invalid type for `q`: expected edge query".to_string(),
-        )),
-    }
-}
-
-/// Gets a required weight value from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the weight could be parsed, or was not specified.
-pub fn get_weight_query_param(
-    query_params: &HashMap<String, Vec<String>>,
-) -> Result<Weight, IronError> {
-    let weight_f32 = get_query_param::<f32>(query_params, "weight", true)?.unwrap();
-
-    match Weight::new(weight_f32) {
-        Ok(weight) => Ok(weight),
-        Err(_) => Err(create_iron_error(
-            status::BadRequest,
-            "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string(),
         )),
     }
 }

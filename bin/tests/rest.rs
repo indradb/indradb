@@ -88,14 +88,14 @@ impl Transaction for RestTransaction {
         response_to_obj(&mut res)
     }
 
-    fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
+    fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
         let client = Client::new();
         let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
         let req = self.request(
             &client,
             "PUT",
             &path[..],
-            vec![("weight", weight.0.to_string())],
+            vec![],
         );
         let mut res = req.send().unwrap();
         response_to_obj(&mut res)

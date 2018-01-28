@@ -14,8 +14,7 @@ where
     let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t, inbound_id);
-    let weight = models::Weight::new(1.0).unwrap();
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key).unwrap();
     inbound_id
 }
 

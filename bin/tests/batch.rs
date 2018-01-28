@@ -117,11 +117,10 @@ impl Transaction for BatchTransaction {
         })
     }
 
-    fn create_edge(&self, e: EdgeKey, weight: Weight) -> Result<(), Error> {
+    fn create_edge(&self, e: EdgeKey) -> Result<(), Error> {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("create_edge".to_string()),
             "key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
-            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(f64::from(weight.0)).unwrap())
         })
     }
 
