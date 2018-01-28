@@ -85,7 +85,7 @@ pub trait Transaction {
     /// but does not need to own the inbounding vertex.
     ///
     /// # Arguments
-    /// `key`: The edge to create.
+    /// * `key`: The edge to create.
     /// * `weight` - The edge weight.
     ///
     /// # Errors
