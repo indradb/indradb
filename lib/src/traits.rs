@@ -80,19 +80,18 @@ pub trait Transaction {
     fn delete_vertices(&self, q: models::VertexQuery) -> Result<(), Error>;
 
     /// Creates a new edge. If the edge already exists, this will update it
-    /// with a new update datetime and weight. The transaction tied to the
-    /// account must own the vertex from which the edge is outbounding from,
-    /// but does not need to own the inbounding vertex.
+    /// with a new update datetime. The transaction tied to the account must
+    /// own the vertex from which the edge is outbounding from, but does not
+    /// need to own the inbounding vertex.
     ///
     /// # Arguments
     /// `key`: The edge to create.
-    /// * `weight` - The edge weight.
     ///
     /// # Errors
     /// Return `Error::VertexNotFound` if either of the connected vertices do
     /// not exist. Returns `Error::Unauthorized` if the account tied to the
     /// current transaction does not own the source vertex.
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error>;
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error>;
 
     /// Gets a range of edges specified by a query.
     ///

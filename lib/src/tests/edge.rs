@@ -7,7 +7,6 @@ use chrono::offset::Utc;
 use chrono::Timelike;
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use std::collections::HashSet;
-use std::f32;
 use std::u32;
 
 pub fn should_get_a_valid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -21,14 +20,13 @@ where
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
 
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
     // accuracy.
     let start_time = Utc::now().with_nanosecond(0).unwrap();
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key).unwrap();
     let end_time = Utc::now();
 
     let e = trans
@@ -40,7 +38,6 @@ where
     assert_eq!(e[0].key.outbound_id, outbound_id);
     assert_eq!(e[0].key.t, edge_t);
     assert_eq!(e[0].key.inbound_id, inbound_id);
-    assert!(e[0].weight.0 > 0.0);
     assert!(e[0].created_datetime >= start_time);
     assert!(e[0].created_datetime <= end_time);
 }
@@ -83,9 +80,8 @@ where
     let inbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
 
     // Set the edge and check
-    let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    trans.create_edge(key.clone(), weight).unwrap();
+    trans.create_edge(key.clone()).unwrap();
     let e = trans
         .get_edges(EdgeQuery::Edges {
             keys: vec![key.clone()],
@@ -93,12 +89,10 @@ where
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
-    assert!(e[0].weight.0 > 0.0);
 
     // `create_edge` should support the ability of updating an existing edge
     // - test for that
-    let weight = models::Weight::new(-0.5).unwrap();
-    trans.create_edge(key.clone(), weight).unwrap();
+    trans.create_edge(key.clone()).unwrap();
 
     // First check that getting a single edge will still...get a single edge
     let e = trans
@@ -108,7 +102,6 @@ where
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
-    assert!(e[0].weight.0 < 0.0);
 
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
@@ -121,7 +114,6 @@ where
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
-    assert!(e[0].weight.0 < 0.0);
 }
 
 pub fn should_not_create_an_invalid_edge<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
@@ -133,9 +125,8 @@ where
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), Uuid::default());
-    let result = trans.create_edge(key, weight);
+    let result = trans.create_edge(key);
     assert_eq!(result.unwrap_err(), Error::VertexNotFound);
 }
 
@@ -155,8 +146,7 @@ pub fn should_not_create_an_edge_with_bad_permissions<D, T>(
     let trans = sandbox.datastore.transaction(id).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t, inbound_id);
-    let weight = models::Weight::new(0.5).unwrap();
-    let result = trans.create_edge(key, weight);
+    let result = trans.create_edge(key);
     assert_eq!(result.unwrap_err(), Error::Unauthorized);
 }
 
@@ -171,9 +161,8 @@ where
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    trans.create_edge(key.clone(), weight).unwrap();
+    trans.create_edge(key.clone()).unwrap();
     trans
         .delete_edges(EdgeQuery::Edges {
             keys: vec![key.clone()],
@@ -213,9 +202,8 @@ pub fn should_not_delete_an_edge_with_bad_permissions<D, T>(
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let weight = models::Weight::new(0.5).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key).unwrap();
     trans.commit().unwrap();
 
     let (id, _) = sandbox.register_account();
@@ -459,7 +447,6 @@ fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected
     for edge in range {
         assert_eq!(edge.key.outbound_id, expected_outbound_id);
         assert_eq!(edge.key.t, t);
-        assert!(edge.weight.0 <= 1.0 + f32::EPSILON && edge.weight.0 >= 1.0 - f32::EPSILON);
         assert!(!covered_ids.contains(&edge.key.inbound_id));
         covered_ids.insert(edge.key.inbound_id);
     }

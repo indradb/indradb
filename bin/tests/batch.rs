@@ -27,7 +27,6 @@ pub use indradb::*;
 pub use common::*;
 use std::io::Read;
 use std::collections::HashMap;
-use serde_json::Number as JsonNumber;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
@@ -117,11 +116,10 @@ impl Transaction for BatchTransaction {
         })
     }
 
-    fn create_edge(&self, e: EdgeKey, weight: Weight) -> Result<(), Error> {
+    fn create_edge(&self, e: EdgeKey) -> Result<(), Error> {
         self.request(btreemap!{
             "action".to_string() => JsonValue::String("create_edge".to_string()),
             "key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
-            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(f64::from(weight.0)).unwrap())
         })
     }
 

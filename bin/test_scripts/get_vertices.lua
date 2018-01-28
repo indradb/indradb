@@ -6,10 +6,10 @@ local id_2 = trans:create_vertex("foo");
 local id_3 = trans:create_vertex("foo");
 local id_4 = trans:create_vertex("foo");
 local id_5 = trans:create_vertex("foo");
-trans:create_edge(queries.EdgeKey.new(id_1, "bar", id_2), 1.0);
-trans:create_edge(queries.EdgeKey.new(id_2, "bar", id_3), 1.0);
-trans:create_edge(queries.EdgeKey.new(id_3, "bar", id_4), 1.0);
-trans:create_edge(queries.EdgeKey.new(id_4, "bar", id_5), 1.0);
+trans:create_edge(queries.EdgeKey.new(id_1, "bar", id_2));
+trans:create_edge(queries.EdgeKey.new(id_2, "bar", id_3));
+trans:create_edge(queries.EdgeKey.new(id_3, "bar", id_4));
+trans:create_edge(queries.EdgeKey.new(id_4, "bar", id_5));
 
 function check_vertices(vertices, expected_count, required_vertex_ids)
     if expected_count ~= nil then

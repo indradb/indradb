@@ -6,7 +6,7 @@
 use std::env;
 use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
               PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-              Transaction, Type, Vertex, VertexQuery, Weight};
+              Transaction, Type, Vertex, VertexQuery};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
@@ -98,8 +98,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
-    fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
-        proxy_transaction!(self, create_edge, key, weight)
+    fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
+        proxy_transaction!(self, create_edge, key)
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {

@@ -297,7 +297,7 @@ impl PostgresTransaction {
                 }
 
                 let query_template = format!(
-                    "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE (outbound_id, type, inbound_id) IN ({})",
+                    "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM %t WHERE (outbound_id, type, inbound_id) IN ({})",
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "edges", params);
@@ -335,20 +335,20 @@ impl PostgresTransaction {
 
                 let query_template = match (converter, where_clause.len()) {
                     (QueryTypeConverter::Outbound, 0) => {
-                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
                     (QueryTypeConverter::Outbound, _) => {
                         format!(
-                            "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
+                            "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
                         )
                     }
                     (QueryTypeConverter::Inbound, 0) => {
-                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
                     (QueryTypeConverter::Inbound, _) => {
                         format!(
-                            "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
+                            "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
                         )
                     }
@@ -411,7 +411,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
         let id = if self.secure_uuids {
             Uuid::new_v4()
         } else {
@@ -423,11 +423,11 @@ impl Transaction for PostgresTransaction {
         let results = {
             let trans = self.trans.savepoint("set_edge")?;
             let results = trans.query("
-                INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_timestamp)
-                VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
+                INSERT INTO edges (id, outbound_id, type, inbound_id, update_timestamp)
+                VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, CLOCK_TIMESTAMP())
                 ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
-                DO UPDATE SET weight=$6, update_timestamp=CLOCK_TIMESTAMP()
-            ", &[&id, &key.outbound_id, &self.account_id, &key.t.0, &key.inbound_id, &weight.0]);
+                DO UPDATE SET update_timestamp=CLOCK_TIMESTAMP()
+            ", &[&id, &key.outbound_id, &self.account_id, &key.t.0, &key.inbound_id]);
 
             match results {
                 Err(err) => {
@@ -467,7 +467,7 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
-            "SELECT outbound_id, type, inbound_id, weight, update_timestamp FROM %t",
+            "SELECT outbound_id, type, inbound_id, update_timestamp FROM %t",
             vec![],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
@@ -479,12 +479,10 @@ impl Transaction for PostgresTransaction {
             let outbound_id: Uuid = row.get(0);
             let t_str: String = row.get(1);
             let inbound_id: Uuid = row.get(2);
-            let weight_f32: f32 = row.get(3);
-            let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<Utc> = row.get(4);
+            let update_datetime: DateTime<Utc> = row.get(3);
             let t = models::Type::new(t_str).unwrap();
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, weight, update_datetime);
+            let edge = models::Edge::new(key, update_datetime);
             edges.push(edge);
         }
 

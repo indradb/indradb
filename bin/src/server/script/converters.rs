@@ -3,7 +3,7 @@ use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
               QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
-              VertexQuery as ExternalVertexQuery, Weight as ExternalWeight};
+              VertexQuery as ExternalVertexQuery};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -302,42 +302,11 @@ impl<'lua> ToLua<'lua> for Edge {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let table = l.create_table();
         table.set("key", EdgeKey::new(self.0.key).to_lua(l)?)?;
-        table.set("weight", Value::Number(f64::from(self.0.weight.0)))?;
         table.set(
             "created_datetime",
             l.create_string(&self.0.created_datetime.to_string()[..]),
         )?;
         Ok(Value::Table(table))
-    }
-}
-
-#[derive(Debug)]
-pub struct Weight(pub ExternalWeight);
-
-impl Weight {
-    pub fn new(value: ExternalWeight) -> Self {
-        Self { 0: value }
-    }
-}
-
-impl<'lua> FromLua<'lua> for Weight {
-    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
-        let value_f32 = l.coerce_number(value)? as f32;
-
-        match ExternalWeight::new(value_f32) {
-            Ok(value_weight) => Ok(Weight::new(value_weight)),
-            Err(err) => Err(new_from_lua_error(
-                "number",
-                "weight",
-                Some(format!("{}", err)),
-            )),
-        }
-    }
-}
-
-impl<'lua> ToLua<'lua> for Weight {
-    fn to_lua(self, _: &'lua Lua) -> LuaResult<Value<'lua>> {
-        Ok(Value::Number(f64::from((self.0).0)))
     }
 }
 

@@ -1,4 +1,4 @@
-use indradb::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, Weight};
+use indradb::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use indradb::tests::DatastoreTestSandbox;
 use test::Bencher;
 
@@ -46,8 +46,7 @@ where
         let trans = sandbox.transaction();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let k = EdgeKey::new(outbound_id, edge_t, inbound_id);
-        let w = Weight::new(0.5).unwrap();
-        trans.create_edge(k, w).unwrap();
+        trans.create_edge(k).unwrap();
     });
 }
 
@@ -62,8 +61,7 @@ where
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t, inbound_id);
-    let weight = Weight::new(0.5).unwrap();
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
@@ -87,8 +85,7 @@ where
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     let key = EdgeKey::new(outbound_id, edge_t, inbound_id);
-    let weight = Weight::new(0.5).unwrap();
-    trans.create_edge(key, weight).unwrap();
+    trans.create_edge(key).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {

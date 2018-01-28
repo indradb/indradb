@@ -8,7 +8,7 @@ A graph database written in rust. This software is in the alpha state.
 
 ## Features
 
-* Support for directed, weighted, and typed graphs.
+* Support for directed and typed graphs.
 * A simple, JSON-based query DSL with support for multiple hops.
 * Multiple ways to work with the database:
     * Via HTTP API, and the clients that build off of it.
@@ -19,7 +19,7 @@ A graph database written in rust. This software is in the alpha state.
 * Pluggable underlying datastores, with built-in support for in-memory-only, [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
 * Written in rust!
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for edge weights, which are pivotal for things like user reviews, as well as its support for metadata, multitenancy, and a number of other conveniences.
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for metadata, multitenancy, and a number of other conveniences.
 
 For more details, see the [homepage](https://indradb.github.io).
 

@@ -47,10 +47,8 @@ pub fn create_edge(req: &mut Request) -> IronResult<Response> {
     let outbound_id: Uuid = get_url_param(req, "outbound_id")?;
     let t: Type = get_url_param(req, "t")?;
     let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
-    let query_params = get_query_params(req)?;
-    let weight = get_weight_query_param(query_params)?;
     let key = EdgeKey::new(outbound_id, t, inbound_id);
-    datastore_request(trans.create_edge(key, weight))?;
+    datastore_request(trans.create_edge(key))?;
     datastore_request(trans.commit())?;
     Ok(to_response(status::Ok, &()))
 }

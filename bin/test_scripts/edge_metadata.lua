@@ -3,7 +3,7 @@ local queries = require("queries");
 local outbound_id = trans:create_vertex("foo");
 local inbound_id = trans:create_vertex("bar");
 local key = queries.EdgeKey.new(outbound_id, "baz", inbound_id);
-trans:create_edge(key, 0.5);
+trans:create_edge(key);
 
 local q = queries.EdgeQuery.edges({key});
 trans:set_edge_metadata(q, "script-test-edge", {foo={true, false}});

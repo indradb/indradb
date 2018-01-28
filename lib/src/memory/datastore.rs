@@ -18,7 +18,7 @@ struct InternalMemoryDatastore {
     account_metadata: BTreeMap<(Uuid, String), JsonValue>,
     accounts: HashMap<Uuid, String>,
     edge_metadata: BTreeMap<(models::EdgeKey, String), JsonValue>,
-    edges: BTreeMap<models::EdgeKey, (models::Weight, DateTime<Utc>)>,
+    edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
     global_metadata: BTreeMap<String, JsonValue>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::VertexValue>,
@@ -68,13 +68,13 @@ impl InternalMemoryDatastore {
                         .clone()
                         .into_iter()
                         .take(limit as usize)
-                        .map(|(key, _, _)| key.outbound_id)
+                        .map(|(key, _)| key.outbound_id)
                         .collect(),
                     models::QueryTypeConverter::Inbound => edge_values
                         .clone()
                         .into_iter()
                         .take(limit as usize)
-                        .map(|(key, _, _)| key.inbound_id)
+                        .map(|(key, _)| key.inbound_id)
                         .collect(),
                 };
 
@@ -95,7 +95,7 @@ impl InternalMemoryDatastore {
     fn get_edge_values_by_query(
         &self,
         q: EdgeQuery,
-    ) -> Result<Vec<(models::EdgeKey, models::Weight, DateTime<Utc>)>, Error> {
+    ) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>, Error> {
         match q {
             EdgeQuery::Edges { keys } => {
                 let mut results = Vec::new();
@@ -103,8 +103,8 @@ impl InternalMemoryDatastore {
                 for key in keys {
                     let value = self.edges.get(&key);
 
-                    if let Some(&(ref weight, ref update_datetime)) = value {
-                        results.push((key, *weight, *update_datetime));
+                    if let Some(update_datetime) = value {
+                        results.push((key, *update_datetime));
                     }
                 }
 
@@ -138,7 +138,7 @@ impl InternalMemoryDatastore {
                                 }
                             };
 
-                            for (key, &(ref weight, ref update_datetime)) in
+                            for (key, update_datetime) in
                                 self.edges.range(lower_bound..)
                             {
                                 if key.outbound_id != id {
@@ -163,7 +163,7 @@ impl InternalMemoryDatastore {
                                     }
                                 }
 
-                                results.push((key.clone(), *weight, *update_datetime));
+                                results.push((key.clone(), *update_datetime));
 
                                 if results.len() == limit as usize {
                                     return Ok(results);
@@ -177,7 +177,7 @@ impl InternalMemoryDatastore {
                             candidate_ids.insert(id);
                         }
 
-                        for (key, &(ref weight, ref update_datetime)) in &self.edges {
+                        for (key, update_datetime) in &self.edges {
                             if !candidate_ids.contains(&key.inbound_id) {
                                 continue;
                             }
@@ -200,7 +200,7 @@ impl InternalMemoryDatastore {
                                 }
                             }
 
-                            results.push((key.clone(), *weight, *update_datetime));
+                            results.push((key.clone(), *update_datetime));
 
                             if results.len() == limit as usize {
                                 return Ok(results);
@@ -339,7 +339,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
         {
             let datastore = self.datastore.read().unwrap();
             let value = datastore.vertices.get(&key.outbound_id);
@@ -358,7 +358,7 @@ impl Transaction for MemoryTransaction {
         }
 
         let mut datastore = self.datastore.write().unwrap();
-        datastore.edges.insert(key, (weight, Utc::now()));
+        datastore.edges.insert(key, Utc::now());
         Ok(())
     }
 
@@ -370,7 +370,7 @@ impl Transaction for MemoryTransaction {
 
         let iter = edge_values
             .into_iter()
-            .map(|(key, weight, update_datetime)| models::Edge::new(key, weight, update_datetime));
+            .map(|(key, update_datetime)| models::Edge::new(key, update_datetime));
         Ok(iter.collect())
     }
 
@@ -380,7 +380,7 @@ impl Transaction for MemoryTransaction {
             let edge_values = datastore.get_edge_values_by_query(q)?;
             let mut deletable_edges = Vec::new();
 
-            for (key, _, _) in edge_values {
+            for (key, _) in edge_values {
                 let vertex_value = datastore
                     .vertices
                     .get(&key.outbound_id)
@@ -540,7 +540,7 @@ impl Transaction for MemoryTransaction {
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
-        for (key, _, _) in edge_values {
+        for (key, _) in edge_values {
             let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.clone()));
 
             if let Some(metadata_value) = metadata_value {
@@ -559,7 +559,7 @@ impl Transaction for MemoryTransaction {
 
         let mut datastore = self.datastore.write().unwrap();
 
-        for (key, _, _) in edge_values {
+        for (key, _) in edge_values {
             datastore
                 .edge_metadata
                 .insert((key, name.clone()), value.clone());
@@ -576,7 +576,7 @@ impl Transaction for MemoryTransaction {
 
         let mut datastore = self.datastore.write().unwrap();
 
-        for (key, _, _) in edge_values {
+        for (key, _) in edge_values {
             datastore.edge_metadata.remove(&(key, name.clone()));
         }
 

@@ -220,7 +220,7 @@ impl RocksdbTransaction {
                 let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
 
                 let vertex_id_iterator = Box::new(edge_iterator.map(move |item| {
-                    let ((outbound_id, _, _, inbound_id), _) = item?;
+                    let (outbound_id, _, _, inbound_id) = item?;
 
                     match converter {
                         QueryTypeConverter::Outbound => Ok(outbound_id),
@@ -247,13 +247,10 @@ impl RocksdbTransaction {
                 let iterator = keys.into_iter().map(move |key| {
                     match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                         Some(value) => Ok(Some((
-                            (
-                                key.outbound_id,
-                                key.t,
-                                value.update_datetime,
-                                key.inbound_id,
-                            ),
-                            value.weight,
+                            key.outbound_id,
+                            key.t,
+                            value.update_datetime,
+                            key.inbound_id,
                         ))),
                         None => Ok(None),
                     }
@@ -292,33 +289,24 @@ impl RocksdbTransaction {
                         for item in edge_iterator {
                             match item {
                                 Ok((
-                                    (
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_second_id,
-                                    ),
-                                    edge_range_weight,
+                                    edge_range_first_id,
+                                    edge_range_t,
+                                    edge_range_update_datetime,
+                                    edge_range_second_id,
                                 )) => {
                                     if edge_range_update_datetime >= low_filter {
                                         edges.push(match converter {
                                             QueryTypeConverter::Outbound => Ok((
-                                                (
-                                                    edge_range_first_id,
-                                                    edge_range_t,
-                                                    edge_range_update_datetime,
-                                                    edge_range_second_id,
-                                                ),
-                                                edge_range_weight,
+                                                edge_range_first_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_second_id,
                                             )),
                                             QueryTypeConverter::Inbound => Ok((
-                                                (
-                                                    edge_range_second_id,
-                                                    edge_range_t,
-                                                    edge_range_update_datetime,
-                                                    edge_range_first_id,
-                                                ),
-                                                edge_range_weight,
+                                                edge_range_second_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_first_id,
                                             )),
                                         });
                                     } else {
@@ -342,32 +330,23 @@ impl RocksdbTransaction {
                         for item in edge_iterator {
                             match item {
                                 Ok((
-                                    (
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_second_id,
-                                    ),
-                                    edge_range_weight,
+                                    edge_range_first_id,
+                                    edge_range_t,
+                                    edge_range_update_datetime,
+                                    edge_range_second_id,
                                 )) => {
                                     edges.push(match converter {
                                         QueryTypeConverter::Outbound => Ok((
-                                            (
-                                                edge_range_first_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_second_id,
-                                            ),
-                                            edge_range_weight,
+                                            edge_range_first_id,
+                                            edge_range_t,
+                                            edge_range_update_datetime,
+                                            edge_range_second_id,
                                         )),
                                         QueryTypeConverter::Inbound => Ok((
-                                            (
-                                                edge_range_second_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_first_id,
-                                            ),
-                                            edge_range_weight,
+                                            edge_range_second_id,
+                                            edge_range_t,
+                                            edge_range_update_datetime,
+                                            edge_range_first_id,
                                         )),
                                     });
                                 }
@@ -464,7 +443,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
         self.check_write_permissions(key.outbound_id, Error::VertexNotFound)?;
         if !VertexManager::new(self.db.clone(), self.secure_uuids).exists(key.inbound_id)? {
@@ -479,7 +458,6 @@ impl Transaction for RocksdbTransaction {
             &key.t,
             key.inbound_id,
             new_update_datetime,
-            weight,
         )?;
         self.db.write(batch)?;
         Ok(())
@@ -489,9 +467,9 @@ impl Transaction for RocksdbTransaction {
         let iterator = self.edge_query_to_iterator(q)?;
 
         let mapped = iterator.map(move |item| {
-            let ((outbound_id, t, update_datetime, inbound_id), weight) = item?;
+            let (outbound_id, t, update_datetime, inbound_id) = item?;
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, weight, update_datetime);
+            let edge = models::Edge::new(key, update_datetime);
             Ok(edge)
         });
 
@@ -505,7 +483,7 @@ impl Transaction for RocksdbTransaction {
         let mut batch = WriteBatch::default();
 
         for item in iterator {
-            let ((outbound_id, t, update_datetime, inbound_id), _) = item?;
+            let (outbound_id, t, update_datetime, inbound_id) = item?;
 
             if let Some(vertex_value) = vertex_manager.get(outbound_id)? {
                 if vertex_value.owner_id == self.account_id {
@@ -641,7 +619,7 @@ impl Transaction for RocksdbTransaction {
         let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
 
             if let Some(value) = value {
@@ -658,7 +636,7 @@ impl Transaction for RocksdbTransaction {
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], &value)?;
         }
 
@@ -671,7 +649,7 @@ impl Transaction for RocksdbTransaction {
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
         }
 
