@@ -4,7 +4,8 @@ use indradb::Error;
 #[derive(Debug)]
 pub enum ScriptError {
     Lua(LuaError),
-    Transaction(Error)
+    Transaction(Error),
+    ThreadPanic(Box<Any + Send + 'static>)
 }
 
 impl From<Error> for ScriptError {

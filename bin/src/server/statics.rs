@@ -26,11 +26,11 @@ lazy_static! {
         Err(_) => u32::max_value()
     };
 
-    /// The size of the mapreduce worker pool. "u32 ought to be enough for
+    /// The size of the mapreduce worker pool. "u16 ought to be enough for
     /// anybody..."
-    pub static ref MAP_REDUCE_WORKER_POOL_SIZE: u32 = match env::var("MAP_REDUCE_WORKER_POOL_SIZE") {
+    pub static ref MAP_REDUCE_WORKER_POOL_SIZE: u16 = match env::var("MAP_REDUCE_WORKER_POOL_SIZE") {
         Ok(s) => {
-            let value = s.parse::<u32>().expect("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable is not a valid `u32`.");
+            let value = s.parse::<u16>().expect("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable is not a valid `u16`.");
             if value < 1 {
                 panic!("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable must be greater than or equal to 1.");
             }

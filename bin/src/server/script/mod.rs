@@ -1,6 +1,7 @@
 mod api;
 mod converters;
 mod errors;
+mod workers;
 
 #[cfg(test)]
 mod tests;
@@ -14,41 +15,9 @@ use indradb::{Transaction, Vertex, Datastore, VertexQuery};
 use statics;
 use std::convert::From;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crossbeam_channel::{Receiver, Sender, bounded};
 use std::time::Duration;
 use std::thread;
 use std::sync::{Arc, Mutex};
-
-fn create_lua_context(account_id: Uuid, arg: JsonValue) -> Result<Lua, errors::ScriptError> {
-    let l = Lua::new();
-
-    {
-        let globals = l.globals();
-
-        // Update the `package.path` to include the script root, so it's easier
-        // for scripts to require each other.
-        {
-            let package: Table = globals.get("package")?;
-            let old_path: String = package.get("path")?;
-            let script_path = Path::new(&statics::SCRIPT_ROOT[..])
-                .join("?.lua")
-                .to_str()
-                .unwrap()
-                .to_string();
-            package.set("path", format!("{};{}", old_path, script_path))?;
-        }
-
-        // Create a new transaction for the script
-        let trans = statics::DATASTORE.transaction(account_id)?;
-
-        // Add globals
-        globals.set("trans", converters::ProxyTransaction::new(trans))?;
-        globals.set("account_id", account_id.to_string())?;
-        globals.set("arg", converters::JsonValue::new(arg))?;
-    }
-
-    Ok(l)
-}
 
 /// Runs a script.
 ///
@@ -63,16 +32,7 @@ pub fn execute(
     path: String,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
-    let l = create_lua_context(account_id, arg)?;
-    let fun = l.load(&contents, Some(&path))?;
-
-    // Run the script
-    let value: Result<converters::JsonValue, LuaError> = fun.call(Value::Nil);
-
-    match value {
-        Ok(value) => Ok(value.0),
-        Err(err) => Err(errors::ScriptError::from(err))
-    }
+    //
 }
 
 fn mapreduce_worker(account_id: Uuid, reductions_left: Arc<Mutex<u64>>, contents: String, path: String, arg: JsonValue, mapper_receiver: Receiver<Vertex>, reducer_sender: Sender<converters::JsonValue>, reducer_receiver: Receiver<converters::JsonValue>, shutdown_receiver: Receiver<()>) -> Result<Option<JsonValue>, errors::ScriptError> {
@@ -81,6 +41,9 @@ fn mapreduce_worker(account_id: Uuid, reductions_left: Arc<Mutex<u64>>, contents
     let (mapper, reducer): (Function, Function) = fun.call(Value::Nil)?;
     let mut last_reducer_value: Option<converters::JsonValue> = None;
 
+    // TODO: two problems with this implementation:
+    // 1) it's trivial to get into a state where two or more workers are holding onto their intermediate reducer value, getting in a deadlock state
+    // 2) it's possible for `reductions_left` to hit 0 because we're still querying for more items
     loop {
         select_loop! {
             recv(mapper_receiver, vertex) => {
