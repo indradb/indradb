@@ -109,8 +109,7 @@ pub trait Transaction {
     /// Gets the number of edges that match a query.
     ///
     /// # Arguments
-    /// * `outbound_id` - The ID of the outbound vertex.
-    /// * `t` - The edge type.
+    /// * `q` - The query to run.
     fn get_edge_count(&self, q: models::EdgeQuery) -> Result<u64, Error>;
 
     /// Gets a global metadata value.
