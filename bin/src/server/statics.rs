@@ -36,6 +36,6 @@ lazy_static! {
             }
             value
         },
-        Err(_) => num_cpus::get() as u32
+        Err(_) => num_cpus::get() as u16
     };
 }
