@@ -103,7 +103,7 @@ impl MapReduceWorker {
         // end of the channel disconnected, implying that the thread crashed
         // anyways.
         self.shutdown_sender.send(()).ok();
-        self.thread.join()?
+        self.thread.join().expect("Expected worker thread to not panic")
     }
 }
 
@@ -210,6 +210,6 @@ impl MapReduceWorkerPool {
         // end of the channel disconnected, implying that the thread crashed
         // anyways.
         self.shutdown_sender.send(()).ok();
-        self.thread.join()?
+        self.thread.join().expect("Expected router thread to not panic")
     }
 }
