@@ -11,7 +11,6 @@ use super::context;
 use super::converters;
 
 const CHANNEL_CAPACITY: usize = 1000;
-const CHANNEL_RECV_TIMEOUT_SECONDS: u64 = 1;
 const REPORT_SECONDS: u64 = 30;
 
 macro_rules! try_or_send {
@@ -103,8 +102,7 @@ impl Worker {
                     },
                     recv(shutdown_receiver, _) => {
                         should_shutdown = true;
-                    },
-                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                    }
                 }
 
                 if should_shutdown {
@@ -144,7 +142,7 @@ impl WorkerPool {
         let (reporter_sender, reporter_receiver) = bounded::<()>(0);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let mapper_task_hwm = worker_in_receiver.capacity().unwrap() / 2;
+        let mapper_hwm = worker_in_receiver.capacity().unwrap() / 2;
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -169,18 +167,18 @@ impl WorkerPool {
         };
 
         let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
-            let mut served_error: Option<errors::MapReduceError> = None;
             let mut progress = 0;
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
             let mut report_num: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
+            let mut last_error: Option<errors::MapReduceError> = None;
 
             loop {
                 select_loop! {
                     recv(error_receiver, err) => {
-                        served_error = Some(err);
+                        last_error = Some(err);
                         should_force_shutdown = true;
                     },
                     recv(shutdown_receiver, _) => {
@@ -205,7 +203,7 @@ impl WorkerPool {
                             last_reduced_item = Some(value);
                         }
                     },
-                    recv(mapreduce_in_receiver, vertex) if worker_in_receiver.len() < mapper_task_hwm => {
+                    recv(mapreduce_in_receiver, vertex) if worker_in_receiver.len() < mapper_hwm => {
                         // If this errors out, all of the workers are dead
                         if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
                             should_force_shutdown = true;
@@ -213,8 +211,7 @@ impl WorkerPool {
 
                         pending_tasks += 1;
                         progress += 1;
-                    },
-                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                    }
                 }
 
                 // Check to see if we should shutdown
@@ -226,7 +223,7 @@ impl WorkerPool {
 
                     return if should_force_shutdown {
                         // If it's a hard error, find an error to return
-                        Err(served_error.unwrap_or_else(|| error_receiver.try_recv().expect("Expected to be able to read the error channel")))
+                        Err(last_error.unwrap_or_else(|| error_receiver.try_recv().expect("Expected to be able to read the error channel")))
                     } else {
                         // Get the final value to return
                         Ok(match last_reduced_item {
