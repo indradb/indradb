@@ -6,7 +6,6 @@ mod workers;
 #[cfg(test)]
 mod tests;
 
-use rlua::{Value, Error as LuaError};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use indradb::{Transaction, Datastore, VertexQuery};
@@ -26,19 +25,7 @@ pub fn execute(
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
     let l = workers::create_lua_context(account_id, arg)?;
-
-    let value: converters::JsonValue = l.exec(&contents, Some(&path)).map_err(|err| {
-        if let LuaError::FromLuaConversionError { from, to, message } = err {
-            LuaError::FromLuaConversionError {
-                from: from,
-                to: to,
-                message: Some("The script did not return valid JSON".to_string())
-            }
-        } else {
-            err
-        }
-    })?;
-    
+    let value: converters::JsonValue = l.exec(&contents, Some(&path))?;
     Ok(value.0)
 }
 

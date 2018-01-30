@@ -1,4 +1,4 @@
-use rlua::{Table, Value, Function};
+use rlua::{Table, Function};
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 use std::path::Path;
@@ -62,42 +62,9 @@ impl MapReduceWorker {
         let thread = spawn(move || -> Result<(), errors::ScriptError> {
             let mut should_shutdown = false;
             let l = create_lua_context(account_id, arg)?;
-
-            let table = l.exec(&contents, Some(&path)).map_err(|err| {
-                if let LuaError::FromLuaConversionError { from, to, message } = err {
-                    LuaError::FromLuaConversionError {
-                        from: from,
-                        to: to,
-                        message: Some("The mapreduce script did not return a table".to_string())
-                    }
-                } else {
-                    err
-                }
-            })?;
-            
-            let mapper: Function = table.get("map").map_err(|err| {
-                if let LuaError::FromLuaConversionError { from, to, message } = err {
-                    LuaError::FromLuaConversionError {
-                        from: from,
-                        to: to,
-                        message: Some("The `map` attribute in the returned table is not a function".to_string())
-                    }
-                } else {
-                    err
-                }
-            })?;
-
-            let reducer: Function = table.get("reduce").map_err(|err| {
-                if let LuaError::FromLuaConversionError { from, to, message } = err {
-                    LuaError::FromLuaConversionError {
-                        from: from,
-                        to: to,
-                        message: Some("The `reduce` attribute in the returned table is not a function".to_string())
-                    }
-                } else {
-                    err
-                }
-            })?;
+            let table: Table = l.exec(&contents, Some(&path))?;
+            let mapper: Function = table.get("map")?;
+            let reducer: Function = table.get("reduce")?;
 
             loop {
                 select_loop! {
