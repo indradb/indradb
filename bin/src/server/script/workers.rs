@@ -104,7 +104,7 @@ impl MapReduceWorker {
 }
 
 pub struct MapReduceWorkerPool {
-    router_thread: JoinHandle<Result<JsonValue, errors::ScriptError>>,
+    thread: JoinHandle<Result<JsonValue, errors::ScriptError>>,
     in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>
 }
@@ -128,7 +128,7 @@ impl MapReduceWorkerPool {
             ));
         }
 
-        let router_thread = spawn(move || -> Result<JsonValue, errors::ScriptError> {
+        let thread = spawn(move || -> Result<JsonValue, errors::ScriptError> {
             let mut should_shutdown = false;
             let mut pending_tasks: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
@@ -163,14 +163,12 @@ impl MapReduceWorkerPool {
                             }
 
                             // Get the final value to return
-                            let final_value = match last_reduced_item {
+                            return Ok(match last_reduced_item {
                                 // This should only happen if the graph is empty
                                 None => JsonValue::Null,
                                 // This should always ahppen otherwise
                                 Some(value) => value.0
-                            };
-
-                            return Ok(final_value)
+                            });
                         }
                     }
                 }
@@ -178,7 +176,7 @@ impl MapReduceWorkerPool {
         });
 
         Self {
-            router_thread: router_thread,
+            thread: thread,
             in_sender: mapreduce_in_sender,
             shutdown_sender: shutdown_sender
         }
@@ -190,6 +188,6 @@ impl MapReduceWorkerPool {
 
     pub fn join(self) -> Result<JsonValue, errors::ScriptError> {
         self.shutdown_sender.send(()).unwrap();
-        self.router_thread.join()?
+        self.thread.join()?
     }
 }

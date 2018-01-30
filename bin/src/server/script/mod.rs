@@ -7,7 +7,6 @@ mod workers;
 mod tests;
 
 use rlua::Value;
-use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use indradb::{Transaction, Datastore, VertexQuery};
