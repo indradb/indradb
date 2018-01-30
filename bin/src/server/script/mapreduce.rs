@@ -144,6 +144,7 @@ impl WorkerPool {
         let (reporter_sender, reporter_receiver) = bounded::<()>(0);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
+        let mapper_task_hwm = worker_in_receiver.capacity().unwrap() / 2;
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -168,6 +169,7 @@ impl WorkerPool {
         };
 
         let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
+            let mut served_error: Option<errors::MapReduceError> = None;
             let mut progress = 0;
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
@@ -176,35 +178,43 @@ impl WorkerPool {
             let mut last_reduced_item: Option<converters::JsonValue> = None;
 
             loop {
-                if !error_receiver.is_empty() {
-                    should_force_shutdown = true;
-                } else if shutdown_receiver.try_recv().is_ok() {
-                    should_gracefully_shutdown = true;
-                } else if reporter_receiver.try_recv().is_ok() {
-                    println!("Mapreduce: report={}, progress={}, pending={}, winding down={}", report_num, progress, pending_tasks, should_gracefully_shutdown);
-                    report_num += 1;
-                } else if let Ok(value) = worker_out_receiver.try_recv() {
-                    pending_tasks -= 1;
+                select_loop! {
+                    recv(error_receiver, err) => {
+                        served_error = Some(err);
+                        should_force_shutdown = true;
+                    },
+                    recv(shutdown_receiver, _) => {
+                        should_gracefully_shutdown = true;
+                    },
+                    recv(reporter_receiver, _) => {
+                        println!("Mapreduce: report={}, progress={}, pending={}, winding down={}", report_num, progress, pending_tasks, should_gracefully_shutdown);
+                        report_num += 1;
+                    },
+                    recv(worker_out_receiver, value) => {
+                        pending_tasks -= 1;
 
-                    if let Some(last_reduced_item_inner) = last_reduced_item {
+                        if let Some(last_reduced_item_inner) = last_reduced_item {
+                            // If this errors out, all of the workers are dead
+                            if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                                should_force_shutdown = true;
+                            }
+                            
+                            pending_tasks += 1;
+                            last_reduced_item = None;
+                        } else {
+                            last_reduced_item = Some(value);
+                        }
+                    },
+                    recv(mapreduce_in_receiver, vertex) if worker_in_receiver.len() < mapper_task_hwm => {
                         // If this errors out, all of the workers are dead
-                        if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
                             should_force_shutdown = true;
                         }
-                        
-                        pending_tasks += 1;
-                        last_reduced_item = None;
-                    } else {
-                        last_reduced_item = Some(value);
-                    }
-                } else if let Ok(vertex) = mapreduce_in_receiver.try_recv() {
-                    // If this errors out, all of the workers are dead
-                    if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
-                        should_force_shutdown = true;
-                    }
 
-                    pending_tasks += 1;
-                    progress += 1;
+                        pending_tasks += 1;
+                        progress += 1;
+                    },
+                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
                 }
 
                 // Check to see if we should shutdown
@@ -216,8 +226,7 @@ impl WorkerPool {
 
                     return if should_force_shutdown {
                         // If it's a hard error, find an error to return
-                        let first_channel_error = error_receiver.try_recv().expect("Expected to be able to read the error channel");
-                        Err(first_channel_error)
+                        Err(served_error.unwrap_or_else(|| error_receiver.try_recv().expect("Expected to be able to read the error channel")))
                     } else {
                         // Get the final value to return
                         Ok(match last_reduced_item {
