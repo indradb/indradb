@@ -51,7 +51,7 @@ enum MapReduceWorkerTask {
 }
 
 struct MapReduceWorker {
-    thread: JoinHandle<Result<(), errors::ScriptError>>,
+    thread: JoinHandle<Result<(), errors::MapReduceError>>,
     shutdown_sender: Sender<()>
 }
 
@@ -59,22 +59,22 @@ impl MapReduceWorker {
     fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue, in_receiver: Receiver<MapReduceWorkerTask>, out_sender: Sender<converters::JsonValue>) -> Self {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
-        let thread = spawn(move || -> Result<(), errors::ScriptError> {
+        let thread = spawn(move || -> Result<(), errors::MapReduceError> {
             let mut should_shutdown = false;
-            let l = create_lua_context(account_id, arg)?;
-            let table: Table = l.exec(&contents, Some(&path))?;
-            let mapper: Function = table.get("map")?;
-            let reducer: Function = table.get("reduce")?;
+            let l = create_lua_context(account_id, arg).map_err(|err| errors::MapReduceError::WorkerSetup(err))?;
+            let table: Table = l.exec(&contents, Some(&path)).map_err(|err| errors::MapReduceError::WorkerSetup(errors::ScriptError::Lua(err)))?;
+            let mapper: Function = table.get("map").map_err(|err| errors::MapReduceError::WorkerSetup(errors::ScriptError::Lua(err)))?;
+            let reducer: Function = table.get("reduce").map_err(|err| errors::MapReduceError::WorkerSetup(errors::ScriptError::Lua(err)))?;
 
             loop {
                 select_loop! {
                     recv(in_receiver, task) => {
                         let value = match task {
                             MapReduceWorkerTask::Map(vertex) => {
-                                mapper.call(converters::Vertex::new(vertex))
+                                mapper.call(converters::Vertex::new(vertex)).map_err(|err| errors::MapReduceError::MapCall(err))
                             },
                             MapReduceWorkerTask::Reduce((first, second)) => {
-                                reducer.call((first, second))
+                                reducer.call((first, second)).map_err(|err| errors::MapReduceError::ReduceCall(err))
                             }
                         }?;
 
@@ -98,7 +98,7 @@ impl MapReduceWorker {
         }
     }
 
-    fn join(self) -> Result<(), errors::ScriptError> {
+    fn join(self) -> Result<(), errors::MapReduceError> {
         // This ignores the error. An error should only occur if the remote
         // end of the channel disconnected, implying that the thread crashed
         // anyways.
@@ -108,7 +108,7 @@ impl MapReduceWorker {
 }
 
 pub struct MapReduceWorkerPool {
-    thread: JoinHandle<Result<JsonValue, errors::ScriptError>>,
+    thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
     in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>
 }
@@ -136,7 +136,7 @@ impl MapReduceWorkerPool {
         // The other channels we'll continue to need.
         drop(worker_out_sender);
 
-        let thread = spawn(move || -> Result<JsonValue, errors::ScriptError> {
+        let thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
@@ -177,11 +177,8 @@ impl MapReduceWorkerPool {
                 // Check to see if we should shutdown
                 if should_force_shutdown || (should_gracefully_shutdown && pending_tasks == 0) {
                     // Join all threads and check for any errors
-                    let results: Vec<Result<(), errors::ScriptError>> = worker_threads.into_iter().map(|t| t.join()).collect();
-
-                    for result in results.into_iter() {
-                        result?;
-                    }
+                    let results: Result<Vec<()>, errors::MapReduceError> = worker_threads.into_iter().map(|t| t.join()).collect();
+                    results?;
 
                     // Get the final value to return
                     return Ok(match last_reduced_item {
@@ -205,7 +202,7 @@ impl MapReduceWorkerPool {
         self.in_sender.send(vertex).is_ok()
     }
 
-    pub fn join(self) -> Result<JsonValue, errors::ScriptError> {
+    pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
         // This ignores the error. An error should only occur if the remote
         // end of the channel disconnected, implying that the thread crashed
         // anyways.

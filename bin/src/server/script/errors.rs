@@ -18,3 +18,11 @@ impl From<LuaError> for ScriptError {
         ScriptError::Lua(err)
     }
 }
+
+#[derive(Debug)]
+pub enum MapReduceError {
+    Query(Error),
+    WorkerSetup(ScriptError),
+    MapCall(LuaError),
+    ReduceCall(LuaError)
+}

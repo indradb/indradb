@@ -41,14 +41,14 @@ pub fn mapreduce(
     contents: String,
     path: String,
     arg: JsonValue,
-) -> Result<JsonValue, errors::ScriptError> {
+) -> Result<JsonValue, errors::MapReduceError> {
     let pool = workers::MapReduceWorkerPool::start(account_id, contents, path, arg);
-    let trans = statics::DATASTORE.transaction(account_id)?;
+    let trans = statics::DATASTORE.transaction(account_id).map_err(|err| errors::MapReduceError::Query(err))?;
     let mut last_id: Option<Uuid> = None;
 
     loop {
         let q = VertexQuery::All { start_id: last_id, limit: *statics::MAP_REDUCE_QUERY_LIMIT };
-        let vertices = trans.get_vertices(q)?;
+        let vertices = trans.get_vertices(q).map_err(|err| errors::MapReduceError::Query(err))?;
         let num_vertices = vertices.len() as u32;
 
         if let Some(last_vertex) = vertices.last() {
