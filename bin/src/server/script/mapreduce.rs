@@ -5,7 +5,7 @@ use indradb::Vertex;
 use statics;
 use crossbeam_channel::{Receiver, Sender, bounded};
 use std::time::Duration;
-use std::thread::{sleep, spawn, JoinHandle};
+use std::thread::{spawn, JoinHandle};
 use super::errors;
 use super::context;
 use super::converters;
@@ -201,15 +201,8 @@ impl WorkerPool {
                     }
                 }
 
+                // First handle items that are alraedy in the queue
                 select_loop! {
-                    recv(mapreduce_in_receiver, vertex) => {
-                        // If this errors out, all of the workers are dead
-                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
-                            should_force_shutdown = true;
-                        } else {
-                            pending_tasks += 1;
-                        }
-                    },
                     recv(worker_out_receiver, value) => {
                         pending_tasks -= 1;
 
@@ -217,10 +210,9 @@ impl WorkerPool {
                             // If this errors out, all of the workers are dead
                             if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
                                 should_force_shutdown = true;
-                            } else {
-                                pending_tasks += 1;
                             }
                             
+                            pending_tasks += 1;
                             last_reduced_item = None;
                         } else {
                             last_reduced_item = Some(value);
@@ -234,6 +226,21 @@ impl WorkerPool {
                         should_gracefully_shutdown = true;
                     },
                     timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                }
+
+                // Now fill any excess capacity with new vertices we've gotten
+                // from the database
+                while worker_in_receiver.len() < worker_in_receiver.capacity().unwrap() {
+                    if let Ok(vertex) = mapreduce_in_receiver.try_recv() {
+                        // If this errors out, all of the workers are dead
+                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
+                            should_force_shutdown = true;
+                        }
+
+                        pending_tasks += 1;
+                    } else {
+                        break;
+                    }
                 }
             }
         });
