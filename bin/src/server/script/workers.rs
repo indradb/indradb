@@ -62,8 +62,42 @@ impl MapReduceWorker {
         let thread = spawn(move || -> Result<(), errors::ScriptError> {
             let mut should_shutdown = false;
             let l = create_lua_context(account_id, arg)?;
-            let main = l.load(&contents, Some(&path))?;
-            let (mapper, reducer): (Function, Function) = main.call(Value::Nil)?;
+
+            let table = l.exec(&contents, Some(&path)).map_err(|err| {
+                if let LuaError::FromLuaConversionError { from, to, message } = err {
+                    LuaError::FromLuaConversionError {
+                        from: from,
+                        to: to,
+                        message: Some("The mapreduce script did not return a table".to_string())
+                    }
+                } else {
+                    err
+                }
+            })?;
+            
+            let mapper: Function = table.get("map").map_err(|err| {
+                if let LuaError::FromLuaConversionError { from, to, message } = err {
+                    LuaError::FromLuaConversionError {
+                        from: from,
+                        to: to,
+                        message: Some("The `map` attribute in the returned table is not a function".to_string())
+                    }
+                } else {
+                    err
+                }
+            })?;
+
+            let reducer: Function = table.get("reduce").map_err(|err| {
+                if let LuaError::FromLuaConversionError { from, to, message } = err {
+                    LuaError::FromLuaConversionError {
+                        from: from,
+                        to: to,
+                        message: Some("The `reduce` attribute in the returned table is not a function".to_string())
+                    }
+                } else {
+                    err
+                }
+            })?;
 
             loop {
                 select_loop! {
@@ -77,16 +111,16 @@ impl MapReduceWorker {
                             }
                         }?;
 
-                        out_sender.send(value).unwrap();
+                        out_sender.send(value).expect("Expected worker output channel to be open");
                     },
                     recv(shutdown_receiver, _) => {
                         should_shutdown = true;
                     },
-                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {
-                        if should_shutdown {
-                            return Ok(());
-                        }
-                    }
+                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                }
+
+                if should_shutdown {
+                    return Ok(());
                 }
             }
         });
@@ -98,7 +132,10 @@ impl MapReduceWorker {
     }
 
     fn join(self) -> Result<(), errors::ScriptError> {
-        self.shutdown_sender.send(()).unwrap();
+        // This ignores the error. An error should only occur if the remote
+        // end of the channel disconnected, implying that the thread crashed
+        // anyways.
+        self.shutdown_sender.send(()).ok();
         self.thread.join()?
     }
 }
@@ -128,49 +165,64 @@ impl MapReduceWorkerPool {
             ));
         }
 
+        // We cloned a bunch of copies of this, we don't need it any longer.
+        // The other channels we'll continue to need.
+        drop(worker_out_sender);
+
         let thread = spawn(move || -> Result<JsonValue, errors::ScriptError> {
-            let mut should_shutdown = false;
+            let mut should_force_shutdown = false; 
+            let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
 
             loop {
                 select_loop! {
                     recv(mapreduce_in_receiver, vertex) => {
-                        pending_tasks += 1;
-                        worker_in_sender.send(MapReduceWorkerTask::Map(vertex)).unwrap();
+                        // If this errors out, all of the workers are dead
+                        if worker_in_sender.send(MapReduceWorkerTask::Map(vertex)).is_err() {
+                            should_force_shutdown = true;
+                        } else {
+                            pending_tasks += 1;
+                        }
                     },
                     recv(worker_out_receiver, value) => {
                         pending_tasks -= 1;
 
                         if let Some(last_reduced_item_inner) = last_reduced_item {
-                            pending_tasks += 1;
-                            worker_in_sender.send(MapReduceWorkerTask::Reduce((last_reduced_item_inner, value))).unwrap();
+                            // If this errors out, all of the workers are dead
+                            if worker_in_sender.send(MapReduceWorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                                should_force_shutdown = true;
+                            } else {
+                                pending_tasks += 1;
+                            }
+                            
                             last_reduced_item = None;
                         } else {
                             last_reduced_item = Some(value);
                         }
                     },
                     recv(shutdown_receiver, _) => {
-                        should_shutdown = true;
+                        should_gracefully_shutdown = true;
                     },
-                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {
-                        if should_shutdown && pending_tasks == 0 {
-                            // Join all threads and check for any errors
-                            let results: Vec<Result<(), errors::ScriptError>> = worker_threads.into_iter().map(|t| t.join()).collect();
+                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                }
 
-                            for result in results.into_iter() {
-                                result?;
-                            }
+                // Check to see if we should shutdown
+                if should_force_shutdown || (should_gracefully_shutdown && pending_tasks == 0) {
+                    // Join all threads and check for any errors
+                    let results: Vec<Result<(), errors::ScriptError>> = worker_threads.into_iter().map(|t| t.join()).collect();
 
-                            // Get the final value to return
-                            return Ok(match last_reduced_item {
-                                // This should only happen if the graph is empty
-                                None => JsonValue::Null,
-                                // This should always ahppen otherwise
-                                Some(value) => value.0
-                            });
-                        }
+                    for result in results.into_iter() {
+                        result?;
                     }
+
+                    // Get the final value to return
+                    return Ok(match last_reduced_item {
+                        // This should only happen if the graph is empty
+                        None => JsonValue::Null,
+                        // This should always ahppen otherwise
+                        Some(value) => value.0
+                    });
                 }
             }
         });
@@ -182,12 +234,15 @@ impl MapReduceWorkerPool {
         }
     }
 
-    pub fn add_vertex(&self, vertex: Vertex) {
-        self.in_sender.send(vertex).unwrap();
+    pub fn add_vertex(&self, vertex: Vertex) -> bool {
+        self.in_sender.send(vertex).is_ok()
     }
 
     pub fn join(self) -> Result<JsonValue, errors::ScriptError> {
-        self.shutdown_sender.send(()).unwrap();
+        // This ignores the error. An error should only occur if the remote
+        // end of the channel disconnected, implying that the thread crashed
+        // anyways.
+        self.shutdown_sender.send(()).ok();
         self.thread.join()?
     }
 }

@@ -7,7 +7,7 @@ use std::boxed::Box;
 pub enum ScriptError {
     Lua(LuaError),
     Transaction(Error),
-    ThreadPanic(Box<Any + Send + 'static>)
+    WorkerError(Box<Any + Send + 'static>)
 }
 
 impl From<Error> for ScriptError {
@@ -24,6 +24,6 @@ impl From<LuaError> for ScriptError {
 
 impl From<Box<Any + Send>> for ScriptError {
     fn from(err: Box<Any + Send>) -> ScriptError {
-        ScriptError::ThreadPanic(err)
+        ScriptError::WorkerError(err)
     }
 }

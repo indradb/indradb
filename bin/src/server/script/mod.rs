@@ -6,7 +6,7 @@ mod workers;
 #[cfg(test)]
 mod tests;
 
-use rlua::Value;
+use rlua::{Value, Error as LuaError};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use indradb::{Transaction, Datastore, VertexQuery};
@@ -26,8 +26,19 @@ pub fn execute(
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
     let l = workers::create_lua_context(account_id, arg)?;
-    let main = l.load(&contents, Some(&path))?;
-    let value: converters::JsonValue = main.call(Value::Nil)?;
+
+    let value: converters::JsonValue = l.exec(&contents, Some(&path)).map_err(|err| {
+        if let LuaError::FromLuaConversionError { from, to, message } = err {
+            LuaError::FromLuaConversionError {
+                from: from,
+                to: to,
+                message: Some("The script did not return valid JSON".to_string())
+            }
+        } else {
+            err
+        }
+    })?;
+    
     Ok(value.0)
 }
 
@@ -58,7 +69,12 @@ pub fn mapreduce(
         }
 
         for vertex in vertices.into_iter() {
-            pool.add_vertex(vertex);
+            if !pool.add_vertex(vertex) {
+                // The vertex couldn't be added, which means the channel is
+                // disconnected. This can only be caused if all of the workers
+                // failed, at which point we need to bail.
+                break;
+            }
         }
 
         // Returned less than the expected number of results, implying that
