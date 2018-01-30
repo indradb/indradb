@@ -168,6 +168,7 @@ impl WorkerPool {
         };
 
         let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
+            let mut progress = 0;
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
@@ -177,6 +178,33 @@ impl WorkerPool {
             loop {
                 if !error_receiver.is_empty() {
                     should_force_shutdown = true;
+                } else if shutdown_receiver.try_recv().is_ok() {
+                    should_gracefully_shutdown = true;
+                } else if reporter_receiver.try_recv().is_ok() {
+                    println!("Mapreduce: report={}, progress={}, pending={}, winding down={}", report_num, progress, pending_tasks, should_gracefully_shutdown);
+                    report_num += 1;
+                } else if let Ok(value) = worker_out_receiver.try_recv() {
+                    pending_tasks -= 1;
+
+                    if let Some(last_reduced_item_inner) = last_reduced_item {
+                        // If this errors out, all of the workers are dead
+                        if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                            should_force_shutdown = true;
+                        }
+                        
+                        pending_tasks += 1;
+                        last_reduced_item = None;
+                    } else {
+                        last_reduced_item = Some(value);
+                    }
+                } else if let Ok(vertex) = mapreduce_in_receiver.try_recv() {
+                    // If this errors out, all of the workers are dead
+                    if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
+                        should_force_shutdown = true;
+                    }
+
+                    pending_tasks += 1;
+                    progress += 1;
                 }
 
                 // Check to see if we should shutdown
@@ -198,48 +226,6 @@ impl WorkerPool {
                             // This should always ahppen otherwise
                             Some(value) => value.0
                         })
-                    }
-                }
-
-                // First handle items that are alraedy in the queue
-                select_loop! {
-                    recv(worker_out_receiver, value) => {
-                        pending_tasks -= 1;
-
-                        if let Some(last_reduced_item_inner) = last_reduced_item {
-                            // If this errors out, all of the workers are dead
-                            if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
-                                should_force_shutdown = true;
-                            }
-                            
-                            pending_tasks += 1;
-                            last_reduced_item = None;
-                        } else {
-                            last_reduced_item = Some(value);
-                        }
-                    },
-                    recv(reporter_receiver, _) => {
-                        println!("Mapreduce: report={}, pending tasks={}, winding down={}", report_num, pending_tasks, should_gracefully_shutdown);
-                        report_num += 1;
-                    }
-                    recv(shutdown_receiver, _) => {
-                        should_gracefully_shutdown = true;
-                    },
-                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
-                }
-
-                // Now fill any excess capacity with new vertices we've gotten
-                // from the database
-                while worker_in_receiver.len() < worker_in_receiver.capacity().unwrap() {
-                    if let Ok(vertex) = mapreduce_in_receiver.try_recv() {
-                        // If this errors out, all of the workers are dead
-                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
-                            should_force_shutdown = true;
-                        }
-
-                        pending_tasks += 1;
-                    } else {
-                        break;
                     }
                 }
             }
