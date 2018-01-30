@@ -11,8 +11,9 @@ use std::thread::{spawn, JoinHandle};
 use super::errors;
 use super::converters;
 
-const MAPREDUCE_CHANNEL_CAPACITY: usize = 1000;
-const WORKER_CHANNEL_RECV_TIMEOUT_SECONDS: u64 = 1;
+const CHANNEL_CAPACITY: usize = 1000;
+const CHANNEL_RECV_TIMEOUT_SECONDS: u64 = 1;
+const REPORT_SECONDS: u64 = 30;
 
 pub fn create_lua_context(account_id: Uuid, arg: JsonValue) -> Result<Lua, errors::ScriptError> {
     let l = Lua::new();
@@ -83,7 +84,7 @@ impl MapReduceWorker {
                     recv(shutdown_receiver, _) => {
                         should_shutdown = true;
                     },
-                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
                 }
 
                 if should_shutdown {
@@ -108,17 +109,19 @@ impl MapReduceWorker {
 }
 
 pub struct MapReduceWorkerPool {
-    thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
+    reporter_thread: JoinHandle<()>,
+    router_thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
     in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>
 }
 
 impl MapReduceWorkerPool {
     pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
-        let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(MAPREDUCE_CHANNEL_CAPACITY);
-        let (worker_in_sender, worker_in_receiver) = bounded::<MapReduceWorkerTask>(MAPREDUCE_CHANNEL_CAPACITY);
-        let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(MAPREDUCE_CHANNEL_CAPACITY);
-        let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
+        let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
+        let (worker_in_sender, worker_in_receiver) = bounded::<MapReduceWorkerTask>(CHANNEL_CAPACITY);
+        let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
+        let (reporter_sender, reporter_receiver) = bounded::<()>(0);
+        let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
         let mut worker_threads: Vec<MapReduceWorker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
@@ -132,14 +135,21 @@ impl MapReduceWorkerPool {
             ));
         }
 
-        // We cloned a bunch of copies of this, we don't need it any longer.
-        // The other channels we'll continue to need.
-        drop(worker_out_sender);
+        let reporter_thread = {
+            let shutdown_receiver = shutdown_receiver.clone();
 
-        let thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
+            spawn(move || {
+                while let Err(_) = shutdown_receiver.recv_timeout(Duration::from_secs(REPORT_SECONDS)) {
+                    reporter_sender.send(()).unwrap();
+                }
+            })
+        };
+
+        let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
+            let mut report_num: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
 
             loop {
@@ -168,10 +178,14 @@ impl MapReduceWorkerPool {
                             last_reduced_item = Some(value);
                         }
                     },
+                    recv(reporter_receiver, _) => {
+                        println!("Mapreduce: report={}, pending tasks={}, winding down={}", report_num, pending_tasks, should_gracefully_shutdown);
+                        report_num += 1;
+                    }
                     recv(shutdown_receiver, _) => {
                         should_gracefully_shutdown = true;
                     },
-                    timed_out(Duration::from_secs(WORKER_CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
+                    timed_out(Duration::from_secs(CHANNEL_RECV_TIMEOUT_SECONDS)) => {}
                 }
 
                 // Check to see if we should shutdown
@@ -192,7 +206,8 @@ impl MapReduceWorkerPool {
         });
 
         Self {
-            thread: thread,
+            reporter_thread: reporter_thread,
+            router_thread: router_thread,
             in_sender: mapreduce_in_sender,
             shutdown_sender: shutdown_sender
         }
@@ -203,10 +218,15 @@ impl MapReduceWorkerPool {
     }
 
     pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
-        // This ignores the error. An error should only occur if the remote
-        // end of the channel disconnected, implying that the thread crashed
-        // anyways.
-        self.shutdown_sender.send(()).ok();
-        self.thread.join().expect("Expected router thread to not panic")
+        for _ in 0..2 {
+            // Send a shutdown notification to both the reporter and router.
+            // This ignores the error. An error should only occur if the remote
+            // end of the channel disconnected, implying that the thread crashed
+            // anyways.
+            self.shutdown_sender.send(()).ok();
+        }
+
+        self.reporter_thread.join().expect("Expected reporter thread to not panic");
+        self.router_thread.join().expect("Expected router thread to not panic")
     }
 }
