@@ -1,7 +1,8 @@
 mod api;
+mod context;
 mod converters;
 mod errors;
-mod workers;
+mod mapreduce;
 
 #[cfg(test)]
 mod tests;
@@ -24,7 +25,7 @@ pub fn execute(
     path: String,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
-    let l = workers::create_lua_context(account_id, arg)?;
+    let l = context::create(account_id, arg)?;
     let value: converters::JsonValue = l.exec(&contents, Some(&path))?;
     Ok(value.0)
 }
@@ -42,7 +43,7 @@ pub fn mapreduce(
     path: String,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::MapReduceError> {
-    let pool = workers::MapReduceWorkerPool::start(account_id, contents, path, arg);
+    let pool = mapreduce::WorkerPool::start(account_id, contents, path, arg);
     let trans = statics::DATASTORE.transaction(account_id).map_err(|err| errors::MapReduceError::Query(err))?;
     let mut last_id: Option<Uuid> = None;
 
