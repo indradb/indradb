@@ -41,8 +41,6 @@ impl Worker {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
         let thread = spawn(move || {
-            let mut should_shutdown = false;
-
             let l = try_or_send!(
                 context::create(account_id, arg),
                 |err| errors::MapReduceError::WorkerSetup {
@@ -102,12 +100,8 @@ impl Worker {
                         out_sender.send(value).expect("Expected worker output channel to be open");
                     },
                     recv(shutdown_receiver, _) => {
-                        should_shutdown = true;
+                        return;
                     }
-                }
-
-                if should_shutdown {
-                    return;
                 }
             }
         });
