@@ -10,6 +10,7 @@ use super::errors;
 use super::context;
 use super::converters;
 
+const CHANNEL_TIMEOUT: u64 = 5;
 const CHANNEL_CAPACITY: usize = 1000;
 const REPORT_SECONDS: u64 = 30;
 
@@ -142,7 +143,7 @@ impl WorkerPool {
         let (reporter_sender, reporter_receiver) = bounded::<()>(0);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let mapper_hwm = worker_in_receiver.capacity().unwrap() / 2;
+        let worker_in_capacity = worker_in_receiver.capacity().unwrap();
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -203,15 +204,18 @@ impl WorkerPool {
                             last_reduced_item = Some(value);
                         }
                     },
-                    recv(mapreduce_in_receiver, vertex) if worker_in_receiver.len() < mapper_hwm => {
-                        // If this errors out, all of the workers are dead
-                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
-                            should_force_shutdown = true;
-                        }
+                    recv(mapreduce_in_receiver, vertex) => {
+                        if worker_in_receiver.len() < worker_in_capacity {
+                            // If this errors out, all of the workers are dead
+                            if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
+                                should_force_shutdown = true;
+                            }
 
-                        pending_tasks += 1;
-                        progress += 1;
-                    }
+                            pending_tasks += 1;
+                            progress += 1;    
+                        }
+                    },
+                    timed_out(Duration::from_secs(CHANNEL_TIMEOUT)) => {}
                 }
 
                 // Check to see if we should shutdown
