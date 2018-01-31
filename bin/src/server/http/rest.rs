@@ -103,15 +103,21 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
 
     let account_id = get_account_id(req);
     let (path, contents) = get_script_file(name)?;
-    
-    match script::mapreduce(account_id, contents, path, payload) {
-        Ok(value) => Ok(to_response(status::Ok, &value)),
-        Err(err) => {
-            let error_message = format!("Script failed: {:?}", err);
-            Err(create_iron_error(
-                status::InternalServerError,
-                error_message,
-            ))
+    let engine = script::mapreduce::Engine::start(account_id, contents, path, payload);
+
+    loop {
+        match engine.get_update() {
+            script::mapreduce::Message::Update => {
+                unimplemented!()
+            },
+            script::mapreduce::Message::Ok(value) => {
+                unimplemented!()
+            },
+            script::mapreduce::Message::Err(err) => {
+                unimplemented!()
+            }
         }
     }
+
+    engine.join()
 }

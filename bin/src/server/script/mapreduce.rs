@@ -1,18 +1,19 @@
 use rlua::{Table, Function};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
-use indradb::Vertex;
+use indradb::{Vertex, VertexQuery};
 use statics;
 use crossbeam_channel::{Receiver, Sender, bounded};
 use std::time::Duration;
 use std::thread::{spawn, JoinHandle};
+use std::sync::{Arc, Mutex};
 use super::errors;
 use super::context;
 use super::converters;
 
 const CHANNEL_TIMEOUT: u64 = 5;
 const CHANNEL_CAPACITY: usize = 1000;
-const REPORT_SECONDS: u64 = 30;
+const REPORT_SECONDS: u64 = 10;
 
 macro_rules! try_or_send {
     ($expr:expr, $error_mapper:expr, $error_sender:expr) => {
@@ -26,7 +27,7 @@ macro_rules! try_or_send {
     }
 }
 
-enum WorkerTask {
+enum WorkerMessage {
     Map(Vertex),
     Reduce((converters::JsonValue, converters::JsonValue))
 }
@@ -37,7 +38,7 @@ struct Worker {
 }
 
 impl Worker {
-    fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<errors::MapReduceError>) -> Self {
+    fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerMessage>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<errors::MapReduceError>) -> Self {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
         let thread = spawn(move || {
@@ -81,14 +82,14 @@ impl Worker {
                 select_loop! {
                     recv(in_receiver, task) => {
                         let value = match task {
-                            WorkerTask::Map(vertex) => {
+                            WorkerMessage::Map(vertex) => {
                                 try_or_send!(
                                     mapper.call(converters::Vertex::new(vertex)),
                                     |err| errors::MapReduceError::MapCall(err),
                                     error_sender
                                 )
                             },
-                            WorkerTask::Reduce((first, second)) => {
+                            WorkerMessage::Reduce((first, second)) => {
                                 try_or_send!(
                                     reducer.call((first, second)),
                                     |err| errors::MapReduceError::ReduceCall(err),
@@ -121,23 +122,18 @@ impl Worker {
     }
 }
 
-pub struct WorkerPool {
-    reporter_thread: JoinHandle<()>,
+struct WorkerPool {
     router_thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
-    in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>
 }
 
 impl WorkerPool {
-    pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
-        let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
-        let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
+    fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue, in_receiver: Receiver<Vertex>) -> Self {
+        let (worker_in_sender, worker_in_receiver) = bounded::<WorkerMessage>(CHANNEL_CAPACITY);
         let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
         let (error_sender, error_receiver) = bounded::<errors::MapReduceError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let (reporter_sender, reporter_receiver) = bounded::<()>(0);
-        let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
+        let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let worker_in_capacity = worker_in_receiver.capacity().unwrap();
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -151,22 +147,10 @@ impl WorkerPool {
             ));
         }
 
-        let reporter_thread = {
-            let shutdown_receiver = shutdown_receiver.clone();
-
-            spawn(move || {
-                while let Err(_) = shutdown_receiver.recv_timeout(Duration::from_secs(REPORT_SECONDS)) {
-                    reporter_sender.send(()).unwrap();
-                }
-            })
-        };
-
         let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
-            let mut progress = 0;
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
-            let mut report_num: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
             let mut last_error: Option<errors::MapReduceError> = None;
 
@@ -179,16 +163,12 @@ impl WorkerPool {
                     recv(shutdown_receiver, _) => {
                         should_gracefully_shutdown = true;
                     },
-                    recv(reporter_receiver, _) => {
-                        println!("Mapreduce: report={}, progress={}, pending={}, winding down={}", report_num, progress, pending_tasks, should_gracefully_shutdown);
-                        report_num += 1;
-                    },
                     recv(worker_out_receiver, value) => {
                         pending_tasks -= 1;
 
                         if let Some(last_reduced_item_inner) = last_reduced_item {
                             // If this errors out, all of the workers are dead
-                            if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                            if worker_in_sender.send(WorkerMessage::Reduce((last_reduced_item_inner, value))).is_err() {
                                 should_force_shutdown = true;
                             }
                             
@@ -198,18 +178,17 @@ impl WorkerPool {
                             last_reduced_item = Some(value);
                         }
                     },
-                    recv(mapreduce_in_receiver, vertex) => {
-                        if worker_in_receiver.len() < worker_in_capacity {
+                    recv(in_receiver, vertex) => {
+                        // Only append to the queue if it won't block
+                        if worker_in_receiver.len() < CHANNEL_CAPACITY {
                             // If this errors out, all of the workers are dead
-                            if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
+                            if worker_in_sender.send(WorkerMessage::Map(vertex)).is_err() {
                                 should_force_shutdown = true;
                             }
 
                             pending_tasks += 1;
-                            progress += 1;    
                         }
-                    },
-                    timed_out(Duration::from_secs(CHANNEL_TIMEOUT)) => {}
+                    }
                 }
 
                 // Check to see if we should shutdown
@@ -236,27 +215,127 @@ impl WorkerPool {
         });
 
         Self {
-            reporter_thread: reporter_thread,
             router_thread: router_thread,
-            in_sender: mapreduce_in_sender,
             shutdown_sender: shutdown_sender
         }
     }
 
-    pub fn add_vertex(&self, vertex: Vertex) -> bool {
-        self.in_sender.send(vertex).is_ok()
+    fn join(self) -> Result<JsonValue, errors::MapReduceError> {
+        // This ignores the error. An error should only occur if the remote
+        // end of the channel disconnected, implying that the thread crashed
+        // anyways.
+        self.shutdown_sender.send(()).ok();
+        self.router_thread.join().expect("Expected router thread to not panic")
+    }
+}
+
+pub enum Message {
+    Update(u64),
+    Ok(JsonValue),
+    Err(errors::MapReduceError)
+}
+
+pub struct Engine {
+    pool: WorkerPool,
+    reporter_thread: JoinHandle<()>,
+    query_thread: JoinHandle<()>,
+    update_receiver: Receiver<()>,
+    shutdown_sender: Sender<()>
+}
+
+impl Engine {
+    pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
+        let (in_sender, in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
+        let (update_sender, update_receiver) = bounded::<Message>(10);
+        let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
+        let pool = WorkerPool::start(account_id, contents, path, arg, in_receiver);
+
+        // Using a mutex instead of an atomic because atomic u64s are currently
+        // unstable
+        let sent = Arc::new(Mutex::new(0u64));
+
+        let reporter_thread = {
+            let sent = sent.clone();
+            let update_sender = update_sender.clone();
+
+            spawn(move || {
+                loop {
+                    select_loop! {
+                        recv(shutdown_sender, _) => {
+                            return;
+                        },
+                        timed_out(Duration::from_secs(REPORT_SECONDS)) => {
+                            let sent = sent.lock().unwrap();
+                            update_sender.send(*sent);
+                        }
+                    }
+                }
+            });
+        };
+
+        let query_thread = spawn(move || {
+            let trans = try_or_send!(
+                statics::DATASTORE.transaction(account_id),
+                |err| Message::Err(errors::MapReduceError::Query(err)),
+                update_sender
+            );
+
+            let mut last_id: Option<Uuid> = None;
+
+            loop {
+                let q = VertexQuery::All { start_id: last_id, limit: *statics::MAP_REDUCE_QUERY_LIMIT };
+
+                let vertices = try_or_send!(
+                    trans.get_vertices(q),
+                    |err| errors::MapReduceError::Query(err),
+                    update_sender
+                );
+
+                let num_vertices = vertices.len() as u32;
+
+                if let Some(last_vertex) = vertices.last() {
+                    last_id = Some(last_vertex.id);
+                }
+
+                for vertex in vertices.into_iter() {
+                    if in_sender.send(vertex).is_err() {
+                        // The vertex couldn't be added, which means the channel is
+                        // disconnected. This can only be caused if all of the workers
+                        // failed, at which point we need to bail.
+                        break;
+                    }
+                }
+
+                {
+                    let sent = sent.lock().unwrap();
+                    *sent += num_vertices;
+                }
+
+                // Returned less than the expected number of results, implying that
+                // the next query will not have any results
+                if num_vertices < *statics::MAP_REDUCE_QUERY_LIMIT {
+                    break;
+                }
+            }
+        });
+
+        Self {
+            pool: pool,
+            reporter_thread: reporter_thread,
+            query_thread: query_thread,
+            update_receiver: update_receiver,
+            shutdown_sender: shutdown_sender
+        }
+    }
+
+    pub fn get_update(&self) -> Message {
+        self.update_receiver.recv().expect("Expected to be able to receive an update")
     }
 
     pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
-        for _ in 0..2 {
-            // Send a shutdown notification to both the reporter and router.
-            // This ignores the error. An error should only occur if the remote
-            // end of the channel disconnected, implying that the thread crashed
-            // anyways.
-            self.shutdown_sender.send(()).ok();
-        }
-
+        self.shutdown_sender.send(());
         self.reporter_thread.join().expect("Expected reporter thread to not panic");
-        self.router_thread.join().expect("Expected router thread to not panic")
+        self.query_thread.join().expect("Expected query thread to not panic");
+        self.pool.join()
     }
 }
