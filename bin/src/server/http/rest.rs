@@ -166,7 +166,9 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
                 }
             };
 
-            let num_vertices = vertices.len() as u32;
+            // Returned less than the expected number of results, implying that
+            // the next query will not have any results
+            let mut done = vertices.len() < *statics::MAP_REDUCE_QUERY_LIMIT as usize;
 
             if let Some(last_vertex) = vertices.last() {
                 last_id = Some(last_vertex.id);
@@ -186,15 +188,14 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
                     // The vertex couldn't be added, which means the channel is
                     // disconnected. This can only be caused if all of the workers
                     // failed, at which point we need to bail.
+                    done = true;
                     break;
                 }
 
                 sent += 1;
             }
 
-            // Returned less than the expected number of results, implying that
-            // the next query will not have any results
-            if num_vertices < *statics::MAP_REDUCE_QUERY_LIMIT {
+            if done {
                 break;
             }
         }
