@@ -21,7 +21,6 @@ impl From<LuaError> for ScriptError {
 
 #[derive(Debug)]
 pub enum MapReduceError {
-    Query(Error),
     WorkerSetup { description: String, cause: ScriptError },
     MapCall(LuaError),
     ReduceCall(LuaError)

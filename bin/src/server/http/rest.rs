@@ -2,9 +2,30 @@ use iron::prelude::*;
 use iron::status;
 use indradb::{EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use serde_json::value::Value as JsonValue;
+use serde_json::Map as JsonMap;
+use serde_json::Number as JsonNumber;
 use uuid::Uuid;
 use script;
+use std::time;
+use indradb::Datastore;
+use std::thread::spawn;
+use iron::typemap::TypeMap;
+use iron::headers::{ContentType, Headers, Encoding, TransferEncoding};
+use super::response_chan;
 use super::util::*;
+use statics;
+
+macro_rules! send_update {
+    ($sender:expr, $key:expr, $value:expr) => {
+        let mut map = JsonMap::with_capacity(1);
+        map.insert($key.to_string(), $value);
+        $sender.0.send(JsonValue::Object(map)).expect("Expected send channel to be open");
+    }
+}
+
+lazy_static! {
+    static ref REPORT_TIME: time::Duration = time::Duration::from_secs(10);
+}
 
 pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction(req)?;
@@ -94,6 +115,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
+    // Get the inputs
     let name: String = get_url_param(req, "name")?;
 
     let payload = match read_optional_json(&mut req.body)? {
@@ -103,15 +125,89 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
 
     let account_id = get_account_id(req);
     let (path, contents) = get_script_file(name)?;
-    
-    match script::mapreduce(account_id, contents, path, payload) {
-        Ok(value) => Ok(to_response(status::Ok, &value)),
-        Err(err) => {
-            let error_message = format!("Script failed: {:?}", err);
-            Err(create_iron_error(
-                status::InternalServerError,
-                error_message,
-            ))
+
+    // Construct a response
+    let mut hs = Headers::new();
+    hs.set(ContentType(get_json_mime()));
+    hs.set(TransferEncoding(vec![Encoding::Chunked]));
+
+    let (sender, receiver) = response_chan::bounded(1);
+
+    let response = Response {
+        status: Some(status::Ok),
+        headers: hs,
+        extensions: TypeMap::new(),
+        body: Some(Box::new(receiver))
+    };
+
+    // Spawn a thread to stream to the response
+    spawn(move || {
+        let trans = match statics::DATASTORE.transaction(account_id) {
+            Ok(trans) => trans,
+            Err(err) => {
+                send_update!(sender, "error", JsonValue::String(format!("Query failed: {:?}", err)));
+                return;
+            }
+        };
+
+        let mapreducer = script::MapReducer::start(account_id, contents, path, payload);
+        let mut sent: u64 = 0;
+        let mut last_id: Option<Uuid> = None;
+        let mut last_report_time = time::SystemTime::now();
+
+        loop {
+            let q = VertexQuery::All { start_id: last_id, limit: *statics::MAP_REDUCE_QUERY_LIMIT };
+
+            let vertices = match trans.get_vertices(q) {
+                Ok(vertices) => vertices,
+                Err(err) => {
+                    send_update!(sender, "error", JsonValue::String(format!("Query failed: {:?}", err)));
+                    break;
+                }
+            };
+
+            let num_vertices = vertices.len() as u32;
+
+            if let Some(last_vertex) = vertices.last() {
+                last_id = Some(last_vertex.id);
+            }
+
+            for vertex in vertices.into_iter() {
+                // Check if we should give an update
+                let now = time::SystemTime::now();
+
+                if now.duration_since(last_report_time).unwrap() > *REPORT_TIME {
+                    send_update!(sender, "update", JsonValue::Number(JsonNumber::from(sent)));
+                    last_report_time = now;
+                }
+
+                // Add the vertex to the queue
+                if !mapreducer.add_vertex(vertex) {
+                    // The vertex couldn't be added, which means the channel is
+                    // disconnected. This can only be caused if all of the workers
+                    // failed, at which point we need to bail.
+                    break;
+                }
+
+                sent += 1;
+            }
+
+            // Returned less than the expected number of results, implying that
+            // the next query will not have any results
+            if num_vertices < *statics::MAP_REDUCE_QUERY_LIMIT {
+                break;
+            }
         }
-    }
+
+        match mapreducer.join() {
+            Ok(value) => {
+                send_update!(sender, "ok", value);
+            },
+            Err(err) => {
+                send_update!(sender, "error", JsonValue::String(format!("Mapreduce failed: {:?}", err)));
+            }
+        }
+    });
+
+    Ok(response)
 }

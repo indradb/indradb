@@ -1,4 +1,5 @@
 mod middleware;
+mod response_chan;
 mod rest;
 mod transaction;
 mod util;

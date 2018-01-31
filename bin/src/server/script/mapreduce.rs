@@ -12,7 +12,6 @@ use super::converters;
 
 const CHANNEL_TIMEOUT: u64 = 5;
 const CHANNEL_CAPACITY: usize = 1000;
-const REPORT_SECONDS: u64 = 30;
 
 macro_rules! try_or_send {
     ($expr:expr, $error_mapper:expr, $error_sender:expr) => {
@@ -113,29 +112,24 @@ impl Worker {
     }
 
     fn join(self) {
-        // This ignores the error. An error should only occur if the remote
-        // end of the channel disconnected, implying that the thread crashed
-        // anyways.
         self.shutdown_sender.send(()).ok();
         self.thread.join().expect("Expected worker thread to not panic")
     }
 }
 
-pub struct WorkerPool {
-    reporter_thread: JoinHandle<()>,
+pub struct MapReducer {
     router_thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
     in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>
 }
 
-impl WorkerPool {
+impl MapReducer {
     pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
         let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
         let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
         let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
         let (error_sender, error_receiver) = bounded::<errors::MapReduceError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let (reporter_sender, reporter_receiver) = bounded::<()>(0);
-        let (shutdown_sender, shutdown_receiver) = bounded::<()>(2);
+        let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
         let worker_in_capacity = worker_in_receiver.capacity().unwrap();
 
@@ -151,22 +145,10 @@ impl WorkerPool {
             ));
         }
 
-        let reporter_thread = {
-            let shutdown_receiver = shutdown_receiver.clone();
-
-            spawn(move || {
-                while let Err(_) = shutdown_receiver.recv_timeout(Duration::from_secs(REPORT_SECONDS)) {
-                    reporter_sender.send(()).unwrap();
-                }
-            })
-        };
-
         let router_thread = spawn(move || -> Result<JsonValue, errors::MapReduceError> {
-            let mut progress = 0;
             let mut should_force_shutdown = false; 
             let mut should_gracefully_shutdown = false;
             let mut pending_tasks: usize = 0;
-            let mut report_num: usize = 0;
             let mut last_reduced_item: Option<converters::JsonValue> = None;
             let mut last_error: Option<errors::MapReduceError> = None;
 
@@ -178,10 +160,6 @@ impl WorkerPool {
                     },
                     recv(shutdown_receiver, _) => {
                         should_gracefully_shutdown = true;
-                    },
-                    recv(reporter_receiver, _) => {
-                        println!("Mapreduce: report={}, progress={}, pending={}, winding down={}", report_num, progress, pending_tasks, should_gracefully_shutdown);
-                        report_num += 1;
                     },
                     recv(worker_out_receiver, value) => {
                         pending_tasks -= 1;
@@ -206,7 +184,6 @@ impl WorkerPool {
                             }
 
                             pending_tasks += 1;
-                            progress += 1;    
                         }
                     },
                     timed_out(Duration::from_secs(CHANNEL_TIMEOUT)) => {}
@@ -236,7 +213,6 @@ impl WorkerPool {
         });
 
         Self {
-            reporter_thread: reporter_thread,
             router_thread: router_thread,
             in_sender: mapreduce_in_sender,
             shutdown_sender: shutdown_sender
@@ -248,15 +224,7 @@ impl WorkerPool {
     }
 
     pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
-        for _ in 0..2 {
-            // Send a shutdown notification to both the reporter and router.
-            // This ignores the error. An error should only occur if the remote
-            // end of the channel disconnected, implying that the thread crashed
-            // anyways.
-            self.shutdown_sender.send(()).ok();
-        }
-
-        self.reporter_thread.join().expect("Expected reporter thread to not panic");
+        self.shutdown_sender.send(()).ok();
         self.router_thread.join().expect("Expected router thread to not panic")
     }
 }
