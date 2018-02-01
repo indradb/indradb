@@ -31,6 +31,7 @@ impl WriteBody for ResponseReceiver {
             let mut s = serde_json::to_string(&chunk).unwrap();
             s.write_body(res)?;
             "\r\n".write_body(res)?;
+            res.flush()?;
         }
     }
 }
