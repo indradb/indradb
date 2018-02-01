@@ -1,4 +1,4 @@
-local queries = require("queries");
+local queries = require("../shared/queries");
 
 -- Create some sample data
 local id_1 = trans:create_vertex("foo");
@@ -26,7 +26,7 @@ function check_vertices(vertices, expected_count, required_vertex_ids)
 
     for _, _ in pairs(required_vertex_ids) do
         print("Vertices that were not found querying:")
-        require("debug").print_r(required_vertex_ids)
+        require("../shared/debug").print_r(required_vertex_ids)
         error("Not all of the required vertex IDs were found in querying")
     end
 end

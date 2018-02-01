@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use regex::Regex;
 use serde_json::Value as JsonValue;
-use super::execute;
+use super::super::execute;
 use serde_json;
 use std::path::Path;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ macro_rules! test_script {
     ($name:ident) => (
         #[test]
 		fn $name() {
-            let file_path_str = format!("test_scripts/{}.lua", stringify!($name));
+            let file_path_str = format!("test_scripts/execute/{}.lua", stringify!($name));
             let file_path = Path::new(&file_path_str);
             let mut file = File::open(file_path).expect("Could not open script file");
             let mut contents = String::new();

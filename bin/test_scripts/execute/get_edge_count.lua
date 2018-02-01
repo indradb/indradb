@@ -1,4 +1,4 @@
-local queries = require("queries");
+local queries = require("../shared/queries");
 
 local outbound_id = trans:create_vertex("foo");
 local inbound_id = trans:create_vertex("bar");
