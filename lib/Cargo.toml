@@ -23,14 +23,14 @@ rocksdb-datastore = ["rocksdb", "bincode"]
 
 [dependencies]
 rust-crypto = "~0.2.36"
-serde = "^1.0.2"
-serde_json = "^1.0.1"
-serde_derive = "^1.0.2"
-libc = "0.2.22"
-rand = "~0.3.15"
-regex = "~0.2.1"
-byteorder = "^1.0.0"
-lazy_static = "0.2.8"
+serde = "^1.0.27"
+serde_json = "^1.0.9"
+serde_derive = "^1.0.27"
+libc = "0.2.26"
+rand = "~0.4.2"
+regex = "~0.2.5"
+lazy_static = "^1.0.0"
+byteorder = "^1.2.1"
 
 # Postgres dependencies
 r2d2 = { version = "0.7.3", optional = true }
