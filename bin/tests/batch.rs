@@ -1,33 +1,27 @@
 extern crate chrono;
-extern crate hyper;
 #[macro_use]
 extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate maplit;
 extern crate rand;
 extern crate regex;
+extern crate reqwest;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate uuid;
 
 #[macro_use]
 mod common;
 
-use std::collections::BTreeMap;
-
 use serde::Deserialize;
-use hyper::client::Client;
-use hyper::status::StatusCode;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use indradb::*;
 pub use common::*;
-use std::io::Read;
 use std::collections::HashMap;
-use serde_json::Number as JsonNumber;
+use reqwest::Method;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
@@ -50,100 +44,83 @@ impl HttpTransaction for BatchTransaction {
 }
 
 impl BatchTransaction {
-    fn request<T>(&self, d: BTreeMap<String, JsonValue>) -> Result<T, Error>
+    fn request<T>(&self, body: JsonValue) -> Result<T, Error>
     where
         for<'a> T: Deserialize<'a>,
     {
-        let body = serde_json::to_string(&vec![d]).unwrap();
-        let client = Client::new();
-        let req = request(
-            &client,
+        let result = request(
             self.port,
             self.account_id,
             self.secret.clone(),
-            "POST",
+            Method::Post,
             "/transaction",
-            vec![],
-        ).body(&body[..]);
-        let mut res = req.send().unwrap();
+            &vec![],
+            Some(json!([body]))
+        );
 
-        let mut payload = String::new();
-        res.read_to_string(&mut payload).unwrap();
-
-        match res.status {
-            StatusCode::Ok => {
-                let mut v: Vec<T> = serde_json::from_str(&payload[..]).unwrap();
-                let o = v.pop().unwrap();
-                Ok(o)
+        let mut parts = from_result::<Vec<T>>(result).map_err(|err| {
+            if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
+                let message = cap.get(1).unwrap().as_str();
+                Error::description_to_error(message)
+            } else {
+                panic!(format!("Unexpected error received: {}", err));
             }
-            _ => {
-                let o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
+        })?;
 
-                match o.get("error") {
-                    Some(&JsonValue::String(ref error)) => {
-                        if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(error) {
-                            let message = cap.get(1).unwrap().as_str();
-                            Err(Error::description_to_error(message))
-                        } else {
-                            panic!(format!("Unexpected error received: {}", error))
-                        }
-                    }
-                    _ => panic!("Could not unpack error message"),
-                }
-            }
-        }
+        assert!(parts.len() == 1, "Invalid number of items returned");
+        Ok(parts.pop().unwrap())
     }
 }
 
 impl Transaction for BatchTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("create_vertex".to_string()),
-            "type".to_string() => JsonValue::String(t.0)
-        })
+        self.request(json!({
+            "action": "create_vertex",
+            "type": t.0
+        }))
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("get_vertices".to_string()),
-            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-        })
+        self.request(json!({
+            "action": "get_vertices",
+            "query": q
+        }))
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("delete_vertices".to_string()),
-            "query".to_string() => serde_json::to_value::<VertexQuery>(q).unwrap(),
-        })
+        self.request(json!({
+            "action": "delete_vertices",
+            "query": q
+        }))
     }
 
     fn create_edge(&self, e: EdgeKey, weight: Weight) -> Result<(), Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("create_edge".to_string()),
-            "key".to_string() => serde_json::to_value::<EdgeKey>(e).unwrap(),
-            "weight".to_string() => JsonValue::Number(JsonNumber::from_f64(f64::from(weight.0)).unwrap())
-        })
+        self.request(json!({
+            "action": "create_edge",
+            "key": e,
+            "weight": weight.0
+        }))
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("get_edges".to_string()),
-            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-        })
+        self.request(json!({
+            "action": "get_edges",
+            "query": q
+        }))
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("delete_edges".to_string()),
-            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-        })
+        self.request(json!({
+            "action": "delete_edges",
+            "query": q
+        }))
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
-        self.request(btreemap!{
-            "action".to_string() => JsonValue::String("get_edge_count".to_string()),
-            "query".to_string() => serde_json::to_value::<EdgeQuery>(q).unwrap(),
-        })
+        self.request(json!({
+            "action": "get_edge_count",
+            "query": q
+        }))
     }
 
     fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {

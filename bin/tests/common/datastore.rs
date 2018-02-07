@@ -3,11 +3,11 @@ use std::marker::PhantomData;
 use std::process::{Child, Command};
 use uuid::Uuid;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use super::http::request;
+use super::http;
 use std::thread::sleep;
-use hyper::client::Client;
 use std::time::Duration;
-use hyper::status::StatusCode;
+use std::collections::HashMap;
+use reqwest::{Method, StatusCode};
 
 const START_PORT: usize = 1024;
 
@@ -29,27 +29,27 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
     fn default() -> Self {
         let port = PORT.fetch_add(1, Ordering::SeqCst);
 
+        let mut envs = HashMap::new();
+        envs.insert("PORT", port.to_string());
+
         let server = Command::new("../target/debug/indradb-server")
-            .envs(hashmap!{"PORT" => port.to_string()})
+            .envs(envs)
             .spawn()
             .expect("Server failed to start");
 
-        let client = Client::new();
-
         for _ in 0..5 {
-            let req = request(
-                &client,
+            let result = http::request(
                 port,
                 Uuid::default(),
                 "".to_string(),
-                "GET",
-                "/",
-                vec![],
+                Method::Post,
+                "/transaction",
+                &vec![],
+                Some(json!([]))
             );
-            let res = req.send();
 
-            if let Ok(res) = res {
-                if res.status == StatusCode::NotFound {
+            if let Ok(response) = result {
+                if response.status() == StatusCode::Ok {
                     return HttpDatastore {
                         port: port,
                         server: server,

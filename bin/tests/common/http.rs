@@ -1,54 +1,50 @@
-use hyper::header::{Authorization, Basic};
-use hyper::client::{Client, RequestBuilder};
-use hyper::Url;
-use hyper::method::Method;
-use hyper::client::response::Response;
 use uuid::Uuid;
-
-use serde_json;
 use serde_json::value::Value as JsonValue;
-
-use std::str::FromStr;
-use std::io::Read;
 use std::str;
-use std::collections::BTreeMap;
+use serde::Deserialize;
+use reqwest::{Response, Client, Method, Url, Error as ReqwestError, StatusCode};
 
-pub fn request<'a>(
-    client: &'a Client,
+pub fn request(
     port: usize,
     account_id: Uuid,
     secret: String,
-    method_str: &str,
+    method: Method,
     path: &str,
-    query_params: Vec<(&str, String)>,
-) -> RequestBuilder<'a> {
-    let method = Method::from_str(method_str).unwrap();
+    query_params: &Vec<(&str, &str)>,
+    body: Option<JsonValue>) -> Result<Response, ReqwestError> {
+    let url = Url::parse_with_params(&format!("http://localhost:{}{}", port, path), query_params).expect("Expected to be able to construct a URL");
+    let client = Client::new();
+    let mut request = client.request(method, url);
 
-    let mut url = Url::parse(&format!("http://localhost:{}{}", port, path)[..]).unwrap();
+    request.basic_auth(account_id.hyphenated().to_string(), Some(secret));
 
-    if !query_params.is_empty() {
-        let mut query_pairs_builder = url.query_pairs_mut();
-
-        for (key, value) in query_params {
-            query_pairs_builder.append_pair(key, &value[..]);
-        }
+    if let Some(body) = body {
+        request.json(&body);
     }
 
-    let auth = Authorization(Basic {
-        username: account_id.hyphenated().to_string(),
-        password: Some(secret),
-    });
-
-    client.request(method, url).header(auth)
+    request.send()
 }
 
-pub fn response_to_error_message(res: &mut Response) -> String {
-    let mut payload = String::new();
-    res.read_to_string(&mut payload).unwrap();
-    let o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
+pub fn from_result<T>(result: Result<Response, ReqwestError>) -> Result<T, String> where for<'a> T: Deserialize<'a>  {
+    match result {
+        Ok(mut response) => {
+            if response.status() == StatusCode::Ok {
+                let v: T = response.json().expect("Could not deserialize response to custom type");
+                Ok(v)
+            } else {
+                let v: JsonValue = response.json().expect("Could not deserialize response to object");
 
-    match o.get("error") {
-        Some(&JsonValue::String(ref error)) => error.clone(),
-        _ => panic!("Could not unpack error message"),
+                if let JsonValue::Object(ref obj) = v {
+                    if let Some(&JsonValue::String(ref err)) = obj.get("error") {
+                        return Err(err.clone());
+                    }
+                }
+
+                panic!("Unexpected error response object: {}", v);
+            }
+        },
+        Err(err) => {
+            panic!("Request error: {}", err);
+        }
     }
 }
