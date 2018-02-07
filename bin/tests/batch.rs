@@ -1,19 +1,15 @@
 extern crate chrono;
-extern crate crossbeam_channel;
-extern crate hyper;
 #[macro_use]
 extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;
 extern crate regex;
+extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
-extern crate tokio_core;
 extern crate uuid;
-extern crate url;
-extern crate futures;
 
 #[macro_use]
 mod common;
@@ -25,7 +21,7 @@ use uuid::Uuid;
 pub use indradb::*;
 pub use common::*;
 use std::collections::HashMap;
-use std::thread;
+use reqwest::Method;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
@@ -52,13 +48,13 @@ impl BatchTransaction {
     where
         for<'a> T: Deserialize<'a>,
     {
-        let result = CLIENT.call(
+        let result = request(
             self.port,
             self.account_id,
             self.secret.clone(),
-            "POST",
+            Method::Post,
             "/transaction",
-            vec![],
+            &vec![],
             Some(json!([body]))
         );
 

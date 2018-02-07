@@ -1,19 +1,15 @@
 extern crate chrono;
-extern crate crossbeam_channel;
-extern crate futures;
-extern crate hyper;
 #[macro_use]
 extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;
 extern crate regex;
+extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
-extern crate tokio_core;
 extern crate uuid;
-extern crate url;
 
 #[macro_use]
 mod common;
@@ -22,6 +18,7 @@ use serde_json::value::Value as JsonValue;
 use serde::Deserialize;
 use uuid::Uuid;
 use std::collections::HashMap;
+use reqwest::Method;
 
 pub use indradb::*;
 pub use common::*;
@@ -35,15 +32,15 @@ pub struct RestTransaction {
 impl RestTransaction {
     fn request<T>(
         &self,
-        method_str: &str,
+        method: Method,
         path: &str,
-        query_pairs: Vec<(&str, String)>
+        query_pairs: &Vec<(&str, &str)>
     ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
-        let result = CLIENT.call(
+        let result = request(
             self.port,
             self.account_id,
             self.secret.clone(),
-            method_str,
+            method,
             path,
             query_pairs,
             None,
@@ -67,44 +64,44 @@ impl HttpTransaction for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        self.request("POST", "/vertex", vec![("type", t.0)])
+        self.request(Method::Post, "/vertex", &vec![("type", &t.0)])
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request("GET", "/vertex", vec![("q", q_json)])
+        self.request(Method::Get, "/vertex", &vec![("q", &q_json)])
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request("DELETE", "/vertex", vec![("q", q_json)])
+        self.request(Method::Delete, "/vertex", &vec![("q", &q_json)])
     }
 
     fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
         let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
         self.request(
-            "PUT",
+            Method::Put,
             &path[..],
-            vec![("weight", weight.0.to_string())],
+            &vec![("weight", &weight.0.to_string())],
         )
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request("GET", "/edge", vec![("q", q_json)])
+        self.request(Method::Get, "/edge", &vec![("q", &q_json)])
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request("DELETE", "/edge", vec![("q", q_json)])
+        self.request(Method::Delete, "/edge", &vec![("q", &q_json)])
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
         self.request(
-            "GET",
+            Method::Get,
             "/edge",
-            vec![("action", "count".to_string()), ("q", q_json)],
+            &vec![("action", "count"), ("q", &q_json)],
         )
     }
 

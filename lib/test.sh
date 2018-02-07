@@ -34,4 +34,4 @@ trap cleanup EXIT
 dropdb --if-exists indradb_test
 createdb --owner=$PG_USER indradb_test
 cargo update
-cargo $ACTION --all-features $TEST_NAME -- --nocapture
+cargo $ACTION --all-features $TEST_NAME

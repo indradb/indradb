@@ -3,11 +3,11 @@ use std::marker::PhantomData;
 use std::process::{Child, Command};
 use uuid::Uuid;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use super::http::CLIENT;
+use super::http;
 use std::thread::sleep;
 use std::time::Duration;
-use hyper::StatusCode;
 use std::collections::HashMap;
+use reqwest::{Method, StatusCode};
 
 const START_PORT: usize = 1024;
 
@@ -38,18 +38,18 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
             .expect("Server failed to start");
 
         for _ in 0..5 {
-            let response = CLIENT.call(
+            let result = http::request(
                 port,
                 Uuid::default(),
                 "".to_string(),
-                "POST",
+                Method::Post,
                 "/transaction",
-                vec![],
+                &vec![],
                 Some(json!([]))
             );
 
-            if let Ok((status, _)) = response {
-                if status == StatusCode::Ok {
+            if let Ok(response) = result {
+                if response.status() == StatusCode::Ok {
                     return HttpDatastore {
                         port: port,
                         server: server,

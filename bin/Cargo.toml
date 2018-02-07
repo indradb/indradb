@@ -47,7 +47,4 @@ version = "0.7.0"
 features = ["postgres-datastore", "rocksdb-datastore"]
 
 [dev-dependencies]
-url = "^1.6.0"
-tokio-core = "0.1.12"
-futures = "0.1.16"
-crossbeam-channel = "0.1.2"
+reqwest = "0.8.4"
