@@ -9,7 +9,6 @@ use core::str::FromStr;
 use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use std::sync::Arc;
 use super::api;
 
 macro_rules! proxy_fn {
@@ -17,7 +16,7 @@ macro_rules! proxy_fn {
         $methods.add_method($name, |_, this, args| {
             match $func(&this.trans, args) {
                 Ok(val) => Ok(val),
-                Err(err) => Err(LuaError::ExternalError(Arc::new(err)))
+                Err(err) => Err(LuaError::RuntimeError(format!("{}", err)))
             }
         });
     }
@@ -222,7 +221,7 @@ impl<'lua> FromLua<'lua> for Type {
 impl<'lua> ToLua<'lua> for Type {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let value = (self.0).0;
-        Ok(Value::String(l.create_string(&value[..])))
+        Ok(Value::String(l.create_string(&value[..])?))
     }
 }
 
@@ -254,15 +253,15 @@ impl<'lua> FromLua<'lua> for EdgeKey {
 
 impl<'lua> ToLua<'lua> for EdgeKey {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
-        let table = l.create_table();
+        let table = l.create_table()?;
         table.set(
             "outbound_id",
-            l.create_string(&self.0.outbound_id.hyphenated().to_string()[..]),
+            l.create_string(&self.0.outbound_id.hyphenated().to_string()[..])?,
         )?;
         table.set("type", self.0.t.0)?;
         table.set(
             "inbound_id",
-            l.create_string(&self.0.inbound_id.hyphenated().to_string()[..]),
+            l.create_string(&self.0.inbound_id.hyphenated().to_string()[..])?,
         )?;
         Ok(Value::Table(table))
     }
@@ -279,10 +278,10 @@ impl Vertex {
 
 impl<'lua> ToLua<'lua> for Vertex {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
-        let table = l.create_table();
+        let table = l.create_table()?;
         table.set(
             "id",
-            l.create_string(&self.0.id.hyphenated().to_string()[..]),
+            l.create_string(&self.0.id.hyphenated().to_string()[..])?,
         )?;
         table.set("type", self.0.t.0)?;
         Ok(Value::Table(table))
@@ -300,12 +299,12 @@ impl Edge {
 
 impl<'lua> ToLua<'lua> for Edge {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
-        let table = l.create_table();
+        let table = l.create_table()?;
         table.set("key", EdgeKey::new(self.0.key).to_lua(l)?)?;
         table.set("weight", Value::Number(f64::from(self.0.weight.0)))?;
         table.set(
             "created_datetime",
-            l.create_string(&self.0.created_datetime.to_string()[..]),
+            l.create_string(&self.0.created_datetime.to_string()[..])?,
         )?;
         Ok(Value::Table(table))
     }
@@ -359,7 +358,7 @@ impl<'lua> FromLua<'lua> for Uuid {
 impl<'lua> ToLua<'lua> for Uuid {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let s = self.0.hyphenated().to_string();
-        Ok(Value::String(l.create_string(&s[..])))
+        Ok(Value::String(l.create_string(&s[..])?))
     }
 }
 

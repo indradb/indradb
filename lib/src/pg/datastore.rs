@@ -1,5 +1,5 @@
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-use r2d2::{Config, Pool, PooledConnection};
+use r2d2::{Pool, PooledConnection};
 use std::mem;
 use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
@@ -60,17 +60,18 @@ impl PostgresDatastore {
             }
         };
 
-        let pool_config = Config::builder().pool_size(unwrapped_pool_size).build();
         let manager = match PostgresConnectionManager::new(&*connection_string, TlsMode::None) {
             Ok(manager) => manager,
             Err(err) => panic!("Could not connect to the postgres database: {}", err),
         };
 
+        let pool = Pool::builder()
+            .max_size(unwrapped_pool_size)
+            .build(manager)
+            .expect("Expected to be able to build a new database pool");
+
         PostgresDatastore {
-            pool: match Pool::new(pool_config, manager) {
-                Ok(pool) => pool,
-                Err(err) => panic!("Could not initialize postgres database pool: {}", err),
-            },
+            pool: pool,
             secret: secret,
             secure_uuids: secure_uuids,
         }
