@@ -16,12 +16,10 @@ extern crate url;
 #[macro_use]
 mod common;
 
-use hyper::client::Client;
 use serde_json::value::Value as JsonValue;
 use serde::Deserialize;
 use uuid::Uuid;
 use std::collections::HashMap;
-use tokio_core::reactor::Core;
 
 pub use indradb::*;
 pub use common::*;
@@ -39,11 +37,7 @@ impl RestTransaction {
         path: &str,
         query_pairs: Vec<(&str, String)>
     ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
-        let mut event_loop = Core::new().unwrap();
-        let handle = event_loop.handle();
-        let client = Client::new(&handle);
-
-        let req = request(
+        let response = CLIENT.call(
             self.port,
             self.account_id,
             self.secret.clone(),
@@ -53,9 +47,7 @@ impl RestTransaction {
             None,
         );
 
-        let res = client.request(req);
-
-        handle_response::<T>(res, event_loop).map_err(|err| {
+        from_response::<T>(response).map_err(|err| {
             Error::description_to_error(&err)
         })
     }

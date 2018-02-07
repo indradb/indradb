@@ -52,11 +52,7 @@ impl BatchTransaction {
     where
         for<'a> T: Deserialize<'a>,
     {
-        let mut event_loop = Core::new().unwrap();
-        let handle = event_loop.handle();
-        let client = Client::new(&handle);
-
-        let req = request(
+        let response = CLIENT.call(
             self.port,
             self.account_id,
             self.secret.clone(),
@@ -66,9 +62,7 @@ impl BatchTransaction {
             Some(body)
         );
 
-        let res = client.request(req);
-
-        handle_response::<T>(res, event_loop).map_err(|err| {
+        from_response::<T>(response).map_err(|err| {
             if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
                 let message = cap.get(1).unwrap().as_str();
                 Error::description_to_error(message)

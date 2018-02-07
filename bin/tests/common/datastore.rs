@@ -3,13 +3,11 @@ use std::marker::PhantomData;
 use std::process::{Child, Command};
 use uuid::Uuid;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use super::http::request;
+use super::http::CLIENT;
 use std::thread::sleep;
-use hyper::client::Client;
 use std::time::Duration;
 use hyper::StatusCode;
 use std::collections::HashMap;
-use tokio_core::reactor::Core;
 
 const START_PORT: usize = 1024;
 
@@ -39,12 +37,8 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
             .spawn()
             .expect("Server failed to start");
 
-        let mut event_loop = Core::new().unwrap();
-        let handle = event_loop.handle();
-        let client = Client::new(&handle);
-
         for _ in 0..5 {
-            let req = request(
+            let response = CLIENT.call(
                 port,
                 Uuid::default(),
                 "".to_string(),
@@ -54,10 +48,7 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
                 None
             );
 
-            let res_future = client.request(req);
-            let res = event_loop.run(res_future).unwrap();
-
-            if res.status() == StatusCode::NotFound {
+            if response.status() == StatusCode::NotFound {
                 return HttpDatastore {
                     port: port,
                     server: server,
