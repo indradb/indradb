@@ -1,27 +1,28 @@
 use hyper::header::{Authorization, Basic};
-use hyper::client::{Client, RequestBuilder};
-use hyper::Url;
-use hyper::method::Method;
-use hyper::client::response::Response;
+use hyper::client::FutureResponse;
+use hyper::{Method, Request, Response, Uri, StatusCode, Error as HyperError};
+use url::Url;
 use uuid::Uuid;
-
+use futures::future;
 use serde_json;
 use serde_json::value::Value as JsonValue;
-
 use std::str::FromStr;
-use std::io::Read;
 use std::str;
 use std::collections::BTreeMap;
+use serde::Deserialize;
+use futures::future::Future;
+use futures::Stream;
+use tokio_core::reactor::Core;
 
-pub fn request<'a>(
-    client: &'a Client,
+pub fn request(
     port: usize,
     account_id: Uuid,
     secret: String,
     method_str: &str,
     path: &str,
     query_params: Vec<(&str, String)>,
-) -> RequestBuilder<'a> {
+    body: Option<JsonValue>,
+) -> Request {
     let method = Method::from_str(method_str).unwrap();
 
     let mut url = Url::parse(&format!("http://localhost:{}{}", port, path)[..]).unwrap();
@@ -34,21 +35,51 @@ pub fn request<'a>(
         }
     }
 
-    let auth = Authorization(Basic {
+    let mut request = Request::new(method, Uri::from_str(&url.into_string()).unwrap());
+
+    request.headers_mut().set(Authorization(Basic {
         username: account_id.hyphenated().to_string(),
         password: Some(secret),
-    });
+    }));
 
-    client.request(method, url).header(auth)
+    if let Some(body) = body {
+        request.set_body(serde_json::to_string(&body).unwrap());
+    }
+
+    request
 }
 
-pub fn response_to_error_message(res: &mut Response) -> String {
-    let mut payload = String::new();
-    res.read_to_string(&mut payload).unwrap();
-    let o: BTreeMap<String, JsonValue> = serde_json::from_str(&payload[..]).unwrap();
+pub fn handle_response<T>(future: FutureResponse, mut event_loop: Core) -> Result<T, String>
+where
+    for<'a> T: Deserialize<'a>
+{
+    let res = event_loop.run(future).unwrap();
 
-    match o.get("error") {
-        Some(&JsonValue::String(ref error)) => error.clone(),
-        _ => panic!("Could not unpack error message"),
+    if res.status() == StatusCode::Ok {
+        let body: T = response_to_json(res);
+        Ok(body)
+    } else {
+        let body: BTreeMap<String, JsonValue> = response_to_json(res);
+
+        match body.get("error") {
+            Some(&JsonValue::String(ref error)) => Err(error.clone()),
+            _ => panic!("Could not unpack error message")
+        }
     }
+}
+
+fn response_to_json<T>(res: Response) -> T
+where
+    for<'a> T: Deserialize<'a>
+{
+    let body_future = res.body().fold(Vec::new(), |mut v, chunk| {
+        v.extend(&chunk[..]);
+        future::ok::<_, HyperError>(v)
+    }).and_then(|chunks| {
+        let s = String::from_utf8(chunks).unwrap();
+        let v: T = serde_json::from_str(&s).unwrap();
+        future::ok::<_, HyperError>(v)
+    });
+
+    body_future.wait().expect("Expect a response body")
 }

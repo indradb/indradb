@@ -12,7 +12,6 @@ use std::path::Path;
 use uuid::Uuid;
 use indradb::Datastore;
 use statics;
-use common::ProxyTransaction;
 use std::convert::From;
 
 /// Runs a script.

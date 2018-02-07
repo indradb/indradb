@@ -7,7 +7,9 @@ use super::http::request;
 use std::thread::sleep;
 use hyper::client::Client;
 use std::time::Duration;
-use hyper::status::StatusCode;
+use hyper::StatusCode;
+use std::collections::HashMap;
+use tokio_core::reactor::Core;
 
 const START_PORT: usize = 1024;
 
@@ -29,33 +31,38 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
     fn default() -> Self {
         let port = PORT.fetch_add(1, Ordering::SeqCst);
 
+        let mut envs = HashMap::new();
+        envs.insert("PORT", port.to_string());
+
         let server = Command::new("../target/debug/indradb-server")
-            .envs(hashmap!{"PORT" => port.to_string()})
+            .envs(envs)
             .spawn()
             .expect("Server failed to start");
 
-        let client = Client::new();
+        let mut event_loop = Core::new().unwrap();
+        let handle = event_loop.handle();
+        let client = Client::new(&handle);
 
         for _ in 0..5 {
             let req = request(
-                &client,
                 port,
                 Uuid::default(),
                 "".to_string(),
                 "GET",
                 "/",
                 vec![],
+                None
             );
-            let res = req.send();
 
-            if let Ok(res) = res {
-                if res.status == StatusCode::NotFound {
-                    return HttpDatastore {
-                        port: port,
-                        server: server,
-                        phantom_http_transaction: PhantomData,
-                    };
-                }
+            let res_future = client.request(req);
+            let res = event_loop.run(res_future).unwrap();
+
+            if res.status() == StatusCode::NotFound {
+                return HttpDatastore {
+                    port: port,
+                    server: server,
+                    phantom_http_transaction: PhantomData,
+                };
             }
 
             sleep(Duration::from_secs(1));

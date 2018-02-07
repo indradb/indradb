@@ -10,4 +10,4 @@ end
 
 local status, err = pcall(test_get_deleted_global_metadata);
 assert(status == false);
-assert(tostring(err) == "Metadata does not exist");
+assert(tostring(err) == "runtime error: Metadata does not exist");

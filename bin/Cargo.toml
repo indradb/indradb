@@ -32,12 +32,12 @@ libc = "0.2.26"
 rand = "~0.4.2"
 regex = "~0.2.5"
 lazy_static = "^1.0.0"
-iron = "0.5.1"
-hyper = "0.10.10"
-urlencoded = "0.5.0"
-clap = "^2.24.1"
-router = "~0.5.1"
-rlua = "0.9.1"
+iron = "0.6.0"
+hyper = "0.11.16"
+urlencoded = "0.6.0"
+clap = "^2.29.2"
+router = "~0.6.0"
+rlua = "0.11.0"
 chrono = { version = "0.4.0", features = ["serde"] }
 uuid = { version = "0.5.0", features = ["serde", "v4"] }
 
@@ -47,4 +47,7 @@ version = "0.7.0"
 features = ["postgres-datastore", "rocksdb-datastore"]
 
 [dev-dependencies]
-maplit = "0.1.4"
+maplit = "^1.0.1"
+url = "^1.6.0"
+tokio-core = "0.1.12"
+futures = "0.1.16"
