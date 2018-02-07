@@ -9,6 +9,7 @@ extern crate lazy_static;
 extern crate rand;
 extern crate regex;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate tokio_core;
 extern crate uuid;
@@ -38,7 +39,7 @@ impl RestTransaction {
         path: &str,
         query_pairs: Vec<(&str, String)>
     ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
-        let response = CLIENT.call(
+        let result = CLIENT.call(
             self.port,
             self.account_id,
             self.secret.clone(),
@@ -46,9 +47,9 @@ impl RestTransaction {
             path,
             query_pairs,
             None,
-        ).expect("Expected a response");
+        );
 
-        from_response::<T>(response).map_err(|err| {
+        from_result::<T>(result).map_err(|err| {
             Error::description_to_error(&err)
         })
     }

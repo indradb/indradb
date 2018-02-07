@@ -25,6 +25,7 @@ use uuid::Uuid;
 pub use indradb::*;
 pub use common::*;
 use std::collections::HashMap;
+use std::thread;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
@@ -51,7 +52,7 @@ impl BatchTransaction {
     where
         for<'a> T: Deserialize<'a>,
     {
-        let response = CLIENT.call(
+        let result = CLIENT.call(
             self.port,
             self.account_id,
             self.secret.clone(),
@@ -59,16 +60,19 @@ impl BatchTransaction {
             "/transaction",
             vec![],
             Some(json!([body]))
-        ).expect("Expected a response");
+        );
 
-        from_response::<T>(response).map_err(|err| {
+        let mut parts = from_result::<Vec<T>>(result).map_err(|err| {
             if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
                 let message = cap.get(1).unwrap().as_str();
                 Error::description_to_error(message)
             } else {
-                panic!(format!("Unexpected error received: {}", err))
+                panic!(format!("Unexpected error received: {}", err));
             }
-        })
+        })?;
+
+        assert!(parts.len() == 1, "Invalid number of items returned");
+        Ok(parts.pop().unwrap())
     }
 }
 

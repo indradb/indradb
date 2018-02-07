@@ -42,14 +42,14 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
                 port,
                 Uuid::default(),
                 "".to_string(),
-                "GET",
-                "/",
+                "POST",
+                "/transaction",
                 vec![],
-                None
+                Some(json!([]))
             );
 
-            if let Ok(response) = response {
-                if response.status() == StatusCode::NotFound {
+            if let Ok((status, _)) = response {
+                if status == StatusCode::Ok {
                     return HttpDatastore {
                         port: port,
                         server: server,
