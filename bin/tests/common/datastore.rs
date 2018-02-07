@@ -48,12 +48,14 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
                 None
             );
 
-            if response.status() == StatusCode::NotFound {
-                return HttpDatastore {
-                    port: port,
-                    server: server,
-                    phantom_http_transaction: PhantomData,
-                };
+            if let Ok(response) = response {
+                if response.status() == StatusCode::NotFound {
+                    return HttpDatastore {
+                        port: port,
+                        server: server,
+                        phantom_http_transaction: PhantomData,
+                    };
+                }
             }
 
             sleep(Duration::from_secs(1));

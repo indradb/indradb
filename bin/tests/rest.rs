@@ -1,4 +1,5 @@
 extern crate chrono;
+extern crate crossbeam_channel;
 extern crate futures;
 extern crate hyper;
 #[macro_use]
@@ -45,7 +46,7 @@ impl RestTransaction {
             path,
             query_pairs,
             None,
-        );
+        ).expect("Expected a response");
 
         from_response::<T>(response).map_err(|err| {
             Error::description_to_error(&err)

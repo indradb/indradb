@@ -13,18 +13,18 @@ use serde::Deserialize;
 use futures::future::Future;
 use futures::Stream;
 use tokio_core::reactor::Core;
-use std::thread::{spawn, JoinHandle};
-use std::sync::mpsc::{sync_channel, Sender, Receiver};
+use std::thread::spawn;
+use crossbeam_channel::{bounded, Sender, Receiver};
 
 pub struct Client {
     in_sender: Sender<Request>,
-    out_receiver: Receiver<Response>
+    out_receiver: Receiver<Result<Response, HyperError>>
 }
 
 impl Client {
     fn default() -> Self {
-        let (in_sender, in_receiver) = sync_channel::<Request>(1);
-        let (out_sender, out_receiver) = sync_channel::<Response>(1);
+        let (in_sender, in_receiver) = bounded::<Request>(1);
+        let (out_sender, out_receiver) = bounded::<Result<Response, HyperError>>(1);
 
         spawn(move || {
             let mut event_loop = Core::new().unwrap();
@@ -34,7 +34,7 @@ impl Client {
             loop {
                 let request = in_receiver.recv().unwrap();
                 let response_future = client.request(request);
-                let response = event_loop.run(response_future).unwrap();
+                let response = event_loop.run(response_future);
                 out_sender.send(response).unwrap();
             }
         });
@@ -54,7 +54,7 @@ impl Client {
         path: &str,
         query_params: Vec<(&str, String)>,
         body: Option<JsonValue>
-    ) -> Response {
+    ) -> Result<Response, HyperError> {
         let method = Method::from_str(method_str).unwrap();
 
         let mut url = Url::parse(&format!("http://localhost:{}{}", port, path)[..]).unwrap();

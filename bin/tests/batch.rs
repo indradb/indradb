@@ -1,4 +1,5 @@
 extern crate chrono;
+extern crate crossbeam_channel;
 extern crate hyper;
 #[macro_use]
 extern crate indradb;
@@ -17,9 +18,7 @@ extern crate futures;
 #[macro_use]
 mod common;
 
-use tokio_core::reactor::Core;
 use serde::Deserialize;
-use hyper::client::{Client, HttpConnector};
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
@@ -59,8 +58,8 @@ impl BatchTransaction {
             "POST",
             "/transaction",
             vec![],
-            Some(body)
-        );
+            Some(json!([body]))
+        ).expect("Expected a response");
 
         from_response::<T>(response).map_err(|err| {
             if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
