@@ -1,29 +1,24 @@
 extern crate chrono;
-extern crate hyper;
 #[macro_use]
 extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate maplit;
 extern crate rand;
 extern crate regex;
+extern crate reqwest;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate uuid;
 
 #[macro_use]
 mod common;
 
-use std::io::Read;
-
-use hyper::client::{Client, RequestBuilder};
 use serde_json::value::Value as JsonValue;
 use serde::Deserialize;
-use hyper::status::StatusCode;
-use hyper::client::response::Response;
 use uuid::Uuid;
 use std::collections::HashMap;
+use reqwest::Method;
 
 pub use indradb::*;
 pub use common::*;
@@ -33,20 +28,23 @@ pub struct RestTransaction {
 }
 
 impl RestTransaction {
-    fn request<'a>(
+    fn request<T>(
         &self,
-        client: &'a Client,
-        method_str: &str,
+        method: Method,
         path: &str,
-        query_pairs: Vec<(&str, String)>,
-    ) -> RequestBuilder<'a> {
-        request(
-            client,
+        query_pairs: &Vec<(&str, &str)>
+    ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
+        let result = request(
             self.port,
-            method_str,
+            method,
             path,
             query_pairs,
-        )
+            None,
+        );
+
+        from_result::<T>(result).map_err(|err| {
+            Error::description_to_error(&err)
+        })
     }
 }
 
@@ -60,68 +58,45 @@ impl HttpTransaction for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        let client = Client::new();
-        let req = self.request(&client, "POST", "/vertex", vec![("type", t.0)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+        self.request(Method::Post, "/vertex", &vec![("type", &t.0)])
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "GET", "/vertex", vec![("q", q_json)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+        self.request(Method::Get, "/vertex", &vec![("q", &q_json)])
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "DELETE", "/vertex", vec![("q", q_json)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+        self.request(Method::Delete, "/vertex", &vec![("q", &q_json)])
     }
 
     fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
-        let client = Client::new();
         let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
-        let req = self.request(
-            &client,
-            "PUT",
+        self.request(
+            Method::Put,
             &path[..],
-            vec![],
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+            &vec![],
+        )
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "GET", "/edge", vec![("q", q_json)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+        self.request(Method::Get, "/edge", &vec![("q", &q_json)])
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(&client, "DELETE", "/edge", vec![("q", q_json)]);
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+        self.request(Method::Delete, "/edge", &vec![("q", &q_json)])
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        let client = Client::new();
-        let req = self.request(
-            &client,
-            "GET",
+        self.request(
+            Method::Get,
             "/edge",
-            vec![("action", "count".to_string()), ("q", q_json)],
-        );
-        let mut res = req.send().unwrap();
-        response_to_obj(&mut res)
+            &vec![("action", "count"), ("q", &q_json)],
+        )
     }
 
     fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {
@@ -176,24 +151,6 @@ impl Transaction for RestTransaction {
         Err(Error::Unexpected(
             "Cannot rollback an HTTP-based transaction".to_string(),
         ))
-    }
-}
-
-pub fn response_to_obj<T>(res: &mut Response) -> Result<T, Error>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    match res.status {
-        StatusCode::Ok => {
-            let mut payload = String::new();
-            res.read_to_string(&mut payload).unwrap();
-            let v: T = serde_json::from_str(&payload[..]).unwrap();
-            Ok(v)
-        }
-        _ => {
-            let message = response_to_error_message(res);
-            Err(Error::description_to_error(&message[..]))
-        }
     }
 }
 
