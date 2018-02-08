@@ -4,8 +4,8 @@ macro_rules! define_bench {
     ($name:ident, $datastore_constructor:expr) => (
         #[bench]
         fn $name(b: &mut Bencher) {
-            let datastore = $datastore_constructor;
-            ::common::$name(b, datastore);
+            let mut datastore = $datastore_constructor;
+            ::common::$name(b, &mut datastore);
         }
     )
 }

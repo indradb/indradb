@@ -1,7 +1,7 @@
 use indradb::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use test::Bencher;
 
-pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: D)
+pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -13,7 +13,7 @@ where
     });
 }
 
-pub fn bench_get_vertices<D, T>(b: &mut Bencher, datastore: D)
+pub fn bench_get_vertices<D, T>(b: &mut Bencher, datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -30,7 +30,7 @@ where
     });
 }
 
-pub fn bench_create_edge<D, T>(b: &mut Bencher, datastore: D)
+pub fn bench_create_edge<D, T>(b: &mut Bencher, datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -49,7 +49,7 @@ where
     });
 }
 
-pub fn bench_get_edges<D, T>(b: &mut Bencher, datastore: D)
+pub fn bench_get_edges<D, T>(b: &mut Bencher, datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -73,7 +73,7 @@ where
     });
 }
 
-pub fn bench_get_edge_count<D, T>(b: &mut Bencher, datastore: D)
+pub fn bench_get_edge_count<D, T>(b: &mut Bencher, datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
