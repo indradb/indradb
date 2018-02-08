@@ -16,7 +16,7 @@ lazy_static! {
 }
 
 pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let query_params = get_query_params(req)?;
     let t = get_query_param::<Type>(query_params, "type", true)?.unwrap();
     let response = datastore_request(trans.create_vertex(t))?;
@@ -25,7 +25,7 @@ pub fn create_vertex(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let query_params = get_query_params(req)?;
     let q = get_obj_query_param::<VertexQuery>(query_params)?;
     let response = datastore_request(trans.get_vertices(q))?;
@@ -34,7 +34,7 @@ pub fn get_vertices(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn delete_vertices(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let query_params = get_query_params(req)?;
     let q = get_obj_query_param::<VertexQuery>(query_params)?;
     datastore_request(trans.delete_vertices(q))?;
@@ -43,7 +43,7 @@ pub fn delete_vertices(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn create_edge(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let outbound_id: Uuid = get_url_param(req, "outbound_id")?;
     let t: Type = get_url_param(req, "t")?;
     let inbound_id: Uuid = get_url_param(req, "inbound_id")?;
@@ -54,7 +54,7 @@ pub fn create_edge(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn get_edges(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let query_params = get_query_params(req)?;
     let q = get_obj_query_param::<EdgeQuery>(query_params)?;
     let action = get_query_param::<String>(query_params, "action", false)?;
@@ -69,7 +69,7 @@ pub fn get_edges(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn delete_edges(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let query_params = get_query_params(req)?;
     let q = get_obj_query_param::<EdgeQuery>(query_params)?;
     datastore_request(trans.delete_edges(q))?;
@@ -92,8 +92,6 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
         None => JsonValue::Null,
     };
 
-    let account_id = get_account_id(req);
-
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
     let contents = match File::open(&path) {
@@ -114,7 +112,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
         )),
     }?;
 
-    match script::run(account_id, &contents, &path, payload) {
+    match script::run(&contents, &path, payload) {
         Ok(value) => Ok(to_response(status::Ok, &value)),
         Err(err) => {
             let error_message = format!("Script failed: {:?}", err);

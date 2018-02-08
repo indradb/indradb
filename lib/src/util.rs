@@ -1,51 +1,67 @@
 //! Utility functions.
 
 use rand::{OsRng, Rng};
-use crypto::sha2::Sha256;
-use crypto::digest::Digest;
 use errors::ValidationError;
-use uuid::Uuid;
+use uuid::{Uuid, UuidV1Context};
 use chrono::DateTime;
 use chrono::offset::Utc;
-use byteorder::BigEndian;
-use std::io::Cursor;
-use std::io::Write;
-use byteorder::WriteBytesExt;
+use std::sync::Mutex;
+
+const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
+
+#[derive(Debug)]
+pub enum UuidGenerator {
+    V1(Mutex<u16>),
+    V4
+}
+
+impl UuidGenerator {
+    pub fn new(secure: bool) -> Self {
+        if secure {
+            UuidGenerator::V4
+        } else {
+            UuidGenerator::V1(Mutex::new(0))
+        }
+    }
+
+    pub fn next(&self) -> Uuid {
+        match self {
+            &UuidGenerator::V1(ref lock) => {
+                let counter = {
+                    let mut counter = lock.lock().unwrap();
+                    let old_value = *counter;
+                    *counter += 1;
+                    old_value
+                };
+
+                let context = UuidV1Context::new(counter);
+                let now = Utc::now();
+
+                Uuid::new_v1(
+                    &context,
+                    now.timestamp() as u64,
+                    now.timestamp_subsec_nanos(),
+                    &NODE_ID
+                ).expect("Expected to be able to generate a UUID")
+            },
+            &UuidGenerator::V4 => Uuid::new_v4()
+        }
+    }
+}
 
 /// Generates a securely random string consisting of letters (uppercase and
 /// lowercase) and digits.
-pub fn generate_random_secret() -> String {
+pub fn generate_random_secret(count: usize) -> String {
     let mut chars = vec![];
     let options = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let mut rng = OsRng::new().unwrap();
 
-    for _ in 0..32 {
+    for _ in 0..count {
         let c: u8 = *rng.choose(options).unwrap();
         chars.push(c);
     }
 
     String::from_utf8(chars).unwrap()
-}
-
-/// Generates a SHA256 hash, based off of a salt, an optional pepper, and a
-/// secret value.
-///
-/// # Arguments
-///
-/// * `salt` - A randomly generated value tied to the account to prevent brute
-///   force.
-/// * `pepper` - A global random value, to further prevent brute force attacks.
-/// * `secret` - A secret random value or password for the account.
-pub fn get_salted_hash(salt: &str, pepper: Option<&str>, secret: &str) -> String {
-    let mut sha = Sha256::new();
-    sha.input(salt.as_bytes());
-
-    if let Some(pepper) = pepper {
-        sha.input(pepper.as_bytes());
-    }
-
-    sha.input(secret.as_bytes());
-    return format!("1:{}", sha.result_str());
 }
 
 /// Gets the next UUID that would occur after the given one.
@@ -84,50 +100,33 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     timestamp * 1_000_000_000 + nanoseconds
 }
 
-/// Creates a new ID that is based in part off a parent ID.
-///
-/// # Arguments
-///
-/// * `parent` - The ID of the parent.
-pub fn child_uuid(parent: Uuid) -> Uuid {
-    let mut buf = [0u8; 16];
-    let mut cursor: Cursor<&mut [u8]> = Cursor::new(&mut buf);
-    cursor.write_all(&parent.as_bytes()[0..8]).unwrap();
-    cursor
-        .write_u64::<BigEndian>(nanos_since_epoch(&Utc::now()))
-        .unwrap();
-    Uuid::from_bytes(cursor.into_inner()).unwrap()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{child_uuid, generate_random_secret, get_salted_hash, nanos_since_epoch, next_uuid};
+    use super::{UuidGenerator, generate_random_secret, nanos_since_epoch, next_uuid};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
     use chrono::{DateTime, NaiveDateTime, Utc};
 
     #[test]
-    fn should_generate_random_secret() {
-        let secret = generate_random_secret();
-        assert!(
-            Regex::new(r"[a-zA-Z0-9]{32}")
-                .unwrap()
-                .is_match(&secret[..])
-        );
+    fn should_generate_uuids() {
+        let generator = UuidGenerator::new(false);
+        let first = generator.next();
+        let second = generator.next();
+        assert_ne!(first, second);
+        let generator = UuidGenerator::new(true);
+        let first = generator.next();
+        let second = generator.next();
+        assert_ne!(first, second);
     }
 
     #[test]
-    fn should_generate_salted_hash() {
-        let hash = get_salted_hash("a", Some("b"), "c");
-        assert_eq!(
-            hash,
-            "1:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-        );
-        let hash = get_salted_hash("a", None, "c");
-        assert_eq!(
-            hash,
-            "1:f45de51cdef30991551e41e882dd7b5404799648a0a00753f44fc966e6153fc1"
+    fn should_generate_random_secret() {
+        let secret = generate_random_secret(8);
+        assert!(
+            Regex::new(r"[a-zA-Z0-9]{8}")
+                .unwrap()
+                .is_match(&secret[..])
         );
     }
 
@@ -148,18 +147,5 @@ mod tests {
     fn should_generate_nanos_since_epoch() {
         let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 62), Utc);
         assert_eq!(nanos_since_epoch(&datetime), 61000000062);
-    }
-
-    #[test]
-    fn should_generate_child_uuid() {
-        let pid = Uuid::new_v4();
-        let cid1 = child_uuid(pid);
-        let cid2 = child_uuid(pid);
-        assert!(pid != cid1);
-        assert!(pid.as_bytes()[0..8] == cid1.as_bytes()[0..8]);
-        assert!(pid != cid2);
-        assert!(pid.as_bytes()[0..8] == cid2.as_bytes()[0..8]);
-        assert!(cid1 != cid2);
-        assert!(cid2 > cid1);
     }
 }

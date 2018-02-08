@@ -9,7 +9,7 @@ use std::u16;
 use super::util::*;
 
 pub fn transaction(req: &mut Request) -> IronResult<Response> {
-    let trans = get_transaction(req)?;
+    let trans = get_transaction()?;
     let mut idx: u16 = 0;
     let mut jsonable_res: Vec<JsonValue> = Vec::new();
 

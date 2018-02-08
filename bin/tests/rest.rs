@@ -30,8 +30,6 @@ pub use common::*;
 
 pub struct RestTransaction {
     port: usize,
-    account_id: Uuid,
-    secret: String,
 }
 
 impl RestTransaction {
@@ -45,8 +43,6 @@ impl RestTransaction {
         request(
             client,
             self.port,
-            self.account_id,
-            self.secret.clone(),
             method_str,
             path,
             query_pairs,
@@ -55,11 +51,9 @@ impl RestTransaction {
 }
 
 impl HttpTransaction for RestTransaction {
-    fn new(port: usize, account_id: Uuid, secret: String) -> Self {
+    fn new(port: usize) -> Self {
         RestTransaction {
             port: port,
-            account_id: account_id,
-            secret: secret,
         }
     }
 }
@@ -139,18 +133,6 @@ impl Transaction for RestTransaction {
     }
 
     fn delete_global_metadata(&self, _: String) -> Result<(), Error> {
-        unimplemented!();
-    }
-
-    fn get_account_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
-        unimplemented!();
-    }
-
-    fn set_account_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
-        unimplemented!();
-    }
-
-    fn delete_account_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
         unimplemented!();
     }
 

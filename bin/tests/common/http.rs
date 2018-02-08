@@ -1,9 +1,7 @@
-use hyper::header::{Authorization, Basic};
 use hyper::client::{Client, RequestBuilder};
 use hyper::Url;
 use hyper::method::Method;
 use hyper::client::response::Response;
-use uuid::Uuid;
 
 use serde_json;
 use serde_json::value::Value as JsonValue;
@@ -16,8 +14,6 @@ use std::collections::BTreeMap;
 pub fn request<'a>(
     client: &'a Client,
     port: usize,
-    account_id: Uuid,
-    secret: String,
     method_str: &str,
     path: &str,
     query_params: Vec<(&str, String)>,
@@ -34,12 +30,7 @@ pub fn request<'a>(
         }
     }
 
-    let auth = Authorization(Basic {
-        username: account_id.hyphenated().to_string(),
-        password: Some(secret),
-    });
-
-    client.request(method, url).header(auth)
+    client.request(method, url)
 }
 
 pub fn response_to_error_message(res: &mut Response) -> String {

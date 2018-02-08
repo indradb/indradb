@@ -1,7 +1,7 @@
 use iron::prelude::*;
 use iron::status;
 use iron::headers::{ContentType, Headers};
-use iron::typemap::{Key, TypeMap};
+use iron::typemap::TypeMap;
 use router::Router;
 use indradb::{Datastore, Error, Type};
 use util::SimpleError;
@@ -19,19 +19,9 @@ use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use statics;
-use uuid::Uuid;
 
 lazy_static! {
     static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
-}
-
-// Need this to avoid orphan rules
-pub struct AccountKey {
-    pub account_id: Uuid,
-}
-
-impl Key for AccountKey {
-    type Value = AccountKey;
 }
 
 /// Converts an indradb error to an `IronError`. We need to use this strategy
@@ -39,12 +29,10 @@ impl Key for AccountKey {
 /// this crate.
 pub fn convert_to_iron_error(err: &Error) -> IronError {
     let status = match *err {
-        Error::AccountNotFound
-        | Error::VertexNotFound
+        Error::VertexNotFound
         | Error::EdgeNotFound
         | Error::MetadataNotFound => status::NotFound,
         Error::OutOfRange(_) => status::BadRequest,
-        Error::Unauthorized => status::Unauthorized,
         Error::Unexpected(_) => status::InternalServerError,
     };
 
@@ -180,19 +168,12 @@ pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
     }
 }
 
-/// Gets the account UUID from the iron request typemap
-pub fn get_account_id(req: &Request) -> Uuid {
-    let ext = &(*req.extensions.get::<AccountKey>().unwrap());
-    ext.account_id
-}
-
-/// Gets a new transaction, tied to the request's account UUID
+/// Gets a new transaction.
 ///
 /// # Errors
 /// Returns an `IronError` if it was not possible to create a transaction.
-pub fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
-    let account_id = get_account_id(req);
-    match statics::DATASTORE.transaction(account_id) {
+pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
+    match statics::DATASTORE.transaction() {
         Ok(val) => Ok(val),
         Err(err) => Err(create_iron_error(
             status::InternalServerError,

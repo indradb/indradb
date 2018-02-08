@@ -43,7 +43,7 @@ pub mod util;
 
 pub use errors::*;
 pub use traits::*;
-pub use models::{Edge, EdgeKey, EdgeQuery, QueryTypeConverter, Type, Vertex, VertexQuery};
+pub use models::*;
 
 pub use memory::{MemoryDatastore, MemoryTransaction};
 

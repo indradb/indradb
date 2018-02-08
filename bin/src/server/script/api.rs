@@ -60,25 +60,6 @@ pub fn delete_global_metadata(trans: &ProxyTransaction, key: String) -> Result<(
     Ok(())
 }
 
-pub fn get_account_metadata(
-    trans: &ProxyTransaction, (owner_id, key): (converters::Uuid, String),
-) -> Result<converters::JsonValue, Error> {
-    Ok(converters::JsonValue::new(trans.get_account_metadata(owner_id.0, key)?))
-}
-
-pub fn set_account_metadata(
-    trans: &ProxyTransaction, (owner_id, key, value): (converters::Uuid, String, converters::JsonValue),
-) -> Result<(), Error> {
-    Ok(trans.set_account_metadata(owner_id.0, key, value.0)?)
-}
-
-pub fn delete_account_metadata(
-    trans: &ProxyTransaction, (owner_id, key): (converters::Uuid, String),
-) -> Result<(), Error> {
-    trans.delete_account_metadata(owner_id.0, key)?;
-    Ok(())
-}
-
 pub fn get_vertex_metadata(
     trans: &ProxyTransaction, (q, key): (converters::VertexQuery, String),
 ) -> Result<HashMap<converters::Uuid, converters::JsonValue>, Error> {

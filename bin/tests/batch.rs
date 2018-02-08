@@ -34,16 +34,12 @@ lazy_static! {
 
 pub struct BatchTransaction {
     port: usize,
-    account_id: Uuid,
-    secret: String,
 }
 
 impl HttpTransaction for BatchTransaction {
-    fn new(port: usize, account_id: Uuid, secret: String) -> Self {
+    fn new(port: usize) -> Self {
         BatchTransaction {
             port: port,
-            account_id: account_id,
-            secret: secret,
         }
     }
 }
@@ -58,8 +54,6 @@ impl BatchTransaction {
         let req = request(
             &client,
             self.port,
-            self.account_id,
-            self.secret.clone(),
             "POST",
             "/transaction",
             vec![],
@@ -153,18 +147,6 @@ impl Transaction for BatchTransaction {
     }
 
     fn delete_global_metadata(&self, _: String) -> Result<(), Error> {
-        unimplemented!();
-    }
-
-    fn get_account_metadata(&self, _: Uuid, _: String) -> Result<JsonValue, Error> {
-        unimplemented!();
-    }
-
-    fn set_account_metadata(&self, _: Uuid, _: String, _: JsonValue) -> Result<(), Error> {
-        unimplemented!();
-    }
-
-    fn delete_account_metadata(&self, _: Uuid, _: String) -> Result<(), Error> {
         unimplemented!();
     }
 

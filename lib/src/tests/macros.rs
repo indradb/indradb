@@ -5,10 +5,7 @@ macro_rules! define_test {
 		#[test]
 		fn $name() {
 			let datastore = $datastore_constructor;
-			let mut sandbox = ::tests::DatastoreTestSandbox::new(datastore);
-			sandbox.setup(stringify!($name));
-			::tests::$name(&mut sandbox);
-			sandbox.teardown();
+			::tests::$name(datastore);
 		}
 	)
 }
@@ -17,14 +14,6 @@ macro_rules! define_test {
 #[macro_export]
 macro_rules! full_test_impl {
 	($code:expr) => (
-		// Accounts
-		define_test!(should_fail_auth_with_a_bad_username, $code);
-		define_test!(should_fail_auth_with_a_bad_password, $code);
-		define_test!(should_successfully_auth_with_good_credentials, $code);
-		define_test!(should_lookup_valid_accounts, $code);
-		define_test!(should_fail_to_lookup_invalid_accounts, $code);
-		define_test!(should_fail_when_attempting_to_delete_invalid_accounts, $code);
-
 		// Vertex queries
 		define_test!(should_get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, $code);
@@ -37,17 +26,14 @@ macro_rules! full_test_impl {
 		// Vertex updates
 		define_test!(should_delete_a_valid_vertex, $code);
 		define_test!(should_not_delete_an_invalid_vertex, $code);
-		define_test!(should_not_delete_an_unowned_vertex, $code);
 
 		// Edges
 		define_test!(should_get_a_valid_edge, $code);
 		define_test!(should_not_get_an_invalid_edge, $code);
 		define_test!(should_create_a_valid_edge, $code);
 		define_test!(should_not_create_an_invalid_edge, $code);
-		define_test!(should_not_create_an_edge_with_bad_permissions, $code);
 		define_test!(should_delete_a_valid_edge, $code);
 		define_test!(should_not_delete_an_invalid_edge, $code);
-		define_test!(should_not_delete_an_edge_with_bad_permissions, $code);
 		define_test!(should_get_an_edge_count, $code);
 		define_test!(should_get_an_edge_count_with_no_type, $code);
 		define_test!(should_get_an_edge_count_for_an_invalid_edge, $code);
@@ -62,9 +48,6 @@ macro_rules! full_test_impl {
 
 		// Metadata
 		define_test!(should_handle_global_metadata, $code);
-		define_test!(should_handle_account_metadata, $code);
-		define_test!(should_not_set_invalid_account_metadata, $code);
-		define_test!(should_not_delete_invalid_account_metadata, $code);
 		define_test!(should_handle_vertex_metadata, $code);
 		define_test!(should_not_set_invalid_vertex_metadata, $code);
 		define_test!(should_not_delete_invalid_vertex_metadata, $code);

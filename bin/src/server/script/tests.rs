@@ -28,7 +28,7 @@ macro_rules! test_script {
             // datastore by default which works fine. If you swap that out for
             // another datastore (i.e. by changing the `DATASTORE_URL` env
             // var), then you may need to disable parallel execution of tests.
-            match run(Uuid::default(), &contents[..], file_path, JsonValue::Null) {
+            match run(&contents[..], file_path, JsonValue::Null) {
                 Ok(actual_result) => {
                     if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents[..]) {
                         let s = cap.get(1).unwrap().as_str();
@@ -50,7 +50,6 @@ macro_rules! test_script {
 }
 
 test_script!(get_vertices);
-test_script!(account_metadata);
 test_script!(create_vertex_bad_type);
 test_script!(create_vertex);
 test_script!(delete_edges);

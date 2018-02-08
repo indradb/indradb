@@ -53,7 +53,7 @@ optional = true
 
 [dependencies.uuid]
 version = ">=0.5,<0.6"
-features = ["serde", "v4"]
+features = ["serde", "v1", "v4"]
 
 [dependencies.postgres]
 version = "0.15"

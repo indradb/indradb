@@ -1,7 +1,6 @@
 use indradb::*;
 use std::marker::PhantomData;
 use std::process::{Child, Command};
-use uuid::Uuid;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use super::http::request;
 use std::thread::sleep;
@@ -40,8 +39,6 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
             let req = request(
                 &client,
                 port,
-                Uuid::default(),
-                "".to_string(),
                 "GET",
                 "/",
                 vec![],
@@ -74,29 +71,11 @@ impl<H: HttpTransaction> Drop for HttpDatastore<H> {
 }
 
 impl<H: HttpTransaction> Datastore<H> for HttpDatastore<H> {
-    fn has_account(&self, id: Uuid) -> Result<bool, Error> {
-        Ok(id == Uuid::default())
-    }
-
-    fn create_account(&self) -> Result<(Uuid, String), Error> {
-        Ok((Uuid::default(), "".to_string()))
-    }
-
-    fn delete_account(&self, _: Uuid) -> Result<(), Error> {
-        // Don't actually do anything, because all data is process-local and
-        // will die with the process.
-        Ok(())
-    }
-
-    fn auth(&self, id: Uuid, secret: String) -> Result<bool, Error> {
-        Ok(id == Uuid::default() && &secret[..] == "")
-    }
-
-    fn transaction(&self, account_id: Uuid) -> Result<H, Error> {
-        Ok(H::new(self.port, account_id, "".to_string()))
+    fn transaction(&self) -> Result<H, Error> {
+        Ok(H::new(self.port))
     }
 }
 
 pub trait HttpTransaction: Transaction {
-    fn new(usize, Uuid, String) -> Self;
+    fn new(usize) -> Self;
 }

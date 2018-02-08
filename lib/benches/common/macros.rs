@@ -5,10 +5,7 @@ macro_rules! define_bench {
         #[bench]
         fn $name(b: &mut Bencher) {
             let datastore = $datastore_constructor;
-            let mut sandbox = ::tests::DatastoreTestSandbox::new(datastore);
-            sandbox.setup(stringify!($name));
-            ::common::$name(b, &mut sandbox);
-            sandbox.teardown();
+            ::common::$name(b, datastore);
         }
     )
 }

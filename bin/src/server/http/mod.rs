@@ -31,7 +31,6 @@ pub fn start(port: u16) {
     println!("Listening on {}", binding);
 
     let mut chain = Chain::new(router);
-    chain.link_before(middleware::BasicAuthMiddleware::new());
     chain.link_after(middleware::ErrorMiddleware::new());
     Iron::new(chain).http(&*binding).unwrap();
 }

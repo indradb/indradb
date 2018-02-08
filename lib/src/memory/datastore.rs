@@ -7,7 +7,7 @@ use chrono::offset::Utc;
 use std::sync::{Arc, RwLock};
 use serde_json::Value as JsonValue;
 use errors::Error;
-use util::{child_uuid, generate_random_secret};
+use util::UuidGenerator;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -15,20 +15,19 @@ use util::{child_uuid, generate_random_secret};
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug)]
 struct InternalMemoryDatastore {
-    account_metadata: BTreeMap<(Uuid, String), JsonValue>,
-    accounts: HashMap<Uuid, String>,
     edge_metadata: BTreeMap<(models::EdgeKey, String), JsonValue>,
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
     global_metadata: BTreeMap<String, JsonValue>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
-    vertices: BTreeMap<Uuid, models::VertexValue>,
+    vertices: BTreeMap<Uuid, models::Type>,
+    uuid_generator: UuidGenerator
 }
 
 impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(
         &self,
         q: VertexQuery,
-    ) -> Result<Vec<(Uuid, models::VertexValue)>, Error> {
+    ) -> Result<Vec<(Uuid, models::Type)>, Error> {
         match q {
             VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
                 Ok(self.vertices
@@ -221,73 +220,23 @@ pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
 
 impl MemoryDatastore {
     /// Creates a new in-memory datastore.
-    ///
-    /// # Arguments
-    /// * `create_default_account` - If set to `true`, a default account with
-    ///   a UUID of all 0's and an empty secret will be created. This is
-    ///   useful as you oftentimes want to circumvent the entire account \
-    ///   system for a simple in-memory-only datastore.
-    pub fn new(create_default_account: bool) -> MemoryDatastore {
-        let datastore = Self {
+    pub fn new() -> MemoryDatastore {
+        Self {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
-                account_metadata: BTreeMap::new(),
-                accounts: HashMap::new(),
                 edge_metadata: BTreeMap::new(),
                 edges: BTreeMap::new(),
                 global_metadata: BTreeMap::new(),
                 vertex_metadata: BTreeMap::new(),
                 vertices: BTreeMap::new(),
+                uuid_generator: UuidGenerator::new(false)
             })),
-        };
-
-        if create_default_account {
-            datastore
-                .0
-                .write()
-                .unwrap()
-                .accounts
-                .insert(Uuid::default(), "".to_string());
         }
-
-        datastore
     }
 }
 
 impl Datastore<MemoryTransaction> for MemoryDatastore {
-    fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-        Ok(self.0.read().unwrap().accounts.contains_key(&account_id))
-    }
-
-    fn create_account(&self) -> Result<(Uuid, String), Error> {
-        let id = Uuid::new_v4();
-        let secret = generate_random_secret();
-        self.0.write().unwrap().accounts.insert(id, secret.clone());
-        Ok((id, secret))
-    }
-
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        if self.0
-            .write()
-            .unwrap()
-            .accounts
-            .remove(&account_id)
-            .is_some()
-        {
-            Ok(())
-        } else {
-            Err(Error::AccountNotFound)
-        }
-    }
-
-    fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        let datastore = self.0.read().unwrap();
-        let fetched_secret = datastore.accounts.get(&account_id);
-        Ok(fetched_secret == Some(&secret))
-    }
-
-    fn transaction(&self, account_id: Uuid) -> Result<MemoryTransaction, Error> {
+    fn transaction(&self) -> Result<MemoryTransaction, Error> {
         Ok(MemoryTransaction {
-            account_id: account_id,
             datastore: Arc::clone(&self.0),
         })
     }
@@ -296,18 +245,14 @@ impl Datastore<MemoryTransaction> for MemoryDatastore {
 /// A transaction for manipulating in-memory-only datastores.
 #[derive(Debug)]
 pub struct MemoryTransaction {
-    account_id: Uuid,
     datastore: Arc<RwLock<InternalMemoryDatastore>>,
 }
 
 impl Transaction for MemoryTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        let id = child_uuid(self.account_id);
-        self.datastore
-            .write()
-            .unwrap()
-            .vertices
-            .insert(id, models::VertexValue::new(self.account_id, t));
+        let mut datastore = self.datastore.write().unwrap();
+        let id = datastore.uuid_generator.next();
+        datastore.vertices.insert(id, t);
         Ok(id)
     }
 
@@ -318,7 +263,7 @@ impl Transaction for MemoryTransaction {
             .get_vertex_values_by_query(q)?;
         let iter = vertex_values
             .into_iter()
-            .map(|(uuid, value)| models::Vertex::new(uuid, value.t));
+            .map(|(uuid, t)| models::Vertex::new(uuid, t));
         Ok(iter.collect())
     }
 
@@ -330,10 +275,8 @@ impl Transaction for MemoryTransaction {
 
         let mut datastore = self.datastore.write().unwrap();
 
-        for (uuid, value) in vertex_values {
-            if value.owner_id == self.account_id {
-                datastore.vertices.remove(&uuid);
-            }
+        for (uuid, _) in vertex_values {
+            datastore.vertices.remove(&uuid);
         }
 
         Ok(())
@@ -344,15 +287,7 @@ impl Transaction for MemoryTransaction {
             let datastore = self.datastore.read().unwrap();
             let value = datastore.vertices.get(&key.outbound_id);
 
-            if let Some(value) = value {
-                if value.owner_id != self.account_id {
-                    return Err(Error::Unauthorized);
-                }
-
-                if !datastore.vertices.contains_key(&key.inbound_id) {
-                    return Err(Error::VertexNotFound);
-                }
-            } else {
+            if (value.is_some() && !datastore.vertices.contains_key(&key.inbound_id)) || value.is_none() {
                 return Err(Error::VertexNotFound);
             }
         }
@@ -377,26 +312,12 @@ impl Transaction for MemoryTransaction {
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let deletable_edges = {
             let datastore = self.datastore.read().unwrap();
-            let edge_values = datastore.get_edge_values_by_query(q)?;
-            let mut deletable_edges = Vec::new();
-
-            for (key, _) in edge_values {
-                let vertex_value = datastore
-                    .vertices
-                    .get(&key.outbound_id)
-                    .expect(&format!("Expected vertex `{}` to exist", key.outbound_id)[..]);
-
-                if vertex_value.owner_id == self.account_id {
-                    deletable_edges.push(key);
-                }
-            }
-
-            deletable_edges
+            datastore.get_edge_values_by_query(q)?
         };
 
         let mut datastore = self.datastore.write().unwrap();
 
-        for key in deletable_edges {
+        for (key, _) in deletable_edges {
             datastore.edges.remove(&key);
         }
 
@@ -435,45 +356,7 @@ impl Transaction for MemoryTransaction {
             Err(Error::MetadataNotFound)
         }
     }
-
-    fn get_account_metadata(&self, owner_id: Uuid, name: String) -> Result<JsonValue, Error> {
-        let datastore = self.datastore.read().unwrap();
-        let value = datastore.account_metadata.get(&(owner_id, name));
-
-        if let Some(value) = value {
-            Ok(value.clone())
-        } else {
-            Err(Error::MetadataNotFound)
-        }
-    }
-
-    fn set_account_metadata(
-        &self,
-        owner_id: Uuid,
-        name: String,
-        value: JsonValue,
-    ) -> Result<(), Error> {
-        let mut datastore = self.datastore.write().unwrap();
-
-        if !datastore.accounts.contains_key(&owner_id) {
-            return Err(Error::AccountNotFound);
-        }
-
-        datastore.account_metadata.insert((owner_id, name), value);
-        Ok(())
-    }
-
-    fn delete_account_metadata(&self, owner_id: Uuid, name: String) -> Result<(), Error> {
-        let mut datastore = self.datastore.write().unwrap();
-        let value = datastore.account_metadata.remove(&(owner_id, name));
-
-        if value.is_some() {
-            Ok(())
-        } else {
-            Err(Error::MetadataNotFound)
-        }
-    }
-
+    
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
