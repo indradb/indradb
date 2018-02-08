@@ -1,4 +1,5 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, Value, UserData, UserDataMethods};
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData,
+           UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
@@ -168,7 +169,7 @@ impl<'lua> ToLua<'lua> for JsonValue {
 
 #[derive(Debug)]
 pub struct ProxyTransaction {
-    pub trans: ExternalProxyTransaction
+    pub trans: ExternalProxyTransaction,
 }
 
 impl ProxyTransaction {
@@ -190,10 +191,18 @@ impl UserData for ProxyTransaction {
 
         proxy_fn!(methods, "get_global_metadata", api::get_global_metadata);
         proxy_fn!(methods, "set_global_metadata", api::set_global_metadata);
-        proxy_fn!(methods, "delete_global_metadata", api::delete_global_metadata);
+        proxy_fn!(
+            methods,
+            "delete_global_metadata",
+            api::delete_global_metadata
+        );
         proxy_fn!(methods, "get_vertex_metadata", api::get_vertex_metadata);
         proxy_fn!(methods, "set_vertex_metadata", api::set_vertex_metadata);
-        proxy_fn!(methods, "delete_vertex_metadata", api::delete_vertex_metadata);
+        proxy_fn!(
+            methods,
+            "delete_vertex_metadata",
+            api::delete_vertex_metadata
+        );
         proxy_fn!(methods, "get_edge_metadata", api::get_edge_metadata);
         proxy_fn!(methods, "set_edge_metadata", api::set_edge_metadata);
         proxy_fn!(methods, "delete_edge_metadata", api::delete_edge_metadata);

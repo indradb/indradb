@@ -101,7 +101,7 @@ fn iterate_metadata_for_owner<'a>(
 pub struct VertexManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
-    uuid_generator: Arc<UuidGenerator>
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl VertexManager {
@@ -109,7 +109,7 @@ impl VertexManager {
         VertexManager {
             cf: db.cf_handle("vertices:v1").unwrap(),
             db: db,
-            uuid_generator: uuid_generator
+            uuid_generator: uuid_generator,
         }
     }
 
@@ -264,13 +264,7 @@ impl EdgeManager {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
         if let Some(update_datetime) = self.get(outbound_id, t, inbound_id)? {
-            edge_range_manager.delete(
-                &mut batch,
-                outbound_id,
-                t,
-                update_datetime,
-                inbound_id,
-            )?;
+            edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
             reversed_edge_range_manager.delete(
                 &mut batch,
                 inbound_id,
@@ -286,13 +280,7 @@ impl EdgeManager {
             self.key(outbound_id, t, inbound_id),
             &new_update_datetime,
         )?;
-        edge_range_manager.set(
-            &mut batch,
-            outbound_id,
-            t,
-            new_update_datetime,
-            inbound_id,
-        )?;
+        edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(
             &mut batch,
             inbound_id,

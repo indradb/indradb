@@ -51,7 +51,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 #[derive(Debug)]
 pub struct RocksdbDatastore {
     db: Arc<DB>,
-    uuid_generator: Arc<UuidGenerator>
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbDatastore {
@@ -86,7 +86,7 @@ impl RocksdbDatastore {
 
         Ok(RocksdbDatastore {
             db: Arc::new(db),
-            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids))
+            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
         })
     }
 
@@ -113,14 +113,14 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
 #[derive(Debug)]
 pub struct RocksdbTransaction {
     db: Arc<DB>,
-    uuid_generator: Arc<UuidGenerator>
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbTransaction {
     fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Result<Self, Error> {
         Ok(RocksdbTransaction {
             db: db,
-            uuid_generator: uuid_generator
+            uuid_generator: uuid_generator,
         })
     }
 
@@ -383,7 +383,8 @@ impl Transaction for RocksdbTransaction {
 
     fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)? {
+        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
+        {
             return Err(Error::VertexNotFound);
         }
 

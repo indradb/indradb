@@ -37,13 +37,7 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
             .expect("Server failed to start");
 
         for _ in 0..5 {
-            let result = http::request(
-                port,
-                Method::Post,
-                "/transaction",
-                &[],
-                Some(json!([]))
-            );
+            let result = http::request(port, Method::Post, "/transaction", &[], Some(json!([])));
 
             if let Ok(response) = result {
                 if response.status() == StatusCode::Ok {

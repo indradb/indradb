@@ -29,9 +29,7 @@ lazy_static! {
 /// this crate.
 pub fn convert_to_iron_error(err: &Error) -> IronError {
     let status = match *err {
-        Error::VertexNotFound
-        | Error::EdgeNotFound
-        | Error::MetadataNotFound => status::NotFound,
+        Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
         Error::OutOfRange(_) => status::BadRequest,
         Error::Unexpected(_) => status::InternalServerError,
     };

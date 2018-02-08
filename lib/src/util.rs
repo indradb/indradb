@@ -12,7 +12,7 @@ const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 #[derive(Debug)]
 pub enum UuidGenerator {
     V1(Mutex<u16>),
-    V4
+    V4,
 }
 
 impl UuidGenerator {
@@ -41,10 +41,10 @@ impl UuidGenerator {
                     &context,
                     now.timestamp() as u64,
                     now.timestamp_subsec_nanos(),
-                    &NODE_ID
+                    &NODE_ID,
                 ).expect("Expected to be able to generate a UUID")
-            },
-            &UuidGenerator::V4 => Uuid::new_v4()
+            }
+            &UuidGenerator::V4 => Uuid::new_v4(),
         }
     }
 }
@@ -102,7 +102,7 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{UuidGenerator, generate_random_secret, nanos_since_epoch, next_uuid};
+    use super::{generate_random_secret, nanos_since_epoch, next_uuid, UuidGenerator};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
@@ -123,11 +123,7 @@ mod tests {
     #[test]
     fn should_generate_random_secret() {
         let secret = generate_random_secret(8);
-        assert!(
-            Regex::new(r"[a-zA-Z0-9]{8}")
-                .unwrap()
-                .is_match(&secret[..])
-        );
+        assert!(Regex::new(r"[a-zA-Z0-9]{8}").unwrap().is_match(&secret[..]));
     }
 
     #[test]

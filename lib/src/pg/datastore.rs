@@ -24,7 +24,7 @@ use std::sync::Arc;
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
     pool: Pool<PostgresConnectionManager>,
-    uuid_generator: Arc<UuidGenerator>
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresDatastore {
@@ -66,7 +66,7 @@ impl PostgresDatastore {
 
         PostgresDatastore {
             pool: pool,
-            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids))
+            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
         }
     }
 
@@ -104,7 +104,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 pub struct PostgresTransaction {
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
-    uuid_generator: Arc<UuidGenerator>
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresTransaction {
@@ -129,7 +129,7 @@ impl PostgresTransaction {
         Ok(PostgresTransaction {
             conn: conn,
             trans: trans,
-            uuid_generator: uuid_generator
+            uuid_generator: uuid_generator,
         })
     }
 
@@ -325,7 +325,8 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
-            "DELETE FROM vertices WHERE id IN (SELECT id FROM %t)", vec![]
+            "DELETE FROM vertices WHERE id IN (SELECT id FROM %t)",
+            vec![],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
@@ -339,12 +340,15 @@ impl Transaction for PostgresTransaction {
         // back to, rather than spoiling the entire transaction
         let results = {
             let trans = self.trans.savepoint("set_edge")?;
-            let results = trans.query("
+            let results = trans.query(
+                "
                 INSERT INTO edges (id, outbound_id, type, inbound_id, update_timestamp)
                 VALUES ($1, $2, $3, $4, CLOCK_TIMESTAMP())
                 ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
                 DO UPDATE SET update_timestamp=CLOCK_TIMESTAMP()
-            ", &[&id, &key.outbound_id, &key.t.0, &key.inbound_id]);
+            ",
+                &[&id, &key.outbound_id, &key.t.0, &key.inbound_id],
+            );
 
             match results {
                 Err(err) => {

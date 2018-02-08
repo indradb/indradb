@@ -45,7 +45,7 @@ pub struct Edge {
     pub key: EdgeKey,
 
     /// When the edge was created.
-    pub created_datetime: DateTime<Utc>
+    pub created_datetime: DateTime<Utc>,
 }
 
 impl Edge {

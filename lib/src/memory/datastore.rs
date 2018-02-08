@@ -20,7 +20,7 @@ struct InternalMemoryDatastore {
     global_metadata: BTreeMap<String, JsonValue>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
-    uuid_generator: UuidGenerator
+    uuid_generator: UuidGenerator,
 }
 
 impl InternalMemoryDatastore {
@@ -137,9 +137,7 @@ impl InternalMemoryDatastore {
                                 }
                             };
 
-                            for (key, update_datetime) in
-                                self.edges.range(lower_bound..)
-                            {
+                            for (key, update_datetime) in self.edges.range(lower_bound..) {
                                 if key.outbound_id != id {
                                     break;
                                 }
@@ -228,7 +226,7 @@ impl MemoryDatastore {
                 global_metadata: BTreeMap::new(),
                 vertex_metadata: BTreeMap::new(),
                 vertices: BTreeMap::new(),
-                uuid_generator: UuidGenerator::new(false)
+                uuid_generator: UuidGenerator::new(false),
             })),
         }
     }
@@ -287,7 +285,9 @@ impl Transaction for MemoryTransaction {
             let datastore = self.datastore.read().unwrap();
             let value = datastore.vertices.get(&key.outbound_id);
 
-            if (value.is_some() && !datastore.vertices.contains_key(&key.inbound_id)) || value.is_none() {
+            if (value.is_some() && !datastore.vertices.contains_key(&key.inbound_id))
+                || value.is_none()
+            {
                 return Err(Error::VertexNotFound);
             }
         }
@@ -356,7 +356,7 @@ impl Transaction for MemoryTransaction {
             Err(Error::MetadataNotFound)
         }
     }
-    
+
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,

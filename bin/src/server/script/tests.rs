@@ -5,7 +5,6 @@ use serde_json::Value as JsonValue;
 use super::run;
 use serde_json;
 use std::path::Path;
-use uuid::Uuid;
 
 lazy_static! {
     static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: ([^\n]+)").unwrap();

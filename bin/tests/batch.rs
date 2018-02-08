@@ -33,9 +33,7 @@ pub struct BatchTransaction {
 
 impl HttpTransaction for BatchTransaction {
     fn new(port: usize) -> Self {
-        BatchTransaction {
-            port: port,
-        }
+        BatchTransaction { port: port }
     }
 }
 
@@ -49,7 +47,7 @@ impl BatchTransaction {
             Method::Post,
             "/transaction",
             &[],
-            Some(json!([body]))
+            Some(json!([body])),
         );
 
         let mut parts = from_result::<Vec<T>>(result).map_err(|err| {

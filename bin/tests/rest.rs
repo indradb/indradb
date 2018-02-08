@@ -32,27 +32,20 @@ impl RestTransaction {
         &self,
         method: Method,
         path: &str,
-        query_pairs: &[(&str, &str)]
-    ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
-        let result = request(
-            self.port,
-            method,
-            path,
-            query_pairs,
-            None,
-        );
+        query_pairs: &[(&str, &str)],
+    ) -> Result<T, Error>
+    where
+        for<'a> T: Deserialize<'a>,
+    {
+        let result = request(self.port, method, path, query_pairs, None);
 
-        from_result::<T>(result).map_err(|err| {
-            Error::description_to_error(&err)
-        })
+        from_result::<T>(result).map_err(|err| Error::description_to_error(&err))
     }
 }
 
 impl HttpTransaction for RestTransaction {
     fn new(port: usize) -> Self {
-        RestTransaction {
-            port: port,
-        }
+        RestTransaction { port: port }
     }
 }
 
@@ -73,11 +66,7 @@ impl Transaction for RestTransaction {
 
     fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
         let path = format!("/edge/{}/{}/{}", key.outbound_id, key.t.0, key.inbound_id);
-        self.request(
-            Method::Put,
-            &path[..],
-            &[],
-        )
+        self.request(Method::Put, &path[..], &[])
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
@@ -92,11 +81,7 @@ impl Transaction for RestTransaction {
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request(
-            Method::Get,
-            "/edge",
-            &[("action", "count"), ("q", &q_json)],
-        )
+        self.request(Method::Get, "/edge", &[("action", "count"), ("q", &q_json)])
     }
 
     fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {

@@ -20,11 +20,7 @@ use std::convert::From;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(
-    contents: &str,
-    path: &Path,
-    arg: JsonValue,
-) -> Result<JsonValue, errors::ScriptError> {
+pub fn run(contents: &str, path: &Path, arg: JsonValue) -> Result<JsonValue, errors::ScriptError> {
     let l = Lua::new();
     let globals = l.globals();
 
@@ -55,6 +51,6 @@ pub fn run(
 
     match value {
         Ok(value) => Ok(value.0),
-        Err(err) => Err(errors::ScriptError::from(err))
+        Err(err) => Err(errors::ScriptError::from(err)),
     }
 }
