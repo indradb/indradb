@@ -7,7 +7,7 @@ pub fn request(
     port: usize,
     method: Method,
     path: &str,
-    query_params: &Vec<(&str, &str)>,
+    query_params: &[(&str, &str)],
     body: Option<JsonValue>) -> Result<Response, ReqwestError> {
     let url = Url::parse_with_params(&format!("http://localhost:{}{}", port, path), query_params).expect("Expected to be able to construct a URL");
     let client = Client::new();

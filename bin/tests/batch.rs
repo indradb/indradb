@@ -40,7 +40,7 @@ impl HttpTransaction for BatchTransaction {
 }
 
 impl BatchTransaction {
-    fn request<T>(&self, body: JsonValue) -> Result<T, Error>
+    fn request<T>(&self, body: &JsonValue) -> Result<T, Error>
     where
         for<'a> T: Deserialize<'a>,
     {
@@ -48,7 +48,7 @@ impl BatchTransaction {
             self.port,
             Method::Post,
             "/transaction",
-            &vec![],
+            &[],
             Some(json!([body]))
         );
 
@@ -68,49 +68,49 @@ impl BatchTransaction {
 
 impl Transaction for BatchTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "create_vertex",
             "type": t.0
         }))
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "get_vertices",
             "query": q
         }))
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "delete_vertices",
             "query": q
         }))
     }
 
     fn create_edge(&self, e: EdgeKey) -> Result<(), Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "create_edge",
             "key": e,
         }))
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "get_edges",
             "query": q
         }))
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "delete_edges",
             "query": q
         }))
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
-        self.request(json!({
+        self.request(&json!({
             "action": "get_edge_count",
             "query": q
         }))

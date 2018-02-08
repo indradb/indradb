@@ -41,7 +41,7 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
                 port,
                 Method::Post,
                 "/transaction",
-                &vec![],
+                &[],
                 Some(json!([]))
             );
 

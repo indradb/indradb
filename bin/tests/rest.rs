@@ -32,7 +32,7 @@ impl RestTransaction {
         &self,
         method: Method,
         path: &str,
-        query_pairs: &Vec<(&str, &str)>
+        query_pairs: &[(&str, &str)]
     ) -> Result<T, Error> where for<'a> T: Deserialize<'a> {
         let result = request(
             self.port,
@@ -58,17 +58,17 @@ impl HttpTransaction for RestTransaction {
 
 impl Transaction for RestTransaction {
     fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
-        self.request(Method::Post, "/vertex", &vec![("type", &t.0)])
+        self.request(Method::Post, "/vertex", &[("type", &t.0)])
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request(Method::Get, "/vertex", &vec![("q", &q_json)])
+        self.request(Method::Get, "/vertex", &[("q", &q_json)])
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request(Method::Delete, "/vertex", &vec![("q", &q_json)])
+        self.request(Method::Delete, "/vertex", &[("q", &q_json)])
     }
 
     fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
@@ -76,18 +76,18 @@ impl Transaction for RestTransaction {
         self.request(
             Method::Put,
             &path[..],
-            &vec![],
+            &[],
         )
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request(Method::Get, "/edge", &vec![("q", &q_json)])
+        self.request(Method::Get, "/edge", &[("q", &q_json)])
     }
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let q_json = serde_json::to_string(&q).unwrap();
-        self.request(Method::Delete, "/edge", &vec![("q", &q_json)])
+        self.request(Method::Delete, "/edge", &[("q", &q_json)])
     }
 
     fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
@@ -95,7 +95,7 @@ impl Transaction for RestTransaction {
         self.request(
             Method::Get,
             "/edge",
-            &vec![("action", "count"), ("q", &q_json)],
+            &[("action", "count"), ("q", &q_json)],
         )
     }
 
