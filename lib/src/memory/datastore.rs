@@ -220,7 +220,7 @@ pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
 
 impl MemoryDatastore {
     /// Creates a new in-memory datastore.
-    pub fn new() -> MemoryDatastore {
+    pub fn default() -> MemoryDatastore {
         Self {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
                 edge_metadata: BTreeMap::new(),

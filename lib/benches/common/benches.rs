@@ -7,7 +7,7 @@ where
     T: Transaction,
 {
     b.iter(|| {
-        let trans = datastore.transaction();
+        let trans = datastore.transaction().unwrap();
         let t = Type::new("user".to_string()).unwrap();
         trans.create_vertex(t).unwrap();
     });
@@ -18,13 +18,13 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = datastore.transaction();
+    let trans = datastore.transaction().unwrap();
     let t = Type::new("test_name".to_string()).unwrap();
     let id = trans.create_vertex(t).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
-        let trans = datastore.transaction();
+        let trans = datastore.transaction().unwrap();
         let q = VertexQuery::Vertices { ids: vec![id] };
         trans.get_vertices(q).unwrap();
     });
@@ -35,14 +35,14 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = datastore.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let inbound_id = trans.create_vertex(vertex_t).unwrap();
     trans.commit().unwrap();
 
     b.iter(|| {
-        let trans = datastore.transaction();
+        let trans = datastore.transaction().unwrap();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let k = EdgeKey::new(outbound_id, edge_t, inbound_id);
         trans.create_edge(k).unwrap();
@@ -54,7 +54,7 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = datastore.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
     let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
@@ -64,7 +64,7 @@ where
     trans.commit().unwrap();
 
     b.iter(|| {
-        let trans = datastore.transaction();
+        let trans = datastore.transaction().unwrap();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let q = EdgeQuery::Edges {
             keys: vec![EdgeKey::new(outbound_id, edge_t, inbound_id)],
@@ -78,7 +78,7 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = datastore.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
     let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
     let outbound_id = trans.create_vertex(vertex_t.clone()).unwrap();
@@ -88,7 +88,7 @@ where
     trans.commit().unwrap();
 
     b.iter(|| {
-        let trans = datastore.transaction();
+        let trans = datastore.transaction().unwrap();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         let q = EdgeQuery::Edges {
             keys: vec![EdgeKey::new(outbound_id, edge_t, inbound_id)],

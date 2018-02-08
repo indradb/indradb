@@ -194,7 +194,7 @@ pub fn datastore() -> ProxyDatastore {
         let datastore = PostgresDatastore::new(pool_size, connection_string, secure_uuids);
         ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
-        let datastore = MemoryDatastore::new();
+        let datastore = MemoryDatastore::default();
         ProxyDatastore::Memory(datastore)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");

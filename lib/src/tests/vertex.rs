@@ -5,7 +5,7 @@ use models;
 use std::u32;
 use std::collections::HashSet;
 
-pub fn should_get_all_vertices<D, T>(datastore: D)
+pub fn should_get_all_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -45,7 +45,7 @@ where
     }
 }
 
-pub fn should_get_all_vertices_with_zero_limit<D, T>(datastore: D)
+pub fn should_get_all_vertices_with_zero_limit<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -72,7 +72,7 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_all_vertices_out_of_range<D, T>(datastore: D)
+pub fn should_get_all_vertices_out_of_range<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -99,7 +99,7 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_single_vertices<D, T>(datastore: D)
+pub fn should_get_single_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -118,7 +118,7 @@ where
     assert_eq!(range[0].t.0, "test_vertex_type");
 }
 
-pub fn should_get_single_vertices_nonexisting<D, T>(datastore: D)
+pub fn should_get_single_vertices_nonexisting<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -135,7 +135,7 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_vertices<D, T>(datastore: D)
+pub fn should_get_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -176,7 +176,7 @@ where
     }
 }
 
-pub fn should_get_vertices_piped<D, T>(datastore: D)
+pub fn should_get_vertices_piped<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -215,12 +215,12 @@ where
     assert_eq!(range[0].id, inserted_id_1);
 }
 
-pub fn should_delete_a_valid_vertex<D, T>(mut datastore: D)
+pub fn should_delete_a_valid_vertex<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let (outbound_id, _) = create_edges(&mut datastore);
+    let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let q = VertexQuery::Vertices {
         ids: vec![outbound_id],
@@ -239,7 +239,7 @@ where
     assert_eq!(count, 0);
 }
 
-pub fn should_not_delete_an_invalid_vertex<D, T>(datastore: D)
+pub fn should_not_delete_an_invalid_vertex<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,

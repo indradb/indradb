@@ -4,7 +4,7 @@ use errors::Error;
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
-pub fn should_handle_global_metadata<D, T>(datastore: D)
+pub fn should_handle_global_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -39,7 +39,7 @@ where
     assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
 }
 
-pub fn should_handle_vertex_metadata<D, T>(datastore: D)
+pub fn should_handle_vertex_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -78,7 +78,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_vertex_metadata<D, T>(datastore: D)
+pub fn should_not_set_invalid_vertex_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -94,7 +94,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_vertex_metadata<D, T>(datastore: D)
+pub fn should_not_delete_invalid_vertex_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -114,7 +114,7 @@ where
     trans.delete_vertex_metadata(q, "foo".to_string()).unwrap();
 }
 
-pub fn should_handle_edge_metadata<D, T>(datastore: D)
+pub fn should_handle_edge_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -156,7 +156,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_edge_metadata<D, T>(datastore: D)
+pub fn should_not_set_invalid_edge_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
@@ -178,7 +178,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_edge_metadata<D, T>(datastore: D)
+pub fn should_not_delete_invalid_edge_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
