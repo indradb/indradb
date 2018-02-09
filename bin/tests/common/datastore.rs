@@ -68,7 +68,7 @@ impl<H: HttpTransaction> Default for HttpDatastore<H> {
 impl<H: HttpTransaction> Drop for HttpDatastore<H> {
     fn drop(&mut self) {
         if let Err(err) = self.server.kill() {
-            panic!(format!("Could not drop server instance: {}", err))
+            panic!(format!("Could not kill server instance: {}", err))
         }
     }
 }

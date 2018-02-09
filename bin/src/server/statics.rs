@@ -8,10 +8,9 @@ lazy_static! {
     pub static ref DATASTORE: ProxyDatastore = datastore();
 
     /// The path to the script root directory
-    pub static ref SCRIPT_ROOT: String = match env::var("INDRADB_SCRIPT_ROOT") {
-        Ok(s) => s,
-        Err(_) => Path::new(".").join("scripts").to_str().expect("Expected to be able to stringify the path based off of the `INDRADB_SCRIPT_ROOT` environment variable. Please check that the environment variable has a valid value.").to_string()
-    };
+    pub static ref SCRIPT_ROOT: String = env::var("INDRADB_SCRIPT_ROOT").unwrap_or_else(|_| {
+        Path::new(".").join("scripts").to_str().unwrap().to_string()
+    });
 
     /// Limits how many vertices are pulled at a time in mapreduce.
     pub static ref MAP_REDUCE_QUERY_LIMIT: u32 = match env::var("INDRADB_MAP_REDUCE_QUERY_LIMIT") {

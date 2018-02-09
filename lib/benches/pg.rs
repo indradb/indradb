@@ -23,7 +23,7 @@ fn datastore() -> PostgresDatastore {
     });
 
     let secret = "OME88YorohonzPNWEFsi0dIsouXWqeO$".to_string();
-    PostgresDatastore::new(Some(1), connection_string, secret, false)
+    PostgresDatastore::new(Some(1), connection_string, secret, false).unwrap()
 }
 
 bench_transaction_impl!(datastore());
