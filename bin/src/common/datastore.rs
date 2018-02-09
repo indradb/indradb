@@ -11,7 +11,6 @@ use uuid::Uuid;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
-#[derive(Debug)]
 pub enum ProxyDatastore {
     Postgres(PostgresDatastore),
     Rocksdb(RocksdbDatastore),
@@ -49,7 +48,6 @@ macro_rules! proxy_transaction {
     )
 }
 
-#[derive(Debug)]
 pub enum ProxyTransaction {
     Postgres(PostgresTransaction),
     Rocksdb(RocksdbTransaction),
