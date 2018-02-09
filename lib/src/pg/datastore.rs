@@ -41,7 +41,7 @@ impl PostgresDatastore {
         pool_size: Option<u32>,
         connection_string: String,
         secure_uuids: bool,
-    ) -> PostgresDatastore {
+    ) -> Result<PostgresDatastore, Error> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => {
@@ -54,20 +54,13 @@ impl PostgresDatastore {
             }
         };
 
-        let manager = match PostgresConnectionManager::new(&*connection_string, TlsMode::None) {
-            Ok(manager) => manager,
-            Err(err) => panic!("Could not connect to the postgres database: {}", err),
-        };
+        let manager = PostgresConnectionManager::new(&*connection_string, TlsMode::None)?;
+        let pool = Pool::builder().max_size(unwrapped_pool_size).build(manager)?;
 
-        let pool = Pool::builder()
-            .max_size(unwrapped_pool_size)
-            .build(manager)
-            .expect("Expected to be able to build a new database pool");
-
-        PostgresDatastore {
+        Ok(PostgresDatastore {
             pool: pool,
             uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
-        }
+        })
     }
 
     /// Creates a new postgres-backed datastore.
@@ -75,13 +68,10 @@ impl PostgresDatastore {
     /// # Arguments
     /// * `connetion_string` - The postgres database connection string.
     pub fn create_schema(connection_string: String) -> Result<(), Error> {
-        let conn = match postgres::Connection::connect(connection_string, postgres::TlsMode::None) {
-            Ok(conn) => conn,
-            Err(err) => {
-                let message = format!("Could not connect to the postgres database: {}", err);
-                return Err(Error::Unexpected(message));
-            }
-        };
+        let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None).map_err(|err| {
+            let message = format!("Could not connect to the postgres database: {}", err);
+            Error::Unexpected(message)
+        })?;
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;
@@ -115,15 +105,9 @@ impl PostgresTransaction {
         let conn = Box::new(conn);
 
         let trans = unsafe {
-            mem::transmute(match conn.transaction() {
-                Ok(trans) => trans,
-                Err(err) => {
-                    return Err(Error::Unexpected(format!(
-                        "Could not create transaction: {}",
-                        err
-                    )))
-                }
-            })
+            mem::transmute(conn.transaction().map_err(|err| {
+                Error::Unexpected(format!("Could not create transaction: {}", err))
+            })?)
         };
 
         Ok(PostgresTransaction {
@@ -423,7 +407,7 @@ impl Transaction for PostgresTransaction {
             return Ok(count as u64);
         }
 
-        panic!("Unreachable point hit");
+        unreachable!();
     }
 
     fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {

@@ -76,13 +76,12 @@ pub fn to_response<T: Serialize>(status_code: status::Status, body: &T) -> Respo
 pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronError> {
     let s = req.extensions.get::<Router>().unwrap().find(name).unwrap();
 
-    match T::from_str(s) {
-        Ok(val) => Ok(val),
-        Err(_) => Err(create_iron_error(
+    T::from_str(s).map_err(|_| {
+        create_iron_error(
             status::BadRequest,
             format!("Invalid value for URL param {}", name),
-        )),
-    }
+        )
+    })
 }
 
 /// Gets a JSON string value
@@ -120,13 +119,12 @@ where
     for<'a> T: Deserialize<'a>,
 {
     if let Some(obj) = json.get(name) {
-        match serde_json::from_value::<T>(obj.clone()) {
-            Ok(val) => Ok(val),
-            Err(_) => Err(create_iron_error(
+        Ok(serde_json::from_value::<T>(obj.clone()).map_err(|_| {
+            create_iron_error(
                 status::BadRequest,
                 format!("Invalid type for `{}`", name),
-            )),
-        }
+            )
+        })?)
     } else {
         Err(create_iron_error(
             status::BadRequest,
@@ -146,13 +144,12 @@ pub fn get_required_json_type_param(
 ) -> Result<Type, IronError> {
     let s = get_required_json_string_param(json, name)?;
 
-    match Type::from_str(&s[..]) {
-        Ok(u) => Ok(u),
-        Err(_) => Err(create_iron_error(
+    Ok(Type::from_str(&s[..]).map_err(|_| {
+        create_iron_error(
             status::BadRequest,
             format!("Invalid type format for `{}`", name),
-        )),
-    }
+        )
+    })?)
 }
 
 /// Parses a response from the datastore into a specified type
@@ -160,10 +157,7 @@ pub fn get_required_json_type_param(
 /// # Errors
 /// Returns an `IronError` if the `Result` from the datastore is an error.
 pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
-    match result {
-        Ok(result) => Ok(result),
-        Err(err) => Err(convert_to_iron_error(&err)),
-    }
+    Ok(result.map_err(|err| convert_to_iron_error(&err))?)
 }
 
 /// Gets a new transaction.
@@ -171,13 +165,12 @@ pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
 /// # Errors
 /// Returns an `IronError` if it was not possible to create a transaction.
 pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
-    match statics::DATASTORE.transaction() {
-        Ok(val) => Ok(val),
-        Err(err) => Err(create_iron_error(
+    Ok(statics::DATASTORE.transaction().map_err(|err| {
+        create_iron_error(
             status::InternalServerError,
             format!("Could not create datastore transaction: {}", err),
-        )),
-    }
+        )
+    })?)
 }
 
 // Reads the request body into an optional `JsonValue`
@@ -199,13 +192,12 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     if payload.is_empty() {
         Ok(None)
     } else {
-        match serde_json::from_str(&payload[..]) {
-            Ok(json) => Ok(Some(json)),
-            Err(err) => Err(create_iron_error(
+        Ok(Some(serde_json::from_str(&payload[..]).map_err(|err| {
+            create_iron_error(
                 status::BadRequest,
                 format!("Could not parse JSON payload: {}", err.description()),
-            )),
-        }
+            )
+        })?))
     }
 }
 
@@ -283,11 +275,10 @@ where
 {
     let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
 
-    match serde_json::from_value::<T>(q_json) {
-        Ok(q) => Ok(q),
-        Err(_) => Err(create_iron_error(
+    Ok(serde_json::from_value::<T>(q_json).map_err(|_| {
+        create_iron_error(
             status::BadRequest,
             "Invalid type for `q`: expected edge query".to_string(),
-        )),
-    }
+        )
+    })?)
 }

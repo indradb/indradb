@@ -324,7 +324,7 @@ impl RocksdbTransaction {
         let mapped = filtered.map(|item| match item {
             Ok(Some(value)) => Ok(value),
             Err(err) => Err(err),
-            _ => panic!("Unexpected item: {:?}", item),
+            _ => unreachable!(),
         });
 
         Box::new(mapped)

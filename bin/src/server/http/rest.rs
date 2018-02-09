@@ -87,39 +87,32 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
         ));
     }
 
-    let payload = match read_optional_json(&mut req.body)? {
-        Some(val) => val,
-        None => JsonValue::Null,
-    };
-
+    let payload = read_optional_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
-    let contents = match File::open(&path) {
-        Ok(mut file) => {
-            let mut contents = String::new();
-
-            match file.read_to_string(&mut contents) {
-                Ok(_) => Ok(contents),
-                Err(_) => Err(create_iron_error(
-                    status::NotFound,
-                    "Could not read script".to_string(),
-                )),
-            }
-        }
-        Err(_) => Err(create_iron_error(
+    let mut file = File::open(&path).map_err(|_| {
+        create_iron_error(
             status::NotFound,
             "Could not load script".to_string(),
-        )),
-    }?;
+        )
+    })?;
 
-    match script::run(&contents, &path, payload) {
-        Ok(value) => Ok(to_response(status::Ok, &value)),
-        Err(err) => {
-            let error_message = format!("Script failed: {:?}", err);
-            Err(create_iron_error(
-                status::InternalServerError,
-                error_message,
-            ))
-        }
-    }
+    let mut contents = String::new();
+
+    file.read_to_string(&mut contents).map_err(|_| {
+        create_iron_error(
+            status::NotFound,
+            "Could not read script".to_string()
+        )
+    })?;
+
+    let value = script::run(&contents, &path, payload).map_err(|err| {
+        let error_message = format!("Script failed: {:?}", err);
+        create_iron_error(
+            status::InternalServerError,
+            error_message,
+        )
+    })?;
+
+    Ok(to_response(status::Ok, &value))
 }

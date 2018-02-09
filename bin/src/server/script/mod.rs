@@ -11,7 +11,6 @@ use serde_json::value::Value as JsonValue;
 use std::path::Path;
 use indradb::Datastore;
 use statics;
-use std::convert::From;
 
 /// Runs a script.
 ///
@@ -48,9 +47,5 @@ pub fn run(contents: &str, path: &Path, arg: JsonValue) -> Result<JsonValue, err
 
     // Run the script
     let value: Result<converters::JsonValue, LuaError> = fun.call(Value::Nil);
-
-    match value {
-        Ok(value) => Ok(value.0),
-        Err(err) => Err(errors::ScriptError::from(err)),
-    }
+    Ok(value?.0)
 }

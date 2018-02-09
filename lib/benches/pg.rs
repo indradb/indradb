@@ -22,7 +22,7 @@ fn datastore() -> PostgresDatastore {
         PostgresDatastore::create_schema(connection_string.clone()).unwrap();
     });
 
-    PostgresDatastore::new(Some(1), connection_string, false)
+    PostgresDatastore::new(Some(1), connection_string, false).unwrap()
 }
 
 bench_transaction_impl!(datastore());

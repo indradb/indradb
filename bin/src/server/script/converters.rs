@@ -15,10 +15,7 @@ use super::api;
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
         $methods.add_method($name, |_, this, args| {
-            match $func(&this.trans, args) {
-                Ok(val) => Ok(val),
-                Err(err) => Err(LuaError::RuntimeError(format!("{}", err)))
-            }
+            $func(&this.trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err)))
         });
     }
 }
@@ -53,16 +50,13 @@ impl<'lua> FromLua<'lua> for JsonValue {
                 Ok(Self::new(ExternalJsonValue::Number(num)))
             }
             Value::String(value) => {
-                let value_str = match value.to_str() {
-                    Ok(s) => s.to_string(),
-                    Err(err) => {
-                        return Err(new_from_lua_error(
-                            "string",
-                            "JSON",
-                            Some(format!("the lua string is not valid utf-8: {}", err)),
-                        ));
-                    }
-                };
+                let value_str = value.to_str().map_err(|err| {
+                    new_from_lua_error(
+                        "string",
+                        "JSON",
+                        Some(format!("the lua string is not valid utf-8: {}", err)),
+                    )
+                })?.to_string();
 
                 Ok(Self::new(ExternalJsonValue::String(value_str)))
             }
