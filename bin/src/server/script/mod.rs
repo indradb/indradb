@@ -12,7 +12,6 @@ use std::path::Path;
 use uuid::Uuid;
 use indradb::Datastore;
 use statics;
-use std::convert::From;
 
 /// Runs a script.
 ///
@@ -55,9 +54,5 @@ pub fn run(
 
     // Run the script
     let value: Result<converters::JsonValue, LuaError> = fun.call(Value::Nil);
-
-    match value {
-        Ok(value) => Ok(value.0),
-        Err(err) => Err(errors::ScriptError::from(err))
-    }
+    Ok(value?.0)
 }

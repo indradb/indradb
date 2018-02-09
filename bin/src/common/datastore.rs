@@ -222,10 +222,7 @@ pub fn datastore() -> ProxyDatastore {
              i32",
         );
 
-        let datastore = match RocksdbDatastore::new(path, Some(max_open_files), secure_uuids) {
-            Ok(datastore) => datastore,
-            Err(err) => panic!("Could not instantiate a rocksdb datastore: {:?}", err),
-        };
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids).expect("Expected to be able to create the RocksDB datastore");
 
         ProxyDatastore::Rocksdb(datastore)
     } else if connection_string.starts_with("postgres://") {
@@ -238,7 +235,7 @@ pub fn datastore() -> ProxyDatastore {
         };
 
         let secret = env::var("SECRET").unwrap_or_else(|_| "".to_string());
-        let datastore = PostgresDatastore::new(pool_size, connection_string, secret, secure_uuids);
+        let datastore = PostgresDatastore::new(pool_size, connection_string, secret, secure_uuids).expect("Expected to be able to create the postgres datastore");
         ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::new(true);
