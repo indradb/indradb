@@ -21,7 +21,7 @@ use util::UuidGenerator;
 use std::sync::Arc;
 
 /// A datastore that is backed by a postgres database.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PostgresDatastore {
     pool: Pool<PostgresConnectionManager>,
     uuid_generator: Arc<UuidGenerator>,
@@ -100,6 +100,7 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 }
 
 /// A postgres-backed datastore transaction.
+#[derive(Debug)]
 pub struct PostgresTransaction {
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,

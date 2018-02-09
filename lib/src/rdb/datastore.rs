@@ -48,6 +48,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 }
 
 /// A datastore that is backed by rocksdb.
+#[derive(Debug)]
 pub struct RocksdbDatastore {
     db: Arc<DB>,
     uuid_generator: Arc<UuidGenerator>,
@@ -109,6 +110,7 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
 }
 
 /// A transaction that is backed by rocksdb.
+#[derive(Debug)]
 pub struct RocksdbTransaction {
     db: Arc<DB>,
     uuid_generator: Arc<UuidGenerator>,

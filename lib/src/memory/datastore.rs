@@ -13,6 +13,7 @@ use util::UuidGenerator;
 // internally to the datastore itself. This way, we can wrap an rwlock around
 // the entire datastore, rather than on a per-data structure basis, as the
 // latter approach would risk deadlocking without extreme care.
+#[derive(Debug)]
 struct InternalMemoryDatastore {
     edge_metadata: BTreeMap<(models::EdgeKey, String), JsonValue>,
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
@@ -212,6 +213,7 @@ impl InternalMemoryDatastore {
 }
 
 /// An in-memory-only datastore.
+#[derive(Debug)]
 pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
 
 impl MemoryDatastore {
@@ -239,6 +241,7 @@ impl Datastore<MemoryTransaction> for MemoryDatastore {
 }
 
 /// A transaction for manipulating in-memory-only datastores.
+#[derive(Debug)]
 pub struct MemoryTransaction {
     datastore: Arc<RwLock<InternalMemoryDatastore>>,
 }

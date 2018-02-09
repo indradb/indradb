@@ -167,6 +167,7 @@ impl<'lua> ToLua<'lua> for JsonValue {
     }
 }
 
+#[derive(Debug)]
 pub struct ProxyTransaction {
     pub trans: ExternalProxyTransaction,
 }
