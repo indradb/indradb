@@ -5,14 +5,17 @@ use errors::ValidationError;
 use uuid::{Uuid, UuidV1Context};
 use chrono::DateTime;
 use chrono::offset::Utc;
-use std::sync::Mutex;
 
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
+lazy_static! {
+    static ref CONTEXT: UuidV1Context = UuidV1Context::new(0);
+}
+
 #[derive(Debug)]
 pub enum UuidGenerator {
-    V1(Mutex<u16>),
-    V4,
+    V1,
+    V4
 }
 
 impl UuidGenerator {
@@ -20,25 +23,17 @@ impl UuidGenerator {
         if secure {
             UuidGenerator::V4
         } else {
-            UuidGenerator::V1(Mutex::new(0))
+            UuidGenerator::V1
         }
     }
 
     pub fn next(&self) -> Uuid {
         match self {
-            &UuidGenerator::V1(ref lock) => {
-                let counter = {
-                    let mut counter = lock.lock().unwrap();
-                    let old_value = *counter;
-                    *counter += 1;
-                    old_value
-                };
-
-                let context = UuidV1Context::new(counter);
+            &UuidGenerator::V1 => {
                 let now = Utc::now();
 
                 Uuid::new_v1(
-                    &context,
+                    &CONTEXT,
                     now.timestamp() as u64,
                     now.timestamp_subsec_nanos(),
                     &NODE_ID,
