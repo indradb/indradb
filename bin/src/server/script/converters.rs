@@ -14,10 +14,7 @@ use super::api;
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
         $methods.add_method($name, |_, this, args| {
-            match $func(&this.trans, args) {
-                Ok(val) => Ok(val),
-                Err(err) => Err(LuaError::RuntimeError(format!("{}", err)))
-            }
+            $func(&this.trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err)))
         });
     }
 }
@@ -52,16 +49,13 @@ impl<'lua> FromLua<'lua> for JsonValue {
                 Ok(Self::new(ExternalJsonValue::Number(num)))
             }
             Value::String(value) => {
-                let value_str = match value.to_str() {
-                    Ok(s) => s.to_string(),
-                    Err(err) => {
-                        return Err(new_from_lua_error(
-                            "string",
-                            "JSON",
-                            Some(format!("the lua string is not valid utf-8: {}", err)),
-                        ));
-                    }
-                };
+                let value_str = value.to_str().map_err(|err| {
+                    new_from_lua_error(
+                        "string",
+                        "JSON",
+                        Some(format!("the lua string is not valid utf-8: {}", err)),
+                    )
+                })?.to_string();
 
                 Ok(Self::new(ExternalJsonValue::String(value_str)))
             }
@@ -323,14 +317,15 @@ impl<'lua> FromLua<'lua> for Weight {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
         let value_f32 = l.coerce_number(value)? as f32;
 
-        match ExternalWeight::new(value_f32) {
-            Ok(value_weight) => Ok(Weight::new(value_weight)),
-            Err(err) => Err(new_from_lua_error(
+        let value_weight = ExternalWeight::new(value_f32).map_err(|err| {
+            new_from_lua_error(
                 "number",
                 "weight",
                 Some(format!("{}", err)),
-            )),
-        }
+            )
+        })?;
+
+        Ok(Weight::new(value_weight))
     }
 }
 

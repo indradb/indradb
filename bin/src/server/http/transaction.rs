@@ -16,13 +16,10 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     if let JsonValue::Array(items) = read_required_json(&mut req.body)? {
         for item in items {
             if let JsonValue::Object(obj) = item {
-                let action = match get_required_json_string_param(&obj, "action") {
-                    Ok(value) => value,
-                    Err(err) => {
-                        let message = format!("Item #{}: {}", idx, err);
-                        return Err(create_iron_error(status::BadRequest, message));
-                    }
-                };
+                let action = get_required_json_string_param(&obj, "action").map_err(|err| {
+                    let message = format!("Item #{}: {}", idx, err);
+                    create_iron_error(status::BadRequest, message)
+                })?;
 
                 let result: Result<JsonValue, IronError> = match &action[..] {
                     "create_vertex" => create_vertex(&trans, &obj),
@@ -129,11 +126,10 @@ fn get_edge_count(
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
     let result = datastore_request(result)?;
 
-    match serde_json::to_value(&result) {
-        Ok(val) => Ok(val),
-        Err(err) => Err(create_iron_error(
+    Ok(serde_json::to_value(&result).map_err(|err| {
+        create_iron_error(
             status::InternalServerError,
             format!("Could not serialize results: {}", err),
-        )),
-    }
+        )
+    })?)
 }
