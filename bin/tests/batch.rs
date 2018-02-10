@@ -17,7 +17,7 @@ pub use regex::Regex;
 use uuid::Uuid;
 pub use indradb::*;
 use std::collections::HashMap;
-use reqwest::{Url, Client, Method, StatusCode, Error as ReqwestError, Response};
+use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
@@ -32,7 +32,8 @@ lazy_static! {
 
 fn request(port: usize, body: &JsonValue) -> Result<Response, ReqwestError> {
     let client = Client::new();
-    let url = Url::parse(&format!("http://localhost:{}/transaction", port)).expect("Expected to be able to construct a URL");
+    let url = Url::parse(&format!("http://localhost:{}/transaction", port))
+        .expect("Expected to be able to construct a URL");
     let mut request = client.request(Method::Post, url);
     request.json(body);
     request.send()
@@ -41,7 +42,7 @@ fn request(port: usize, body: &JsonValue) -> Result<Response, ReqwestError> {
 #[derive(Debug)]
 pub struct BatchDatastore {
     port: usize,
-    server: Child
+    server: Child,
 }
 
 impl BatchDatastore {
@@ -61,7 +62,7 @@ impl BatchDatastore {
                 if response.status() == StatusCode::Ok {
                     return Self {
                         port: port,
-                        server: server
+                        server: server,
                     };
                 }
             }
@@ -126,9 +127,7 @@ impl BatchTransaction {
                     panic!("Unexpected error response object: {}", v)
                 }
             }
-            Err(err) => {
-                panic!("Request error: {}", err)
-            }
+            Err(err) => panic!("Request error: {}", err),
         };
 
         assert!(parts.len() == 1, "Invalid number of items returned");
@@ -220,7 +219,12 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_vertex_metadata(
+        &self,
+        q: VertexQuery,
+        name: String,
+        value: JsonValue,
+    ) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_vertex_metadata",
             "query": q,
@@ -237,11 +241,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        name: String,
-    ) -> Result<Vec<EdgeMetadata>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<EdgeMetadata>, Error> {
         self.request(&json!({
             "action": "get_edge_metadata",
             "query": q,

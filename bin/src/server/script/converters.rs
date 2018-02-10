@@ -2,10 +2,10 @@ use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, U
            UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
-use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
+use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey,
+              EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery,
               QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
-              VertexQuery as ExternalVertexQuery, VertexMetadata as ExternalVertexMetadata,
-              EdgeMetadata as ExternalEdgeMetadata};
+              VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -51,13 +51,16 @@ impl<'lua> FromLua<'lua> for JsonValue {
                 Ok(Self::new(ExternalJsonValue::Number(num)))
             }
             Value::String(value) => {
-                let value_str = value.to_str().map_err(|err| {
-                    new_from_lua_error(
-                        "string",
-                        "JSON",
-                        Some(format!("the lua string is not valid utf-8: {}", err)),
-                    )
-                })?.to_string();
+                let value_str = value
+                    .to_str()
+                    .map_err(|err| {
+                        new_from_lua_error(
+                            "string",
+                            "JSON",
+                            Some(format!("the lua string is not valid utf-8: {}", err)),
+                        )
+                    })?
+                    .to_string();
 
                 Ok(Self::new(ExternalJsonValue::String(value_str)))
             }

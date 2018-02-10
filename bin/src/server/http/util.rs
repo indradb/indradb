@@ -92,10 +92,7 @@ where
 {
     if let Some(obj) = json.get(name) {
         Ok(serde_json::from_value::<T>(obj.clone()).map_err(|_| {
-            create_iron_error(
-                status::BadRequest,
-                format!("Invalid type for `{}`", name),
-            )
+            create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))
         })?)
     } else {
         Err(create_iron_error(

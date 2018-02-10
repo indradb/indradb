@@ -54,7 +54,9 @@ impl PostgresDatastore {
         };
 
         let manager = PostgresConnectionManager::new(&*connection_string, TlsMode::None)?;
-        let pool = Pool::builder().max_size(unwrapped_pool_size).build(manager)?;
+        let pool = Pool::builder()
+            .max_size(unwrapped_pool_size)
+            .build(manager)?;
 
         Ok(PostgresDatastore {
             pool: pool,
@@ -67,10 +69,11 @@ impl PostgresDatastore {
     /// # Arguments
     /// * `connetion_string` - The postgres database connection string.
     pub fn create_schema(connection_string: String) -> Result<(), Error> {
-        let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None).map_err(|err| {
-            let message = format!("Could not connect to the postgres database: {}", err);
-            Error::Unexpected(message)
-        })?;
+        let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None)
+            .map_err(|err| {
+                let message = format!("Could not connect to the postgres database: {}", err);
+                Error::Unexpected(message)
+            })?;
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;

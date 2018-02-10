@@ -15,7 +15,7 @@ lazy_static! {
 #[derive(Debug)]
 pub enum UuidGenerator {
     V1,
-    V4
+    V4,
 }
 
 impl UuidGenerator {

@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery, Type};
+use indradb::{EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -31,33 +31,21 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
     let payload = read_optional_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
-    let mut file = File::open(&path).map_err(|_| {
-        create_iron_error(
-            status::NotFound,
-            "Could not load script".to_string(),
-        )
-    })?;
+    let mut file = File::open(&path)
+        .map_err(|_| create_iron_error(status::NotFound, "Could not load script".to_string()))?;
 
     let mut contents = String::new();
 
-    file.read_to_string(&mut contents).map_err(|_| {
-        create_iron_error(
-            status::NotFound,
-            "Could not read script".to_string()
-        )
-    })?;
+    file.read_to_string(&mut contents)
+        .map_err(|_| create_iron_error(status::NotFound, "Could not read script".to_string()))?;
 
     let value = script::run(&contents, &path, payload).map_err(|err| {
         let error_message = format!("Script failed: {:?}", err);
-        create_iron_error(
-            status::InternalServerError,
-            error_message,
-        )
+        create_iron_error(status::InternalServerError, error_message)
     })?;
 
     Ok(to_response(status::Ok, &value))
 }
-
 
 pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction()?;
@@ -267,10 +255,12 @@ fn delete_edge_metadata(
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-    Ok(serde_json::to_value(&datastore_request(result)?).map_err(|err| {
-        create_iron_error(
-            status::InternalServerError,
-            format!("Could not serialize results: {}", err),
-        )
-    })?)
+    Ok(
+        serde_json::to_value(&datastore_request(result)?).map_err(|err| {
+            create_iron_error(
+                status::InternalServerError,
+                format!("Could not serialize results: {}", err),
+            )
+        })?,
+    )
 }

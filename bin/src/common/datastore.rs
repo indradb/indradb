@@ -4,9 +4,9 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
-              PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-              Transaction, Type, Vertex, VertexQuery, VertexMetadata, EdgeMetadata};
+use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
+              MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore,
+              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
@@ -117,11 +117,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        key: String,
-    ) -> Result<Vec<EdgeMetadata>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<Vec<EdgeMetadata>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
@@ -175,7 +171,8 @@ pub fn datastore() -> ProxyDatastore {
              i32",
         );
 
-        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids).expect("Expected to be able to create the RocksDB datastore");
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids)
+            .expect("Expected to be able to create the RocksDB datastore");
 
         ProxyDatastore::Rocksdb(datastore)
     } else if connection_string.starts_with("postgres://") {
@@ -187,7 +184,8 @@ pub fn datastore() -> ProxyDatastore {
             Err(_) => None,
         };
 
-        let datastore = PostgresDatastore::new(pool_size, connection_string, secure_uuids).expect("Expected to be able to create the postgres datastore");
+        let datastore = PostgresDatastore::new(pool_size, connection_string, secure_uuids)
+            .expect("Expected to be able to create the postgres datastore");
         ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
