@@ -189,68 +189,109 @@ fn get_global_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let name = get_json_obj_value::<String>(item, "name")?;
+    execute_item(trans.get_global_metadata(name))
 }
 
 fn set_global_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let name = get_json_obj_value::<String>(item, "name")?;
+    let value = get_json_obj_value::<JsonValue>(item, "value")?;
+    execute_item(trans.set_global_metadata(name, value))
 }
 
 fn delete_global_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let name = get_json_obj_value::<String>(item, "name")?;
+    execute_item(trans.delete_global_metadata(name))
 }
 
 fn get_vertex_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<VertexQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+
+    // While we could just serialize the results to JSON using `execute_item`,
+    // we opt for a custom serialization scheme here to be consistent with
+    // results returned by `get_edge_metadata`.
+    let results = datastore_request(trans.get_vertex_metadata(q, name))?;
+    let mapped_results: Vec<JsonValue> = results.into_iter().map(|(k, v)| {
+        json!({
+            "id": k,
+            "value": v
+        })
+    }).collect();
+    serialize_item(mapped_results)
 }
 
 fn set_vertex_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<VertexQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+    let value = get_json_obj_value::<JsonValue>(item, "value")?;
+    execute_item(trans.set_vertex_metadata(q, name, value))
 }
 
 fn delete_vertex_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<VertexQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+    execute_item(trans.delete_vertex_metadata(q, name))
 }
 
 fn get_edge_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+
+    // Use a custom serialization scheme, because edge keys are not valid JSON
+    // object keys
+    let results = datastore_request(trans.get_edge_metadata(q, name))?;
+    let mapped_results: Vec<JsonValue> = results.into_iter().map(|(k, v)| {
+        json!({
+            "key": k,
+            "value": v
+        })
+    }).collect();
+    serialize_item(mapped_results)
 }
 
 fn set_edge_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+    let value = get_json_obj_value::<JsonValue>(item, "value")?;
+    execute_item(trans.set_edge_metadata(q, name, value))
 }
 
 fn delete_edge_metadata(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    unimplemented!()
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
+    let name = get_json_obj_value::<String>(item, "name")?;
+    execute_item(trans.delete_edge_metadata(q, name))
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-    let result = datastore_request(result)?;
+    serialize_item(datastore_request(result)?)
+}
 
+fn serialize_item<T: Serialize>(result: T) -> Result<JsonValue, IronError> {
     Ok(serde_json::to_value(&result).map_err(|err| {
         create_iron_error(
             status::InternalServerError,

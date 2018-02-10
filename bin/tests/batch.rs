@@ -223,7 +223,7 @@ impl Transaction for BatchTransaction {
     fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_vertex_metadata",
-            "q": q,
+            "query": q,
             "name": name,
             "value": value
         }))
