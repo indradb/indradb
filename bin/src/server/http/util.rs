@@ -102,14 +102,6 @@ where
     }
 }
 
-/// Parses a response from the datastore into a specified type
-///
-/// # Errors
-/// Returns an `IronError` if the `Result` from the datastore is an error.
-pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
-    Ok(result.map_err(|err| convert_to_iron_error(&err))?)
-}
-
 /// Gets a new transaction.
 ///
 /// # Errors
@@ -123,12 +115,13 @@ pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
     })?)
 }
 
-// Reads the request body into an optional `JsonValue`
+// Reads the JSON request body.
 ///
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or if a body was
 /// specified but is not valid JSON.
-pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronError> {
+pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
+    where for<'a> T: Deserialize<'a> {
     let mut payload = String::new();
     let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
 
@@ -142,7 +135,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     if payload.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(serde_json::from_str(&payload[..]).map_err(|err| {
+        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(|err| {
             create_iron_error(
                 status::BadRequest,
                 format!("Could not parse JSON payload: {}", err.description()),
@@ -151,16 +144,3 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     }
 }
 
-/// Reads the request body into a `JsonValue`.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or is not valid JSON.
-pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
-    match read_optional_json(&mut body)? {
-        Some(value) => Ok(value),
-        None => Err(create_iron_error(
-            status::BadRequest,
-            "Missing JSON payload".to_string(),
-        )),
-    }
-}

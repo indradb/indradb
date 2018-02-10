@@ -28,7 +28,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
         ));
     }
 
-    let payload = read_optional_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
+    let payload: JsonValue = read_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
 
     let mut file = File::open(&path)
@@ -51,69 +51,63 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction()?;
     let mut idx: u16 = 0;
     let mut jsonable_res: Vec<JsonValue> = Vec::new();
+    let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(|| Vec::new());
 
-    if let JsonValue::Array(items) = read_required_json(&mut req.body)? {
-        for item in items {
-            if let JsonValue::Object(obj) = item {
-                let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
-                    let message = format!("Item #{}: {}", idx, err);
-                    create_iron_error(status::BadRequest, message)
-                })?;
+    for item in body {
+        if let JsonValue::Object(obj) = item {
+            let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
+                let message = format!("Item #{}: {}", idx, err);
+                create_iron_error(status::BadRequest, message)
+            })?;
 
-                let result: Result<JsonValue, IronError> = match &action[..] {
-                    "create_vertex" => create_vertex(&trans, &obj),
-                    "get_vertices" => get_vertices(&trans, &obj),
-                    "delete_vertices" => delete_vertices(&trans, &obj),
+            let result: Result<JsonValue, IronError> = match &action[..] {
+                "create_vertex" => create_vertex(&trans, &obj),
+                "get_vertices" => get_vertices(&trans, &obj),
+                "delete_vertices" => delete_vertices(&trans, &obj),
 
-                    "create_edge" => create_edge(&trans, &obj),
-                    "get_edges" => get_edges(&trans, &obj),
-                    "delete_edges" => delete_edges(&trans, &obj),
-                    "get_edge_count" => get_edge_count(&trans, &obj),
+                "create_edge" => create_edge(&trans, &obj),
+                "get_edges" => get_edges(&trans, &obj),
+                "delete_edges" => delete_edges(&trans, &obj),
+                "get_edge_count" => get_edge_count(&trans, &obj),
 
-                    "get_global_metadata" => get_global_metadata(&trans, &obj),
-                    "set_global_metadata" => set_global_metadata(&trans, &obj),
-                    "delete_global_metadata" => delete_global_metadata(&trans, &obj),
+                "get_global_metadata" => get_global_metadata(&trans, &obj),
+                "set_global_metadata" => set_global_metadata(&trans, &obj),
+                "delete_global_metadata" => delete_global_metadata(&trans, &obj),
 
-                    "get_vertex_metadata" => get_vertex_metadata(&trans, &obj),
-                    "set_vertex_metadata" => set_vertex_metadata(&trans, &obj),
-                    "delete_vertex_metadata" => delete_vertex_metadata(&trans, &obj),
+                "get_vertex_metadata" => get_vertex_metadata(&trans, &obj),
+                "set_vertex_metadata" => set_vertex_metadata(&trans, &obj),
+                "delete_vertex_metadata" => delete_vertex_metadata(&trans, &obj),
 
-                    "get_edge_metadata" => get_edge_metadata(&trans, &obj),
-                    "set_edge_metadata" => set_edge_metadata(&trans, &obj),
-                    "delete_edge_metadata" => delete_edge_metadata(&trans, &obj),
+                "get_edge_metadata" => get_edge_metadata(&trans, &obj),
+                "set_edge_metadata" => set_edge_metadata(&trans, &obj),
+                "delete_edge_metadata" => delete_edge_metadata(&trans, &obj),
 
-                    _ => Err(create_iron_error(
-                        status::BadRequest,
-                        "Unknown action".to_string(),
-                    )),
-                };
-
-                match result {
-                    Err(err) => {
-                        let message = format!("Item #{}: {}", idx, err);
-                        return Err(create_iron_error(status::BadRequest, message));
-                    }
-                    Ok(value) => {
-                        jsonable_res.push(value);
-                    }
-                }
-            } else {
-                return Err(create_iron_error(
+                _ => Err(create_iron_error(
                     status::BadRequest,
-                    format!("Item #{}: Invalid type", idx),
-                ));
-            }
+                    "Unknown action".to_string(),
+                )),
+            };
 
-            idx += 1;
+            match result {
+                Err(err) => {
+                    let message = format!("Item #{}: {}", idx, err);
+                    return Err(create_iron_error(status::BadRequest, message));
+                }
+                Ok(value) => {
+                    jsonable_res.push(value);
+                }
+            }
+        } else {
+            return Err(create_iron_error(
+                status::BadRequest,
+                format!("Item #{}: Invalid type", idx),
+            ));
         }
-    } else {
-        return Err(create_iron_error(
-            status::BadRequest,
-            "Request body should be an array".to_string(),
-        ));
+
+        idx += 1;
     }
 
-    datastore_request(trans.commit())?;
+    trans.commit().map_err(|err| convert_to_iron_error(&err))?;
     Ok(to_response(status::Ok, &jsonable_res))
 }
 
@@ -255,8 +249,10 @@ fn delete_edge_metadata(
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
+    let value = result.map_err(|err| convert_to_iron_error(&err))?;
+
     Ok(
-        serde_json::to_value(&datastore_request(result)?).map_err(|err| {
+        serde_json::to_value(value).map_err(|err| {
             create_iron_error(
                 status::InternalServerError,
                 format!("Could not serialize results: {}", err),
