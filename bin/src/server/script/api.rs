@@ -76,7 +76,7 @@ pub fn get_vertex_metadata(
     trans: &ProxyTransaction,
     (q, key): (converters::VertexQuery, String),
 ) -> Result<Vec<converters::VertexMetadata>, Error> {
-    Ok(trans.get_vertex_metadata(q.0, key)?.into_iter().map(|item| converters::VertexMetadata::new(item)).collect())
+    Ok(trans.get_vertex_metadata(q.0, key)?.into_iter().map(converters::VertexMetadata::new).collect())
 }
 
 pub fn set_vertex_metadata(
@@ -98,7 +98,7 @@ pub fn get_edge_metadata(
     trans: &ProxyTransaction,
     (q, key): (converters::EdgeQuery, String),
 ) -> Result<Vec<converters::EdgeMetadata>, Error> {
-    Ok(trans.get_edge_metadata(q.0, key)?.into_iter().map(|item| converters::EdgeMetadata::new(item)).collect())
+    Ok(trans.get_edge_metadata(q.0, key)?.into_iter().map(converters::EdgeMetadata::new).collect())
 }
 
 pub fn set_edge_metadata(

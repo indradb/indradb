@@ -114,7 +114,7 @@ impl BatchTransaction {
 
                     if let JsonValue::Object(ref obj) = v {
                         if let Some(&JsonValue::String(ref err)) = obj.get("error") {
-                            if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
+                            if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(err) {
                                 let message = cap.get(1).unwrap().as_str();
                                 return Err(Error::description_to_error(message));
                             } else {
@@ -123,11 +123,11 @@ impl BatchTransaction {
                         }
                     }
 
-                    panic!("Unexpected error response object: {}", v);
+                    panic!("Unexpected error response object: {}", v)
                 }
             }
             Err(err) => {
-                panic!("Request error: {}", err);
+                panic!("Request error: {}", err)
             }
         };
 
