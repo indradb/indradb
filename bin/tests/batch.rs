@@ -11,53 +11,125 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-#[macro_use]
-mod common;
-
 use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use indradb::*;
-pub use common::*;
 use std::collections::HashMap;
-use reqwest::Method;
+use reqwest::{Url, Client, Method, StatusCode, Error as ReqwestError, Response};
+use std::process::{Child, Command};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread::sleep;
+use std::time::Duration;
+
+const START_PORT: usize = 1024;
 
 lazy_static! {
     static ref ITEM_ERROR_MESSAGE_PATTERN: Regex = Regex::new(r"Item #0: (.+)").unwrap();
+    static ref PORT: AtomicUsize = AtomicUsize::new(START_PORT);
+}
+
+fn request(port: usize, body: &JsonValue) -> Result<Response, ReqwestError> {
+    let client = Client::new();
+    let url = Url::parse(&format!("http://localhost:{}/transaction", port)).expect("Expected to be able to construct a URL");
+    let mut request = client.request(Method::Post, url);
+    request.json(body);
+    request.send()
+}
+
+#[derive(Debug)]
+pub struct BatchDatastore {
+    port: usize,
+    server: Child
+}
+
+impl BatchDatastore {
+    fn default() -> Self {
+        let port = PORT.fetch_add(1, Ordering::SeqCst);
+
+        let mut envs = HashMap::new();
+        envs.insert("PORT", port.to_string());
+
+        let server = Command::new("../target/debug/indradb-server")
+            .envs(envs)
+            .spawn()
+            .expect("Server failed to start");
+
+        for _ in 0..5 {
+            if let Ok(response) = request(port, &json!([])) {
+                if response.status() == StatusCode::Ok {
+                    return Self {
+                        port: port,
+                        server: server
+                    };
+                }
+            }
+
+            sleep(Duration::from_secs(1));
+        }
+
+        panic!("Server failed to initialize after a few seconds");
+    }
+}
+
+impl Drop for BatchDatastore {
+    fn drop(&mut self) {
+        if let Err(err) = self.server.kill() {
+            panic!(format!("Could not kill server instance: {}", err))
+        }
+    }
+}
+
+impl Datastore<BatchTransaction> for BatchDatastore {
+    fn transaction(&self) -> Result<BatchTransaction, Error> {
+        Ok(BatchTransaction::new(self.port))
+    }
 }
 
 pub struct BatchTransaction {
     port: usize,
 }
 
-impl HttpTransaction for BatchTransaction {
+impl BatchTransaction {
     fn new(port: usize) -> Self {
         BatchTransaction { port: port }
     }
-}
 
-impl BatchTransaction {
     fn request<T>(&self, body: &JsonValue) -> Result<T, Error>
     where
         for<'a> T: Deserialize<'a>,
     {
-        let result = request(
-            self.port,
-            Method::Post,
-            "/transaction",
-            &[],
-            Some(json!([body])),
-        );
+        let mut parts = match request(self.port, &json!([body])) {
+            Ok(mut response) => {
+                if response.status() == StatusCode::Ok {
+                    let v: Vec<T> = response
+                        .json()
+                        .expect("Could not deserialize response to custom type");
+                    v
+                } else {
+                    let v: JsonValue = response
+                        .json()
+                        .expect("Could not deserialize response to object");
 
-        let mut parts = from_result::<Vec<T>>(result).map_err(|err| {
-            if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
-                let message = cap.get(1).unwrap().as_str();
-                Error::description_to_error(message)
-            } else {
-                panic!(format!("Unexpected error received: {}", err));
+                    if let JsonValue::Object(ref obj) = v {
+                        if let Some(&JsonValue::String(ref err)) = obj.get("error") {
+                            if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(&err) {
+                                let message = cap.get(1).unwrap().as_str();
+                                return Err(Error::description_to_error(message));
+                            } else {
+                                panic!(format!("Unexpected error received: {}", err));
+                            }
+                        }
+                    }
+
+                    panic!("Unexpected error response object: {}", v);
+                }
             }
-        })?;
+            Err(err) => {
+                panic!("Request error: {}", err);
+            }
+        };
 
         assert!(parts.len() == 1, "Invalid number of items returned");
         Ok(parts.pop().unwrap())
@@ -114,48 +186,84 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_global_metadata(&self, _: String) -> Result<JsonValue, Error> {
-        unimplemented!();
+    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
+        self.request(&json!({
+            "action": "get_global_metadata",
+            "name": name
+        }))
     }
 
-    fn set_global_metadata(&self, _: String, _: JsonValue) -> Result<(), Error> {
-        unimplemented!();
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "set_global_metadata",
+            "name": name,
+            "value": value
+        }))
     }
 
-    fn delete_global_metadata(&self, _: String) -> Result<(), Error> {
-        unimplemented!();
+    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "delete_global_metadata",
+            "name": name
+        }))
     }
 
     fn get_vertex_metadata(
         &self,
-        _: VertexQuery,
-        _: String,
+        q: VertexQuery,
+        name: String,
     ) -> Result<HashMap<Uuid, JsonValue>, Error> {
-        unimplemented!();
+        self.request(&json!({
+            "action": "get_vertex_metadata",
+            "query": q,
+            "name": name
+        }))
     }
 
-    fn set_vertex_metadata(&self, _: VertexQuery, _: String, _: JsonValue) -> Result<(), Error> {
-        unimplemented!();
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "set_vertex_metadata",
+            "q": q,
+            "name": name,
+            "value": value
+        }))
     }
 
-    fn delete_vertex_metadata(&self, _: VertexQuery, _: String) -> Result<(), Error> {
-        unimplemented!();
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "delete_vertex_metadata",
+            "query": q,
+            "name": name
+        }))
     }
 
     fn get_edge_metadata(
         &self,
-        _: EdgeQuery,
-        _: String,
+        q: EdgeQuery,
+        name: String,
     ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
-        unimplemented!();
+        self.request(&json!({
+            "action": "get_edge_metadata",
+            "query": q,
+            "name": name
+        }))
     }
 
-    fn set_edge_metadata(&self, _: EdgeQuery, _: String, _: JsonValue) -> Result<(), Error> {
-        unimplemented!();
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "set_edge_metadata",
+            "query": q,
+            "name": name,
+            "value": value
+        }))
     }
 
-    fn delete_edge_metadata(&self, _: EdgeQuery, _: String) -> Result<(), Error> {
-        unimplemented!();
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
+        self.request(&json!({
+            "action": "delete_edge_metadata",
+            "query": q,
+            "name": name
+        }))
     }
 
     fn commit(self) -> Result<(), Error> {
@@ -169,38 +277,8 @@ impl Transaction for BatchTransaction {
     }
 }
 
-pub fn datastore() -> HttpDatastore<BatchTransaction> {
-    HttpDatastore::<BatchTransaction>::default()
+pub fn datastore() -> BatchDatastore {
+    BatchDatastore::default()
 }
 
-// Vertex queries
-define_test!(should_get_all_vertices, datastore());
-define_test!(should_get_all_vertices_with_zero_limit, datastore());
-define_test!(should_get_all_vertices_out_of_range, datastore());
-define_test!(should_get_single_vertices, datastore());
-define_test!(should_get_single_vertices_nonexisting, datastore());
-define_test!(should_get_vertices, datastore());
-define_test!(should_get_vertices_piped, datastore());
-
-// Vertex updates
-define_test!(should_delete_a_valid_vertex, datastore());
-define_test!(should_not_delete_an_invalid_vertex, datastore());
-
-// Edges
-define_test!(should_get_a_valid_edge, datastore());
-define_test!(should_not_get_an_invalid_edge, datastore());
-define_test!(should_create_a_valid_edge, datastore());
-define_test!(should_not_create_an_invalid_edge, datastore());
-define_test!(should_delete_a_valid_edge, datastore());
-define_test!(should_not_delete_an_invalid_edge, datastore());
-define_test!(should_get_an_edge_count, datastore());
-define_test!(should_get_an_edge_count_with_no_type, datastore());
-define_test!(should_get_an_edge_count_for_an_invalid_edge, datastore());
-define_test!(should_get_an_edge_range, datastore());
-define_test!(should_get_edges_with_no_type, datastore());
-define_test!(should_get_no_edges_for_an_invalid_range, datastore());
-define_test!(should_get_edges_with_no_high, datastore());
-define_test!(should_get_edges_with_no_low, datastore());
-define_test!(should_get_edges_with_no_time, datastore());
-define_test!(should_get_no_edges_for_reversed_time, datastore());
-define_test!(should_get_edges, datastore());
+full_test_impl!(datastore());

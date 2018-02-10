@@ -15,14 +15,8 @@ use std::io;
 use std::io::Read;
 use serde_json::value::Value as JsonValue;
 use serde_json;
-use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use statics;
-
-lazy_static! {
-    static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
-}
 
 /// Converts an indradb error to an `IronError`. We need to use this strategy
 /// rather than a `From` impl because both traits are implemented outside of
@@ -213,72 +207,4 @@ pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
             "Missing JSON payload".to_string(),
         )),
     }
-}
-
-/// Parses the and returns the request query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the query parameters could not be parsed.
-pub fn get_query_params<'a>(
-    req: &'a mut Request,
-) -> Result<&'a HashMap<String, Vec<String>>, IronError> {
-    match req.get_ref::<UrlEncodedQuery>() {
-        Ok(map) => Ok(map),
-        Err(UrlDecodingError::EmptyQuery) => Ok(&DEFAULT_QUERY_PARAMS),
-        Err(_) => Err(create_iron_error(
-            status::BadRequest,
-            "Could not parse query parameters".to_string(),
-        )),
-    }
-}
-
-/// Gets a query parameter value and serializes it to the specified type.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn get_query_param<T: FromStr>(
-    params: &HashMap<String, Vec<String>>,
-    key: &str,
-    required: bool,
-) -> Result<Option<T>, IronError> {
-    if let Some(values) = params.get(key) {
-        if let Some(first_value) = values.get(0) {
-            match first_value.parse::<T>() {
-                Ok(value) => return Ok(Some(value)),
-                Err(_) => {
-                    return Err(create_iron_error(
-                        status::BadRequest,
-                        format!("Could not parse query parameter `{}`", key),
-                    ))
-                }
-            }
-        }
-    }
-
-    if required {
-        Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing required query parameter `{}`", key),
-        ))
-    } else {
-        Ok(None)
-    }
-}
-
-/// Gets a required object from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the query could be parsed, or was not specified.
-pub fn get_obj_query_param<T>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
-
-    Ok(serde_json::from_value::<T>(q_json).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            "Invalid type for `q`: expected edge query".to_string(),
-        )
-    })?)
 }
