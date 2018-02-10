@@ -3,7 +3,6 @@ use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
 use uuid::Uuid;
-use std::collections::HashMap;
 
 /// Specifies a datastore implementation.
 ///
@@ -110,7 +109,7 @@ pub trait Transaction {
         &self,
         q: models::VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error>;
+    ) -> Result<Vec<models::VertexMetadata>, Error>;
 
     /// Sets a vertex metadata value.
     ///
@@ -141,7 +140,7 @@ pub trait Transaction {
         &self,
         q: models::EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error>;
+    ) -> Result<Vec<models::EdgeMetadata>, Error>;
 
     /// Sets an edge metadata value.
     ///

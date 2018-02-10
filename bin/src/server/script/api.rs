@@ -4,7 +4,6 @@
 use super::converters;
 use indradb::{Error, Transaction};
 use common::ProxyTransaction;
-use std::collections::HashMap;
 
 pub fn create_vertex(
     trans: &ProxyTransaction,
@@ -76,15 +75,8 @@ pub fn delete_global_metadata(trans: &ProxyTransaction, key: String) -> Result<(
 pub fn get_vertex_metadata(
     trans: &ProxyTransaction,
     (q, key): (converters::VertexQuery, String),
-) -> Result<HashMap<converters::Uuid, converters::JsonValue>, Error> {
-    let old_map = trans.get_vertex_metadata(q.0, key)?;
-    let mut new_map = HashMap::with_capacity(old_map.len());
-
-    for (k, v) in old_map {
-        new_map.insert(converters::Uuid::new(k), converters::JsonValue::new(v));
-    }
-
-    Ok(new_map)
+) -> Result<Vec<converters::VertexMetadata>, Error> {
+    Ok(trans.get_vertex_metadata(q.0, key)?.into_iter().map(|item| converters::VertexMetadata::new(item)).collect())
 }
 
 pub fn set_vertex_metadata(
@@ -105,15 +97,8 @@ pub fn delete_vertex_metadata(
 pub fn get_edge_metadata(
     trans: &ProxyTransaction,
     (q, key): (converters::EdgeQuery, String),
-) -> Result<HashMap<converters::EdgeKey, converters::JsonValue>, Error> {
-    let old_map = trans.get_edge_metadata(q.0, key)?;
-    let mut new_map = HashMap::with_capacity(old_map.len());
-
-    for (k, v) in old_map {
-        new_map.insert(converters::EdgeKey::new(k), converters::JsonValue::new(v));
-    }
-
-    Ok(new_map)
+) -> Result<Vec<converters::EdgeMetadata>, Error> {
+    Ok(trans.get_edge_metadata(q.0, key)?.into_iter().map(|item| converters::EdgeMetadata::new(item)).collect())
 }
 
 pub fn set_edge_metadata(

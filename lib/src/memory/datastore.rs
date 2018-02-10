@@ -1,7 +1,7 @@
 use super::super::{Datastore, EdgeQuery, Transaction, VertexQuery};
 use models;
 use uuid::Uuid;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use chrono::DateTime;
 use chrono::offset::Utc;
 use std::sync::{Arc, RwLock};
@@ -361,8 +361,8 @@ impl Transaction for MemoryTransaction {
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
-        let mut result = HashMap::new();
+    ) -> Result<Vec<models::VertexMetadata>, Error> {
+        let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
@@ -370,7 +370,7 @@ impl Transaction for MemoryTransaction {
             let metadata_value = datastore.vertex_metadata.get(&(id, name.clone()));
 
             if let Some(metadata_value) = metadata_value {
-                result.insert(id, metadata_value.clone());
+                result.push(models::VertexMetadata::new(id, metadata_value.clone()));
             }
         }
 
@@ -418,8 +418,8 @@ impl Transaction for MemoryTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
-        let mut result = HashMap::new();
+    ) -> Result<Vec<models::EdgeMetadata>, Error> {
+        let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
@@ -427,7 +427,7 @@ impl Transaction for MemoryTransaction {
             let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.clone()));
 
             if let Some(metadata_value) = metadata_value {
-                result.insert(key, metadata_value.clone());
+                result.push(models::EdgeMetadata::new(key, metadata_value.clone()));
             }
         }
 

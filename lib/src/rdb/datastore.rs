@@ -12,7 +12,6 @@ use std::i32;
 use std::u64;
 use super::managers::*;
 use core::fmt::Debug;
-use std::collections::HashMap;
 use util::UuidGenerator;
 
 const CF_NAMES: [&'static str; 7] = [
@@ -460,16 +459,16 @@ impl Transaction for RocksdbTransaction {
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>, Error> {
         let manager = VertexMetadataManager::new(self.db.clone());
-        let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
             let value = manager.get(id, &name[..])?;
 
             if let Some(value) = value {
-                metadata.insert(id, value);
+                metadata.push(models::VertexMetadata::new(id, value));
             }
         }
 
@@ -511,9 +510,9 @@ impl Transaction for RocksdbTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>, Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
-        let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for item in self.edge_query_to_iterator(q)? {
             let (outbound_id, t, _, inbound_id) = item?;
@@ -521,7 +520,7 @@ impl Transaction for RocksdbTransaction {
 
             if let Some(value) = value {
                 let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-                metadata.insert(key, value);
+                metadata.push(models::EdgeMetadata::new(key, value));
             }
         }
 

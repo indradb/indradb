@@ -11,7 +11,6 @@ use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
-use std::collections::HashMap;
 use std::i64;
 use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
@@ -459,18 +458,18 @@ impl Transaction for PostgresTransaction {
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name)]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
-        let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for row in &results {
             let id: Uuid = row.get(0);
             let value: JsonValue = row.get(1);
-            metadata.insert(id, value);
+            metadata.push(models::VertexMetadata::new(id, value));
         }
 
         Ok(metadata)
@@ -514,7 +513,7 @@ impl Transaction for PostgresTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 
@@ -529,7 +528,7 @@ impl Transaction for PostgresTransaction {
 
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
-        let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for row in &results {
             let outbound_id: Uuid = row.get(0);
@@ -538,7 +537,7 @@ impl Transaction for PostgresTransaction {
             let value: JsonValue = row.get(3);
             let t = models::Type::new(t_str).unwrap();
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            metadata.insert(key, value);
+            metadata.push(models::EdgeMetadata::new(key, value));
         }
 
         Ok(metadata)

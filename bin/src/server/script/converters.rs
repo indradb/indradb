@@ -4,7 +4,8 @@ use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey, EdgeQuery as ExternalEdgeQuery,
               QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
-              VertexQuery as ExternalVertexQuery};
+              VertexQuery as ExternalVertexQuery, VertexMetadata as ExternalVertexMetadata,
+              EdgeMetadata as ExternalEdgeMetadata};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -470,6 +471,42 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
         } else {
             Err(new_from_lua_error("non-table", "edge query", None))
         }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct VertexMetadata(pub ExternalVertexMetadata);
+
+impl VertexMetadata {
+    pub fn new(value: ExternalVertexMetadata) -> Self {
+        Self { 0: value }
+    }
+}
+
+impl<'lua> ToLua<'lua> for VertexMetadata {
+    fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
+        let table = l.create_table()?;
+        table.set("id", Uuid::new(self.0.id).to_lua(l)?)?;
+        table.set("value", JsonValue::new(self.0.value).to_lua(l)?)?;
+        Ok(Value::Table(table))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EdgeMetadata(pub ExternalEdgeMetadata);
+
+impl EdgeMetadata {
+    pub fn new(value: ExternalEdgeMetadata) -> Self {
+        Self { 0: value }
+    }
+}
+
+impl<'lua> ToLua<'lua> for EdgeMetadata {
+    fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
+        let table = l.create_table()?;
+        table.set("key", EdgeKey::new(self.0.key).to_lua(l)?)?;
+        table.set("value", JsonValue::new(self.0.value).to_lua(l)?)?;
+        Ok(Value::Table(table))
     }
 }
 

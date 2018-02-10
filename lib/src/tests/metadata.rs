@@ -61,14 +61,18 @@ where
         .set_vertex_metadata(q.clone(), name.clone(), JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(result[&owner_id], JsonValue::Bool(true));
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].id, owner_id);
+    assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
     trans
         .set_vertex_metadata(q.clone(), name.clone(), JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_vertex_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(result[&owner_id], JsonValue::Bool(false));
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].id, owner_id);
+    assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans
@@ -141,14 +145,18 @@ where
         .set_edge_metadata(q.clone(), name.clone(), JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_edge_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(result[&key], JsonValue::Bool(true));
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
     trans
         .set_edge_metadata(q.clone(), name.clone(), JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_edge_metadata(q.clone(), name.clone()).unwrap();
-    assert_eq!(result[&key], JsonValue::Bool(false));
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_edge_metadata(q.clone(), name.clone()).unwrap();

@@ -216,18 +216,7 @@ fn get_vertex_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-
-    // While we could just serialize the results to JSON using `execute_item`,
-    // we opt for a custom serialization scheme here to be consistent with
-    // results returned by `get_edge_metadata`.
-    let results = datastore_request(trans.get_vertex_metadata(q, name))?;
-    let mapped_results: Vec<JsonValue> = results.into_iter().map(|(k, v)| {
-        json!({
-            "id": k,
-            "value": v
-        })
-    }).collect();
-    serialize_item(mapped_results)
+    execute_item(trans.get_vertex_metadata(q, name))
 }
 
 fn set_vertex_metadata(
@@ -255,17 +244,7 @@ fn get_edge_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-
-    // Use a custom serialization scheme, because edge keys are not valid JSON
-    // object keys
-    let results = datastore_request(trans.get_edge_metadata(q, name))?;
-    let mapped_results: Vec<JsonValue> = results.into_iter().map(|(k, v)| {
-        json!({
-            "key": k,
-            "value": v
-        })
-    }).collect();
-    serialize_item(mapped_results)
+    execute_item(trans.get_edge_metadata(q, name))
 }
 
 fn set_edge_metadata(
@@ -288,11 +267,7 @@ fn delete_edge_metadata(
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-    serialize_item(datastore_request(result)?)
-}
-
-fn serialize_item<T: Serialize>(result: T) -> Result<JsonValue, IronError> {
-    Ok(serde_json::to_value(&result).map_err(|err| {
+    Ok(serde_json::to_value(&datastore_request(result)?).map_err(|err| {
         create_iron_error(
             status::InternalServerError,
             format!("Could not serialize results: {}", err),

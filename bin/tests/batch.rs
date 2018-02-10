@@ -212,7 +212,7 @@ impl Transaction for BatchTransaction {
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<VertexMetadata>, Error> {
         self.request(&json!({
             "action": "get_vertex_metadata",
             "query": q,
@@ -241,7 +241,7 @@ impl Transaction for BatchTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<EdgeMetadata>, Error> {
         self.request(&json!({
             "action": "get_edge_metadata",
             "query": q,

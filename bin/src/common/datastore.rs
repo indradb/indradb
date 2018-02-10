@@ -6,10 +6,9 @@
 use std::env;
 use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
               PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-              Transaction, Type, Vertex, VertexQuery};
+              Transaction, Type, Vertex, VertexQuery, VertexMetadata, EdgeMetadata};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum ProxyDatastore {
@@ -101,7 +100,7 @@ impl Transaction for ProxyTransaction {
         &self,
         q: VertexQuery,
         key: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<VertexMetadata>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
@@ -122,7 +121,7 @@ impl Transaction for ProxyTransaction {
         &self,
         q: EdgeQuery,
         key: String,
-    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<EdgeMetadata>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 

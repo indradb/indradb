@@ -11,7 +11,6 @@ extern crate regex;
 extern crate rlua;
 extern crate router;
 extern crate serde;
-#[macro_use]
 extern crate serde_json;
 extern crate urlencoded;
 extern crate uuid;
