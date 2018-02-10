@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{ContentType, Headers};
 use iron::typemap::TypeMap;
 use router::Router;
-use indradb::{Datastore, Error, Type};
+use indradb::{Datastore, Error};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -78,34 +78,12 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     })
 }
 
-/// Gets a JSON string value
+/// Gets a JSON object value.
 ///
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_string_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<String, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::String(ref val)) => Ok(val.clone()),
-        None | Some(&JsonValue::Null) => Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        )),
-        _ => Err(create_iron_error(
-            status::BadRequest,
-            format!("Invalid type for `{}`", name),
-        )),
-    }
-}
-
-/// Gets a JSON object value that represents an edge key
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_obj_param<T>(
+pub fn get_json_obj_value<T>(
     json: &serde_json::Map<String, JsonValue>,
     name: &str,
 ) -> Result<T, IronError>
@@ -125,25 +103,6 @@ where
             format!("Missing `{}`", name),
         ))
     }
-}
-
-/// Gets a JSON string value that represents a type
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_type_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<Type, IronError> {
-    let s = get_required_json_string_param(json, name)?;
-
-    Ok(Type::from_str(&s[..]).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            format!("Invalid type format for `{}`", name),
-        )
-    })?)
 }
 
 /// Parses a response from the datastore into a specified type

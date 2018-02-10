@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery};
+use indradb::{EdgeKey, EdgeQuery, Error, Transaction, VertexQuery, Type};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -67,7 +67,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     if let JsonValue::Array(items) = read_required_json(&mut req.body)? {
         for item in items {
             if let JsonValue::Object(obj) = item {
-                let action = get_required_json_string_param(&obj, "action").map_err(|err| {
+                let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
                     let message = format!("Item #{}: {}", idx, err);
                     create_iron_error(status::BadRequest, message)
                 })?;
@@ -81,6 +81,18 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                     "get_edges" => get_edges(&trans, &obj),
                     "delete_edges" => delete_edges(&trans, &obj),
                     "get_edge_count" => get_edge_count(&trans, &obj),
+
+                    "get_global_metadata" => get_global_metadata(&trans, &obj),
+                    "set_global_metadata" => set_global_metadata(&trans, &obj),
+                    "delete_global_metadata" => delete_global_metadata(&trans, &obj),
+
+                    "get_vertex_metadata" => get_vertex_metadata(&trans, &obj),
+                    "set_vertex_metadata" => set_vertex_metadata(&trans, &obj),
+                    "delete_vertex_metadata" => delete_vertex_metadata(&trans, &obj),
+
+                    "get_edge_metadata" => get_edge_metadata(&trans, &obj),
+                    "set_edge_metadata" => set_edge_metadata(&trans, &obj),
+                    "delete_edge_metadata" => delete_edge_metadata(&trans, &obj),
 
                     _ => Err(create_iron_error(
                         status::BadRequest,
@@ -121,7 +133,7 @@ fn create_vertex(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let t = get_required_json_type_param(item, "type")?;
+    let t = get_json_obj_value::<Type>(item, "type")?;
     execute_item(trans.create_vertex(t))
 }
 
@@ -129,7 +141,7 @@ fn get_vertices(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_required_json_obj_param::<VertexQuery>(item, "query")?;
+    let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     execute_item(trans.get_vertices(q))
 }
 
@@ -137,7 +149,7 @@ fn delete_vertices(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_required_json_obj_param::<VertexQuery>(item, "query")?;
+    let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     execute_item(trans.delete_vertices(q))
 }
 
@@ -145,7 +157,7 @@ fn create_edge(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let key = get_required_json_obj_param::<EdgeKey>(item, "key")?;
+    let key = get_json_obj_value::<EdgeKey>(item, "key")?;
     execute_item(trans.create_edge(key))
 }
 
@@ -153,7 +165,7 @@ fn get_edges(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     execute_item(trans.get_edges(q))
 }
 
@@ -161,7 +173,7 @@ fn delete_edges(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     execute_item(trans.delete_edges(q))
 }
 
@@ -169,8 +181,71 @@ fn get_edge_count(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_required_json_obj_param::<EdgeQuery>(item, "query")?;
+    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     execute_item(trans.get_edge_count(q))
+}
+
+fn get_global_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn set_global_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn delete_global_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn get_vertex_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn set_vertex_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn delete_vertex_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn get_edge_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn set_edge_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
+}
+
+fn delete_edge_metadata(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    unimplemented!()
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
