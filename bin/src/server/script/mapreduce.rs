@@ -190,7 +190,7 @@ impl MapReducer {
                 }
 
                 // Check to see if we should shutdown
-                if should_force_shutdown || (should_gracefully_shutdown && pending_tasks == 0) {
+                if should_force_shutdown || (should_gracefully_shutdown && pending_tasks == 0 && mapreduce_in_receiver.len() == 0) {
                     // Join all threads
                     for worker_thread in worker_threads.into_iter() {
                         worker_thread.join();
@@ -224,11 +224,6 @@ impl MapReducer {
     }
 
     pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
-        // FIXME: without this, there is the possibility that, for small
-        // graphs, a shutdown notice is received before the vertices. Find a
-        // better way to handle this.
-        sleep(Duration::from_secs(1));
-
         self.shutdown_sender.send(()).ok();
         self.router_thread.join().expect("Expected router thread to not panic")
     }
