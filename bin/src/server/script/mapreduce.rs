@@ -5,7 +5,7 @@ use indradb::Vertex;
 use statics;
 use crossbeam_channel::{Receiver, Sender, bounded};
 use std::time::Duration;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{spawn, JoinHandle, sleep};
 use super::errors;
 use super::context;
 use super::converters;
@@ -224,6 +224,11 @@ impl MapReducer {
     }
 
     pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
+        // FIXME: without this, there is the possibility that, for small
+        // graphs, a shutdown notice is received before the vertices. Find a
+        // better way to handle this.
+        sleep(Duration::from_secs(1));
+
         self.shutdown_sender.send(()).ok();
         self.router_thread.join().expect("Expected router thread to not panic")
     }

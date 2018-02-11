@@ -200,6 +200,8 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
             }
         }
 
+        
+
         match mapreducer.join() {
             Ok(value) => {
                 send_update!(sender, "ok", value);

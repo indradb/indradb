@@ -5,6 +5,8 @@ use super::super::MapReducer;
 use std::path::Path;
 use uuid::Uuid;
 use indradb::{Vertex, Type};
+use std::thread;
+use std::time::Duration;
 
 fn run(insert_count: usize, expected_result: JsonValue) {
     let file_path_str = "test_scripts/mapreduce/count.lua";
@@ -29,7 +31,7 @@ fn should_handle_zero_items() {
 }
 
 #[test]
-fn should_handle_one_items() {
+fn should_handle_one_item() {
     run(1, json!(2.0));
 }
 
