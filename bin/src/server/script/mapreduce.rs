@@ -204,7 +204,7 @@ impl MapReducer {
                         Ok(match last_reduced_item {
                             // This should only happen if the graph is empty
                             None => JsonValue::Null,
-                            // This should always ahppen otherwise
+                            // This should always happen otherwise
                             Some(value) => value.0
                         })
                     }
