@@ -4,7 +4,6 @@ use std::mem;
 use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
 use errors::Error;
-use util::{child_uuid, generate_random_secret, get_salted_hash};
 use postgres;
 use postgres::rows::Rows;
 use chrono::DateTime;
@@ -12,22 +11,19 @@ use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
-use std::collections::HashMap;
 use std::i64;
 use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
 use super::schema;
+use util::UuidGenerator;
+use std::sync::Arc;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
-    /// A database connection pool.
     pool: Pool<PostgresConnectionManager>,
-    /// A secret value, used as the pepper in hashing sensitive account data.
-    secret: String,
-    /// Whether to use secure UUIDs.
-    secure_uuids: bool,
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresDatastore {
@@ -37,15 +33,12 @@ impl PostgresDatastore {
     /// * `pool_size` - The maximum number of connections to maintain to
     ///   postgres. If `None`, it defaults to twice the number of CPUs.
     /// * `connetion_string` - The postgres database connection string.
-    /// * `secret` - A secret value. This is used as a pepper in hashing
-    ///   sensitive account data.
     /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
     ///   difficult to guess UUIDs at the detriment of a more index-optimized
     ///   (and thus faster) variant.
     pub fn new(
         pool_size: Option<u32>,
         connection_string: String,
-        secret: String,
         secure_uuids: bool,
     ) -> Result<PostgresDatastore, Error> {
         let unwrapped_pool_size: u32 = match pool_size {
@@ -61,12 +54,13 @@ impl PostgresDatastore {
         };
 
         let manager = PostgresConnectionManager::new(&*connection_string, TlsMode::None)?;
-        let pool = Pool::builder().max_size(unwrapped_pool_size).build(manager)?;
+        let pool = Pool::builder()
+            .max_size(unwrapped_pool_size)
+            .build(manager)?;
 
         Ok(PostgresDatastore {
             pool: pool,
-            secret: secret,
-            secure_uuids: secure_uuids,
+            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
         })
     }
 
@@ -75,10 +69,11 @@ impl PostgresDatastore {
     /// # Arguments
     /// * `connetion_string` - The postgres database connection string.
     pub fn create_schema(connection_string: String) -> Result<(), Error> {
-        let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None).map_err(|err| {
-            let message = format!("Could not connect to the postgres database: {}", err);
-            Error::Unexpected(message)
-        })?;
+        let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None)
+            .map_err(|err| {
+                let message = format!("Could not connect to the postgres database: {}", err);
+                Error::Unexpected(message)
+            })?;
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;
@@ -89,69 +84,9 @@ impl PostgresDatastore {
 }
 
 impl Datastore<PostgresTransaction> for PostgresDatastore {
-    fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
+    fn transaction(&self) -> Result<PostgresTransaction, Error> {
         let conn = self.pool.get()?;
-
-        let results = conn.query("SELECT 1 FROM accounts WHERE id=$1", &[&account_id])?;
-        Ok(!results.is_empty())
-    }
-
-    fn create_account(&self) -> Result<(Uuid, String), Error> {
-        let id = Uuid::new_v4();
-        let salt = generate_random_secret();
-        let secret = generate_random_secret();
-        let hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
-        let conn = self.pool.get()?;
-
-        conn.execute(
-            "
-            INSERT INTO accounts(id, salt, api_secret_hash)
-            VALUES ($1, $2, $3)
-            ",
-            &[&id, &salt, &hash],
-        )?;
-
-        Ok((id, secret))
-    }
-
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        let conn = self.pool.get()?;
-
-        let results = conn.query(
-            "DELETE FROM accounts WHERE id=$1 RETURNING 1",
-            &[&account_id],
-        )?;
-
-        if results.is_empty() {
-            Err(Error::AccountNotFound)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        let conn = self.pool.get()?;
-
-        let get_salt_results = conn.query(
-            "SELECT salt, api_secret_hash FROM accounts WHERE id=$1",
-            &[&account_id],
-        )?;
-
-        for row in &get_salt_results {
-            let salt: String = row.get(0);
-            let expected_hash: String = row.get(1);
-            let actual_hash = get_salted_hash(&salt[..], Some(&self.secret[..]), &secret[..]);
-            return Ok(expected_hash == actual_hash);
-        }
-
-        // Calculate the hash anyways to prevent timing attacks
-        get_salted_hash("", Some(&self.secret[..]), &secret[..]);
-        Ok(false)
-    }
-
-    fn transaction(&self, account_id: Uuid) -> Result<PostgresTransaction, Error> {
-        let conn = self.pool.get()?;
-        let trans = PostgresTransaction::new(conn, account_id, self.secure_uuids)?;
+        let trans = PostgresTransaction::new(conn, self.uuid_generator.clone())?;
         Ok(trans)
     }
 }
@@ -159,17 +94,15 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 /// A postgres-backed datastore transaction.
 #[derive(Debug)]
 pub struct PostgresTransaction {
-    account_id: Uuid,
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
-    secure_uuids: bool,
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresTransaction {
     fn new(
         conn: PooledConnection<PostgresConnectionManager>,
-        account_id: Uuid,
-        secure_uuids: bool,
+        uuid_generator: Arc<UuidGenerator>,
     ) -> Result<Self, Error> {
         let conn = Box::new(conn);
 
@@ -180,10 +113,9 @@ impl PostgresTransaction {
         };
 
         Ok(PostgresTransaction {
-            account_id: account_id,
             conn: conn,
             trans: trans,
-            secure_uuids: secure_uuids,
+            uuid_generator: uuid_generator,
         })
     }
 
@@ -221,12 +153,12 @@ impl PostgresTransaction {
             VertexQuery::All { start_id, limit } => match start_id {
                 Some(start_id) => {
                     let query_template =
-                        "SELECT id, owner_id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                        "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
                     let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
                     sql_query_builder.push(query_template, "vertices", params);
                 }
                 None => {
-                    let query_template = "SELECT id, owner_id, type FROM %t ORDER BY id LIMIT %p";
+                    let query_template = "SELECT id, type FROM %t ORDER BY id LIMIT %p";
                     let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
                     sql_query_builder.push(query_template, "vertices", params);
                 }
@@ -241,7 +173,7 @@ impl PostgresTransaction {
                 }
 
                 let query_template = format!(
-                    "SELECT id, owner_id, type FROM %t WHERE id IN ({}) ORDER BY id",
+                    "SELECT id, type FROM %t WHERE id IN ({}) ORDER BY id",
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "vertices", params);
@@ -256,10 +188,10 @@ impl PostgresTransaction {
 
                 let query_template = match converter {
                     QueryTypeConverter::Outbound => {
-                        "SELECT id, owner_id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p"
+                        "SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
                     QueryTypeConverter::Inbound => {
-                        "SELECT id, owner_id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
+                        "SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
                 };
 
@@ -282,7 +214,7 @@ impl PostgresTransaction {
                 }
 
                 let query_template = format!(
-                    "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM %t WHERE (outbound_id, type, inbound_id) IN ({})",
+                    "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM %t WHERE (outbound_id, type, inbound_id) IN ({})",
                     params_template_builder.join(", ")
                 );
                 sql_query_builder.push(&query_template[..], "edges", params);
@@ -320,20 +252,20 @@ impl PostgresTransaction {
 
                 let query_template = match (converter, where_clause.len()) {
                     (QueryTypeConverter::Outbound, 0) => {
-                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
                     (QueryTypeConverter::Outbound, _) => {
                         format!(
-                            "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
+                            "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
                         )
                     }
                     (QueryTypeConverter::Inbound, 0) => {
-                        "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
+                        "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
                     (QueryTypeConverter::Inbound, _) => {
                         format!(
-                            "SELECT id, outbound_id, type, inbound_id, update_timestamp, weight FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
+                            "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
                         )
                     }
@@ -343,23 +275,14 @@ impl PostgresTransaction {
             }
         }
     }
-
-    fn ensure_edges_are_owned_by_account(&self, sql_query_builder: &mut CTEQueryBuilder) {
-        sql_query_builder.push("SELECT %t.id FROM %t JOIN vertices ON %t.outbound_id=vertices.id WHERE vertices.owner_id=%p", "vertices", vec![Box::new(self.account_id)]);
-    }
 }
 
 impl Transaction for PostgresTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        let id = if self.secure_uuids {
-            Uuid::new_v4()
-        } else {
-            child_uuid(self.account_id)
-        };
-
+        let id = self.uuid_generator.next();
         self.trans.execute(
-            "INSERT INTO vertices (id, type, owner_id) VALUES ($1, $2, $3)",
-            &[&id, &t.0, &self.account_id],
+            "INSERT INTO vertices (id, type) VALUES ($1, $2)",
+            &[&id, &t.0],
         )?;
         Ok(id)
     }
@@ -388,31 +311,30 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
-            "DELETE FROM vertices WHERE id IN (SELECT id FROM %t WHERE owner_id=%p)",
-            vec![Box::new(self.account_id)],
+            "DELETE FROM vertices WHERE id IN (SELECT id FROM %t)",
+            vec![],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
-        let id = if self.secure_uuids {
-            Uuid::new_v4()
-        } else {
-            child_uuid(key.outbound_id)
-        };
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
+        let id = self.uuid_generator.next();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction
         let results = {
             let trans = self.trans.savepoint("set_edge")?;
-            let results = trans.query("
-                INSERT INTO edges (id, outbound_id, type, inbound_id, weight, update_timestamp)
-                VALUES ($1, (SELECT id FROM vertices WHERE id=$2 AND owner_id=$3), $4, $5, $6, CLOCK_TIMESTAMP())
+            let results = trans.query(
+                "
+                INSERT INTO edges (id, outbound_id, type, inbound_id, update_timestamp)
+                VALUES ($1, $2, $3, $4, CLOCK_TIMESTAMP())
                 ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
-                DO UPDATE SET weight=$6, update_timestamp=CLOCK_TIMESTAMP()
-            ", &[&id, &key.outbound_id, &self.account_id, &key.t.0, &key.inbound_id, &weight.0]);
+                DO UPDATE SET update_timestamp=CLOCK_TIMESTAMP()
+            ",
+                &[&id, &key.outbound_id, &key.t.0, &key.inbound_id],
+            );
 
             match results {
                 Err(err) => {
@@ -428,17 +350,7 @@ impl Transaction for PostgresTransaction {
 
         if let Err(err) = results {
             if let Some(state) = err.code() {
-                if state == &pg_error::NOT_NULL_VIOLATION {
-                    // This should only happen when the inner select fails
-                    let v = self.get_vertices(VertexQuery::Vertices {
-                        ids: vec![key.outbound_id],
-                    })?;
-                    if v.is_empty() {
-                        return Err(Error::VertexNotFound);
-                    } else {
-                        return Err(Error::Unauthorized);
-                    }
-                } else if state == &pg_error::FOREIGN_KEY_VIOLATION {
+                if state == &pg_error::FOREIGN_KEY_VIOLATION {
                     // This should only happen when there is no vertex with id=inbound_id
                     return Err(Error::VertexNotFound);
                 }
@@ -452,7 +364,7 @@ impl Transaction for PostgresTransaction {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
-            "SELECT outbound_id, type, inbound_id, weight, update_timestamp FROM %t",
+            "SELECT outbound_id, type, inbound_id, update_timestamp FROM %t",
             vec![],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
@@ -464,12 +376,10 @@ impl Transaction for PostgresTransaction {
             let outbound_id: Uuid = row.get(0);
             let t_str: String = row.get(1);
             let inbound_id: Uuid = row.get(2);
-            let weight_f32: f32 = row.get(3);
-            let weight = models::Weight::new(weight_f32).unwrap();
-            let update_datetime: DateTime<Utc> = row.get(4);
+            let update_datetime: DateTime<Utc> = row.get(3);
             let t = models::Type::new(t_str).unwrap();
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, weight, update_datetime);
+            let edge = models::Edge::new(key, update_datetime);
             edges.push(edge);
         }
 
@@ -479,7 +389,6 @@ impl Transaction for PostgresTransaction {
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
-        self.ensure_edges_are_owned_by_account(&mut sql_query_builder);
         let (query, params) = sql_query_builder
             .into_query_payload("DELETE FROM edges WHERE id IN (SELECT id FROM %t)", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
@@ -548,77 +457,22 @@ impl Transaction for PostgresTransaction {
         self.handle_delete_metadata(results)
     }
 
-    fn get_account_metadata(&self, owner_id: Uuid, name: String) -> Result<JsonValue, Error> {
-        let results = self.trans.query(
-            "SELECT value FROM account_metadata WHERE owner_id=$1 AND name=$2",
-            &[&owner_id, &name],
-        )?;
-
-        self.handle_get_metadata(results)
-    }
-
-    fn set_account_metadata(
-        &self,
-        owner_id: Uuid,
-        name: String,
-        value: JsonValue,
-    ) -> Result<(), Error> {
-        // Because this command could fail, we need to set a savepoint to roll
-        // back to, rather than spoiling the entire transaction
-        let trans = self.trans.savepoint("set_account_metadata")?;
-
-        let results = trans.query(
-            "
-            INSERT INTO account_metadata (owner_id, name, value)
-            VALUES ($1, $2, $3)
-            ON CONFLICT ON CONSTRAINT account_metadata_pkey
-            DO UPDATE SET value=$3
-            RETURNING 1
-            ",
-            &[&owner_id, &name, &value],
-        );
-
-        match results {
-            Err(err) => {
-                trans.set_rollback();
-                Err(self.handle_set_metadata_error(err, Error::AccountNotFound))
-            }
-            Ok(rows) => {
-                trans.set_commit();
-
-                if rows.is_empty() {
-                    Err(Error::AccountNotFound)
-                } else {
-                    Ok(())
-                }
-            }
-        }
-    }
-
-    fn delete_account_metadata(&self, owner_id: Uuid, name: String) -> Result<(), Error> {
-        let results = self.trans.query(
-            "DELETE FROM account_metadata WHERE owner_id=$1 AND name=$2 RETURNING 1",
-            &[&owner_id, &name],
-        )?;
-        self.handle_delete_metadata(results)
-    }
-
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name)]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
-        let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for row in &results {
             let id: Uuid = row.get(0);
             let value: JsonValue = row.get(1);
-            metadata.insert(id, value);
+            metadata.push(models::VertexMetadata::new(id, value));
         }
 
         Ok(metadata)
@@ -662,7 +516,7 @@ impl Transaction for PostgresTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>, Error> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 
@@ -677,7 +531,7 @@ impl Transaction for PostgresTransaction {
 
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
-        let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for row in &results {
             let outbound_id: Uuid = row.get(0);
@@ -686,7 +540,7 @@ impl Transaction for PostgresTransaction {
             let value: JsonValue = row.get(3);
             let t = models::Type::new(t_str).unwrap();
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            metadata.insert(key, value);
+            metadata.push(models::EdgeMetadata::new(key, value));
         }
 
         Ok(metadata)

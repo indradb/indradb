@@ -2,7 +2,7 @@ use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, Vertex
 use models;
 use uuid::Uuid;
 use errors::Error;
-use util::{get_salted_hash, next_uuid};
+use util::next_uuid;
 use serde_json::Value as JsonValue;
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
@@ -12,16 +12,14 @@ use std::i32;
 use std::u64;
 use super::managers::*;
 use core::fmt::Debug;
-use std::collections::HashMap;
+use util::UuidGenerator;
 
-const CF_NAMES: [&'static str; 9] = [
-    "accounts:v1",
+const CF_NAMES: [&'static str; 7] = [
     "vertices:v1",
     "edges:v1",
     "edge_ranges:v1",
     "reversed_edge_ranges:v1",
     "global_metadata:v1",
-    "account_metadata:v1",
     "vertex_metadata:v1",
     "edge_metadata:v1",
 ];
@@ -51,10 +49,8 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 /// A datastore that is backed by rocksdb.
 #[derive(Debug)]
 pub struct RocksdbDatastore {
-    /// A reference to the rocksdb database.
     db: Arc<DB>,
-    /// Whether to use secure UUIDs.
-    secure_uuids: bool,
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbDatastore {
@@ -89,7 +85,7 @@ impl RocksdbDatastore {
 
         Ok(RocksdbDatastore {
             db: Arc::new(db),
-            secure_uuids: secure_uuids,
+            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
         })
     }
 
@@ -107,85 +103,31 @@ impl RocksdbDatastore {
 }
 
 impl Datastore<RocksdbTransaction> for RocksdbDatastore {
-    fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-        AccountManager::new(self.db.clone(), self.secure_uuids).exists(account_id)
-    }
-
-    fn create_account(&self) -> Result<(Uuid, String), Error> {
-        AccountManager::new(self.db.clone(), self.secure_uuids).create()
-    }
-
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        let manager = AccountManager::new(self.db.clone(), self.secure_uuids);
-
-        if !manager.exists(account_id)? {
-            return Err(Error::AccountNotFound);
-        }
-
-        let mut batch = WriteBatch::default();
-        manager.delete(&mut batch, account_id)?;
-        self.db.write(batch)?;
-        Ok(())
-    }
-
-    fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        match AccountManager::new(self.db.clone(), self.secure_uuids).get(account_id)? {
-            Some(value) => {
-                let expected_hash = get_salted_hash(&value.salt[..], None, &secret[..]);
-                Ok(expected_hash == value.hash)
-            }
-            _ => {
-                // Calculate the hash anyways to prevent a timing attack
-                get_salted_hash("", None, &secret[..]);
-                Ok(false)
-            }
-        }
-    }
-
-    fn transaction(&self, account_id: Uuid) -> Result<RocksdbTransaction, Error> {
-        RocksdbTransaction::new(self.db.clone(), account_id, self.secure_uuids)
+    fn transaction(&self) -> Result<RocksdbTransaction, Error> {
+        RocksdbTransaction::new(self.db.clone(), self.uuid_generator.clone())
     }
 }
 
 /// A transaction that is backed by rocksdb.
 #[derive(Debug)]
 pub struct RocksdbTransaction {
-    /// A reference to the rocksdb database.
     db: Arc<DB>,
-    /// The ID of the account that's triggering this transaction.
-    account_id: Uuid,
-    /// Whether to use secure UUIDs.
-    secure_uuids: bool,
+    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>, account_id: Uuid, secure_uuids: bool) -> Result<Self, Error> {
+    fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Result<Self, Error> {
         Ok(RocksdbTransaction {
             db: db,
-            account_id: account_id,
-            secure_uuids: secure_uuids,
+            uuid_generator: uuid_generator,
         })
-    }
-
-    fn check_write_permissions(&self, id: Uuid, not_found_err: Error) -> Result<(), Error> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
-        let vertex_value = vertex_manager.get(id)?;
-
-        match vertex_value {
-            None => Err(not_found_err),
-            Some(vertex_value) => if vertex_value.owner_id != self.account_id {
-                Err(Error::Unauthorized)
-            } else {
-                Ok(())
-            },
-        }
     }
 
     fn vertex_query_to_iterator(
         &self,
         q: VertexQuery,
     ) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
         match q {
             VertexQuery::All { start_id, limit } => {
@@ -220,7 +162,7 @@ impl RocksdbTransaction {
                 let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
 
                 let vertex_id_iterator = Box::new(edge_iterator.map(move |item| {
-                    let ((outbound_id, _, _, inbound_id), _) = item?;
+                    let (outbound_id, _, _, inbound_id) = item?;
 
                     match converter {
                         QueryTypeConverter::Outbound => Ok(outbound_id),
@@ -246,14 +188,11 @@ impl RocksdbTransaction {
 
                 let iterator = keys.into_iter().map(move |key| {
                     match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                        Some(value) => Ok(Some((
-                            (
-                                key.outbound_id,
-                                key.t,
-                                value.update_datetime,
-                                key.inbound_id,
-                            ),
-                            value.weight,
+                        Some(update_datetime) => Ok(Some((
+                            key.outbound_id,
+                            key.t,
+                            update_datetime,
+                            key.inbound_id,
                         ))),
                         None => Ok(None),
                     }
@@ -292,33 +231,24 @@ impl RocksdbTransaction {
                         for item in edge_iterator {
                             match item {
                                 Ok((
-                                    (
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_second_id,
-                                    ),
-                                    edge_range_weight,
+                                    edge_range_first_id,
+                                    edge_range_t,
+                                    edge_range_update_datetime,
+                                    edge_range_second_id,
                                 )) => {
                                     if edge_range_update_datetime >= low_filter {
                                         edges.push(match converter {
                                             QueryTypeConverter::Outbound => Ok((
-                                                (
-                                                    edge_range_first_id,
-                                                    edge_range_t,
-                                                    edge_range_update_datetime,
-                                                    edge_range_second_id,
-                                                ),
-                                                edge_range_weight,
+                                                edge_range_first_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_second_id,
                                             )),
                                             QueryTypeConverter::Inbound => Ok((
-                                                (
-                                                    edge_range_second_id,
-                                                    edge_range_t,
-                                                    edge_range_update_datetime,
-                                                    edge_range_first_id,
-                                                ),
-                                                edge_range_weight,
+                                                edge_range_second_id,
+                                                edge_range_t,
+                                                edge_range_update_datetime,
+                                                edge_range_first_id,
                                             )),
                                         });
                                     } else {
@@ -342,32 +272,23 @@ impl RocksdbTransaction {
                         for item in edge_iterator {
                             match item {
                                 Ok((
-                                    (
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_second_id,
-                                    ),
-                                    edge_range_weight,
+                                    edge_range_first_id,
+                                    edge_range_t,
+                                    edge_range_update_datetime,
+                                    edge_range_second_id,
                                 )) => {
                                     edges.push(match converter {
                                         QueryTypeConverter::Outbound => Ok((
-                                            (
-                                                edge_range_first_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_second_id,
-                                            ),
-                                            edge_range_weight,
+                                            edge_range_first_id,
+                                            edge_range_t,
+                                            edge_range_update_datetime,
+                                            edge_range_second_id,
                                         )),
                                         QueryTypeConverter::Inbound => Ok((
-                                            (
-                                                edge_range_second_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_first_id,
-                                            ),
-                                            edge_range_weight,
+                                            edge_range_second_id,
+                                            edge_range_t,
+                                            edge_range_update_datetime,
+                                            edge_range_first_id,
                                         )),
                                     });
                                 }
@@ -412,7 +333,7 @@ impl RocksdbTransaction {
         &self,
         iterator: Box<Iterator<Item = Result<Uuid, Error>>>,
     ) -> Box<Iterator<Item = VertexItem>> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
         let mapped = iterator.map(move |item| {
             let id = item?;
@@ -430,15 +351,15 @@ impl RocksdbTransaction {
 
 impl Transaction for RocksdbTransaction {
     fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
-        VertexManager::new(self.db.clone(), self.secure_uuids).create(t, self.account_id)
+        VertexManager::new(self.db.clone(), self.uuid_generator.clone()).create(t)
     }
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
 
         let mapped = iterator.map(move |item| {
-            let (id, value) = item?;
-            let vertex = models::Vertex::new(id, value.t);
+            let (id, t) = item?;
+            let vertex = models::Vertex::new(id, t);
             Ok(vertex)
         });
 
@@ -447,16 +368,11 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
         let iterator = self.vertex_query_to_iterator(q)?;
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
         let mut batch = WriteBatch::default();
 
         for item in iterator {
-            let (id, old_value) = item?;
-
-            if old_value.owner_id != self.account_id {
-                continue;
-            }
-
+            let (id, _) = item?;
             vertex_manager.delete(&mut batch, id)?;
         }
 
@@ -464,10 +380,10 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        self.check_write_permissions(key.outbound_id, Error::VertexNotFound)?;
-        if !VertexManager::new(self.db.clone(), self.secure_uuids).exists(key.inbound_id)? {
+        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
+        {
             return Err(Error::VertexNotFound);
         }
 
@@ -479,7 +395,6 @@ impl Transaction for RocksdbTransaction {
             &key.t,
             key.inbound_id,
             new_update_datetime,
-            weight,
         )?;
         self.db.write(batch)?;
         Ok(())
@@ -489,9 +404,9 @@ impl Transaction for RocksdbTransaction {
         let iterator = self.edge_query_to_iterator(q)?;
 
         let mapped = iterator.map(move |item| {
-            let ((outbound_id, t, update_datetime, inbound_id), weight) = item?;
+            let (outbound_id, t, update_datetime, inbound_id) = item?;
             let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, weight, update_datetime);
+            let edge = models::Edge::new(key, update_datetime);
             Ok(edge)
         });
 
@@ -500,17 +415,15 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
         let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone(), self.secure_uuids);
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
         let iterator = self.edge_query_to_iterator(q)?;
         let mut batch = WriteBatch::default();
 
         for item in iterator {
-            let ((outbound_id, t, update_datetime, inbound_id), _) = item?;
+            let (outbound_id, t, update_datetime, inbound_id) = item?;
 
-            if let Some(vertex_value) = vertex_manager.get(outbound_id)? {
-                if vertex_value.owner_id == self.account_id {
-                    edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
-                }
+            if vertex_manager.get(outbound_id)?.is_some() {
+                edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
             };
         }
 
@@ -542,59 +455,20 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_account_metadata(&self, owner_id: Uuid, name: String) -> Result<JsonValue, Error> {
-        if !AccountManager::new(self.db.clone(), self.secure_uuids).exists(owner_id)? {
-            return Err(Error::AccountNotFound);
-        }
-
-        let manager = AccountMetadataManager::new(self.db.clone());
-        manager
-            .get(owner_id, &name[..])?
-            .ok_or_else(|| Error::MetadataNotFound)
-    }
-
-    fn set_account_metadata(
-        &self,
-        owner_id: Uuid,
-        name: String,
-        value: JsonValue,
-    ) -> Result<(), Error> {
-        if !AccountManager::new(self.db.clone(), self.secure_uuids).exists(owner_id)? {
-            return Err(Error::AccountNotFound);
-        }
-
-        let manager = AccountMetadataManager::new(self.db.clone());
-        manager.set(owner_id, &name[..], &value)?;
-        Ok(())
-    }
-
-    fn delete_account_metadata(&self, owner_id: Uuid, name: String) -> Result<(), Error> {
-        let manager = AccountMetadataManager::new(self.db.clone());
-
-        if !manager.exists(owner_id, &name)? {
-            return Err(Error::MetadataNotFound);
-        }
-
-        let mut batch = WriteBatch::default();
-        manager.delete(&mut batch, owner_id, &name[..])?;
-        self.db.write(batch)?;
-        Ok(())
-    }
-
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>, Error> {
         let manager = VertexMetadataManager::new(self.db.clone());
-        let mut metadata: HashMap<Uuid, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
             let value = manager.get(id, &name[..])?;
 
             if let Some(value) = value {
-                metadata.insert(id, value);
+                metadata.push(models::VertexMetadata::new(id, value));
             }
         }
 
@@ -636,17 +510,17 @@ impl Transaction for RocksdbTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>, Error> {
         let manager = EdgeMetadataManager::new(self.db.clone());
-        let mut metadata: HashMap<models::EdgeKey, JsonValue> = HashMap::new();
+        let mut metadata = Vec::new();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
 
             if let Some(value) = value {
                 let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-                metadata.insert(key, value);
+                metadata.push(models::EdgeMetadata::new(key, value));
             }
         }
 
@@ -658,7 +532,7 @@ impl Transaction for RocksdbTransaction {
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], &value)?;
         }
 
@@ -671,7 +545,7 @@ impl Transaction for RocksdbTransaction {
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
-            let ((outbound_id, t, _, inbound_id), _) = item?;
+            let (outbound_id, t, _, inbound_id) = item?;
             manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
         }
 

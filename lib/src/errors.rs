@@ -4,11 +4,9 @@ use std::fmt;
 /// The error returned by datastore and transaction implementation methods.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Error {
-    AccountNotFound,
     VertexNotFound,
     EdgeNotFound,
     MetadataNotFound,
-    Unauthorized,
     OutOfRange(String),
     Unexpected(String),
 }
@@ -18,11 +16,9 @@ impl Error {
     /// object.
     pub fn description_to_error(message: &str) -> Self {
         match &message[..] {
-            "Account not found" => Error::AccountNotFound,
             "Vertex does not exist" => Error::VertexNotFound,
             "Edge does not exist" => Error::EdgeNotFound,
             "Metadata does not exist" => Error::MetadataNotFound,
-            "Unauthorized" => Error::Unauthorized,
             _ => if message.starts_with("Value out of range: ") {
                 Error::OutOfRange(message[20..message.len()].to_string())
             } else {
@@ -35,11 +31,9 @@ impl Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::AccountNotFound => "Account not found",
             Error::VertexNotFound => "Vertex does not exist",
             Error::EdgeNotFound => "Edge does not exist",
             Error::MetadataNotFound => "Metadata does not exist",
-            Error::Unauthorized => "Unauthorized",
             Error::OutOfRange(_) => "Value out of range",
             Error::Unexpected(_) => "Unexpected error",
         }

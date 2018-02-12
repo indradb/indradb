@@ -1,24 +1,12 @@
 pub const SCHEMA: &'static str = "
-/* Accounts */
-CREATE TABLE accounts (
-    id UUID NOT NULL,
-    salt VARCHAR(150) NOT NULL,
-    api_secret_hash VARCHAR(150) NOT NULL
-);
-
-ALTER TABLE accounts
-    ADD CONSTRAINT accounts_pkey PRIMARY KEY (id);
-
 /* Vertices */
 CREATE TABLE vertices (
     id UUID NOT NULL,
-    owner_id UUID NOT NULL,
     type VARCHAR(1000) NOT NULL
 );
 
 ALTER TABLE vertices
-    ADD CONSTRAINT vertices_pkey PRIMARY KEY (id),
-    ADD CONSTRAINT vertices_owner_fkey FOREIGN KEY (owner_id) REFERENCES accounts (id) ON DELETE CASCADE;
+    ADD CONSTRAINT vertices_pkey PRIMARY KEY (id);
 
 /* Edges */
 CREATE TABLE edges (
@@ -26,8 +14,7 @@ CREATE TABLE edges (
     outbound_id UUID NOT NULL,
     type VARCHAR(1000) NOT NULL,
     inbound_id UUID NOT NULL,
-    update_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    weight REAL NOT NULL
+    update_timestamp TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 ALTER TABLE edges
@@ -47,17 +34,6 @@ CREATE TABLE global_metadata (
 
 ALTER TABLE global_metadata
     ADD CONSTRAINT global_metadata_pkey PRIMARY KEY (name);
-
-/* Account metadata */
-CREATE TABLE account_metadata (
-    owner_id UUID NOT NULL,
-    name VARCHAR(1024) NOT NULL,
-    value JSONB NOT NULL
-);
-
-ALTER TABLE account_metadata
-    ADD CONSTRAINT account_metadata_pkey PRIMARY KEY (owner_id, name),
-    ADD CONSTRAINT account_metadata_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES accounts (id) ON DELETE CASCADE;
 
 /* Vertex metadata */
 CREATE TABLE vertex_metadata (

@@ -10,4 +10,4 @@ pub use indradb::MemoryDatastore;
 pub use indradb::tests;
 pub use test::Bencher;
 
-bench_transaction_impl!(MemoryDatastore::new(false));
+bench_transaction_impl!(MemoryDatastore::default());

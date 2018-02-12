@@ -9,7 +9,6 @@ use rlua::{Table, Value};
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 use std::path::Path;
-use uuid::Uuid;
 use indradb::Datastore;
 use statics;
 
@@ -20,12 +19,7 @@ use statics;
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn run(
-    account_id: Uuid,
-    contents: &str,
-    path: &Path,
-    arg: JsonValue,
-) -> Result<JsonValue, errors::ScriptError> {
+pub fn run(contents: &str, path: &Path, arg: JsonValue) -> Result<JsonValue, errors::ScriptError> {
     let l = Lua::new();
     let globals = l.globals();
 
@@ -45,11 +39,10 @@ pub fn run(
     }
 
     // Create a new transaction for the script
-    let trans = statics::DATASTORE.transaction(account_id)?;
+    let trans = statics::DATASTORE.transaction()?;
 
     // Add globals
     globals.set("trans", converters::ProxyTransaction::new(trans))?;
-    globals.set("account_id", account_id.to_string())?;
     globals.set("arg", converters::JsonValue::new(arg))?;
 
     // Run the script

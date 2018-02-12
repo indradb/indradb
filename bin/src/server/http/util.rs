@@ -1,9 +1,9 @@
 use iron::prelude::*;
 use iron::status;
 use iron::headers::{ContentType, Headers};
-use iron::typemap::{Key, TypeMap};
+use iron::typemap::TypeMap;
 use router::Router;
-use indradb::{Datastore, Error, Type, Weight};
+use indradb::{Datastore, Error};
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -15,36 +15,16 @@ use std::io;
 use std::io::Read;
 use serde_json::value::Value as JsonValue;
 use serde_json;
-use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use statics;
-use uuid::Uuid;
-
-lazy_static! {
-    static ref DEFAULT_QUERY_PARAMS: HashMap<String, Vec<String>> = HashMap::new();
-}
-
-// Need this to avoid orphan rules
-pub struct AccountKey {
-    pub account_id: Uuid,
-}
-
-impl Key for AccountKey {
-    type Value = AccountKey;
-}
 
 /// Converts an indradb error to an `IronError`. We need to use this strategy
 /// rather than a `From` impl because both traits are implemented outside of
 /// this crate.
 pub fn convert_to_iron_error(err: &Error) -> IronError {
     let status = match *err {
-        Error::AccountNotFound
-        | Error::VertexNotFound
-        | Error::EdgeNotFound
-        | Error::MetadataNotFound => status::NotFound,
+        Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
         Error::OutOfRange(_) => status::BadRequest,
-        Error::Unauthorized => status::Unauthorized,
         Error::Unexpected(_) => status::InternalServerError,
     };
 
@@ -98,63 +78,12 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     })
 }
 
-/// Gets a JSON string value
+/// Gets a JSON object value.
 ///
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_required_json_string_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<String, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::String(ref val)) => Ok(val.clone()),
-        None | Some(&JsonValue::Null) => Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        )),
-        _ => Err(create_iron_error(
-            status::BadRequest,
-            format!("Invalid type for `{}`", name),
-        )),
-    }
-}
-
-/// Gets a JSON i64 value
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_f64_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<f64, IronError> {
-    match json.get(name) {
-        Some(&JsonValue::Number(ref val)) => if val.is_f64() {
-            Ok(val.as_f64().unwrap())
-        } else {
-            Err(create_iron_error(
-                status::BadRequest,
-                format!("Invalid type for `{}`", name),
-            ))
-        },
-        None | Some(&JsonValue::Null) => Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        )),
-        _ => Err(create_iron_error(
-            status::BadRequest,
-            format!("Invalid type for `{}`", name),
-        )),
-    }
-}
-
-/// Gets a JSON object value that represents an edge key
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_obj_param<T>(
+pub fn get_json_obj_value<T>(
     json: &serde_json::Map<String, JsonValue>,
     name: &str,
 ) -> Result<T, IronError>
@@ -163,10 +92,7 @@ where
 {
     if let Some(obj) = json.get(name) {
         Ok(serde_json::from_value::<T>(obj.clone()).map_err(|_| {
-            create_iron_error(
-                status::BadRequest,
-                format!("Invalid type for `{}`", name),
-            )
+            create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))
         })?)
     } else {
         Err(create_iron_error(
@@ -176,68 +102,12 @@ where
     }
 }
 
-/// Gets a JSON string value that represents a type
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_type_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<Type, IronError> {
-    let s = get_required_json_string_param(json, name)?;
-
-    Ok(Type::from_str(&s[..]).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            format!("Invalid type format for `{}`", name),
-        )
-    })?)
-}
-
-// Gets a JSON float value that represents a weight
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_required_json_weight_param(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<Weight, IronError> {
-    let w = get_required_json_f64_param(json, name)?;
-
-    Ok(Weight::new(w as f32).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            format!(
-                "Invalid weight format for `{}`: it should be a float between -1.0 and 1.0 inclusive.",
-                name
-            ),
-        )
-    })?)
-}
-
-/// Parses a response from the datastore into a specified type
-///
-/// # Errors
-/// Returns an `IronError` if the `Result` from the datastore is an error.
-pub fn datastore_request<T>(result: Result<T, Error>) -> Result<T, IronError> {
-    Ok(result.map_err(|err| convert_to_iron_error(&err))?)
-}
-
-/// Gets the account UUID from the iron request typemap
-pub fn get_account_id(req: &Request) -> Uuid {
-    let ext = &(*req.extensions.get::<AccountKey>().unwrap());
-    ext.account_id
-}
-
-/// Gets a new transaction, tied to the request's account UUID
+/// Gets a new transaction.
 ///
 /// # Errors
 /// Returns an `IronError` if it was not possible to create a transaction.
-pub fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
-    let account_id = get_account_id(req);
-    Ok(statics::DATASTORE.transaction(account_id).map_err(|err| {
+pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
+    Ok(statics::DATASTORE.transaction().map_err(|err| {
         create_iron_error(
             status::InternalServerError,
             format!("Could not create datastore transaction: {}", err),
@@ -245,12 +115,13 @@ pub fn get_transaction(req: &Request) -> Result<ProxyTransaction, IronError> {
     })?)
 }
 
-// Reads the request body into an optional `JsonValue`
+// Reads the JSON request body.
 ///
 /// # Errors
 /// Returns an `IronError` if the body could not be read, or if a body was
 /// specified but is not valid JSON.
-pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronError> {
+pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
+    where for<'a> T: Deserialize<'a> {
     let mut payload = String::new();
     let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
 
@@ -264,7 +135,7 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     if payload.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(serde_json::from_str(&payload[..]).map_err(|err| {
+        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(|err| {
             create_iron_error(
                 status::BadRequest,
                 format!("Could not parse JSON payload: {}", err.description()),
@@ -273,101 +144,3 @@ pub fn read_optional_json(body: &mut Body) -> Result<Option<JsonValue>, IronErro
     }
 }
 
-/// Reads the request body into a `JsonValue`.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or is not valid JSON.
-pub fn read_required_json(mut body: &mut Body) -> Result<JsonValue, IronError> {
-    match read_optional_json(&mut body)? {
-        Some(value) => Ok(value),
-        None => Err(create_iron_error(
-            status::BadRequest,
-            "Missing JSON payload".to_string(),
-        )),
-    }
-}
-
-/// Parses the and returns the request query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the query parameters could not be parsed.
-pub fn get_query_params<'a>(
-    req: &'a mut Request,
-) -> Result<&'a HashMap<String, Vec<String>>, IronError> {
-    match req.get_ref::<UrlEncodedQuery>() {
-        Ok(map) => Ok(map),
-        Err(UrlDecodingError::EmptyQuery) => Ok(&DEFAULT_QUERY_PARAMS),
-        Err(_) => Err(create_iron_error(
-            status::BadRequest,
-            "Could not parse query parameters".to_string(),
-        )),
-    }
-}
-
-/// Gets a query parameter value and serializes it to the specified type.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or is not a valid JSON object.
-pub fn get_query_param<T: FromStr>(
-    params: &HashMap<String, Vec<String>>,
-    key: &str,
-    required: bool,
-) -> Result<Option<T>, IronError> {
-    if let Some(values) = params.get(key) {
-        if let Some(first_value) = values.get(0) {
-            match first_value.parse::<T>() {
-                Ok(value) => return Ok(Some(value)),
-                Err(_) => {
-                    return Err(create_iron_error(
-                        status::BadRequest,
-                        format!("Could not parse query parameter `{}`", key),
-                    ))
-                }
-            }
-        }
-    }
-
-    if required {
-        Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing required query parameter `{}`", key),
-        ))
-    } else {
-        Ok(None)
-    }
-}
-
-/// Gets a required object from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the query could be parsed, or was not specified.
-pub fn get_obj_query_param<T>(query_params: &HashMap<String, Vec<String>>) -> Result<T, IronError>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    let q_json = get_query_param::<JsonValue>(query_params, "q", true)?.unwrap();
-
-    Ok(serde_json::from_value::<T>(q_json).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            "Invalid type for `q`: expected edge query".to_string(),
-        )
-    })?)
-}
-
-/// Gets a required weight value from the query parameters.
-///
-/// # Errors
-/// Returns an `IronError` if the weight could be parsed, or was not specified.
-pub fn get_weight_query_param(
-    query_params: &HashMap<String, Vec<String>>,
-) -> Result<Weight, IronError> {
-    let weight_f32 = get_query_param::<f32>(query_params, "weight", true)?.unwrap();
-
-    Ok(Weight::new(weight_f32).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            "Invalid type for `weight`: expected float between -1.0 and 1.0".to_string(),
-        )
-    })?)
-}
