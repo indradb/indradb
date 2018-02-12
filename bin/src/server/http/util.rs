@@ -40,9 +40,7 @@ pub fn convert_to_iron_error(err: &Error) -> IronError {
 
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
-    let mut o: serde_json::Map<String, JsonValue> = serde_json::Map::new();
-    o.insert("error".to_string(), JsonValue::String(err.clone()));
-    let body = serde_json::to_string(&o).unwrap();
+    let body = serde_json::to_string(&json!({"error": err})).unwrap();
     let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
     let modifiers = (status_code, json_content_type_modifier, body);
     IronError::new(SimpleError::new(err), modifiers)
