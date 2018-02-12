@@ -2,26 +2,17 @@ use iron::prelude::*;
 use iron::status;
 use indradb::{EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use serde_json::value::Value as JsonValue;
-use serde_json::Map as JsonMap;
-use serde_json::Number as JsonNumber;
 use uuid::Uuid;
 use script;
 use std::time;
 use indradb::Datastore;
-use std::thread::spawn;
+use std::thread::{spawn, sleep};
 use iron::typemap::TypeMap;
 use iron::headers::{ContentType, Headers, Encoding, TransferEncoding};
-use super::response_chan;
+use super::response_chan::{bounded, Update};
 use super::util::*;
+use std::sync::{Arc, Mutex};
 use statics;
-
-macro_rules! send_update {
-    ($sender:expr, $key:expr, $value:expr) => {
-        let mut map = JsonMap::with_capacity(1);
-        map.insert($key.to_string(), $value);
-        $sender.0.send(JsonValue::Object(map)).expect("Expected send channel to be open");
-    }
-}
 
 lazy_static! {
     static ref REPORT_TIME: time::Duration = time::Duration::from_secs(10);
@@ -131,7 +122,7 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
     hs.set(ContentType(get_json_mime()));
     hs.set(TransferEncoding(vec![Encoding::Chunked]));
 
-    let (sender, receiver) = response_chan::bounded(1);
+    let (sender, receiver) = bounded(1);
 
     let response = Response {
         status: Some(status::Ok),
@@ -140,20 +131,37 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
         body: Some(Box::new(receiver))
     };
 
+    let queued: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+
+    // Spawn a thread to feed updates
+    {
+        let queued = queued.clone();
+        let sender = sender.clone();
+
+        spawn(move || {
+            loop {
+                sleep(*REPORT_TIME);
+                let cur_queued = { *queued.lock().unwrap() };
+                if sender.0.send(Update::Ping(json!(cur_queued))).is_err() {
+                    return;
+                }
+            }
+        });
+    }
+
     // Spawn a thread to stream to the response
     spawn(move || {
         let trans = match statics::DATASTORE.transaction(account_id) {
             Ok(trans) => trans,
             Err(err) => {
-                send_update!(sender, "error", JsonValue::String(format!("Query failed: {:?}", err)));
+                let message = format!("Query setup failed: {:?}", err);
+                sender.0.send(Update::Err(json!({"error": message}))).expect("Expected send channel to be open");
                 return;
             }
         };
 
         let mapreducer = script::MapReducer::start(account_id, contents, path, payload);
-        let mut sent: u64 = 0;
         let mut last_id: Option<Uuid> = None;
-        let mut last_report_time = time::SystemTime::now();
 
         loop {
             let q = VertexQuery::All { start_id: last_id, limit: *statics::MAP_REDUCE_QUERY_LIMIT };
@@ -161,7 +169,8 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
             let vertices = match trans.get_vertices(q) {
                 Ok(vertices) => vertices,
                 Err(err) => {
-                    send_update!(sender, "error", JsonValue::String(format!("Query failed: {:?}", err)));
+                    let message = format!("Query failed: {:?}", err);
+                    sender.0.send(Update::Err(json!({"error": message}))).ok();
                     break;
                 }
             };
@@ -175,14 +184,6 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
             }
 
             for vertex in vertices.into_iter() {
-                // Check if we should give an update
-                let now = time::SystemTime::now();
-
-                if now.duration_since(last_report_time).unwrap() > *REPORT_TIME {
-                    send_update!(sender, "update", JsonValue::Number(JsonNumber::from(sent)));
-                    last_report_time = now;
-                }
-
                 // Add the vertex to the queue
                 if !mapreducer.add_vertex(vertex) {
                     // The vertex couldn't be added, which means the channel is
@@ -192,7 +193,8 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
                     break;
                 }
 
-                sent += 1;
+                let mut queued = queued.lock().unwrap();
+                *queued += 1;
             }
 
             if done {
@@ -200,14 +202,13 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
             }
         }
 
-        
-
         match mapreducer.join() {
             Ok(value) => {
-                send_update!(sender, "ok", value);
+                sender.0.send(Update::Ok(value)).ok();
             },
             Err(err) => {
-                send_update!(sender, "error", JsonValue::String(format!("Mapreduce failed: {:?}", err)));
+                let message = format!("Mapreduce failed: {:?}", err);
+                sender.0.send(Update::Err(json!({"error": message}))).ok();
             }
         }
     });
