@@ -3,9 +3,9 @@ use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 use indradb::Vertex;
 use statics;
-use crossbeam_channel::{Receiver, Sender, bounded};
+use crossbeam_channel::{Receiver, Sender, bounded, unbounded};
 use std::time::Duration;
-use std::thread::{spawn, JoinHandle, sleep};
+use std::thread::{spawn, JoinHandle};
 use super::errors;
 use super::context;
 use super::converters;
@@ -126,12 +126,11 @@ pub struct MapReducer {
 impl MapReducer {
     pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
         let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
-        let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
+        let (worker_in_sender, worker_in_receiver) = unbounded::<WorkerTask>();
         let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
         let (error_sender, error_receiver) = bounded::<errors::MapReduceError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
-        let worker_in_capacity = worker_in_receiver.capacity().unwrap();
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -177,14 +176,12 @@ impl MapReducer {
                         }
                     },
                     recv(mapreduce_in_receiver, vertex) => {
-                        if worker_in_receiver.len() < worker_in_capacity {
-                            // If this errors out, all of the workers are dead
-                            if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
-                                should_force_shutdown = true;
-                            }
-
-                            pending_tasks += 1;
+                        // If this errors out, all of the workers are dead
+                        if worker_in_sender.send(WorkerTask::Map(vertex)).is_err() {
+                            should_force_shutdown = true;
                         }
+
+                        pending_tasks += 1;
                     },
                     timed_out(Duration::from_secs(CHANNEL_TIMEOUT)) => {}
                 }
