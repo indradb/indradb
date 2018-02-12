@@ -2,7 +2,6 @@ use uuid::Uuid;
 use chrono::DateTime;
 use chrono::offset::Utc;
 use super::types::Type;
-use super::weights::Weight;
 
 /// Represents a uniquely identifiable key to an edge.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -45,9 +44,6 @@ pub struct Edge {
     /// The key to the edge.
     pub key: EdgeKey,
 
-    /// The weight of the edge.
-    pub weight: Weight,
-
     /// When the edge was created.
     pub created_datetime: DateTime<Utc>,
 }
@@ -57,22 +53,18 @@ impl Edge {
     ///
     /// # Arguments
     /// * `key` - The key to the edge.
-    /// * `weight` - The edge weight.
-    /// * `inbound_id` - The id of the inbound vertex.
-    pub fn new_with_current_datetime(key: EdgeKey, weight: Weight) -> Edge {
-        Self::new(key, weight, Utc::now())
+    pub fn new_with_current_datetime(key: EdgeKey) -> Edge {
+        Self::new(key, Utc::now())
     }
 
     /// Creates a new edge with a specified datetime.
     ///
     /// # Arguments
     /// * `key` - The key to the edge.
-    /// * `weight` - The weight of the edge.
     /// * `created_datetime` - When the edge was created.
-    pub fn new(key: EdgeKey, weight: Weight, created_datetime: DateTime<Utc>) -> Edge {
+    pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
         Edge {
             key: key,
-            weight: weight,
             created_datetime: created_datetime,
         }
     }

@@ -1,6 +1,5 @@
 use rlua::{Table, Function};
 use serde_json::value::Value as JsonValue;
-use uuid::Uuid;
 use indradb::Vertex;
 use statics;
 use crossbeam_channel::{Receiver, Sender, bounded, unbounded};
@@ -36,12 +35,12 @@ struct Worker {
 }
 
 impl Worker {
-    fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<errors::MapReduceError>) -> Self {
+    fn start(contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<errors::MapReduceError>) -> Self {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
         let thread = spawn(move || {
             let l = try_or_send!(
-                context::create(account_id, arg),
+                context::create(arg),
                 |err| errors::MapReduceError::WorkerSetup {
                     description: "Error occurred trying to to create a lua context".to_string(),
                     cause: err
@@ -124,7 +123,7 @@ pub struct MapReducer {
 }
 
 impl MapReducer {
-    pub fn start(account_id: Uuid, contents: String, path: String, arg: JsonValue) -> Self {
+    pub fn start(contents: String, path: String, arg: JsonValue) -> Self {
         let (mapreduce_in_sender, mapreduce_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
         let (worker_in_sender, worker_in_receiver) = unbounded::<WorkerTask>();
         let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
@@ -134,7 +133,6 @@ impl MapReducer {
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
-                account_id,
                 contents.clone(),
                 path.clone(),
                 arg.clone(),

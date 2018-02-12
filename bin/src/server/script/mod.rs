@@ -8,7 +8,6 @@ mod mapreduce;
 mod tests;
 
 use serde_json::value::Value as JsonValue;
-use uuid::Uuid;
 
 pub use self::mapreduce::MapReducer;
 
@@ -20,12 +19,11 @@ pub use self::mapreduce::MapReducer;
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
 pub fn execute(
-    account_id: Uuid,
     contents: String,
     path: String,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
-    let l = context::create(account_id, arg)?;
+    let l = context::create(arg)?;
     let value: converters::JsonValue = l.exec(&contents, Some(&path))?;
     Ok(value.0)
 }

@@ -5,7 +5,6 @@ use serde_json::Value as JsonValue;
 use super::super::execute;
 use serde_json;
 use std::path::Path;
-use uuid::Uuid;
 
 lazy_static! {
     static ref OK_EXPECTED_PATTERN: Regex = Regex::new(r"-- ok: ([^\n]+)").unwrap();
@@ -28,7 +27,7 @@ macro_rules! test_script {
             // datastore by default which works fine. If you swap that out for
             // another datastore (i.e. by changing the `DATASTORE_URL` env
             // var), then you may need to disable parallel execution of tests.
-            match execute(Uuid::default(), contents.clone(), file_path_str.clone(), JsonValue::Null) {
+            match execute(contents.clone(), file_path_str.clone(), JsonValue::Null) {
                 Ok(actual_result) => {
                     if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents) {
                         let s = cap.get(1).unwrap().as_str();
@@ -50,7 +49,6 @@ macro_rules! test_script {
 }
 
 test_script!(get_vertices);
-test_script!(account_metadata);
 test_script!(create_vertex_bad_type);
 test_script!(create_vertex);
 test_script!(delete_edges);

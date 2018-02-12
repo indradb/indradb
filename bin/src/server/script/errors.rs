@@ -4,7 +4,7 @@ use indradb::Error;
 #[derive(Debug)]
 pub enum ScriptError {
     Lua(LuaError),
-    Transaction(Error)
+    Transaction(Error),
 }
 
 impl From<Error> for ScriptError {

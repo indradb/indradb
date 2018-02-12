@@ -1,17 +1,16 @@
 use super::super::{Datastore, Transaction, VertexQuery};
-use super::sandbox::DatastoreTestSandbox;
 use super::util::{create_edge_from, create_edges};
 use uuid::Uuid;
 use models;
 use std::u32;
 use std::collections::HashSet;
 
-pub fn should_get_all_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
 
     let mut inserted_ids = vec![
@@ -46,12 +45,12 @@ where
     }
 }
 
-pub fn should_get_all_vertices_with_zero_limit<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices_with_zero_limit<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
 
     let mut inserted_ids = vec![
@@ -73,12 +72,12 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_all_vertices_out_of_range<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_all_vertices_out_of_range<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
 
     let mut inserted_ids = vec![
@@ -100,12 +99,12 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_single_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_single_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let inserted_id = trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans
@@ -119,12 +118,12 @@ where
     assert_eq!(range[0].t.0, "test_vertex_type");
 }
 
-pub fn should_get_single_vertices_nonexisting<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_single_vertices_nonexisting<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     trans.create_vertex(vertex_t.clone()).unwrap();
     let range = trans
@@ -136,12 +135,12 @@ where
     assert_eq!(range.len(), 0);
 }
 
-pub fn should_get_vertices<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let mut inserted_ids = vec![
         trans.create_vertex(vertex_t.clone()).unwrap(),
@@ -177,12 +176,12 @@ where
     }
 }
 
-pub fn should_get_vertices_piped<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_get_vertices_piped<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
 
     let inserted_id_1 = trans.create_vertex(vertex_t.clone()).unwrap();
@@ -216,13 +215,13 @@ where
     assert_eq!(range[0].id, inserted_id_1);
 }
 
-pub fn should_delete_a_valid_vertex<D, T>(mut sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_delete_a_valid_vertex<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let (outbound_id, _) = create_edges(&mut sandbox);
-    let trans = sandbox.transaction();
+    let (outbound_id, _) = create_edges(datastore);
+    let trans = datastore.transaction().unwrap();
     let q = VertexQuery::Vertices {
         ids: vec![outbound_id],
     };
@@ -240,35 +239,15 @@ where
     assert_eq!(count, 0);
 }
 
-pub fn should_not_delete_an_invalid_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
+pub fn should_not_delete_an_invalid_vertex<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
     T: Transaction,
 {
-    let trans = sandbox.transaction();
+    let trans = datastore.transaction().unwrap();
     trans
         .delete_vertices(VertexQuery::Vertices {
             ids: vec![Uuid::default()],
         })
         .unwrap();
-}
-
-pub fn should_not_delete_an_unowned_vertex<D, T>(sandbox: &mut DatastoreTestSandbox<D, T>)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
-    let trans = sandbox.transaction();
-    let t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let vertex_id = trans.create_vertex(t).unwrap();
-    trans.commit().unwrap();
-
-    let (account_id, _) = sandbox.register_account();
-    let trans = sandbox.datastore.transaction(account_id).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![vertex_id],
-    };
-    trans.delete_vertices(q.clone()).unwrap();
-    let result = trans.get_vertices(q).unwrap();
-    assert_eq!(result.len(), 1);
 }

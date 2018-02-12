@@ -5,8 +5,6 @@ use super::super::MapReducer;
 use std::path::Path;
 use uuid::Uuid;
 use indradb::{Vertex, Type};
-use std::thread;
-use std::time::Duration;
 
 fn run(insert_count: usize, expected_result: JsonValue) {
     let file_path_str = "test_scripts/mapreduce/count.lua";
@@ -15,7 +13,7 @@ fn run(insert_count: usize, expected_result: JsonValue) {
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Could not get script file contents");
     
-    let engine = MapReducer::start(Uuid::default(), contents, file_path_str.to_string(), json!(2));
+    let engine = MapReducer::start(contents, file_path_str.to_string(), json!(2));
     
     for _ in 0..insert_count {
         engine.add_vertex(Vertex::new(Uuid::new_v4(), Type::new("foo".to_string()).unwrap()));

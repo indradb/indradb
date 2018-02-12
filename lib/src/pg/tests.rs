@@ -14,6 +14,5 @@ full_test_impl!({
         PostgresDatastore::create_schema(connection_string.clone()).unwrap();
     });
 
-    let secret = "OME88YorohonzPNWEFsi0dIsouXWqeO$".to_string();
-    PostgresDatastore::new(Some(1), connection_string, secret, false).unwrap()
+    PostgresDatastore::new(Some(1), connection_string, false).unwrap()
 });

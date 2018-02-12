@@ -4,25 +4,11 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use indradb::{Datastore, Edge, EdgeKey, EdgeQuery, Error, MemoryDatastore, MemoryTransaction,
-              PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-              Transaction, Type, Vertex, VertexQuery, Weight};
+use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
+              MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore,
+              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
-
-/// This macro is used to proxy most methods.
-macro_rules! proxy_datastore {
-    ($this: expr, $name:ident, $($arg:tt)*) => (
-        {
-            match *$this {
-                ProxyDatastore::Postgres(ref pg) => pg.$name($($arg)*),
-                ProxyDatastore::Rocksdb(ref r) => r.$name($($arg)*),
-                ProxyDatastore::Memory(ref r) => r.$name($($arg)*)
-            }
-        }
-    )
-}
 
 #[derive(Debug)]
 pub enum ProxyDatastore {
@@ -32,34 +18,18 @@ pub enum ProxyDatastore {
 }
 
 impl Datastore<ProxyTransaction> for ProxyDatastore {
-    fn has_account(&self, account_id: Uuid) -> Result<bool, Error> {
-        proxy_datastore!(self, has_account, account_id)
-    }
-
-    fn create_account(&self) -> Result<(Uuid, String), Error> {
-        proxy_datastore!(self, create_account,)
-    }
-
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error> {
-        proxy_datastore!(self, delete_account, account_id)
-    }
-
-    fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error> {
-        proxy_datastore!(self, auth, account_id, secret)
-    }
-
-    fn transaction(&self, account_id: Uuid) -> Result<ProxyTransaction, Error> {
+    fn transaction(&self) -> Result<ProxyTransaction, Error> {
         match *self {
             ProxyDatastore::Postgres(ref pg) => {
-                let transaction = pg.transaction(account_id)?;
+                let transaction = pg.transaction()?;
                 Ok(ProxyTransaction::Postgres(transaction))
             }
             ProxyDatastore::Rocksdb(ref r) => {
-                let transaction = r.transaction(account_id)?;
+                let transaction = r.transaction()?;
                 Ok(ProxyTransaction::Rocksdb(transaction))
             }
             ProxyDatastore::Memory(ref mem) => {
-                let transaction = mem.transaction(account_id)?;
+                let transaction = mem.transaction()?;
                 Ok(ProxyTransaction::Memory(transaction))
             }
         }
@@ -98,8 +68,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
-    fn create_edge(&self, key: EdgeKey, weight: Weight) -> Result<(), Error> {
-        proxy_transaction!(self, create_edge, key, weight)
+    fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
+        proxy_transaction!(self, create_edge, key)
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
@@ -126,28 +96,11 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_global_metadata, key)
     }
 
-    fn get_account_metadata(&self, owner_id: Uuid, key: String) -> Result<JsonValue, Error> {
-        proxy_transaction!(self, get_account_metadata, owner_id, key)
-    }
-
-    fn set_account_metadata(
-        &self,
-        owner_id: Uuid,
-        key: String,
-        value: JsonValue,
-    ) -> Result<(), Error> {
-        proxy_transaction!(self, set_account_metadata, owner_id, key, value)
-    }
-
-    fn delete_account_metadata(&self, owner_id: Uuid, key: String) -> Result<(), Error> {
-        proxy_transaction!(self, delete_account_metadata, owner_id, key)
-    }
-
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
         key: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error> {
+    ) -> Result<Vec<VertexMetadata>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
@@ -164,11 +117,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        key: String,
-    ) -> Result<HashMap<EdgeKey, JsonValue>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<Vec<EdgeMetadata>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
@@ -222,7 +171,8 @@ pub fn datastore() -> ProxyDatastore {
              i32",
         );
 
-        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids).expect("Expected to be able to create the RocksDB datastore");
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids)
+            .expect("Expected to be able to create the RocksDB datastore");
 
         ProxyDatastore::Rocksdb(datastore)
     } else if connection_string.starts_with("postgres://") {
@@ -234,11 +184,11 @@ pub fn datastore() -> ProxyDatastore {
             Err(_) => None,
         };
 
-        let secret = env::var("SECRET").unwrap_or_else(|_| "".to_string());
-        let datastore = PostgresDatastore::new(pool_size, connection_string, secret, secure_uuids).expect("Expected to be able to create the postgres datastore");
+        let datastore = PostgresDatastore::new(pool_size, connection_string, secure_uuids)
+            .expect("Expected to be able to create the postgres datastore");
         ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
-        let datastore = MemoryDatastore::new(true);
+        let datastore = MemoryDatastore::default();
         ProxyDatastore::Memory(datastore)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");

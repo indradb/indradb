@@ -3,48 +3,17 @@ use std::vec::Vec;
 use serde_json::value::Value as JsonValue;
 use models;
 use uuid::Uuid;
-use std::collections::HashMap;
 
 /// Specifies a datastore implementation.
 ///
-/// Datastores are responsible for managing accounts, and constructing new
-/// transactions.
+/// Datastores are responsible for providing transactions.
 ///
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore<T: Transaction> {
-    /// Checks if an account exists.
-    ///
-    /// # Arguments
-    /// * `account_id` - The ID of the account to check.
-    fn has_account(&self, account_id: Uuid) -> Result<bool, Error>;
-
-    /// Creates a new account, returning a tuple of its ID and secret.
-    fn create_account(&self) -> Result<(Uuid, String), Error>;
-
-    /// Deletes an account.
-    ///
-    /// # Arguments
-    /// * `account_id` - The ID of the account to delete.
-    ///
-    /// # Errors
-    /// Returns an error if the account does not exist.
-    fn delete_account(&self, account_id: Uuid) -> Result<(), Error>;
-
-    /// Checks account authentication.
-    ///
-    /// # Arguments
-    /// * `account_id` - The ID of the account to authenticate.
-    /// * `secret` - The account's secret.
-    fn auth(&self, account_id: Uuid, secret: String) -> Result<bool, Error>;
-
-    /// Creates a new transaction tied to a given account.
-    ///
-    /// # Arguments
-    /// * `account_id` - The ID of the account that's triggering the
-    /// transaction.
-    fn transaction(&self, account_id: Uuid) -> Result<T, Error>;
+    /// Creates a new transaction.
+    fn transaction(&self) -> Result<T, Error>;
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
@@ -54,11 +23,9 @@ pub trait Datastore<T: Transaction> {
 /// 2. Edges, which connect two vertices.
 /// 3. Global metadata: metadata that is not owned by anything, and as a
 ///    result needs to be manually managed.
-/// 4. Account metadata: metadata that is owned by an account, and will be
-///    automatically deleted when the associated account is deleted.
-/// 5. Vertex metadata: metadata that is owned by a vertex, and will be
+/// 4. Vertex metadata: metadata that is owned by a vertex, and will be
 ///    automatically deleted when the associated vertex is deleted.
-/// 6. Edge metadata: metadata that is owned by an edge, and will be
+/// 5. Edge metadata: metadata that is owned by an edge, and will be
 ///    automatically deleted when the associated edge is deleted.
 pub trait Transaction {
     /// Creates a new vertex.
@@ -80,19 +47,15 @@ pub trait Transaction {
     fn delete_vertices(&self, q: models::VertexQuery) -> Result<(), Error>;
 
     /// Creates a new edge. If the edge already exists, this will update it
-    /// with a new update datetime and weight. The transaction tied to the
-    /// account must own the vertex from which the edge is outbounding from,
-    /// but does not need to own the inbounding vertex.
+    /// with a new update datetime.
     ///
     /// # Arguments
     /// * `key`: The edge to create.
-    /// * `weight` - The edge weight.
     ///
     /// # Errors
     /// Return `Error::VertexNotFound` if either of the connected vertices do
-    /// not exist. Returns `Error::Unauthorized` if the account tied to the
-    /// current transaction does not own the source vertex.
-    fn create_edge(&self, key: models::EdgeKey, weight: models::Weight) -> Result<(), Error>;
+    /// not exist.
+    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error>;
 
     /// Gets a range of edges specified by a query.
     ///
@@ -137,43 +100,6 @@ pub trait Transaction {
     /// Returns `Error::MetadataNotFound` if the metadata does not exist.
     fn delete_global_metadata(&self, name: String) -> Result<(), Error>;
 
-    /// Gets an account metadata value.
-    ///
-    /// # Arguments
-    /// * `account_id`: The ID of the account that the metadata is tied to.
-    /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_account_metadata(&self, account_id: Uuid, name: String) -> Result<JsonValue, Error>;
-
-    /// Sets an account metadata value.
-    ///
-    /// # Arguments
-    /// * `account_id`: The ID of the account that the metadata is tied to.
-    /// * `name` - The metadata name.
-    /// * `value` - The metadata value.
-    ///
-    /// # Errors
-    /// Returns `Error::AccountNotFound` if the specified account ID does not
-    /// exist.
-    fn set_account_metadata(
-        &self,
-        account_id: Uuid,
-        name: String,
-        value: JsonValue,
-    ) -> Result<(), Error>;
-
-    /// Deletes an account metadata value.
-    ///
-    /// # Arguments
-    /// * `account_id`: The ID of the account that the metadata is tied to.
-    /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn delete_account_metadata(&self, account_id: Uuid, name: String) -> Result<(), Error>;
-
     /// Gets a vertex metadata value.
     ///
     /// # Arguments
@@ -183,7 +109,7 @@ pub trait Transaction {
         &self,
         q: models::VertexQuery,
         name: String,
-    ) -> Result<HashMap<Uuid, JsonValue>, Error>;
+    ) -> Result<Vec<models::VertexMetadata>, Error>;
 
     /// Sets a vertex metadata value.
     ///
@@ -214,7 +140,7 @@ pub trait Transaction {
         &self,
         q: models::EdgeQuery,
         name: String,
-    ) -> Result<HashMap<models::EdgeKey, JsonValue>, Error>;
+    ) -> Result<Vec<models::EdgeMetadata>, Error>;
 
     /// Sets an edge metadata value.
     ///

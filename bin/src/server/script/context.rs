@@ -2,13 +2,12 @@ use rlua::Table;
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 use std::path::Path;
-use uuid::Uuid;
 use indradb::Datastore;
 use statics;
 use super::errors;
 use super::converters;
 
-pub fn create(account_id: Uuid, arg: JsonValue) -> Result<Lua, errors::ScriptError> {
+pub fn create(arg: JsonValue) -> Result<Lua, errors::ScriptError> {
     let l = Lua::new();
 
     {
@@ -28,11 +27,10 @@ pub fn create(account_id: Uuid, arg: JsonValue) -> Result<Lua, errors::ScriptErr
         }
 
         // Create a new transaction for the script
-        let trans = statics::DATASTORE.transaction(account_id)?;
+        let trans = statics::DATASTORE.transaction()?;
 
         // Add globals
         globals.set("trans", converters::ProxyTransaction::new(trans))?;
-        globals.set("account_id", account_id.to_string())?;
         globals.set("arg", converters::JsonValue::new(arg))?;
     }
 
