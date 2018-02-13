@@ -128,3 +128,58 @@ impl Master {
         self.router_thread.join().expect("Expected router thread to not panic")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::prelude::*;
+    use std::fs::File;
+    use serde_json::Value as JsonValue;
+    use super::Master;
+    use super::super::Counter;
+    use std::path::Path;
+    use uuid::Uuid;
+    use indradb::{Vertex, Type};
+
+    fn run(insert_count: u64, expected_finish_count: u64, expected_result: JsonValue) {
+        let file_path_str = "test_scripts/mapreduce/count.lua";
+        let file_path = Path::new(file_path_str);
+        let mut file = File::open(file_path).expect("Could not open script file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Could not get script file contents");
+
+        let sent = Counter::new();
+        let processing = Counter::new();
+        let finished = Counter::new();
+        
+        let engine = Master::start(contents, file_path_str.to_string(), json!(2), sent.clone(), processing.clone(), finished.clone());
+        
+        for _ in 0..insert_count {
+            engine.add_vertex(Vertex::new(Uuid::new_v4(), Type::new("foo".to_string()).unwrap()));
+        }
+
+        assert_eq!(engine.join().unwrap(), expected_result);
+        assert_eq!(sent.get(), insert_count);
+        assert_eq!(processing.get(), 0);
+        assert_eq!(finished.get(), expected_finish_count);
+    }
+
+    #[test]
+    fn should_handle_zero_items() {
+        run(0, 0, JsonValue::Null);
+    }
+
+    #[test]
+    fn should_handle_one_item() {
+        run(1, 1, json!(2.0));
+    }
+
+    #[test]
+    fn should_handle_many_even_items() {
+        run(6, 11, json!(12.0));
+    }
+
+    #[test]
+    fn should_handle_many_odd_items() {
+        run(5, 9, json!(10.0));
+    }
+}

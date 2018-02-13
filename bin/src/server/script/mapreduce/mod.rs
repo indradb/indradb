@@ -4,6 +4,7 @@ mod response_chan;
 mod worker;
 
 pub use self::response_chan::{Update, ResponseSender, ResponseReceiver, bounded};
+pub use self::master::Master;
 
 use std::thread::{spawn, sleep};
 use statics;
@@ -58,7 +59,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             }
         };
 
-        let mapreducer = master::Master::start(contents, path, arg, sent, processing, finished);
+        let mapreducer = Master::start(contents, path, arg, sent, processing, finished);
         let mut last_id: Option<Uuid> = None;
 
         loop {
