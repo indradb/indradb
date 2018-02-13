@@ -15,7 +15,9 @@ use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
-pub use indradb::*;
+pub use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type,
+                  Vertex, VertexMetadata, VertexQuery};
+pub use indradb::tests;
 use std::collections::HashMap;
 use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use std::process::{Child, Command};
@@ -116,8 +118,7 @@ impl BatchTransaction {
                     if let JsonValue::Object(ref obj) = v {
                         if let Some(&JsonValue::String(ref err)) = obj.get("error") {
                             if let Some(cap) = ITEM_ERROR_MESSAGE_PATTERN.captures(err) {
-                                let message = cap.get(1).unwrap().as_str();
-                                return Err(Error::description_to_error(message));
+                                return Err(cap.get(1).unwrap().as_str().into());
                             } else {
                                 panic!(format!("Unexpected error received: {}", err));
                             }
@@ -157,7 +158,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn create_edge(&self, e: EdgeKey) -> Result<(), Error> {
+    fn create_edge(&self, e: EdgeKey) -> Result<bool, Error> {
         self.request(&json!({
             "action": "create_edge",
             "key": e,
@@ -185,7 +186,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>, Error> {
         self.request(&json!({
             "action": "get_global_metadata",
             "name": name
@@ -271,9 +272,7 @@ impl Transaction for BatchTransaction {
     }
 
     fn rollback(self) -> Result<(), Error> {
-        Err(Error::Unexpected(
-            "Cannot rollback an HTTP-based transaction".to_string(),
-        ))
+        Err("Cannot rollback an HTTP-based transaction".into())
     }
 }
 

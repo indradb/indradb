@@ -3,7 +3,7 @@ use iron::status;
 use iron::headers::{ContentType, Headers};
 use iron::typemap::TypeMap;
 use router::Router;
-use indradb::{Datastore, Error};
+use indradb::Datastore;
 use util::SimpleError;
 use common::ProxyTransaction;
 use std::error::Error as StdError;
@@ -23,19 +23,6 @@ use regex;
 
 lazy_static! {
     static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
-}
-
-/// Converts an indradb error to an `IronError`. We need to use this strategy
-/// rather than a `From` impl because both traits are implemented outside of
-/// this crate.
-pub fn convert_to_iron_error(err: &Error) -> IronError {
-    let status = match *err {
-        Error::VertexNotFound | Error::EdgeNotFound | Error::MetadataNotFound => status::NotFound,
-        Error::OutOfRange(_) => status::BadRequest,
-        Error::Unexpected(_) => status::InternalServerError,
-    };
-
-    create_iron_error(status, format!("{}", err))
 }
 
 /// Constructs an `IronError`
@@ -126,7 +113,9 @@ pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
 /// Returns an `IronError` if the body could not be read, or if a body was
 /// specified but is not valid JSON.
 pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
-    where for<'a> T: Deserialize<'a> {
+where
+    for<'a> T: Deserialize<'a>,
+{
     let mut payload = String::new();
     let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
 
@@ -140,12 +129,14 @@ pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
     if payload.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(|err| {
-            create_iron_error(
-                status::BadRequest,
-                format!("Could not parse JSON payload: {}", err.description()),
-            )
-        })?))
+        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(
+            |err| {
+                create_iron_error(
+                    status::BadRequest,
+                    format!("Could not parse JSON payload: {}", err.description()),
+                )
+            },
+        )?))
     }
 }
 

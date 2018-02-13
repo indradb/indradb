@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use errors::Error;
+use errors::Result;
 use serde_json::Value as JsonValue;
 use chrono::DateTime;
 use chrono::offset::Utc;
@@ -15,51 +15,46 @@ use serde::Serialize;
 use util::UuidGenerator;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
-pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue), Error>;
-pub type VertexItem = Result<(Uuid, models::Type), Error>;
-pub type EdgeRangeItem = Result<(Uuid, models::Type, DateTime<Utc>, Uuid), Error>;
-pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue), Error>;
+pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue)>;
+pub type VertexItem = Result<(Uuid, models::Type)>;
+pub type EdgeRangeItem = Result<(Uuid, models::Type, DateTime<Utc>, Uuid)>;
+pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue)>;
 
-fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>, Error> {
+fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>> {
     let result = bincode::serialize(value, bincode::Infinite)?;
     Ok(result.into_boxed_slice())
 }
 
-fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>, Error> {
+fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>> {
     let result = serde_json::to_vec(value)?;
     Ok(result.into_boxed_slice())
 }
 
-fn json_deserialize_value(value: &[u8]) -> Result<JsonValue, Error> {
+fn json_deserialize_value(value: &[u8]) -> Result<JsonValue> {
     let result = serde_json::from_slice(value)?;
     Ok(result)
 }
 
-fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool, Error> {
+fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool> {
     match db.get_cf(cf, &key)? {
         Some(_) => Ok(true),
         None => Ok(false),
     }
 }
 
-fn set_bincode<T: Serialize>(
-    db: &DB,
-    cf: ColumnFamily,
-    key: Box<[u8]>,
-    value: &T,
-) -> Result<(), Error> {
+fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &T) -> Result<()> {
     db.put_cf(cf, &key, &bincode_serialize_value(value)?)?;
     Ok(())
 }
 
-fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValue>, Error> {
+fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValue>> {
     match db.get_cf(cf, &key)? {
         Some(value_bytes) => Ok(Some(json_deserialize_value(&value_bytes)?)),
         None => Ok(None),
     }
 }
 
-fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<(), Error> {
+fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<()> {
     db.put_cf(cf, &key, &json_serialize_value(value)?)?;
     Ok(())
 }
@@ -80,12 +75,12 @@ fn iterate_metadata_for_owner<'a>(
     db: &DB,
     cf: ColumnFamily,
     id: Uuid,
-) -> Result<Box<Iterator<Item = OwnedMetadataItem> + 'a>, Error> {
+) -> Result<Box<Iterator<Item = OwnedMetadataItem> + 'a>> {
     let prefix = build_key(vec![KeyComponent::Uuid(id)]);
     let iterator = db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward))?;
     let filtered = take_while_prefixed(iterator, prefix);
 
-    let mapped = filtered.map(move |item| -> Result<((Uuid, String), JsonValue), Error> {
+    let mapped = filtered.map(move |item| -> Result<((Uuid, String), JsonValue)> {
         let (k, v) = item;
         let mut cursor = Cursor::new(k);
         let owner_id = read_uuid(&mut cursor);
@@ -117,21 +112,18 @@ impl VertexManager {
         build_key(vec![KeyComponent::Uuid(id)])
     }
 
-    pub fn exists(&self, id: Uuid) -> Result<bool, Error> {
+    pub fn exists(&self, id: Uuid) -> Result<bool> {
         exists(&self.db, self.cf, self.key(id))
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<models::Type>, Error> {
+    pub fn get(&self, id: Uuid) -> Result<Option<models::Type>> {
         match self.db.get_cf(self.cf, &self.key(id))? {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
             None => Ok(None),
         }
     }
 
-    fn iterate<'a>(
-        &self,
-        iterator: DBIterator,
-    ) -> Result<Box<Iterator<Item = VertexItem> + 'a>, Error> {
+    fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
         let mapped = iterator.map(|item| -> VertexItem {
             let (k, v) = item;
             let id = parse_uuid_key(k);
@@ -142,23 +134,20 @@ impl VertexManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(
-        &self,
-        id: Uuid,
-    ) -> Result<Box<Iterator<Item = VertexItem> + 'a>, Error> {
+    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
         let low_key = build_key(vec![KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
         self.iterate(iterator)
     }
 
-    pub fn create(&self, t: models::Type) -> Result<Uuid, Error> {
+    pub fn create(&self, t: models::Type) -> Result<Uuid> {
         let id = self.uuid_generator.next();
         set_bincode(&self.db, self.cf, self.key(id), &t)?;
         Ok(id)
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<(), Error> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id))?;
 
         let vertex_metadata_manager = VertexMetadataManager::new(self.db.clone());
@@ -243,7 +232,7 @@ impl EdgeManager {
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
-    ) -> Result<Option<DateTime<Utc>>, Error> {
+    ) -> Result<Option<DateTime<Utc>>> {
         match self.db
             .get_cf(self.cf, &self.key(outbound_id, t, inbound_id))?
         {
@@ -259,7 +248,7 @@ impl EdgeManager {
         t: &models::Type,
         inbound_id: Uuid,
         new_update_datetime: DateTime<Utc>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
@@ -298,7 +287,7 @@ impl EdgeManager {
         t: &models::Type,
         inbound_id: Uuid,
         update_datetime: DateTime<Utc>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
 
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
@@ -376,7 +365,7 @@ impl EdgeRangeManager {
         &self,
         iterator: DBIterator,
         prefix: Box<[u8]>,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>, Error> {
+    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> EdgeRangeItem {
@@ -397,7 +386,7 @@ impl EdgeRangeManager {
         id: Uuid,
         t: &Option<models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>, Error> {
+    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
         match *t {
             Some(ref t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -440,7 +429,7 @@ impl EdgeRangeManager {
     pub fn iterate_for_owner<'a>(
         &self,
         id: Uuid,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>, Error> {
+    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
         let prefix = build_key(vec![KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -454,7 +443,7 @@ impl EdgeRangeManager {
         t: &models::Type,
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
         let value = bincode_serialize_value(&())?;
         batch.put_cf(self.cf, &key, &value)?;
@@ -468,7 +457,7 @@ impl EdgeRangeManager {
         t: &models::Type,
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
         Ok(())
     }
@@ -491,15 +480,15 @@ impl GlobalMetadataManager {
         build_key(vec![KeyComponent::UnsizedString(name)])
     }
 
-    pub fn get(&self, name: &str) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, name: &str) -> Result<Option<JsonValue>> {
         get_json(&self.db, self.cf, self.key(name))
     }
 
-    pub fn set(&self, name: &str, value: &JsonValue) -> Result<(), Error> {
+    pub fn set(&self, name: &str, value: &JsonValue) -> Result<()> {
         set_json(&self.db, self.cf, self.key(name), value)
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, name: &str) -> Result<(), Error> {
+    pub fn delete(&self, batch: &mut WriteBatch, name: &str) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(name))?;
         Ok(())
     }
@@ -528,11 +517,11 @@ impl VertexMetadataManager {
     pub fn iterate_for_owner(
         &self,
         vertex_id: Uuid,
-    ) -> Result<Box<Iterator<Item = OwnedMetadataItem>>, Error> {
+    ) -> Result<Box<Iterator<Item = OwnedMetadataItem>>> {
         iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>, Error> {
+    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
         get_json(&self.db, self.cf, self.key(vertex_id, name))
     }
 
@@ -542,14 +531,14 @@ impl VertexMetadataManager {
         vertex_id: Uuid,
         name: &str,
         value: &JsonValue,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = json_serialize_value(value)?;
         batch.put_cf(self.cf, &key, &value_json)?;
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<(), Error> {
+    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
         Ok(())
     }
@@ -582,7 +571,7 @@ impl EdgeMetadataManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<Iterator<Item = EdgeMetadataItem> + 'a>, Error> {
+    ) -> Result<Box<Iterator<Item = EdgeMetadataItem> + 'a>> {
         let prefix = build_key(vec![
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
@@ -629,7 +618,7 @@ impl EdgeMetadataManager {
         t: &models::Type,
         inbound_id: Uuid,
         name: &str,
-    ) -> Result<Option<JsonValue>, Error> {
+    ) -> Result<Option<JsonValue>> {
         get_json(
             &self.db,
             self.cf,
@@ -645,7 +634,7 @@ impl EdgeMetadataManager {
         inbound_id: Uuid,
         name: &str,
         value: &JsonValue,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let key = self.key(outbound_id, t, inbound_id, name);
         let value_json = json_serialize_value(value)?;
         batch.put_cf(self.cf, &key, &value_json)?;
@@ -659,7 +648,7 @@ impl EdgeMetadataManager {
         t: &models::Type,
         inbound_id: Uuid,
         name: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))?;
         Ok(())
     }
