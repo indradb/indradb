@@ -123,10 +123,7 @@ impl RocksdbTransaction {
         })
     }
 
-    fn vertex_query_to_iterator(
-        &self,
-        q: VertexQuery,
-    ) -> Result<Box<Iterator<Item = VertexItem>>> {
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
         match q {
@@ -178,10 +175,7 @@ impl RocksdbTransaction {
         }
     }
 
-    fn edge_query_to_iterator(
-        &self,
-        q: EdgeQuery,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem>>> {
+    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>> {
         match q {
             EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
@@ -382,7 +376,8 @@ impl Transaction for RocksdbTransaction {
 
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)? {
+        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
+        {
             return Ok(false);
         }
 
@@ -472,12 +467,7 @@ impl Transaction for RocksdbTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: VertexQuery,
-        name: String,
-        value: JsonValue,
-    ) -> Result<()> {
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -503,11 +493,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        name: String,
-    ) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 

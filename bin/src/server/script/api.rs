@@ -57,7 +57,11 @@ pub fn get_global_metadata(
     trans: &ProxyTransaction,
     key: String,
 ) -> Result<converters::JsonValue, Error> {
-    Ok(converters::JsonValue::new(trans.get_global_metadata(key)?.unwrap_or_else(|| JsonValue::Null)))
+    Ok(converters::JsonValue::new(
+        trans
+            .get_global_metadata(key)?
+            .unwrap_or_else(|| JsonValue::Null),
+    ))
 }
 
 pub fn set_global_metadata(

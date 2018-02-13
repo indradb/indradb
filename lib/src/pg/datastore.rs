@@ -68,9 +68,7 @@ impl PostgresDatastore {
     /// * `connetion_string` - The postgres database connection string.
     pub fn create_schema(connection_string: String) -> Result<()> {
         let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None)
-            .map_err(|err| {
-                Error::with_chain(err, "Could not connect to the postgres database")
-            })?;
+            .map_err(|err| Error::with_chain(err, "Could not connect to the postgres database"))?;
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;
@@ -104,9 +102,8 @@ impl PostgresTransaction {
         let conn = Box::new(conn);
 
         let trans = unsafe {
-            mem::transmute(conn.transaction().map_err(|err| {
-                Error::with_chain(err, "Could not create transaction")
-            })?)
+            mem::transmute(conn.transaction()
+                .map_err(|err| Error::with_chain(err, "Could not create transaction"))?)
         };
 
         Ok(PostgresTransaction {
@@ -422,12 +419,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: VertexQuery,
-        name: String,
-        value: JsonValue,
-    ) -> Result<()> {
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -456,11 +448,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        name: String,
-    ) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 

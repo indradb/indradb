@@ -143,12 +143,8 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_edge_metadata(
-        &self,
-        q: models::EdgeQuery,
-        name: String,
-        value: JsonValue,
-    ) -> Result<()>;
+    fn set_edge_metadata(&self, q: models::EdgeQuery, name: String, value: JsonValue)
+        -> Result<()>;
 
     /// Deletes an edge metadata value.
     ///

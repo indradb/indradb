@@ -24,10 +24,7 @@ struct InternalMemoryDatastore {
 }
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query(
-        &self,
-        q: VertexQuery,
-    ) -> Result<Vec<(Uuid, models::Type)>> {
+    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
         match q {
             VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
                 Ok(self.vertices
@@ -283,8 +280,10 @@ impl Transaction for MemoryTransaction {
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         {
             let datastore = self.datastore.read().unwrap();
-            
-            if !datastore.vertices.contains_key(&key.outbound_id) || !datastore.vertices.contains_key(&key.inbound_id) {
+
+            if !datastore.vertices.contains_key(&key.outbound_id)
+                || !datastore.vertices.contains_key(&key.inbound_id)
+            {
                 return Ok(false);
             }
         }
@@ -331,7 +330,7 @@ impl Transaction for MemoryTransaction {
 
         match datastore.global_metadata.get(&name) {
             Some(value) => Ok(Some(value.clone())),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -367,12 +366,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: VertexQuery,
-        name: String,
-        value: JsonValue,
-    ) -> Result<()> {
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
         let vertex_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_vertex_values_by_query(q)?
@@ -404,11 +398,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        name: String,
-    ) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;

@@ -108,7 +108,9 @@ pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
 /// Returns an `IronError` if the body could not be read, or if a body was
 /// specified but is not valid JSON.
 pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
-    where for<'a> T: Deserialize<'a> {
+where
+    for<'a> T: Deserialize<'a>,
+{
     let mut payload = String::new();
     let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
 
@@ -122,12 +124,13 @@ pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
     if payload.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(|err| {
-            create_iron_error(
-                status::BadRequest,
-                format!("Could not parse JSON payload: {}", err.description()),
-            )
-        })?))
+        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(
+            |err| {
+                create_iron_error(
+                    status::BadRequest,
+                    format!("Could not parse JSON payload: {}", err.description()),
+                )
+            },
+        )?))
     }
 }
-

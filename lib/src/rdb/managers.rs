@@ -42,12 +42,7 @@ fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool> {
     }
 }
 
-fn set_bincode<T: Serialize>(
-    db: &DB,
-    cf: ColumnFamily,
-    key: Box<[u8]>,
-    value: &T,
-) -> Result<()> {
+fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &T) -> Result<()> {
     db.put_cf(cf, &key, &bincode_serialize_value(value)?)?;
     Ok(())
 }
@@ -128,10 +123,7 @@ impl VertexManager {
         }
     }
 
-    fn iterate<'a>(
-        &self,
-        iterator: DBIterator,
-    ) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
+    fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
         let mapped = iterator.map(|item| -> VertexItem {
             let (k, v) = item;
             let id = parse_uuid_key(k);
@@ -142,10 +134,7 @@ impl VertexManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(
-        &self,
-        id: Uuid,
-    ) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
+    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
         let low_key = build_key(vec![KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;

@@ -15,7 +15,8 @@ use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
-pub use indradb::{Datastore, Transaction, Type, Edge, EdgeKey, EdgeQuery, EdgeMetadata, Vertex, VertexQuery, VertexMetadata, Error};
+pub use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type,
+                  Vertex, VertexMetadata, VertexQuery};
 pub use indradb::tests;
 use std::collections::HashMap;
 use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
