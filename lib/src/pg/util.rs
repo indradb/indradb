@@ -2,31 +2,6 @@ use postgres::error as pg_error;
 use postgres::types::ToSql;
 use std::error::Error;
 
-pub fn pg_error_to_description(err: pg_error::Error) -> String {
-    if let Some(err) = err.as_db() {
-        if let Some(ref detail) = err.detail {
-            format!(
-                "Internal database error: [{}] {}: {}",
-                err.code.code(),
-                err.message,
-                detail
-            )
-        } else {
-            format!(
-                "Internal database error: [{}] {}",
-                err.code.code(),
-                err.message
-            )
-        }
-    } else if let Some(err) = err.as_io() {
-        format!("Database I/O error: {}", err.description())
-    } else if let Some(err) = err.as_connection() {
-        format!("Database connexction error: {}", err.description())
-    } else {
-        panic!("Unhandled error")
-    }
-}
-
 fn get_from_table_name(root_table_name: &str, table_number: usize) -> String {
     match table_number {
         0 => root_table_name.to_string(),

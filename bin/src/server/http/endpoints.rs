@@ -107,7 +107,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
         idx += 1;
     }
 
-    trans.commit().map_err(|err| convert_to_iron_error(&err))?;
+    trans.commit().map_err(|err| create_iron_error(status::InternalServerError, format!("Could not commit transaction: {}", err)))?;
     Ok(to_response(status::Ok, &jsonable_res))
 }
 
@@ -249,7 +249,7 @@ fn delete_edge_metadata(
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-    let value = result.map_err(|err| convert_to_iron_error(&err))?;
+    let value = result.map_err(|err| create_iron_error(status::InternalServerError, format!("{}", err)))?;
 
     Ok(
         serde_json::to_value(value).map_err(|err| {

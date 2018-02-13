@@ -1,7 +1,7 @@
 //! Utility functions.
 
 use rand::{OsRng, Rng};
-use errors::ValidationError;
+use errors::ValidationResult;
 use uuid::{Uuid, UuidV1Context};
 use chrono::DateTime;
 use chrono::offset::Utc;
@@ -68,7 +68,7 @@ pub fn generate_random_secret(count: usize) -> String {
 /// # Errors
 /// Returns a `ValidationError` if the input UUID is the great possible value
 /// (i.e., FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF)
-pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
+pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     let mut bytes = *uuid.as_bytes();
 
     for i in (0..16).rev() {
@@ -80,9 +80,7 @@ pub fn next_uuid(uuid: Uuid) -> Result<Uuid, ValidationError> {
         }
     }
 
-    Err(ValidationError::new(
-        "Could not increment the UUID".to_string(),
-    ))
+    Err("Could not increment the UUID".into())
 }
 
 /// Gets the number of nanoseconds since unix epoch for a given datetime.

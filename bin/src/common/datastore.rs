@@ -68,7 +68,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
-    fn create_edge(&self, key: EdgeKey) -> Result<(), Error> {
+    fn create_edge(&self, key: EdgeKey) -> Result<bool, Error> {
         proxy_transaction!(self, create_edge, key)
     }
 
@@ -84,7 +84,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_edge_count, q)
     }
 
-    fn get_global_metadata(&self, key: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, key: String) -> Result<Option<JsonValue>, Error> {
         proxy_transaction!(self, get_global_metadata, key)
     }
 

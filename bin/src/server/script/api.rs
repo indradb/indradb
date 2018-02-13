@@ -4,6 +4,7 @@
 use super::converters;
 use indradb::{Error, Transaction};
 use common::ProxyTransaction;
+use serde_json::Value as JsonValue;
 
 pub fn create_vertex(
     trans: &ProxyTransaction,
@@ -56,7 +57,7 @@ pub fn get_global_metadata(
     trans: &ProxyTransaction,
     key: String,
 ) -> Result<converters::JsonValue, Error> {
-    Ok(converters::JsonValue::new(trans.get_global_metadata(key)?))
+    Ok(converters::JsonValue::new(trans.get_global_metadata(key)?.unwrap_or_else(|| JsonValue::Null)))
 }
 
 pub fn set_global_metadata(

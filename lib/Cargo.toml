@@ -22,6 +22,7 @@ postgres-datastore = ["postgres", "r2d2", "r2d2_postgres", "num_cpus"]
 rocksdb-datastore = ["rocksdb", "bincode"]
 
 [dependencies]
+error-chain = "~0.11.0"
 rust-crypto = "~0.2.36"
 serde = "^1.0.27"
 serde_json = "^1.0.9"

@@ -5,10 +5,15 @@
 //! plug into the low-level details of IndraDB. For most use cases, you can use
 //! the application, which exposes an API and scripting layer.
 
+// Used for error-chain, which can recurse deeply
+#![recursion_limit = "1024"]
+
 extern crate byteorder;
 extern crate chrono;
 extern crate core;
 extern crate crypto;
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;

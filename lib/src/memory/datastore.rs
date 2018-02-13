@@ -6,7 +6,7 @@ use chrono::DateTime;
 use chrono::offset::Utc;
 use std::sync::{Arc, RwLock};
 use serde_json::Value as JsonValue;
-use errors::Error;
+use errors::Result;
 use util::UuidGenerator;
 
 // All of the data is actually stored in this struct, which is stored
@@ -27,7 +27,7 @@ impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(
         &self,
         q: VertexQuery,
-    ) -> Result<Vec<(Uuid, models::Type)>, Error> {
+    ) -> Result<Vec<(Uuid, models::Type)>> {
         match q {
             VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
                 Ok(self.vertices
@@ -94,7 +94,7 @@ impl InternalMemoryDatastore {
     fn get_edge_values_by_query(
         &self,
         q: EdgeQuery,
-    ) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>, Error> {
+    ) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
         match q {
             EdgeQuery::Edges { keys } => {
                 let mut results = Vec::new();
@@ -233,7 +233,7 @@ impl MemoryDatastore {
 }
 
 impl Datastore<MemoryTransaction> for MemoryDatastore {
-    fn transaction(&self) -> Result<MemoryTransaction, Error> {
+    fn transaction(&self) -> Result<MemoryTransaction> {
         Ok(MemoryTransaction {
             datastore: Arc::clone(&self.0),
         })
@@ -247,14 +247,14 @@ pub struct MemoryTransaction {
 }
 
 impl Transaction for MemoryTransaction {
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, t: models::Type) -> Result<Uuid> {
         let mut datastore = self.datastore.write().unwrap();
         let id = datastore.uuid_generator.next();
         datastore.vertices.insert(id, t);
         Ok(id)
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>> {
         let vertex_values = self.datastore
             .read()
             .unwrap()
@@ -265,7 +265,7 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let vertex_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_vertex_values_by_query(q)?
@@ -280,24 +280,21 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         {
             let datastore = self.datastore.read().unwrap();
-            let value = datastore.vertices.get(&key.outbound_id);
-
-            if (value.is_some() && !datastore.vertices.contains_key(&key.inbound_id))
-                || value.is_none()
-            {
-                return Err(Error::VertexNotFound);
+            
+            if !datastore.vertices.contains_key(&key.outbound_id) || !datastore.vertices.contains_key(&key.inbound_id) {
+                return Ok(false);
             }
         }
 
         let mut datastore = self.datastore.write().unwrap();
         datastore.edges.insert(key, Utc::now());
-        Ok(())
+        Ok(true)
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
         let edge_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q)?
@@ -309,7 +306,7 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let deletable_edges = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q)?
@@ -324,44 +321,37 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
         let edge_values = self.datastore.read().unwrap().get_edge_values_by_query(q)?;
         Ok(edge_values.len() as u64)
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
         let datastore = self.datastore.read().unwrap();
-        let value = datastore.global_metadata.get(&name);
 
-        if let Some(value) = value {
-            Ok(value.clone())
-        } else {
-            Err(Error::MetadataNotFound)
+        match datastore.global_metadata.get(&name) {
+            Some(value) => Ok(Some(value.clone())),
+            None => Ok(None)
         }
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         datastore.global_metadata.insert(name, value);
         Ok(())
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
+    fn delete_global_metadata(&self, name: String) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let value = datastore.global_metadata.remove(&name);
-
-        if value.is_some() {
-            Ok(())
-        } else {
-            Err(Error::MetadataNotFound)
-        }
+        datastore.global_metadata.remove(&name);
+        Ok(())
     }
 
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<Vec<models::VertexMetadata>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
@@ -382,7 +372,7 @@ impl Transaction for MemoryTransaction {
         q: VertexQuery,
         name: String,
         value: JsonValue,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let vertex_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_vertex_values_by_query(q)?
@@ -399,7 +389,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<()> {
         let vertex_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_vertex_values_by_query(q)?
@@ -418,7 +408,7 @@ impl Transaction for MemoryTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<Vec<models::EdgeMetadata>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;
@@ -434,7 +424,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<()> {
         let edge_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q)?
@@ -451,7 +441,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<()> {
         let edge_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q)?
@@ -466,11 +456,11 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn commit(self) -> Result<(), Error> {
+    fn commit(self) -> Result<()> {
         Ok(())
     }
 
-    fn rollback(self) -> Result<(), Error> {
+    fn rollback(self) -> Result<()> {
         unimplemented!()
     }
 }

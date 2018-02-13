@@ -1,7 +1,7 @@
 use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
 use uuid::Uuid;
-use errors::Error;
+use errors::Result;
 use util::next_uuid;
 use serde_json::Value as JsonValue;
 use chrono::offset::Utc;
@@ -67,7 +67,7 @@ impl RocksdbDatastore {
         path: &str,
         max_open_files: Option<i32>,
         secure_uuids: bool,
-    ) -> Result<RocksdbDatastore, Error> {
+    ) -> Result<RocksdbDatastore> {
         let opts = get_options(max_open_files);
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
@@ -95,7 +95,7 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<(), Error> {
+    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
         let opts = get_options(max_open_files);
         DB::repair(opts, path)?;
         Ok(())
@@ -103,7 +103,7 @@ impl RocksdbDatastore {
 }
 
 impl Datastore<RocksdbTransaction> for RocksdbDatastore {
-    fn transaction(&self) -> Result<RocksdbTransaction, Error> {
+    fn transaction(&self) -> Result<RocksdbTransaction> {
         RocksdbTransaction::new(self.db.clone(), self.uuid_generator.clone())
     }
 }
@@ -116,7 +116,7 @@ pub struct RocksdbTransaction {
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Result<Self, Error> {
+    fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Result<Self> {
         Ok(RocksdbTransaction {
             db: db,
             uuid_generator: uuid_generator,
@@ -126,7 +126,7 @@ impl RocksdbTransaction {
     fn vertex_query_to_iterator(
         &self,
         q: VertexQuery,
-    ) -> Result<Box<Iterator<Item = VertexItem>>, Error> {
+    ) -> Result<Box<Iterator<Item = VertexItem>>> {
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
         match q {
@@ -181,7 +181,7 @@ impl RocksdbTransaction {
     fn edge_query_to_iterator(
         &self,
         q: EdgeQuery,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem>>, Error> {
+    ) -> Result<Box<Iterator<Item = EdgeRangeItem>>> {
         match q {
             EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
@@ -313,8 +313,8 @@ impl RocksdbTransaction {
 
     fn remove_nones_from_iterator<'a, T: Debug + 'a>(
         &self,
-        iterator: Box<Iterator<Item = Result<Option<T>, Error>>>,
-    ) -> Box<Iterator<Item = Result<T, Error>> + 'a> {
+        iterator: Box<Iterator<Item = Result<Option<T>>>>,
+    ) -> Box<Iterator<Item = Result<T>> + 'a> {
         let filtered = iterator.filter(|item| match *item {
             Err(_) | Ok(Some(_)) => true,
             _ => false,
@@ -331,7 +331,7 @@ impl RocksdbTransaction {
 
     fn handle_vertex_id_iterator(
         &self,
-        iterator: Box<Iterator<Item = Result<Uuid, Error>>>,
+        iterator: Box<Iterator<Item = Result<Uuid>>>,
     ) -> Box<Iterator<Item = VertexItem>> {
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
@@ -350,11 +350,11 @@ impl RocksdbTransaction {
 }
 
 impl Transaction for RocksdbTransaction {
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, t: models::Type) -> Result<Uuid> {
         VertexManager::new(self.db.clone(), self.uuid_generator.clone()).create(t)
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>> {
         let iterator = self.vertex_query_to_iterator(q)?;
 
         let mapped = iterator.map(move |item| {
@@ -366,7 +366,7 @@ impl Transaction for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let iterator = self.vertex_query_to_iterator(q)?;
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
         let mut batch = WriteBatch::default();
@@ -380,11 +380,10 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
-        {
-            return Err(Error::VertexNotFound);
+        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)? {
+            return Ok(false);
         }
 
         let new_update_datetime = Utc::now();
@@ -397,10 +396,10 @@ impl Transaction for RocksdbTransaction {
             new_update_datetime,
         )?;
         self.db.write(batch)?;
-        Ok(())
+        Ok(true)
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
         let iterator = self.edge_query_to_iterator(q)?;
 
         let mapped = iterator.map(move |item| {
@@ -413,7 +412,7 @@ impl Transaction for RocksdbTransaction {
         mapped.collect()
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let edge_manager = EdgeManager::new(self.db.clone());
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
         let iterator = self.edge_query_to_iterator(q)?;
@@ -431,24 +430,22 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
         let iterator = self.edge_query_to_iterator(q)?;
         Ok(iterator.count() as u64)
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
         let manager = GlobalMetadataManager::new(self.db.clone());
-        manager
-            .get(&name[..])?
-            .ok_or_else(|| Error::MetadataNotFound)
+        manager.get(&name[..])
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<()> {
         let manager = GlobalMetadataManager::new(self.db.clone());
         manager.set(&name[..], &value)
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
+    fn delete_global_metadata(&self, name: String) -> Result<()> {
         let mut batch = WriteBatch::default();
         GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, &name[..])?;
         self.db.write(batch)?;
@@ -459,7 +456,7 @@ impl Transaction for RocksdbTransaction {
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<Vec<models::VertexMetadata>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
@@ -480,7 +477,7 @@ impl Transaction for RocksdbTransaction {
         q: VertexQuery,
         name: String,
         value: JsonValue,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -493,7 +490,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<()> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -510,7 +507,7 @@ impl Transaction for RocksdbTransaction {
         &self,
         q: EdgeQuery,
         name: String,
-    ) -> Result<Vec<models::EdgeMetadata>, Error> {
+    ) -> Result<Vec<models::EdgeMetadata>> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
@@ -527,7 +524,7 @@ impl Transaction for RocksdbTransaction {
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<()> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -540,7 +537,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<()> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -553,14 +550,11 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn commit(self) -> Result<(), Error> {
+    fn commit(self) -> Result<()> {
         Ok(())
     }
 
-    fn rollback(self) -> Result<(), Error> {
-        Err(Error::Unexpected(
-            "Transactions cannot be rolled back in the rocksdb datastore implementation"
-                .to_string(),
-        ))
+    fn rollback(self) -> Result<()> {
+        Err("Transactions cannot be rolled back in the rocksdb datastore implementation".into())
     }
 }
