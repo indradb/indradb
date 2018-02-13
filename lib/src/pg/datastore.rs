@@ -3,16 +3,14 @@ use r2d2::{Pool, PooledConnection};
 use std::mem;
 use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
 use models;
-use errors::Error;
+use errors::{Error, Result};
 use postgres;
-use postgres::rows::Rows;
 use chrono::DateTime;
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use num_cpus;
 use uuid::Uuid;
 use std::i64;
-use postgres::error as pg_error;
 use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
 use super::schema;
@@ -40,7 +38,7 @@ impl PostgresDatastore {
         pool_size: Option<u32>,
         connection_string: String,
         secure_uuids: bool,
-    ) -> Result<PostgresDatastore, Error> {
+    ) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => {
@@ -68,12 +66,9 @@ impl PostgresDatastore {
     ///
     /// # Arguments
     /// * `connetion_string` - The postgres database connection string.
-    pub fn create_schema(connection_string: String) -> Result<(), Error> {
+    pub fn create_schema(connection_string: String) -> Result<()> {
         let conn = postgres::Connection::connect(connection_string, postgres::TlsMode::None)
-            .map_err(|err| {
-                let message = format!("Could not connect to the postgres database: {}", err);
-                Error::Unexpected(message)
-            })?;
+            .map_err(|err| Error::with_chain(err, "Could not connect to the postgres database"))?;
 
         for statement in schema::SCHEMA.split(";") {
             conn.execute(statement, &vec![])?;
@@ -84,7 +79,7 @@ impl PostgresDatastore {
 }
 
 impl Datastore<PostgresTransaction> for PostgresDatastore {
-    fn transaction(&self) -> Result<PostgresTransaction, Error> {
+    fn transaction(&self) -> Result<PostgresTransaction> {
         let conn = self.pool.get()?;
         let trans = PostgresTransaction::new(conn, self.uuid_generator.clone())?;
         Ok(trans)
@@ -103,13 +98,12 @@ impl PostgresTransaction {
     fn new(
         conn: PooledConnection<PostgresConnectionManager>,
         uuid_generator: Arc<UuidGenerator>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let conn = Box::new(conn);
 
         let trans = unsafe {
-            mem::transmute(conn.transaction().map_err(|err| {
-                Error::Unexpected(format!("Could not create transaction: {}", err))
-            })?)
+            mem::transmute(conn.transaction()
+                .map_err(|err| Error::with_chain(err, "Could not create transaction"))?)
         };
 
         Ok(PostgresTransaction {
@@ -117,35 +111,6 @@ impl PostgresTransaction {
             trans: trans,
             uuid_generator: uuid_generator,
         })
-    }
-
-    fn handle_get_metadata(&self, results: Rows) -> Result<JsonValue, Error> {
-        for row in &results {
-            let value: JsonValue = row.get(0);
-            return Ok(value);
-        }
-
-        Err(Error::MetadataNotFound)
-    }
-
-    fn handle_delete_metadata(&self, results: Rows) -> Result<(), Error> {
-        if results.is_empty() {
-            Err(Error::MetadataNotFound)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn handle_set_metadata_error(&self, err: pg_error::Error, foreign_key_err: Error) -> Error {
-        if let Some(state) = err.code() {
-            if state == &pg_error::FOREIGN_KEY_VIOLATION || state == &pg_error::NOT_NULL_VIOLATION {
-                // This should only happen when we couldn't get the
-                // "owning" resource for the metadata
-                return foreign_key_err;
-            }
-        }
-
-        Error::from(err)
     }
 
     fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
@@ -278,7 +243,7 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, t: models::Type) -> Result<Uuid> {
         let id = self.uuid_generator.next();
         self.trans.execute(
             "INSERT INTO vertices (id, type) VALUES ($1, $2)",
@@ -287,7 +252,7 @@ impl Transaction for PostgresTransaction {
         Ok(id)
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>, Error> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) =
@@ -307,7 +272,7 @@ impl Transaction for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -319,48 +284,33 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn create_edge(&self, key: models::EdgeKey) -> Result<(), Error> {
+    fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         let id = self.uuid_generator.next();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction
-        let results = {
-            let trans = self.trans.savepoint("set_edge")?;
-            let results = trans.query(
-                "
-                INSERT INTO edges (id, outbound_id, type, inbound_id, update_timestamp)
-                VALUES ($1, $2, $3, $4, CLOCK_TIMESTAMP())
-                ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
-                DO UPDATE SET update_timestamp=CLOCK_TIMESTAMP()
-            ",
-                &[&id, &key.outbound_id, &key.t.0, &key.inbound_id],
-            );
+        let trans = self.trans.savepoint("set_edge")?;
 
-            match results {
-                Err(err) => {
-                    trans.set_rollback();
-                    Err(err)
-                }
-                Ok(_) => {
-                    trans.set_commit();
-                    Ok(())
-                }
-            }
-        };
+        let results = trans.query(
+            "
+            INSERT INTO edges (id, outbound_id, type, inbound_id, update_timestamp)
+            VALUES ($1, $2, $3, $4, CLOCK_TIMESTAMP())
+            ON CONFLICT ON CONSTRAINT edges_outbound_id_type_inbound_id_ukey
+            DO UPDATE SET update_timestamp=CLOCK_TIMESTAMP()
+        ",
+            &[&id, &key.outbound_id, &key.t.0, &key.inbound_id],
+        );
 
-        if let Err(err) = results {
-            if let Some(state) = err.code() {
-                if state == &pg_error::FOREIGN_KEY_VIOLATION {
-                    // This should only happen when there is no vertex with id=inbound_id
-                    return Err(Error::VertexNotFound);
-                }
-            }
+        if results.is_err() {
+            trans.set_rollback();
+            Ok(false)
+        } else {
+            trans.set_commit();
+            Ok(true)
         }
-
-        Ok(())
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>, Error> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -386,7 +336,7 @@ impl Transaction for PostgresTransaction {
         Ok(edges)
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder
@@ -396,7 +346,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) =
@@ -412,18 +362,20 @@ impl Transaction for PostgresTransaction {
         unreachable!();
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<JsonValue, Error> {
+    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
         let results = self.trans
             .query("SELECT value FROM global_metadata WHERE name=$1", &[&name])?;
-        self.handle_get_metadata(results)
+
+        for row in &results {
+            let value: JsonValue = row.get(0);
+            return Ok(Some(value));
+        }
+
+        Ok(None)
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
-        // Because this command could fail, we need to set a savepoint to roll
-        // back to, rather than spoiling the entire transaction
-        let trans = self.trans.savepoint("set_global_metadata")?;
-
-        let results = trans.query(
+    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<()> {
+        self.trans.execute(
             "
             INSERT INTO global_metadata (name, value)
             VALUES ($1, $2)
@@ -432,36 +384,25 @@ impl Transaction for PostgresTransaction {
             RETURNING 1
             ",
             &[&name, &value],
-        );
+        )?;
 
-        match results {
-            Err(err) => {
-                trans.set_rollback();
-                let foreign_key_err =
-                    Error::Unexpected("Unexpected error when setting global metadata".to_string());
-                Err(self.handle_set_metadata_error(err, foreign_key_err))
-            }
-            Ok(_) => {
-                trans.set_commit();
-                Ok(())
-            }
-        }
+        Ok(())
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
-        let results = self.trans.query(
+    fn delete_global_metadata(&self, name: String) -> Result<()> {
+        self.trans.execute(
             "DELETE FROM global_metadata WHERE name=$1 RETURNING 1",
             &[&name],
         )?;
 
-        self.handle_delete_metadata(results)
+        Ok(())
     }
 
     fn get_vertex_metadata(
         &self,
         q: VertexQuery,
         name: String,
-    ) -> Result<Vec<models::VertexMetadata>, Error> {
+    ) -> Result<Vec<models::VertexMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name)]);
@@ -478,12 +419,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: VertexQuery,
-        name: String,
-        value: JsonValue,
-    ) -> Result<(), Error> {
+    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -500,7 +436,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -512,11 +448,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(
-        &self,
-        q: EdgeQuery,
-        name: String,
-    ) -> Result<Vec<models::EdgeMetadata>, Error> {
+    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 
@@ -546,7 +478,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -563,7 +495,7 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -575,13 +507,13 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn commit(self) -> Result<(), Error> {
+    fn commit(self) -> Result<()> {
         self.trans.set_commit();
         self.trans.commit()?;
         Ok(())
     }
 
-    fn rollback(self) -> Result<(), Error> {
+    fn rollback(self) -> Result<()> {
         self.trans.set_rollback();
         self.trans.commit()?;
         Ok(())

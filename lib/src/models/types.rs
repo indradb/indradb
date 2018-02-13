@@ -1,5 +1,5 @@
 use regex::Regex;
-use errors::ValidationError;
+use errors::{ValidationError, ValidationResult};
 use core::str::FromStr;
 
 lazy_static! {
@@ -23,11 +23,11 @@ impl Type {
     /// # Errors
     /// Returns a `ValidationError` if the type is longer than 255 characters,
     /// or has invalid characters.
-    pub fn new(t: String) -> Result<Self, ValidationError> {
+    pub fn new(t: String) -> ValidationResult<Self> {
         if t.len() > 255 {
-            Err(ValidationError::new("Type is too long".to_string()))
+            Err("Type is too long".into())
         } else if !TYPE_VALIDATOR.is_match(&t[..]) {
-            Err(ValidationError::new("Invalid type".to_string()))
+            Err("Invalid type".into())
         } else {
             Ok(Type(t))
         }

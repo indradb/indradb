@@ -1,5 +1,4 @@
 use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, VertexQuery};
-use errors::Error;
 use models;
 use uuid::Uuid;
 use chrono::offset::Utc;
@@ -126,7 +125,7 @@ where
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t.clone(), Uuid::default());
     let result = trans.create_edge(key);
-    assert_eq!(result.unwrap_err(), Error::VertexNotFound);
+    assert_eq!(result.unwrap(), false);
 }
 
 pub fn should_delete_a_valid_edge<D, T>(datastore: &mut D)

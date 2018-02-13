@@ -1,6 +1,5 @@
 use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use util::generate_random_secret;
-use errors::Error;
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
@@ -14,7 +13,7 @@ where
 
     // Check to make sure there's no initial value
     let result = trans.get_global_metadata(name.clone());
-    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+    assert_eq!(result.unwrap(), None);
 
     // Set and get the value as true
     trans
@@ -22,7 +21,7 @@ where
         .unwrap();
 
     let result = trans.get_global_metadata(name.clone());
-    assert_eq!(result.unwrap(), JsonValue::Bool(true));
+    assert_eq!(result.unwrap(), Some(JsonValue::Bool(true)));
 
     // Set and get the value as false
     trans
@@ -30,13 +29,13 @@ where
         .unwrap();
 
     let result = trans.get_global_metadata(name.clone());
-    assert_eq!(result.unwrap(), JsonValue::Bool(false));
+    assert_eq!(result.unwrap(), Some(JsonValue::Bool(false)));
 
     // Delete & check that it's deleted
     trans.delete_global_metadata(name.clone()).unwrap();
 
     let result = trans.get_global_metadata(name.clone());
-    assert_eq!(result.unwrap_err(), Error::MetadataNotFound);
+    assert_eq!(result.unwrap(), None);
 }
 
 pub fn should_handle_vertex_metadata<D, T>(datastore: &mut D)
