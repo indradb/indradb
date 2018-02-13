@@ -9,7 +9,7 @@ mod tests;
 
 use serde_json::value::Value as JsonValue;
 
-pub use self::mapreduce::MapReducer;
+pub use self::mapreduce::{execute_mapreduce, Update, ResponseSender, ResponseReceiver, bounded};
 
 /// Runs a script.
 ///

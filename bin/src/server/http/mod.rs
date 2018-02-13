@@ -1,5 +1,4 @@
 mod middleware;
-mod response_chan;
 mod endpoints;
 mod util;
 
