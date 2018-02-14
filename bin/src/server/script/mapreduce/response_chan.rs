@@ -12,15 +12,15 @@ pub enum Update {
 
 impl Update {
     fn contents(&self) -> JsonValue {
-        match self {
-            &Update::Ping(ref value) => json!({"ping": value}),
-            &Update::Ok(ref value) => json!({"ok": value}),
-            &Update::Err(ref value) => json!({"error": value})
+        match *self {
+            Update::Ping(ref value) => json!({"ping": value}),
+            Update::Ok(ref value) => json!({"ok": value}),
+            Update::Err(ref value) => json!({"error": value})
         }
     }
 
     fn is_last(&self) -> bool {
-        if let &Update::Ping(_) = self {
+        if let Update::Ping(_) = *self {
             false
         } else {
             true

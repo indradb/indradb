@@ -16,12 +16,12 @@ pub use self::mapreduce::{execute_mapreduce, Update, ResponseSender, ResponseRec
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
 pub fn execute(
-    contents: String,
-    path: String,
+    contents: &str,
+    path: &str,
     arg: JsonValue,
 ) -> Result<JsonValue, errors::ScriptError> {
     let l = context::create(arg)?;
-    let value: converters::JsonValue = l.exec(&contents, Some(&path))?;
+    let value: converters::JsonValue = l.exec(contents, Some(path))?;
     Ok(value.0)
 }
 
@@ -56,7 +56,7 @@ mod tests {
                 // datastore by default which works fine. If you swap that out for
                 // another datastore (i.e. by changing the `DATASTORE_URL` env
                 // var), then you may need to disable parallel execution of tests.
-                match execute(contents.clone(), file_path_str.clone(), JsonValue::Null) {
+                match execute(&contents, &file_path_str, JsonValue::Null) {
                     Ok(actual_result) => {
                         if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents) {
                             let s = cap.get(1).unwrap().as_str();

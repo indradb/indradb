@@ -82,7 +82,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
                 last_id = Some(last_vertex.id);
             }
 
-            for vertex in vertices.into_iter() {
+            for vertex in vertices {
                 // Add the vertex to the queue
                 if !mapreducer.add_vertex(vertex) {
                     // The vertex couldn't be added, which means the channel is

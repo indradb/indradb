@@ -28,8 +28,8 @@ impl UuidGenerator {
     }
 
     pub fn next(&self) -> Uuid {
-        match self {
-            &UuidGenerator::V1 => {
+        match *self {
+            UuidGenerator::V1 => {
                 let now = Utc::now();
 
                 Uuid::new_v1(
@@ -39,7 +39,7 @@ impl UuidGenerator {
                     &NODE_ID,
                 ).expect("Expected to be able to generate a UUID")
             }
-            &UuidGenerator::V4 => Uuid::new_v4(),
+            UuidGenerator::V4 => Uuid::new_v4(),
         }
     }
 }

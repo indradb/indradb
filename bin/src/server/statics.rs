@@ -22,7 +22,7 @@ lazy_static! {
 
             value
         },
-        Err(_) => 10000
+        Err(_) => 10_000
     };
 
     /// The size of the mapreduce worker pool. "u16 ought to be enough for

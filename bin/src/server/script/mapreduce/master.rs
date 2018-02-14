@@ -86,9 +86,9 @@ impl Master {
                     }
 
                     // Check to see if we should shutdown
-                    if should_force_shutdown || (should_gracefully_shutdown && processing.get() == 0 && master_in_receiver.len() == 0) {
+                    if should_force_shutdown || (should_gracefully_shutdown && processing.get() == 0 && master_in_receiver.is_empty()) {
                         // Join all threads
-                        for worker_thread in worker_threads.into_iter() {
+                        for worker_thread in worker_threads {
                             worker_thread.join();
                         }
 

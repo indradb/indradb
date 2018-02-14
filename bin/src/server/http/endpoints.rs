@@ -5,7 +5,6 @@ use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::ser::Serialize;
-use std::u16;
 use script;
 use super::util::*;
 use iron::typemap::TypeMap;
@@ -18,7 +17,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
     let payload = read_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
     let (path, contents) = get_script_file(name)?;
 
-    match script::execute(contents, path, payload) {
+    match script::execute(&contents, &path, payload) {
         Ok(value) => Ok(to_response(status::Ok, &value)),
         Err(err) => {
             let error_message = format!("Script failed: {:?}", err);
@@ -57,11 +56,10 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
 
 pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction()?;
-    let mut idx: u16 = 0;
     let mut jsonable_res: Vec<JsonValue> = Vec::new();
-    let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(|| Vec::new());
+    let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(Vec::new);
 
-    for item in body {
+    for (idx, item) in body.into_iter().enumerate() {
         if let JsonValue::Object(obj) = item {
             let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
                 let message = format!("Item #{}: {}", idx, err);
@@ -111,8 +109,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 format!("Item #{}: Invalid type", idx),
             ));
         }
-
-        idx += 1;
     }
 
     trans.commit().map_err(|err| {
