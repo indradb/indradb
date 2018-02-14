@@ -22,8 +22,8 @@ pub struct Master {
 impl Master {
     pub fn start(contents: String, path: String, arg: JsonValue, sent: Counter, processing: Counter, finished: Counter) -> Self {
         let (master_in_sender, master_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
-        let (worker_in_sender, worker_in_receiver) = unbounded::<WorkerTask>();
-        let (worker_out_sender, worker_out_receiver) = bounded::<converters::JsonValue>(CHANNEL_CAPACITY);
+        let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
+        let (worker_out_sender, worker_out_receiver) = unbounded::<converters::JsonValue>();
         let (error_sender, error_receiver) = bounded::<errors::MapReduceError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
