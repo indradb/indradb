@@ -40,15 +40,25 @@ mod tests {
         static ref ERR_EXPECTED_PATTERN: Regex = Regex::new(r"-- err: ([^\n]+)").unwrap();
     }
 
+    fn get_test_script(name: &str) -> (String, String) {
+        let file_path_str = format!("test_scripts/execute/{}.lua", name);
+
+        let contents = {
+            let file_path = Path::new(&file_path_str);
+            let mut file = File::open(file_path).expect("Could not open script file");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).expect("Could not get script file contents");
+            contents
+        };
+        
+        (contents, file_path_str)
+    }
+
     macro_rules! test_script {
         ($name:ident) => (
             #[test]
             fn $name() {
-                let file_path_str = format!("test_scripts/execute/{}.lua", stringify!($name));
-                let file_path = Path::new(&file_path_str);
-                let mut file = File::open(file_path).expect("Could not open script file");
-                let mut contents = String::new();
-                file.read_to_string(&mut contents).expect("Could not get script file contents");
+               let (contents, file_path_str) = get_test_script(stringify!($name));
 
                 // NOTE: we construct a new datastore for each test, and tests are
                 // run in parallel by default, but not all datastores support
@@ -101,4 +111,12 @@ mod tests {
     test_script!(return_string);
     test_script!(set_and_get_edge);
     test_script!(vertex_metadata);
+
+    #[test]
+    fn should_commit() {
+        let (contents, file_path_str) = get_test_script("commit_first");
+        let id = execute(&contents, &file_path_str, JsonValue::Null).unwrap();
+        let (contents, file_path_str) = get_test_script("commit_second");
+        execute(&contents, &file_path_str, id).unwrap();
+    }
 }
