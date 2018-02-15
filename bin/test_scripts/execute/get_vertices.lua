@@ -1,5 +1,7 @@
 local queries = require("../shared/queries");
 
+local trans = transaction();
+
 -- Create some sample data
 local id_1 = trans:create_vertex("foo");
 local id_2 = trans:create_vertex("foo");

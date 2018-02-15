@@ -26,12 +26,12 @@ pub fn create(arg: JsonValue) -> Result<Lua, errors::ScriptError> {
             package.set("path", format!("{};{}", old_path, script_path))?;
         }
 
-        // Create a new transaction for the script
-        let trans = statics::DATASTORE.transaction()?;
-
         // Add globals
-        globals.set("trans", converters::ProxyTransaction::new(trans))?;
         globals.set("arg", converters::JsonValue::new(arg))?;
+        globals.set("transaction", l.create_function(|_, ()| {
+            let trans = statics::DATASTORE.transaction().map_err(|err| LuaError::RuntimeError(format!("{}", err)))?;
+            Ok(converters::ProxyTransaction::new(trans))
+        })?)?;
     }
 
     Ok(l)

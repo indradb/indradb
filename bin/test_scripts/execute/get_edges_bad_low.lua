@@ -1,5 +1,6 @@
 local queries = require("../shared/queries");
 
+local trans = transaction();
 local id = trans:create_vertex("foo");
 local q = queries.VertexQuery.vertices({id}):outbound_edges("purchased", 10, "bar", 10);
 

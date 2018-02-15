@@ -1,3 +1,5 @@
+local trans = transaction();
+
 function create_vertex()
     return trans:create_vertex("foo");
 end

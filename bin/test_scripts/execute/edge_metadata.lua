@@ -1,5 +1,6 @@
 local queries = require("../shared/queries");
 
+local trans = transaction();
 local outbound_id = trans:create_vertex("foo");
 local inbound_id = trans:create_vertex("bar");
 local key = queries.EdgeKey.new(outbound_id, "baz", inbound_id);

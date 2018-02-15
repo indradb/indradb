@@ -1,3 +1,5 @@
+local trans = transaction();
+
 function foo()
 end
 
