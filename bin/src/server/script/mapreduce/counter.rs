@@ -1,5 +1,8 @@
 use std::sync::{Arc, Mutex};
 
+// We used a mutex instead of an atomic because in benchmarks it seems to be
+// faster, and we can explicitly enforce u64 even on 32-bit systems (as of the
+// time of this writing, `AtomicUsize` is stable but `AtomicU64` is not)
 #[derive(Clone, Debug)]
 pub struct Counter(Arc<Mutex<u64>>);
 
