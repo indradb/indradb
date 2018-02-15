@@ -1,9 +1,9 @@
 mod api;
 mod context;
 mod converters;
-mod errors;
 mod mapreduce;
 
+use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 
 pub use self::mapreduce::{execute_mapreduce, Update, ResponseSender, ResponseReceiver, bounded};
@@ -19,7 +19,7 @@ pub fn execute(
     contents: &str,
     path: &str,
     arg: JsonValue,
-) -> Result<JsonValue, errors::ScriptError> {
+) -> Result<JsonValue, LuaError> {
     let l = context::create(arg)?;
     let value: converters::JsonValue = l.exec(contents, Some(path))?;
     Ok(value.0)

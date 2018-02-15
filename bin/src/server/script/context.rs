@@ -4,10 +4,9 @@ use serde_json::value::Value as JsonValue;
 use std::path::Path;
 use indradb::Datastore;
 use statics;
-use super::errors;
 use super::converters;
 
-pub fn create(arg: JsonValue) -> Result<Lua, errors::ScriptError> {
+pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
     let l = Lua::new();
 
     {

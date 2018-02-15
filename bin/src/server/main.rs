@@ -1,8 +1,12 @@
+#![recursion_limit = "1024"]
+
 extern crate chrono;
 extern crate common;
 extern crate core;
 #[macro_use]
 extern crate crossbeam_channel;
+#[macro_use]
+extern crate error_chain;
 extern crate hyper;
 extern crate indradb;
 extern crate iron;

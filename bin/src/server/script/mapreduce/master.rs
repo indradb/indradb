@@ -4,16 +4,15 @@ use statics;
 use crossbeam_channel::{Sender, bounded, unbounded};
 use std::time::Duration;
 use std::thread::{spawn, JoinHandle};
-use script::errors;
 use script::converters;
-use super::worker::{Worker, WorkerTask};
+use super::worker::{Worker, WorkerTask, WorkerError};
 use super::counter::Counter;
 
 const CHANNEL_TIMEOUT: u64 = 5;
 const CHANNEL_CAPACITY: usize = 1000;
 
 pub struct Master {
-    router_thread: JoinHandle<Result<JsonValue, errors::MapReduceError>>,
+    router_thread: JoinHandle<Result<JsonValue, WorkerError>>,
     in_sender: Sender<Vertex>,
     shutdown_sender: Sender<()>,
     sent: Counter
@@ -24,7 +23,7 @@ impl Master {
         let (master_in_sender, master_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
         let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
         let (worker_out_sender, worker_out_receiver) = unbounded::<converters::JsonValue>();
-        let (error_sender, error_receiver) = bounded::<errors::MapReduceError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
+        let (error_sender, error_receiver) = bounded::<WorkerError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
         let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
 
@@ -43,11 +42,11 @@ impl Master {
             let processing = processing.clone();
             let finished = finished.clone();
 
-            spawn(move || -> Result<JsonValue, errors::MapReduceError> {
+            spawn(move || -> Result<JsonValue, WorkerError> {
                 let mut should_force_shutdown = false; 
                 let mut should_gracefully_shutdown = false;
                 let mut last_reduced_item: Option<converters::JsonValue> = None;
-                let mut last_error: Option<errors::MapReduceError> = None;
+                let mut last_error: Option<WorkerError> = None;
 
                 loop {
                     select_loop! {
@@ -123,7 +122,7 @@ impl Master {
         ok
     }
 
-    pub fn join(self) -> Result<JsonValue, errors::MapReduceError> {
+    pub fn join(self) -> Result<JsonValue, WorkerError> {
         self.shutdown_sender.send(()).ok();
         self.router_thread.join().expect("Expected router thread to not panic")
     }

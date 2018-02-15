@@ -1,18 +1,31 @@
-use rlua::{Table, Function};
+use rlua::{Table, Function, Error as LuaError};
 use serde_json::value::Value as JsonValue;
-use indradb::Vertex;
+use indradb;
 use crossbeam_channel::{Receiver, Sender, bounded};
 use std::thread::{spawn, JoinHandle};
-use script::errors;
 use script::context;
 use script::converters;
 
+error_chain! {
+    types {
+        WorkerError, WorkerErrorKind, WorkerResultExt, WorkerResult;
+    }
+
+    links {
+        Setup(indradb::Error, indradb::ErrorKind);
+    }
+
+    foreign_links {
+        Call(LuaError);
+    }
+}
+
 macro_rules! try_or_send {
-    ($expr:expr, $error_mapper:expr, $error_sender:expr) => {
-        match $expr {
+    ($expr:expr, $description:expr, $error_sender:expr) => {
+        match $expr.map_err(|err| WorkerError::with_chain(err, $description)) {
             Ok(value) => value,
             Err(err) => {
-                $error_sender.send($error_mapper(err)).expect("Expected error channel to be open");
+                $error_sender.send(err).expect("Expected error channel to be open");
                 return;
             }
         }
@@ -20,7 +33,7 @@ macro_rules! try_or_send {
 }
 
 pub enum WorkerTask {
-    Map(Vertex),
+    Map(indradb::Vertex),
     Reduce((converters::JsonValue, converters::JsonValue))
 }
 
@@ -30,43 +43,31 @@ pub struct Worker {
 }
 
 impl Worker {
-    pub fn start(contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<errors::MapReduceError>) -> Self {
+    pub fn start(contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<WorkerError>) -> Self {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
         let thread = spawn(move || {
             let l = try_or_send!(
                 context::create(arg),
-                |err| errors::MapReduceError::WorkerSetup {
-                    description: "Error occurred trying to to create a lua context".to_string(),
-                    cause: err
-                },
+                "Could not setup lua context",
                 error_sender
             );
 
             let table: Table = try_or_send!(
                 l.exec(&contents, Some(&path)),
-                |err| errors::MapReduceError::WorkerSetup {
-                    description: "Error occurred trying to get a table from the mapreduce script".to_string(),
-                    cause: errors::ScriptError::Lua(err)
-                },
+                "Script did not return a table",
                 error_sender
             );
 
             let mapper: Function = try_or_send!(
                 table.get("map"),
-                |err| errors::MapReduceError::WorkerSetup {
-                    description: "Error occurred trying to get the `map` function from the returned table".to_string(),
-                    cause: errors::ScriptError::Lua(err)
-                },
+                "Script did not return a `map` function",
                 error_sender
             );
 
             let reducer: Function = try_or_send!(
                 table.get("reduce"),
-                |err| errors::MapReduceError::WorkerSetup {
-                    description: "Error occurred trying to get the `reduce` function from the returned table".to_string(),
-                    cause: errors::ScriptError::Lua(err)
-                },
+                "Script did not return a `reduce` function",
                 error_sender
             );
 
@@ -77,14 +78,14 @@ impl Worker {
                             WorkerTask::Map(vertex) => {
                                 try_or_send!(
                                     mapper.call(converters::Vertex::new(vertex)),
-                                    |err| errors::MapReduceError::MapCall(err),
+                                    "Map call failed",
                                     error_sender
                                 )
                             },
                             WorkerTask::Reduce((first, second)) => {
                                 try_or_send!(
                                     reducer.call((first, second)),
-                                    |err| errors::MapReduceError::ReduceCall(err),
+                                    "Reduce call failed",
                                     error_sender
                                 )
                             }
