@@ -109,3 +109,43 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::prelude::*;
+    use std::fs::File;
+    use super::execute_mapreduce;
+    use std::path::Path;
+    use indradb::Type;
+    use statics;
+    use script;
+    use indradb::{Datastore, Transaction};
+    use super::response_chan::Update;
+
+    #[test]
+    fn should_mapreduce() {
+        // Make sure there's at least one vertex to process
+        {
+            let trans = statics::DATASTORE.transaction().unwrap();
+            trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
+            trans.commit().unwrap();
+        }
+
+        let file_path_str = "test_scripts/mapreduce/count.lua";
+        let file_path = Path::new(file_path_str);
+        let mut file = File::open(file_path).expect("Could not open script file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Could not get script file contents");
+
+        let (sender, receiver) = script::bounded(1);
+        execute_mapreduce(contents, file_path_str.to_string(), json!(2), sender);
+        let update = receiver.0.recv().unwrap();
+        drop(receiver);
+
+        if let Update::Ok(ref value) = update {
+            assert!(value.as_f64().unwrap() >= 2.0);
+        } else {
+            panic!("Unexpected response: {:?}", update);
+        }
+    }
+}

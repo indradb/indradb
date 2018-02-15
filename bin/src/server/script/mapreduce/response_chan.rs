@@ -4,6 +4,7 @@ use serde_json::value::Value as JsonValue;
 use iron::response::WriteBody;
 use std::io::{Write, Result as IoResult};
 
+#[derive(Clone, Debug)]
 pub enum Update {
     Ping(JsonValue),
     Ok(JsonValue),
