@@ -2,8 +2,8 @@ function map(vertex)
     return arg
 end
 
-function reduce(first, second)
-    return first + second
+function reduce(accumulator, value)
+    return (accumulator or 1.0) + value
 end
 
 return { map=map, reduce=reduce }

@@ -45,7 +45,7 @@ impl Master {
             spawn(move || -> Result<JsonValue, WorkerError> {
                 let mut should_force_shutdown = false; 
                 let mut should_gracefully_shutdown = false;
-                let mut last_reduced_item: Option<converters::JsonValue> = None;
+                let mut last_reduced_item: Option<converters::JsonValue> = Some(converters::JsonValue::new(JsonValue::Null));
                 let mut last_error: Option<WorkerError> = None;
 
                 loop {
@@ -169,16 +169,16 @@ mod tests {
 
     #[test]
     fn should_handle_one_item() {
-        run(1, 1, json!(2.0));
+        run(1, 2, json!(3.0));
     }
 
     #[test]
     fn should_handle_many_even_items() {
-        run(6, 11, json!(12.0));
+        run(6, 12, json!(13.0));
     }
 
     #[test]
     fn should_handle_many_odd_items() {
-        run(5, 9, json!(10.0));
+        run(5, 10, json!(11.0));
     }
 }

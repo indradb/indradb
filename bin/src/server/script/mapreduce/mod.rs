@@ -143,7 +143,7 @@ mod tests {
         drop(receiver);
 
         if let Update::Ok(ref value) = update {
-            assert!(value.as_f64().unwrap() >= 2.0);
+            assert!(value.as_f64().unwrap() >= 3.0);
         } else {
             panic!("Unexpected response: {:?}", update);
         }
