@@ -1,31 +1,24 @@
 use rlua::{Table, Function, Error as LuaError};
 use serde_json::value::Value as JsonValue;
-use indradb;
+use indradb::Vertex;
 use crossbeam_channel::{Receiver, Sender, bounded};
 use std::thread::{spawn, JoinHandle};
 use script::context;
 use script::converters;
 
-error_chain! {
-    types {
-        WorkerError, WorkerErrorKind, WorkerResultExt, WorkerResult;
-    }
-
-    links {
-        Setup(indradb::Error, indradb::ErrorKind);
-    }
-
-    foreign_links {
-        Call(LuaError);
-    }
+#[derive(Debug)]
+pub enum WorkerError {
+    Setup { description: String, cause: LuaError },
+    MapCall(LuaError),
+    ReduceCall(LuaError)
 }
 
 macro_rules! try_or_send {
-    ($expr:expr, $description:expr, $error_sender:expr) => {
-        match $expr.map_err(|err| WorkerError::with_chain(err, $description)) {
+    ($expr:expr, $error_mapper:expr, $error_sender:expr) => {
+        match $expr {
             Ok(value) => value,
             Err(err) => {
-                $error_sender.send(err).expect("Expected error channel to be open");
+                $error_sender.send($error_mapper(err)).expect("Expected error channel to be open");
                 return;
             }
         }
@@ -33,7 +26,7 @@ macro_rules! try_or_send {
 }
 
 pub enum WorkerTask {
-    Map(indradb::Vertex),
+    Map(Vertex),
     Reduce((converters::JsonValue, converters::JsonValue))
 }
 
@@ -49,25 +42,37 @@ impl Worker {
         let thread = spawn(move || {
             let l = try_or_send!(
                 context::create(arg),
-                "Could not setup lua context",
+                |err| WorkerError::Setup {
+                    description: "Error occurred trying to to create a lua context".to_string(),
+                    cause: err
+                },
                 error_sender
             );
 
             let table: Table = try_or_send!(
                 l.exec(&contents, Some(&path)),
-                "Script did not return a table",
+                |err| WorkerError::Setup {
+                    description: "Error occurred trying to get a table from the mapreduce script".to_string(),
+                    cause: err
+                },
                 error_sender
             );
 
             let mapper: Function = try_or_send!(
                 table.get("map"),
-                "Script did not return a `map` function",
+                |err| WorkerError::Setup {
+                    description: "Error occurred trying to get the `map` function from the returned table".to_string(),
+                    cause: err
+                },
                 error_sender
             );
 
             let reducer: Function = try_or_send!(
                 table.get("reduce"),
-                "Script did not return a `reduce` function",
+                |err| WorkerError::Setup {
+                    description: "Error occurred trying to get the `reduce` function from the returned table".to_string(),
+                    cause: err
+                },
                 error_sender
             );
 
@@ -78,14 +83,14 @@ impl Worker {
                             WorkerTask::Map(vertex) => {
                                 try_or_send!(
                                     mapper.call(converters::Vertex::new(vertex)),
-                                    "Map call failed",
+                                    |err| WorkerError::MapCall(err),
                                     error_sender
                                 )
                             },
                             WorkerTask::Reduce((first, second)) => {
                                 try_or_send!(
                                     reducer.call((first, second)),
-                                    "Reduce call failed",
+                                    |err| WorkerError::ReduceCall(err),
                                     error_sender
                                 )
                             }
