@@ -54,7 +54,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             Ok(trans) => trans,
             Err(err) => {
                 let message = format!("Query setup failed: {:?}", err);
-                sender.0.send(Update::Err(json!({"error": message}))).ok();
+                sender.0.send(Update::Err(json!(message))).ok();
                 return;
             }
         };
@@ -69,7 +69,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
                 Ok(vertices) => vertices,
                 Err(err) => {
                     let message = format!("Query failed: {:?}", err);
-                    sender.0.send(Update::Err(json!({"error": message}))).ok();
+                    sender.0.send(Update::Err(json!(message))).ok();
                     break;
                 }
             };
@@ -104,7 +104,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             },
             Err(err) => {
                 let message = format!("Mapreduce failed: {:?}", err);
-                sender.0.send(Update::Err(json!({"error": message}))).ok();
+                sender.0.send(Update::Err(json!(message))).ok();
             }
         }
     });
