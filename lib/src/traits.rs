@@ -67,11 +67,13 @@ pub trait Transaction {
     /// * `q` - The query to run.
     fn delete_edges(&self, q: models::EdgeQuery) -> Result<()>;
 
-    /// Gets the number of edges that match a query.
+    /// Gets the number of edges associated with a vertex.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    fn get_edge_count(&self, q: models::EdgeQuery) -> Result<u64>;
+    /// * `id` - The id of the vertex.
+    /// * `type_filter` - Only get the count for a specified edge type.
+    /// * `direction`: The direction of edges to get.
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets a global metadata value.
     ///

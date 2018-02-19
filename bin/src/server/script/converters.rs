@@ -4,7 +4,7 @@ use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey,
               EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery,
-              QueryTypeConverter, Type as ExternalType, Vertex as ExternalVertex,
+              EdgeDirection, Type as ExternalType, Vertex as ExternalVertex,
               VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
@@ -578,10 +578,10 @@ fn type_from_value(value: Value) -> LuaResult<ExternalType> {
     Ok(value_type)
 }
 
-fn converter_from_table(table: &Table) -> LuaResult<QueryTypeConverter> {
+fn converter_from_table(table: &Table) -> LuaResult<EdgeDirection> {
     match &string_from_value(get_table_value(table, "converter")?)?[..] {
-        "outbound" => Ok(QueryTypeConverter::Outbound),
-        "inbound" => Ok(QueryTypeConverter::Inbound),
+        "outbound" => Ok(EdgeDirection::Outbound),
+        "inbound" => Ok(EdgeDirection::Inbound),
         _ => Err(new_from_lua_error(
             "",
             "",

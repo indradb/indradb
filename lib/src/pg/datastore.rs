@@ -1,7 +1,7 @@
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use r2d2::{Pool, PooledConnection};
 use std::mem;
-use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeQuery, EdgeDirection, Transaction, VertexQuery};
 use models;
 use errors::{Error, Result};
 use postgres;
@@ -148,10 +148,10 @@ impl PostgresTransaction {
                 let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
 
                 let query_template = match converter {
-                    QueryTypeConverter::Outbound => {
+                    EdgeDirection::Outbound => {
                         "SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
-                    QueryTypeConverter::Inbound => {
+                    EdgeDirection::Inbound => {
                         "SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
                 };
@@ -212,19 +212,19 @@ impl PostgresTransaction {
                 let where_clause = where_clause_template_builder.join(" AND ");
 
                 let query_template = match (converter, where_clause.len()) {
-                    (QueryTypeConverter::Outbound, 0) => {
+                    (EdgeDirection::Outbound, 0) => {
                         "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
-                    (QueryTypeConverter::Outbound, _) => {
+                    (EdgeDirection::Outbound, _) => {
                         format!(
                             "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE outbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
                         )
                     }
-                    (QueryTypeConverter::Inbound, 0) => {
+                    (EdgeDirection::Inbound, 0) => {
                         "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) ORDER BY update_timestamp DESC LIMIT %p".to_string()
                     }
-                    (QueryTypeConverter::Inbound, _) => {
+                    (EdgeDirection::Inbound, _) => {
                         format!(
                             "SELECT id, outbound_id, type, inbound_id, update_timestamp FROM edges WHERE inbound_id IN (SELECT id FROM %t) AND {} ORDER BY update_timestamp DESC LIMIT %p",
                             where_clause
@@ -342,13 +342,21 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
-        let mut sql_query_builder = CTEQueryBuilder::new();
-        self.edge_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) =
-            sql_query_builder.into_query_payload("SELECT COUNT(id) FROM %t", vec![]);
-        let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
-        let results = self.trans.query(&query[..], &params_refs[..])?;
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+        let results = match (direction, type_filter) {
+            (models::EdgeDirection::Outbound, Some(t)) => {
+                self.trans.query("SELECT COUNT(*) FROM edges WHERE outbound_id=$1 AND type=$2", &[&id, &t.0])
+            },
+            (models::EdgeDirection::Outbound, None) => {
+                self.trans.query("SELECT COUNT(*) FROM edges WHERE outbound_id=$1", &[&id])
+            },
+            (models::EdgeDirection::Inbound, Some(t)) => {
+                self.trans.query("SELECT COUNT(*) FROM edges WHERE inbound_id=$1 AND type=$2", &[&id, &t.0])
+            },
+            (models::EdgeDirection::Inbound, None) => {
+                self.trans.query("SELECT COUNT(*) FROM edges WHERE inbound_id=$1", &[&id])
+            }
+        }?;
 
         for row in &results {
             let count: i64 = row.get(0);

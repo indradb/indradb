@@ -60,13 +60,13 @@ impl InternalMemoryDatastore {
                 let edge_values = self.get_edge_values_by_query(*edge_query)?;
 
                 let ids: Vec<Uuid> = match converter.clone() {
-                    models::QueryTypeConverter::Outbound => edge_values
+                    models::EdgeDirection::Outbound => edge_values
                         .clone()
                         .into_iter()
                         .take(limit as usize)
                         .map(|(key, _)| key.outbound_id)
                         .collect(),
-                    models::QueryTypeConverter::Inbound => edge_values
+                    models::EdgeDirection::Inbound => edge_values
                         .clone()
                         .into_iter()
                         .take(limit as usize)
@@ -118,7 +118,7 @@ impl InternalMemoryDatastore {
                 let mut results = Vec::new();
 
                 match converter {
-                    models::QueryTypeConverter::Outbound => {
+                    models::EdgeDirection::Outbound => {
                         for (id, _) in vertex_values {
                             let lower_bound = match type_filter {
                                 Some(ref type_filter) => {
@@ -165,7 +165,7 @@ impl InternalMemoryDatastore {
                             }
                         }
                     }
-                    models::QueryTypeConverter::Inbound => {
+                    models::EdgeDirection::Inbound => {
                         let mut candidate_ids = HashSet::new();
                         for (id, _) in vertex_values {
                             candidate_ids.insert(id);
@@ -268,6 +268,8 @@ impl Transaction for MemoryTransaction {
             datastore.get_vertex_values_by_query(q)?
         };
 
+        // TODO: delete vertex metadata, edges
+
         let mut datastore = self.datastore.write().unwrap();
 
         for (uuid, _) in vertex_values {
@@ -311,6 +313,8 @@ impl Transaction for MemoryTransaction {
             datastore.get_edge_values_by_query(q)?
         };
 
+        // TODO: delete edge metadata
+
         let mut datastore = self.datastore.write().unwrap();
 
         for (key, _) in deletable_edges {
@@ -320,9 +324,48 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
-        let edge_values = self.datastore.read().unwrap().get_edge_values_by_query(q)?;
-        Ok(edge_values.len() as u64)
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+        if direction == models::EdgeDirection::Outbound {
+            let lower_bound = match type_filter {
+                Some(ref type_filter) => {
+                    models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
+                }
+                None => {
+                    // NOTE: Circumventing the constructor for
+                    // `Type` because it doesn't allow empty
+                    // values, yet we need to use one for
+                    // comparison
+                    let empty_type = models::Type("".to_string());
+                    models::EdgeKey::new(id, empty_type, Uuid::default())
+                }
+            };
+
+            let datastore = self.datastore.read().unwrap();
+
+            let range = datastore.edges.range(lower_bound..);
+
+            let range = range.take_while(|&(k, _)| {
+                if let Some(ref type_filter) = type_filter {
+                    k.outbound_id == id && &k.t == type_filter
+                } else {
+                    k.outbound_id == id
+                }
+            });
+
+            Ok(range.count() as u64)
+        } else {
+            let datastore = self.datastore.read().unwrap();
+
+            let range = datastore.edges.iter().filter(|&(k, _)| {
+                if let Some(ref type_filter) = type_filter {
+                    k.inbound_id == id && &k.t == type_filter
+                } else {
+                    k.inbound_id == id
+                }
+            });
+
+            Ok(range.count() as u64)
+        }
     }
 
     fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {

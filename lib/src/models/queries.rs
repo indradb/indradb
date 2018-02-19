@@ -9,11 +9,11 @@ use super::edges::EdgeKey;
 ///
 /// Edge and vertex queries can build off of one another via pipes - e.g. you
 /// can get the outbound edges of a set of vertices by piping from a vertex
-/// query to an edge query. `QueryTypeConverter`s are used to specify which
+/// query to an edge query. `EdgeDirection`s are used to specify which
 /// end of things you want to pipe - either the outbound items or the inbound
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-pub enum QueryTypeConverter {
+pub enum EdgeDirection {
     #[serde(rename = "outbound")] Outbound,
     #[serde(rename = "inbound")] Inbound,
 }
@@ -34,7 +34,7 @@ pub enum VertexQuery {
     },
     Pipe {
         edge_query: Box<EdgeQuery>,
-        converter: QueryTypeConverter,
+        converter: EdgeDirection,
         limit: u32,
     },
 }
@@ -49,7 +49,7 @@ impl VertexQuery {
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
-            converter: QueryTypeConverter::Outbound,
+            converter: EdgeDirection::Outbound,
             type_filter: t,
             high_filter: high,
             low_filter: low,
@@ -66,7 +66,7 @@ impl VertexQuery {
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
-            converter: QueryTypeConverter::Inbound,
+            converter: EdgeDirection::Inbound,
             type_filter: t,
             high_filter: high,
             low_filter: low,
@@ -87,7 +87,7 @@ pub enum EdgeQuery {
     },
     Pipe {
         vertex_query: Box<VertexQuery>,
-        converter: QueryTypeConverter,
+        converter: EdgeDirection,
         type_filter: Option<Type>,
         high_filter: Option<DateTime<Utc>>,
         low_filter: Option<DateTime<Utc>>,
@@ -99,7 +99,7 @@ impl EdgeQuery {
     pub fn outbound_vertices(self, limit: u32) -> VertexQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
-            converter: QueryTypeConverter::Outbound,
+            converter: EdgeDirection::Outbound,
             limit: limit,
         }
     }
@@ -107,7 +107,7 @@ impl EdgeQuery {
     pub fn inbound_vertices(self, limit: u32) -> VertexQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
-            converter: QueryTypeConverter::Inbound,
+            converter: EdgeDirection::Inbound,
             limit: limit,
         }
     }

@@ -1,11 +1,10 @@
-use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, VertexQuery, EdgeDirection};
 use models;
 use uuid::Uuid;
 use chrono::offset::Utc;
 use chrono::Timelike;
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use std::collections::HashSet;
-use std::u32;
 
 pub fn should_get_a_valid_edge<D, T>(datastore: &mut D)
 where
@@ -176,10 +175,7 @@ where
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), None, None, u32::MAX);
-    let count = trans.get_edge_count(q).unwrap();
+    let count = trans.get_edge_count(outbound_id, Some(t), EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 5);
 }
 
@@ -190,10 +186,7 @@ where
 {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(None, None, None, u32::MAX);
-    let count = trans.get_edge_count(q).unwrap();
+    let count = trans.get_edge_count(outbound_id, None, EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 5);
 }
 
@@ -204,11 +197,19 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![Uuid::default()],
-    }.outbound_edges(Some(t), None, None, u32::MAX);
-    let count = trans.get_edge_count(q).unwrap();
+    let count = trans.get_edge_count(Uuid::default(), Some(t), EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
+}
+
+pub fn should_get_an_inbound_edge_count<D, T>(datastore: &mut D)
+where
+    D: Datastore<T>,
+    T: Transaction,
+{
+    let (_, inbound_ids) = create_edges(datastore);
+    let trans = datastore.transaction().unwrap();
+    let count = trans.get_edge_count(inbound_ids[0], None, EdgeDirection::Inbound).unwrap();
+    assert_eq!(count, 1);
 }
 
 pub fn should_get_an_edge_range<D, T>(datastore: &mut D)

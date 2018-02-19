@@ -6,7 +6,8 @@
 use std::env;
 use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
               MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore,
-              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery,
+              EdgeDirection};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
@@ -80,8 +81,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
-        proxy_transaction!(self, get_edge_count, q)
+    fn get_edge_count(&self, id: Uuid, direction: EdgeDirection) -> Result<u64, Error> {
+        proxy_transaction!(self, get_edge_count, id, direction)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<Option<JsonValue>, Error> {
