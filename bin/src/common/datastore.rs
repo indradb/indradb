@@ -81,8 +81,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(&self, id: Uuid, direction: EdgeDirection) -> Result<u64, Error> {
-        proxy_transaction!(self, get_edge_count, id, direction)
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> Result<u64, Error> {
+        proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<Option<JsonValue>, Error> {

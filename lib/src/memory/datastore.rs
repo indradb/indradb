@@ -205,6 +205,60 @@ impl InternalMemoryDatastore {
             }
         }
     }
+
+    fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
+        for vertex_id in vertices {
+            self.vertices.remove(&vertex_id);
+            
+            let mut deletable_vertex_metadata: Vec<(Uuid, String)> = Vec::new();
+
+            for (metadata_key, _) in self.vertex_metadata.range((vertex_id, "".to_string())..) {
+                let &(ref metadata_vertex_id, _) = metadata_key;
+
+                if &vertex_id != metadata_vertex_id {
+                    break;
+                }
+
+                deletable_vertex_metadata.push(metadata_key.clone());
+            }
+
+            for metadata_key in deletable_vertex_metadata {
+                self.vertex_metadata.remove(&metadata_key);
+            }
+
+            let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
+
+            for (edge_key, _) in self.edges.iter() {
+                if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
+                    deletable_edges.push(edge_key.clone());
+                }
+            }
+
+            self.delete_edges(deletable_edges);
+        }
+    }
+
+    fn delete_edges(&mut self, edges: Vec<models::EdgeKey>) {
+        for edge_key in edges {
+            self.edges.remove(&edge_key);
+
+            let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
+
+            for (metadata_key, _) in self.edge_metadata.range((edge_key.clone(), "".to_string())..) {
+                let &(ref metadata_edge_key, _) = metadata_key;
+
+                if &edge_key != metadata_edge_key {
+                    break;
+                }
+
+                deletable_edge_metadata.push(metadata_key.clone());
+            }
+
+            for metadata_key in deletable_edge_metadata {
+                self.edge_metadata.remove(&metadata_key);
+            }
+        }
+    }
 }
 
 /// An in-memory-only datastore.
@@ -262,15 +316,8 @@ impl Transaction for MemoryTransaction {
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-
-        let vertex_values = datastore.get_vertex_values_by_query(q)?;
-
-        // TODO: delete vertex metadata, edges
-
-        for (uuid, _) in vertex_values {
-            datastore.vertices.remove(&uuid);
-        }
-
+        let deletable_vertices = datastore.get_vertex_values_by_query(q)?.into_iter().map(|(k, _)| k).collect();
+        datastore.delete_vertices(deletable_vertices);
         Ok(())
     }
 
@@ -301,29 +348,8 @@ impl Transaction for MemoryTransaction {
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-
         let deletable_edges: Vec<models::EdgeKey> = datastore.get_edge_values_by_query(q)?.into_iter().map(|(k, _)| k).collect();
-
-        for edge_key in deletable_edges {
-            datastore.edges.remove(&edge_key);
-
-            let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
-
-            for (metadata_key, _) in datastore.edge_metadata.range((edge_key.clone(), "".to_string())..) {
-                let &(ref metadata_edge_key, _) = metadata_key;
-
-                if &edge_key != metadata_edge_key {
-                    break;
-                }
-
-                deletable_edge_metadata.push(metadata_key.clone());
-            }
-
-            for metadata_key in deletable_edge_metadata {
-                datastore.edge_metadata.remove(&metadata_key);
-            }
-        }
-
+        datastore.delete_edges(deletable_edges);
         Ok(())
     }
 
