@@ -111,12 +111,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
         }
     }
 
-    trans.commit().map_err(|err| {
-        create_iron_error(
-            status::InternalServerError,
-            format!("Could not commit transaction: {}", err),
-        )
-    })?;
     Ok(to_response(status::Ok, &jsonable_res))
 }
 

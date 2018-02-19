@@ -28,7 +28,6 @@ where
             limit: u32::MAX,
         })
         .unwrap();
-    trans.commit().unwrap();
 
     assert!(range.len() >= 5);
 
@@ -68,7 +67,6 @@ where
             limit: 0,
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -95,7 +93,6 @@ where
             limit: u32::MAX,
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -112,7 +109,6 @@ where
             ids: vec![inserted_id],
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -131,7 +127,6 @@ where
             ids: vec![Uuid::default()],
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -159,7 +154,6 @@ where
             ],
         })
         .unwrap();
-    trans.commit().unwrap();
 
     assert!(range.len() == 3);
 

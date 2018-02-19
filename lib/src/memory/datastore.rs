@@ -445,12 +445,4 @@ impl Transaction for MemoryTransaction {
 
         Ok(())
     }
-
-    fn commit(self) -> Result<()> {
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<()> {
-        unimplemented!()
-    }
 }

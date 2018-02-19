@@ -152,10 +152,4 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     fn delete_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<()>;
-
-    /// Commits the transaction.
-    fn commit(self) -> Result<()>;
-
-    /// Rolls the transaction back.
-    fn rollback(self) -> Result<()>;
 }

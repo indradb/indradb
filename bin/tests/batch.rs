@@ -266,14 +266,6 @@ impl Transaction for BatchTransaction {
             "name": name
         }))
     }
-
-    fn commit(self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<(), Error> {
-        Err("Cannot rollback an HTTP-based transaction".into())
-    }
 }
 
 pub fn datastore() -> BatchDatastore {

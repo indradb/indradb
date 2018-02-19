@@ -535,12 +535,4 @@ impl Transaction for RocksdbTransaction {
         self.db.write(batch)?;
         Ok(())
     }
-
-    fn commit(self) -> Result<()> {
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<()> {
-        Err("Transactions cannot be rolled back in the rocksdb datastore implementation".into())
-    }
 }

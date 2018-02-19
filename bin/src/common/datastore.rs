@@ -128,22 +128,6 @@ impl Transaction for ProxyTransaction {
     fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
         proxy_transaction!(self, delete_edge_metadata, q, key)
     }
-
-    fn commit(self) -> Result<(), Error> {
-        match self {
-            ProxyTransaction::Postgres(pg) => pg.commit(),
-            ProxyTransaction::Rocksdb(r) => r.commit(),
-            ProxyTransaction::Memory(mem) => mem.commit(),
-        }
-    }
-
-    fn rollback(self) -> Result<(), Error> {
-        match self {
-            ProxyTransaction::Postgres(pg) => pg.rollback(),
-            ProxyTransaction::Rocksdb(r) => r.rollback(),
-            ProxyTransaction::Memory(mem) => mem.rollback(),
-        }
-    }
 }
 
 /// Creates a new datastore.

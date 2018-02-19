@@ -95,10 +95,12 @@ impl PostgresTransaction {
     ) -> Result<Self> {
         let conn = Box::new(conn);
 
-        let trans = unsafe {
+        let trans: postgres::transaction::Transaction<'static> = unsafe {
             mem::transmute(conn.transaction()
                 .map_err(|err| Error::with_chain(err, "Could not create transaction"))?)
         };
+
+        trans.set_commit();
 
         Ok(PostgresTransaction {
             conn: conn,
@@ -498,18 +500,6 @@ impl Transaction for PostgresTransaction {
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
-        Ok(())
-    }
-
-    fn commit(self) -> Result<()> {
-        self.trans.set_commit();
-        self.trans.commit()?;
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<()> {
-        self.trans.set_rollback();
-        self.trans.commit()?;
         Ok(())
     }
 }

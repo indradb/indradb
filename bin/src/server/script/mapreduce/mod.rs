@@ -128,7 +128,6 @@ mod tests {
         {
             let trans = statics::DATASTORE.transaction().unwrap();
             trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
-            trans.commit().unwrap();
         }
 
         let file_path_str = "test_scripts/mapreduce/count.lua";
