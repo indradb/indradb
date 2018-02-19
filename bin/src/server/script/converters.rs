@@ -1,4 +1,4 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData,
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, ToLua, UserData,
            UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
@@ -219,8 +219,8 @@ impl Type {
 }
 
 impl<'lua> FromLua<'lua> for Type {
-    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        let value_string = string_from_value(value)?;
+    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
+        let value_string = String::from_lua(value, l)?;
         let value_type = ExternalType::new(value_string.to_string())
             .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?;
         Ok(Type::new(value_type))
@@ -246,9 +246,9 @@ impl EdgeKey {
 impl<'lua> FromLua<'lua> for EdgeKey {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
         if let Value::Table(value) = value {
-            let outbound_id = Uuid::from_lua(get_table_value(&value, "outbound_id")?, l)?.0;
-            let t = Type::from_lua(get_table_value(&value, "type")?, l)?.0;
-            let inbound_id = Uuid::from_lua(get_table_value(&value, "inbound_id")?, l)?.0;
+            let outbound_id = Uuid::from_lua(value.get("outbound_id")?, l)?.0;
+            let t = Type::from_lua(value.get("type")?, l)?.0;
+            let inbound_id = Uuid::from_lua(value.get("inbound_id")?, l)?.0;
             Ok(EdgeKey::new(ExternalEdgeKey::new(
                 outbound_id,
                 t,
@@ -328,8 +328,8 @@ impl Uuid {
 }
 
 impl<'lua> FromLua<'lua> for Uuid {
-    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        let value_string = string_from_value(value)?;
+    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
+        let value_string = String::from_lua(value, l)?;
         let value_uuid = ExternalUuid::from_str(&value_string[..])
             .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?;
         Ok(Uuid::new(value_uuid))
@@ -355,24 +355,24 @@ impl VertexQuery {
 impl<'lua> FromLua<'lua> for VertexQuery {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
         if let Value::Table(value) = value {
-            let t = string_from_value(get_table_value(&value, "type")?)?;
+            let t = String::from_lua(value.get("type")?, l)?;
 
             if t == "all" {
                 let start_id =
-                    match optional_string_from_value(get_table_value(&value, "start_id")?)? {
+                    match Option::<String>::from_lua(value.get("start_id")?, l)? {
                         Some(start_id) => Some(ExternalUuid::from_str(&start_id[..]).map_err(
                             |e| new_from_lua_error("string", "uuid", Some(format!("{}", e))),
                         )?),
                         None => None,
                     };
 
-                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
+                let limit = u32::from_lua(value.get("limit")?, l)?;
                 Ok(VertexQuery::new(ExternalVertexQuery::All {
                     start_id,
                     limit,
                 }))
             } else if t == "vertices" {
-                if let Value::Table(ids_values) = get_table_value(&value, "ids")? {
+                if let Value::Table(ids_values) = value.get("ids")? {
                     let mut ids = vec![];
 
                     for pair in ids_values.pairs::<Value, Value>() {
@@ -390,9 +390,9 @@ impl<'lua> FromLua<'lua> for VertexQuery {
                 }
             } else if t == "pipe" {
                 let edge_query =
-                    Box::new(EdgeQuery::from_lua(get_table_value(&value, "edge_query")?, l)?.0);
-                let converter = EdgeDirection::from_lua(get_table_value(&value, "converter")?, l)?.0;
-                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
+                    Box::new(EdgeQuery::from_lua(value.get("edge_query")?, l)?.0);
+                let converter = EdgeDirection::from_lua(value.get("converter")?, l)?.0;
+                let limit = u32::from_lua(value.get("limit")?, l)?;
                 Ok(VertexQuery::new(ExternalVertexQuery::Pipe {
                     edge_query,
                     converter,
@@ -423,10 +423,10 @@ impl EdgeQuery {
 impl<'lua> FromLua<'lua> for EdgeQuery {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
         if let Value::Table(value) = value {
-            let t = string_from_value(get_table_value(&value, "type")?)?;
+            let t = String::from_lua(value.get("type")?, l)?;
 
             if t == "edges" {
-                if let Value::Table(edges) = get_table_value(&value, "keys")? {
+                if let Value::Table(edges) = value.get("keys")? {
                     let mut keys = vec![];
 
                     for pair in edges.pairs::<Value, Value>() {
@@ -444,11 +444,11 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
                 }
             } else if t == "pipe" {
                 let vertex_query =
-                    Box::new(VertexQuery::from_lua(get_table_value(&value, "vertex_query")?, l)?.0);
-                let converter = EdgeDirection::from_lua(get_table_value(&value, "converter")?, l)?.0;
+                    Box::new(VertexQuery::from_lua(value.get("vertex_query")?, l)?.0);
+                let converter = EdgeDirection::from_lua(value.get("converter")?, l)?.0;
 
                 let type_filter =
-                    match optional_string_from_value(get_table_value(&value, "type_filter")?)? {
+                    match Option::<String>::from_lua(value.get("type_filter")?, l)? {
                         Some(type_filter_str) => {
                             let type_filter = ExternalType::new(type_filter_str.to_string())
                                 .map_err(|e| {
@@ -460,10 +460,10 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
                     };
 
                 let high_filter =
-                    optional_datetime_from_value(&get_table_value(&value, "high_filter")?)?;
+                    optional_datetime_from_value(&value.get("high_filter")?)?;
                 let low_filter =
-                    optional_datetime_from_value(&get_table_value(&value, "low_filter")?)?;
-                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
+                    optional_datetime_from_value(&value.get("low_filter")?)?;
+                let limit = u32::from_lua(value.get("limit")?, l)?;
                 Ok(EdgeQuery::new(ExternalEdgeQuery::Pipe {
                     vertex_query,
                     converter,
@@ -531,8 +531,8 @@ impl EdgeDirection {
 }
 
 impl<'lua> FromLua<'lua> for EdgeDirection {
-    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        match &string_from_value(value)?[..] {
+    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
+        match &String::from_lua(value, l)?[..] {
             "outbound" => Ok(EdgeDirection::new(ExternalEdgeDirection::Outbound)),
             "inbound" => Ok(EdgeDirection::new(ExternalEdgeDirection::Inbound)),
             _ => Err(new_from_lua_error(
@@ -549,36 +549,6 @@ fn new_from_lua_error(from: &'static str, to: &'static str, message: Option<Stri
         from: from,
         to: to,
         message: message,
-    }
-}
-
-fn get_table_value<'lua>(table: &'lua Table, name: &str) -> LuaResult<Value<'lua>> {
-    table
-        .get(name)
-        .map_err(|_| new_from_lua_error("", "", Some(format!("missing `{}` in the table", name))))
-}
-
-fn string_from_value(value: Value) -> LuaResult<String> {
-    if let Value::String(value) = value {
-        let value_string = value.to_str().map_err(|e| {
-            new_from_lua_error("lua string", "native string", Some(format!("{}", e)))
-        })?;
-        Ok(value_string.to_string())
-    } else {
-        Err(new_from_lua_error("non-string", "string", None))
-    }
-}
-
-fn optional_string_from_value(value: Value) -> LuaResult<Option<String>> {
-    match value {
-        Value::String(value) => {
-            let value_string = value.to_str().map_err(|e| {
-                new_from_lua_error("lua string", "native string", Some(format!("{}", e)))
-            })?;
-            Ok(Some(value_string.to_string()))
-        }
-        Value::Nil => Ok(None),
-        _ => Err(new_from_lua_error("non-string", "string", None)),
     }
 }
 
