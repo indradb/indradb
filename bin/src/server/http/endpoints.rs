@@ -1,10 +1,11 @@
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery};
+use indradb::{EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery, EdgeDirection};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::ser::Serialize;
+use uuid::Uuid;
 use script;
 use super::util::*;
 use iron::typemap::TypeMap;
@@ -166,8 +167,10 @@ fn get_edge_count(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-    execute_item(trans.get_edge_count(q))
+    let id = get_json_obj_value::<Uuid>(item, "id")?;
+    let type_filter = get_json_obj_value::<Option<Type>>(item, "type_filter")?;
+    let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
+    execute_item(trans.get_edge_count(id, type_filter, direction))
 }
 
 fn get_global_metadata(

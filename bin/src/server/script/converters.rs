@@ -4,8 +4,9 @@ use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey,
               EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery,
-              EdgeDirection, Type as ExternalType, Vertex as ExternalVertex,
-              VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
+              EdgeDirection as ExternalEdgeDirection, Type as ExternalType,
+              Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata,
+              VertexQuery as ExternalVertexQuery};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -219,7 +220,10 @@ impl Type {
 
 impl<'lua> FromLua<'lua> for Type {
     fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        Ok(Self::new(type_from_value(value)?))
+        let value_string = string_from_value(value)?;
+        let value_type = ExternalType::new(value_string.to_string())
+            .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?;
+        Ok(Type::new(value_type))
     }
 }
 
@@ -240,11 +244,11 @@ impl EdgeKey {
 }
 
 impl<'lua> FromLua<'lua> for EdgeKey {
-    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
+    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
         if let Value::Table(value) = value {
-            let outbound_id = uuid_from_value(get_table_value(&value, "outbound_id")?)?;
-            let t = type_from_value(get_table_value(&value, "type")?)?;
-            let inbound_id = uuid_from_value(get_table_value(&value, "inbound_id")?)?;
+            let outbound_id = Uuid::from_lua(get_table_value(&value, "outbound_id")?, l)?.0;
+            let t = Type::from_lua(get_table_value(&value, "type")?, l)?.0;
+            let inbound_id = Uuid::from_lua(get_table_value(&value, "inbound_id")?, l)?.0;
             Ok(EdgeKey::new(ExternalEdgeKey::new(
                 outbound_id,
                 t,
@@ -325,7 +329,10 @@ impl Uuid {
 
 impl<'lua> FromLua<'lua> for Uuid {
     fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
-        Ok(Self::new(uuid_from_value(value)?))
+        let value_string = string_from_value(value)?;
+        let value_uuid = ExternalUuid::from_str(&value_string[..])
+            .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?;
+        Ok(Uuid::new(value_uuid))
     }
 }
 
@@ -359,7 +366,7 @@ impl<'lua> FromLua<'lua> for VertexQuery {
                         None => None,
                     };
 
-                let limit = limit_from_table(&value, l)?;
+                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
                 Ok(VertexQuery::new(ExternalVertexQuery::All {
                     start_id,
                     limit,
@@ -370,7 +377,7 @@ impl<'lua> FromLua<'lua> for VertexQuery {
 
                     for pair in ids_values.pairs::<Value, Value>() {
                         let (_, id) = pair?;
-                        ids.push(uuid_from_value(id)?);
+                        ids.push(Uuid::from_lua(id, l)?.0);
                     }
 
                     Ok(VertexQuery::new(ExternalVertexQuery::Vertices { ids }))
@@ -384,8 +391,8 @@ impl<'lua> FromLua<'lua> for VertexQuery {
             } else if t == "pipe" {
                 let edge_query =
                     Box::new(EdgeQuery::from_lua(get_table_value(&value, "edge_query")?, l)?.0);
-                let converter = converter_from_table(&value)?;
-                let limit = limit_from_table(&value, l)?;
+                let converter = EdgeDirection::from_lua(get_table_value(&value, "converter")?, l)?.0;
+                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
                 Ok(VertexQuery::new(ExternalVertexQuery::Pipe {
                     edge_query,
                     converter,
@@ -438,7 +445,7 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
             } else if t == "pipe" {
                 let vertex_query =
                     Box::new(VertexQuery::from_lua(get_table_value(&value, "vertex_query")?, l)?.0);
-                let converter = converter_from_table(&value)?;
+                let converter = EdgeDirection::from_lua(get_table_value(&value, "converter")?, l)?.0;
 
                 let type_filter =
                     match optional_string_from_value(get_table_value(&value, "type_filter")?)? {
@@ -456,7 +463,7 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
                     optional_datetime_from_value(&get_table_value(&value, "high_filter")?)?;
                 let low_filter =
                     optional_datetime_from_value(&get_table_value(&value, "low_filter")?)?;
-                let limit = limit_from_table(&value, l)?;
+                let limit = u32::from_lua(get_table_value(&value, "limit")?, l)?;
                 Ok(EdgeQuery::new(ExternalEdgeQuery::Pipe {
                     vertex_query,
                     converter,
@@ -514,6 +521,29 @@ impl<'lua> ToLua<'lua> for EdgeMetadata {
     }
 }
 
+#[derive(Debug)]
+pub struct EdgeDirection(pub ExternalEdgeDirection);
+
+impl EdgeDirection {
+    pub fn new(value: ExternalEdgeDirection) -> Self {
+        Self { 0: value }
+    }
+}
+
+impl<'lua> FromLua<'lua> for EdgeDirection {
+    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
+        match &string_from_value(value)?[..] {
+            "outbound" => Ok(EdgeDirection::new(ExternalEdgeDirection::Outbound)),
+            "inbound" => Ok(EdgeDirection::new(ExternalEdgeDirection::Inbound)),
+            _ => Err(new_from_lua_error(
+                "",
+                "",
+                Some("Unexpected converter type".to_string()),
+            )),
+        }
+    }
+}
+
 fn new_from_lua_error(from: &'static str, to: &'static str, message: Option<String>) -> LuaError {
     LuaError::FromLuaConversionError {
         from: from,
@@ -562,44 +592,4 @@ fn optional_datetime_from_value(value: &Value) -> LuaResult<Option<DateTime<Utc>
 
     let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(timestamp, 0), Utc);
     Ok(Some(dt))
-}
-
-fn uuid_from_value(value: Value) -> LuaResult<ExternalUuid> {
-    let value_string = string_from_value(value)?;
-    let value_uuid = ExternalUuid::from_str(&value_string[..])
-        .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?;
-    Ok(value_uuid)
-}
-
-fn type_from_value(value: Value) -> LuaResult<ExternalType> {
-    let value_string = string_from_value(value)?;
-    let value_type = ExternalType::new(value_string.to_string())
-        .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?;
-    Ok(value_type)
-}
-
-fn converter_from_table(table: &Table) -> LuaResult<EdgeDirection> {
-    match &string_from_value(get_table_value(table, "converter")?)?[..] {
-        "outbound" => Ok(EdgeDirection::Outbound),
-        "inbound" => Ok(EdgeDirection::Inbound),
-        _ => Err(new_from_lua_error(
-            "",
-            "",
-            Some("Unexpected converter type".to_string()),
-        )),
-    }
-}
-
-fn limit_from_table<'lua>(table: &'lua Table, l: &'lua Lua) -> LuaResult<u32> {
-    let limit = l.coerce_integer(get_table_value(table, "limit")?)?;
-
-    if limit < 0 {
-        Err(new_from_lua_error(
-            "integer",
-            "limit",
-            Some("value is below 0".to_string()),
-        ))
-    } else {
-        Ok(limit as u32)
-    }
 }
