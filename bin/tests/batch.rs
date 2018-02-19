@@ -179,7 +179,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64, Error> {
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> Result<u64, Error> {
         self.request(&json!({
             "action": "get_edge_count",
             "id": id,
