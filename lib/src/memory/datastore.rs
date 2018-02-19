@@ -61,13 +61,11 @@ impl InternalMemoryDatastore {
 
                 let ids: Vec<Uuid> = match converter.clone() {
                     models::EdgeDirection::Outbound => edge_values
-                        .clone()
                         .into_iter()
                         .take(limit as usize)
                         .map(|(key, _)| key.outbound_id)
                         .collect(),
                     models::EdgeDirection::Inbound => edge_values
-                        .clone()
                         .into_iter()
                         .take(limit as usize)
                         .map(|(key, _)| key.inbound_id)
@@ -304,12 +302,26 @@ impl Transaction for MemoryTransaction {
     fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let deletable_edges = datastore.get_edge_values_by_query(q)?;
+        let deletable_edges: Vec<models::EdgeKey> = datastore.get_edge_values_by_query(q)?.into_iter().map(|(k, _)| k).collect();
 
-        // TODO: delete edge metadata
+        for edge_key in deletable_edges {
+            datastore.edges.remove(&edge_key);
 
-        for (key, _) in deletable_edges {
-            datastore.edges.remove(&key);
+            let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
+
+            for (metadata_key, _) in datastore.edge_metadata.range((edge_key.clone(), "".to_string())..) {
+                let &(ref metadata_edge_key, _) = metadata_key;
+
+                if &edge_key != metadata_edge_key {
+                    break;
+                }
+
+                deletable_edge_metadata.push(metadata_key.clone());
+            }
+
+            for metadata_key in deletable_edge_metadata {
+                datastore.edge_metadata.remove(&metadata_key);
+            }
         }
 
         Ok(())
