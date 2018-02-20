@@ -17,16 +17,13 @@ pub trait Datastore<T: Transaction> {
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
-/// Transactions are responsible for managing:
-///
-/// 1. Vertices.
-/// 2. Edges, which connect two vertices.
-/// 3. Global metadata: metadata that is not owned by anything, and as a
-///    result needs to be manually managed.
-/// 4. Vertex metadata: metadata that is owned by a vertex, and will be
-///    automatically deleted when the associated vertex is deleted.
-/// 5. Edge metadata: metadata that is owned by an edge, and will be
-///    automatically deleted when the associated edge is deleted.
+/// All datastore manipulations are done through transactions. Despite the
+/// name, different datastore implementations carry different guarantees.
+/// Depending on the implementation, it may not be possible to rollback the
+/// changes on error. See the documentation of individual implementations for
+/// details. Transactions are automatically committed on drop. Transactions
+/// should be designed to not fail on commit; i.e. errors should occur when a
+/// method is actually called instead.
 pub trait Transaction {
     /// Creates a new vertex.
     ///
