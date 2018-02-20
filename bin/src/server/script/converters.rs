@@ -12,11 +12,15 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
 use super::api;
+use indradb::Transaction;
 
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
         $methods.add_method($name, |_, this, args| {
-            $func(&this.trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err)))
+            match this.0.as_ref() {
+                Some(trans) => $func(trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err))),
+                None => Err(LuaError::RuntimeError("The transaction has already finished".to_string()))
+            }
         });
     }
 }
@@ -166,13 +170,11 @@ impl<'lua> ToLua<'lua> for JsonValue {
 }
 
 #[derive(Debug)]
-pub struct ProxyTransaction {
-    pub trans: ExternalProxyTransaction,
-}
+pub struct ProxyTransaction(pub Option<ExternalProxyTransaction>);
 
 impl ProxyTransaction {
     pub fn new(trans: ExternalProxyTransaction) -> Self {
-        Self { trans: trans }
+        Self { 0: Some(trans) }
     }
 }
 
@@ -204,6 +206,20 @@ impl UserData for ProxyTransaction {
         proxy_fn!(methods, "get_edge_metadata", api::get_edge_metadata);
         proxy_fn!(methods, "set_edge_metadata", api::set_edge_metadata);
         proxy_fn!(methods, "delete_edge_metadata", api::delete_edge_metadata);
+
+        methods.add_method_mut("commit", |_, this, ()| {
+            match this.0.take() {
+                Some(trans) => trans.commit().map_err(|err| LuaError::RuntimeError(format!("{}", err))),
+                None => Err(LuaError::RuntimeError("The transaction has already finished".to_string()))
+            }
+        });
+
+        methods.add_method_mut("rollback", |_, this, ()| {
+            match this.0.take() {
+                Some(trans) => trans.rollback().map_err(|err| LuaError::RuntimeError(format!("{}", err))),
+                None => Err(LuaError::RuntimeError("The transaction has already finished".to_string()))
+            }
+        });
     }
 }
 

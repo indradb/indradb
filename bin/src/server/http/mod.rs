@@ -10,6 +10,7 @@ use std::u16;
 pub fn start(port: u16) {
     let mut router = Router::new();
 
+    router.post("/mapreduce/:name", endpoints::mapreduce, "mapreduce");
     router.post("/script/:name", endpoints::script, "script");
     router.post("/transaction", endpoints::transaction, "transaction");
 

@@ -5,55 +5,61 @@ use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::ser::Serialize;
-use std::u16;
-use regex;
-use std::path::Path;
-use statics;
-use std::fs::File;
 use script;
-use std::io::Read;
 use super::util::*;
-
-lazy_static! {
-    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
-}
+use iron::typemap::TypeMap;
+use iron::headers::{ContentType, Headers, Encoding, TransferEncoding};
+use std::thread::spawn;
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
+    // Get the inputs
     let name: String = get_url_param(req, "name")?;
+    let payload = read_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
+    let (path, contents) = get_script_file(name)?;
 
-    if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
-        return Err(create_iron_error(
-            status::BadRequest,
-            "Invalid script name".to_string(),
-        ));
+    match script::execute(&contents, &path, payload) {
+        Ok(value) => Ok(to_response(status::Ok, &value)),
+        Err(err) => {
+            let error_message = format!("Script failed: {:?}", err);
+            Err(create_iron_error(
+                status::InternalServerError,
+                error_message,
+            ))
+        }
     }
+}
 
-    let payload: JsonValue = read_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
-    let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
+pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
+    // Get the inputs
+    let name: String = get_url_param(req, "name")?;
+    let payload = read_json(&mut req.body)?.unwrap_or_else(|| JsonValue::Null);
+    let (path, contents) = get_script_file(name)?;
 
-    let mut file = File::open(&path)
-        .map_err(|_| create_iron_error(status::NotFound, "Could not load script".to_string()))?;
+    // Construct a response
+    let mut hs = Headers::new();
+    hs.set(ContentType(get_json_mime()));
+    hs.set(TransferEncoding(vec![Encoding::Chunked]));
 
-    let mut contents = String::new();
+    let (sender, receiver) = script::bounded(1);
 
-    file.read_to_string(&mut contents)
-        .map_err(|_| create_iron_error(status::NotFound, "Could not read script".to_string()))?;
+    spawn(move || {
+        script::execute_mapreduce(contents, path, payload, sender);
+    });
 
-    let value = script::run(&contents, &path, payload).map_err(|err| {
-        let error_message = format!("Script failed: {:?}", err);
-        create_iron_error(status::InternalServerError, error_message)
-    })?;
-
-    Ok(to_response(status::Ok, &value))
+    Ok(Response {
+        status: Some(status::Ok),
+        headers: hs,
+        extensions: TypeMap::new(),
+        body: Some(Box::new(receiver))
+    })
 }
 
 pub fn transaction(req: &mut Request) -> IronResult<Response> {
     let trans = get_transaction()?;
-    let mut idx: u16 = 0;
     let mut jsonable_res: Vec<JsonValue> = Vec::new();
-    let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(|| Vec::new());
+    let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(Vec::new);
 
-    for item in body {
+    for (idx, item) in body.into_iter().enumerate() {
         if let JsonValue::Object(obj) = item {
             let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
                 let message = format!("Item #{}: {}", idx, err);
@@ -103,8 +109,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 format!("Item #{}: Invalid type", idx),
             ));
         }
-
-        idx += 1;
     }
 
     trans.commit().map_err(|err| {

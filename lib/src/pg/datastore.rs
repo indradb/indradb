@@ -14,6 +14,7 @@ use std::i64;
 use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
 use super::schema;
+use std::cmp::min;
 use util::UuidGenerator;
 use std::sync::Arc;
 
@@ -41,14 +42,7 @@ impl PostgresDatastore {
     ) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
-            None => {
-                let cpus: usize = num_cpus::get();
-                if cpus > 512 {
-                    1024
-                } else {
-                    cpus as u32 * 2
-                }
-            }
+            None => min(num_cpus::get() as u32, 128u32)
         };
 
         let manager = PostgresConnectionManager::new(&*connection_string, TlsMode::None)?;

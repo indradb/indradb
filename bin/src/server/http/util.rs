@@ -17,12 +17,17 @@ use serde_json::value::Value as JsonValue;
 use serde_json;
 use serde::{Deserialize, Serialize};
 use statics;
+use std::fs::File;
+use std::path::Path;
+use regex;
+
+lazy_static! {
+    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+}
 
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
-    let mut o: serde_json::Map<String, JsonValue> = serde_json::Map::new();
-    o.insert("error".to_string(), JsonValue::String(err.clone()));
-    let body = serde_json::to_string(&o).unwrap();
+    let body = serde_json::to_string(&json!({"error": err})).unwrap();
     let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
     let modifiers = (status_code, json_content_type_modifier, body);
     IronError::new(SimpleError::new(err), modifiers)
@@ -132,5 +137,44 @@ where
                 )
             },
         )?))
+    }
+}
+
+/// Gets the path to and the contents of a script by its name.
+///
+/// # Errors
+/// Returns an `IronError` if the script has an invalid name, does not exist,
+/// or could not be read.
+pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
+    if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
+        return Err(create_iron_error(
+            status::BadRequest,
+            "Invalid script name".to_string(),
+        ));
+    }
+
+    let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
+
+    let path_str = match path.to_str() {
+        Some(path_str) => path_str,
+        None => return Err(create_iron_error(status::InternalServerError, "Could not stringify script path".to_string()))
+    };
+
+    match File::open(&path) {
+        Ok(mut file) => {
+            let mut contents = String::new();
+
+            match file.read_to_string(&mut contents) {
+                Ok(_) => Ok((path_str.to_string(), contents)),
+                Err(_) => Err(create_iron_error(
+                    status::NotFound,
+                    "Could not read script".to_string(),
+                )),
+            }
+        }
+        Err(_) => Err(create_iron_error(
+            status::NotFound,
+            "Could not load script".to_string(),
+        )),
     }
 }

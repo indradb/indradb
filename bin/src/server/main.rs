@@ -1,16 +1,22 @@
+#![recursion_limit = "1024"]
+
 extern crate chrono;
 extern crate common;
 extern crate core;
+#[macro_use]
+extern crate crossbeam_channel;
 extern crate hyper;
 extern crate indradb;
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
+extern crate num_cpus;
 extern crate regex;
 extern crate rlua;
 extern crate router;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate urlencoded;
 extern crate uuid;

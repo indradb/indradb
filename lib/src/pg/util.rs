@@ -1,6 +1,4 @@
-use postgres::error as pg_error;
 use postgres::types::ToSql;
-use std::error::Error;
 
 fn get_from_table_name(root_table_name: &str, table_number: usize) -> String {
     match table_number {
