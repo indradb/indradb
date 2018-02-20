@@ -121,30 +121,45 @@ mod tests {
     use script;
     use indradb::{Datastore, Transaction};
     use super::response_chan::Update;
+    use serde_json::Value as JsonValue;
 
-    #[test]
-    fn should_mapreduce() {
-        // Make sure there's at least one vertex to process
-        {
-            let trans = statics::DATASTORE.transaction().unwrap();
-            trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
-        }
+    /// Ensures there's at least one vertex to process
+    fn add_seed() {
+        let trans = statics::DATASTORE.transaction().unwrap();
+        trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
+    }
 
-        let file_path_str = "test_scripts/mapreduce/count.lua";
+    fn run(file_path_str: &str, input: JsonValue) -> JsonValue {
         let file_path = Path::new(file_path_str);
         let mut file = File::open(file_path).expect("Could not open script file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Could not get script file contents");
 
         let (sender, receiver) = script::bounded(1);
-        execute_mapreduce(contents, file_path_str.to_string(), json!(2), sender);
+        execute_mapreduce(contents, file_path_str.to_string(), input, sender);
         let update = receiver.0.recv().unwrap();
         drop(receiver);
 
-        if let Update::Ok(ref value) = update {
-            assert!(value.as_f64().unwrap() >= 3.0);
-        } else {
-            panic!("Unexpected response: {:?}", update);
+        match update {
+            Update::Err(err) => panic!("{:?}", err),
+            Update::Ping(_) => panic!("Expected not to get a ping message"),
+            Update::Ok(message) => message
         }
+    }
+
+    #[test]
+    fn should_mapreduce() {
+        add_seed();
+        let value = run("test_scripts/mapreduce/count.lua", json!(2));
+        assert!(value.as_f64().unwrap() >= 3.0);
+    }
+
+    #[test]
+    fn should_commit() {
+        add_seed();
+        let value = run("test_scripts/mapreduce/commit_first.lua", JsonValue::Null);
+        assert!(value == JsonValue::Null);
+        let value = run("test_scripts/mapreduce/commit_second.lua", JsonValue::Null);
+        assert!(value.as_f64().unwrap() >= 1.0);
     }
 }
