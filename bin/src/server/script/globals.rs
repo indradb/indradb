@@ -1,10 +1,11 @@
-local EdgeKey = {}
+pub const GLOBALS: &'static str = "
+EdgeKey = {}
 EdgeKey.__index = EdgeKey
 
-local VertexQuery = {}
+VertexQuery = {}
 VertexQuery.__index = VertexQuery
 
-local EdgeQuery = {}
+EdgeQuery = {}
 EdgeQuery.__index = EdgeQuery
 
 function EdgeKey.new(outbound_id, type, inbound_id)
@@ -17,7 +18,7 @@ end
 
 function VertexQuery.all(start_id, limit)
     local self = setmetatable({}, VertexQuery)
-    self.type = "all"
+    self.type = \"all\"
     self.start_id = start_id
     self.limit = limit
     return self
@@ -25,14 +26,14 @@ end
 
 function VertexQuery.vertices(ids)
     local self = setmetatable({}, VertexQuery)
-    self.type = "vertices"
+    self.type = \"vertices\"
     self.ids = ids
     return self
 end
 
 function VertexQuery.pipe(edge_query, converter, limit)
     local self = setmetatable({}, VertexQuery)
-    self.type = "pipe"
+    self.type = \"pipe\"
     self.edge_query = edge_query
     self.converter = converter
     self.limit = limit
@@ -40,23 +41,23 @@ function VertexQuery.pipe(edge_query, converter, limit)
 end
 
 function VertexQuery:outbound_edges(type, high, low, limit)
-    return EdgeQuery.pipe(self, "outbound", type, high, low, limit)
+    return EdgeQuery.pipe(self, \"outbound\", type, high, low, limit)
 end
 
 function VertexQuery:inbound_edges(type, high, low, limit)
-    return EdgeQuery.pipe(self, "inbound", type, high, low, limit)
+    return EdgeQuery.pipe(self, \"inbound\", type, high, low, limit)
 end
 
 function EdgeQuery.edges(keys)
     local self = setmetatable({}, EdgeQuery)
-    self.type = "edges"
+    self.type = \"edges\"
     self.keys = keys
     return self
 end
 
 function EdgeQuery.pipe(vertex_query, converter, type_filter, high_filter, low_filter, limit)
     local self = setmetatable({}, EdgeQuery)
-    self.type = "pipe"
+    self.type = \"pipe\"
     self.vertex_query = vertex_query
     self.converter = converter
     self.type_filter = type_filter
@@ -67,15 +68,10 @@ function EdgeQuery.pipe(vertex_query, converter, type_filter, high_filter, low_f
 end
 
 function EdgeQuery:outbound_vertices(limit)
-    return VertexQuery.pipe(self, "outbound", limit)
+    return VertexQuery.pipe(self, \"outbound\", limit)
 end
 
 function EdgeQuery:inbound_vertices(limit)
-    return VertexQuery.pipe(self, "inbound", limit)
+    return VertexQuery.pipe(self, \"inbound\", limit)
 end
-
-return {
-    EdgeKey=EdgeKey,
-    VertexQuery=VertexQuery,
-    EdgeQuery=EdgeQuery
-}
+";

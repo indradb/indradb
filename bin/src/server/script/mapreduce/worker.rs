@@ -87,9 +87,9 @@ impl Worker {
                                     error_sender
                                 )
                             },
-                            WorkerTask::Reduce((first, second)) => {
+                            WorkerTask::Reduce((accumulator, value)) => {
                                 try_or_send!(
-                                    reducer.call((first, second)),
+                                    reducer.call((accumulator, value)),
                                     |err| WorkerError::ReduceCall(err),
                                     error_sender
                                 )

@@ -1,8 +1,6 @@
-local queries = require("../shared/queries");
-
 function map(vertex)
     local trans = transaction();
-    return trans:get_vertex_metadata(queries.VertexQuery.vertices({vertex.id}), "foo");
+    return trans:get_vertex_metadata(VertexQuery.vertices({vertex.id}), "foo");
 end
 
 function reduce(accumulator, metadata)

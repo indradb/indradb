@@ -1,8 +1,6 @@
-local queries = require("../shared/queries");
-
 local trans = transaction();
 local id = trans:create_vertex("foo");
-local q = queries.VertexQuery.vertices({id}):outbound_edges("purchased", 10, "bar", 10);
+local q = VertexQuery.vertices({id}):outbound_edges("purchased", 10, "bar", 10);
 
 function test_get_edge_range_bad_high()
     trans:get_edges(q);

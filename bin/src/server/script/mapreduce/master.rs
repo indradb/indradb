@@ -45,7 +45,7 @@ impl Master {
             spawn(move || -> Result<JsonValue, WorkerError> {
                 let mut should_force_shutdown = false; 
                 let mut should_gracefully_shutdown = false;
-                let mut last_reduced_item: Option<converters::JsonValue> = Some(converters::JsonValue::new(JsonValue::Null));
+                let mut accumulator: Option<converters::JsonValue> = Some(converters::JsonValue::new(JsonValue::Null));
                 let mut last_error: Option<WorkerError> = None;
 
                 loop {
@@ -61,16 +61,16 @@ impl Master {
                             finished.increment();
                             processing.decrement();
 
-                            if let Some(last_reduced_item_inner) = last_reduced_item {
+                            if let Some(accumulator_inner) = accumulator {
                                 // If this errors out, all of the workers are dead
-                                if worker_in_sender.send(WorkerTask::Reduce((last_reduced_item_inner, value))).is_err() {
+                                if worker_in_sender.send(WorkerTask::Reduce((accumulator_inner, value))).is_err() {
                                     should_force_shutdown = true;
                                 }
                                 
                                 processing.increment();
-                                last_reduced_item = None;
+                                accumulator = None;
                             } else {
-                                last_reduced_item = Some(value);
+                                accumulator = Some(value);
                             }
                         },
                         recv(master_in_receiver, vertex) => {
@@ -96,7 +96,7 @@ impl Master {
                             Err(last_error.unwrap_or_else(|| error_receiver.try_recv().expect("Expected to be able to read the error channel")))
                         } else {
                             // Get the final value to return
-                            Ok(match last_reduced_item {
+                            Ok(match accumulator {
                                 // This should only happen if the graph is empty
                                 None => JsonValue::Null,
                                 // This should always happen otherwise

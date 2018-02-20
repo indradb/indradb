@@ -1,6 +1,7 @@
 mod api;
 mod context;
 mod converters;
+mod globals;
 mod mapreduce;
 
 use rlua::prelude::*;
