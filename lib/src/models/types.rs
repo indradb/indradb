@@ -34,6 +34,12 @@ impl Type {
     }
 }
 
+impl Default for Type {
+    fn default() -> Self {
+        Self { 0: "".to_string() }
+    }
+}
+
 impl FromStr for Type {
     type Err = ValidationError;
 
