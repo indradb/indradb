@@ -1,9 +1,9 @@
 function map(vertex)
     local trans = transaction();
-    trans:set_vertex_metadata(VertexQuery.vertices({vertex.id}), "foo", "bar");
+    trans:set_vertex_metadata(VertexQuery.vertices({vertex.id}), "mapreduce_commit_test", "foo");
 end
 
-function reduce(accumulator, value)
+function reduce(first, second)
     return nil
 end
 
