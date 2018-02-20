@@ -1,5 +1,5 @@
 use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, ToLua, UserData,
-           UserDataMethods, Value};
+           UserDataMethods, Value, Table};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
 use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey,
@@ -45,27 +45,16 @@ impl<'lua> FromLua<'lua> for JsonValue {
         match value {
             Value::Nil => Ok(Self::new(ExternalJsonValue::Null)),
             Value::Boolean(value) => Ok(Self::new(ExternalJsonValue::Bool(value))),
-            Value::LightUserData(_) => Err(new_from_lua_error("light userdata", "JSON", None)),
-            Value::Integer(value) => Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(
-                value,
-            )))),
+            Value::Integer(value) => {
+                Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(value))))
+            },
             Value::Number(value) => {
                 let num = JsonNumber::from_f64(value)
                     .expect("Expected to be able to create a JSON number from a float");
                 Ok(Self::new(ExternalJsonValue::Number(num)))
             }
-            Value::String(value) => {
-                let value_str = value
-                    .to_str()
-                    .map_err(|err| {
-                        new_from_lua_error(
-                            "string",
-                            "JSON",
-                            Some(format!("the lua string is not valid utf-8: {}", err)),
-                        )
-                    })?
-                    .to_string();
-
+            Value::String(_) => {
+                let value_str: String = String::from_lua(value, l)?;
                 Ok(Self::new(ExternalJsonValue::String(value_str)))
             }
             Value::Table(value) => {
@@ -133,7 +122,8 @@ impl<'lua> FromLua<'lua> for JsonValue {
 
                     Ok(Self::new(ExternalJsonValue::Object(obj)))
                 }
-            }
+            },
+            Value::LightUserData(_) => Err(new_from_lua_error("light userdata", "JSON", None)),
             Value::Function(_) => Err(new_from_lua_error("function", "JSON", None)),
             Value::Thread(_) => Err(new_from_lua_error("thread", "JSON", None)),
             Value::UserData(_) => Err(new_from_lua_error("userdata", "JSON", None)),
@@ -246,18 +236,15 @@ impl EdgeKey {
 
 impl<'lua> FromLua<'lua> for EdgeKey {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
-        if let Value::Table(value) = value {
-            let outbound_id = Uuid::from_lua(value.get("outbound_id")?, l)?.0;
-            let t = Type::from_lua(value.get("type")?, l)?.0;
-            let inbound_id = Uuid::from_lua(value.get("inbound_id")?, l)?.0;
-            Ok(EdgeKey::new(ExternalEdgeKey::new(
-                outbound_id,
-                t,
-                inbound_id,
-            )))
-        } else {
-            Err(new_from_lua_error("non-table", "edge key", None))
-        }
+        let table = Table::from_lua(value, l)?;
+        let outbound_id = Uuid::from_lua(table.get("outbound_id")?, l)?.0;
+        let t = Type::from_lua(table.get("type")?, l)?.0;
+        let inbound_id = Uuid::from_lua(table.get("inbound_id")?, l)?.0;
+        Ok(EdgeKey::new(ExternalEdgeKey::new(
+            outbound_id,
+            t,
+            inbound_id,
+        )))
     }
 }
 
@@ -355,59 +342,43 @@ impl VertexQuery {
 
 impl<'lua> FromLua<'lua> for VertexQuery {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
-        if let Value::Table(value) = value {
-            let t = String::from_lua(value.get("type")?, l)?;
+        let table = Table::from_lua(value, l)?;
+        let t = String::from_lua(table.get("type")?, l)?;
 
-            if t == "all" {
-                let start_id =
-                    match Option::<String>::from_lua(value.get("start_id")?, l)? {
-                        Some(start_id) => Some(ExternalUuid::from_str(&start_id[..]).map_err(
-                            |e| new_from_lua_error("string", "uuid", Some(format!("{}", e))),
-                        )?),
-                        None => None,
-                    };
+        if t == "all" {
+            let start_id = match Option::<String>::from_lua(table.get("start_id")?, l)? {
+                Some(s) => Some(ExternalUuid::from_str(&s).map_err(
+                    |e| new_from_lua_error("string", "uuid", Some(format!("{}", e))),
+                )?),
+                None => None
+            };
 
-                let limit = u32::from_lua(value.get("limit")?, l)?;
-                Ok(VertexQuery::new(ExternalVertexQuery::All {
-                    start_id,
-                    limit,
-                }))
-            } else if t == "vertices" {
-                if let Value::Table(ids_values) = value.get("ids")? {
-                    let mut ids = vec![];
+            let limit = u32::from_lua(table.get("limit")?, l)?;
 
-                    for pair in ids_values.pairs::<Value, Value>() {
-                        let (_, id) = pair?;
-                        ids.push(Uuid::from_lua(id, l)?.0);
-                    }
-
-                    Ok(VertexQuery::new(ExternalVertexQuery::Vertices { ids }))
-                } else {
-                    Err(new_from_lua_error(
-                        "",
-                        "",
-                        Some("`vertices` attribute is not a table".to_string()),
-                    ))
-                }
-            } else if t == "pipe" {
-                let edge_query =
-                    Box::new(EdgeQuery::from_lua(value.get("edge_query")?, l)?.0);
-                let converter = EdgeDirection::from_lua(value.get("converter")?, l)?.0;
-                let limit = u32::from_lua(value.get("limit")?, l)?;
-                Ok(VertexQuery::new(ExternalVertexQuery::Pipe {
-                    edge_query,
-                    converter,
-                    limit,
-                }))
-            } else {
-                Err(new_from_lua_error(
-                    "",
-                    "",
-                    Some("Unexpected vertex query type".to_string()),
-                ))
-            }
+            Ok(VertexQuery::new(ExternalVertexQuery::All {
+                start_id,
+                limit,
+            }))
+        } else if t == "vertices" {
+            let ids: Vec<Uuid> = Vec::<Uuid>::from_lua(table.get("ids")?, l)?;
+            let ids: Vec<ExternalUuid> = ids.into_iter().map(|id| id.0).collect();
+            Ok(VertexQuery::new(ExternalVertexQuery::Vertices { ids }))
+        } else if t == "pipe" {
+            let edge_query =
+                Box::new(EdgeQuery::from_lua(table.get("edge_query")?, l)?.0);
+            let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
+            let limit = u32::from_lua(table.get("limit")?, l)?;
+            Ok(VertexQuery::new(ExternalVertexQuery::Pipe {
+                edge_query,
+                converter,
+                limit,
+            }))
         } else {
-            Err(new_from_lua_error("non-table", "vertex query", None))
+            Err(new_from_lua_error(
+                "",
+                "",
+                Some("Unexpected vertex query type".to_string()),
+            ))
         }
     }
 }
@@ -423,65 +394,44 @@ impl EdgeQuery {
 
 impl<'lua> FromLua<'lua> for EdgeQuery {
     fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
-        if let Value::Table(value) = value {
-            let t = String::from_lua(value.get("type")?, l)?;
+        let table = Table::from_lua(value, l)?;
+        let t = String::from_lua(table.get("type")?, l)?;
 
-            if t == "edges" {
-                if let Value::Table(edges) = value.get("keys")? {
-                    let mut keys = vec![];
+        if t == "edges" {
+            let keys: Vec<EdgeKey> = Vec::<EdgeKey>::from_lua(table.get("keys")?, l)?;
+            let keys: Vec<ExternalEdgeKey> = keys.into_iter().map(|edge_key| edge_key.0).collect();
+            Ok(EdgeQuery::new(ExternalEdgeQuery::Edges { keys }))
+        } else if t == "pipe" {
+            let vertex_query =
+                Box::new(VertexQuery::from_lua(table.get("vertex_query")?, l)?.0);
+            let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
 
-                    for pair in edges.pairs::<Value, Value>() {
-                        let (_, key) = pair?;
-                        keys.push(EdgeKey::from_lua(key, l)?.0);
-                    }
+            let type_filter = match Option::<String>::from_lua(table.get("type_filter")?, l)? {
+                Some(s) => Some(ExternalType::new(s).map_err(
+                    |e| new_from_lua_error("string", "type", Some(format!("{}", e)))
+                )?),
+                None => None
+            };
 
-                    Ok(EdgeQuery::new(ExternalEdgeQuery::Edges { keys }))
-                } else {
-                    Err(new_from_lua_error(
-                        "",
-                        "",
-                        Some("`edges` attribute is not a table".to_string()),
-                    ))
-                }
-            } else if t == "pipe" {
-                let vertex_query =
-                    Box::new(VertexQuery::from_lua(value.get("vertex_query")?, l)?.0);
-                let converter = EdgeDirection::from_lua(value.get("converter")?, l)?.0;
-
-                let type_filter =
-                    match Option::<String>::from_lua(value.get("type_filter")?, l)? {
-                        Some(type_filter_str) => {
-                            let type_filter = ExternalType::new(type_filter_str.to_string())
-                                .map_err(|e| {
-                                    new_from_lua_error("string", "type", Some(format!("{}", e)))
-                                })?;
-                            Some(type_filter)
-                        }
-                        None => None,
-                    };
-
-                let high_filter =
-                    optional_datetime_from_value(&value.get("high_filter")?)?;
-                let low_filter =
-                    optional_datetime_from_value(&value.get("low_filter")?)?;
-                let limit = u32::from_lua(value.get("limit")?, l)?;
-                Ok(EdgeQuery::new(ExternalEdgeQuery::Pipe {
-                    vertex_query,
-                    converter,
-                    type_filter,
-                    high_filter,
-                    low_filter,
-                    limit,
-                }))
-            } else {
-                Err(new_from_lua_error(
-                    "",
-                    "",
-                    Some("Unexpected edge query type".to_string()),
-                ))
-            }
+            let high_filter =
+                optional_datetime_from_value(&table.get("high_filter")?)?;
+            let low_filter =
+                optional_datetime_from_value(&table.get("low_filter")?)?;
+            let limit = u32::from_lua(table.get("limit")?, l)?;
+            Ok(EdgeQuery::new(ExternalEdgeQuery::Pipe {
+                vertex_query,
+                converter,
+                type_filter,
+                high_filter,
+                low_filter,
+                limit,
+            }))
         } else {
-            Err(new_from_lua_error("non-table", "edge query", None))
+            Err(new_from_lua_error(
+                "",
+                "",
+                Some("Unexpected edge query type".to_string()),
+            ))
         }
     }
 }
