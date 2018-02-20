@@ -68,19 +68,11 @@ impl<'lua> FromLua<'lua> for JsonValue {
                         JsonValue(ExternalJsonValue::String(key_string)) => {
                             map.insert(JsonMapKey::String(key_string), value_json.0);
                         }
-                        JsonValue(ExternalJsonValue::Number(key_number)) => {
-                            if key_number.is_u64() {
-                                map.insert(
-                                    JsonMapKey::Number(key_number.as_u64().unwrap()),
-                                    value_json.0,
-                                );
-                            } else {
-                                return Err(new_from_lua_error(
-                                    "table key",
-                                    "JSON map key",
-                                    Some("the table contains an invalid key".to_string()),
-                                ));
-                            }
+                        JsonValue(ExternalJsonValue::Number(ref key_number)) if key_number.is_u64() => {
+                            map.insert(
+                                JsonMapKey::Number(key_number.as_u64().unwrap()),
+                                value_json.0,
+                            );
                         }
                         _ => {
                             return Err(new_from_lua_error(
