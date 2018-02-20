@@ -358,11 +358,7 @@ impl Transaction for MemoryTransaction {
                     models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
                 }
                 None => {
-                    // NOTE: Circumventing the constructor for
-                    // `Type` because it doesn't allow empty
-                    // values, yet we need to use one for
-                    // comparison
-                    let empty_type = models::Type("".to_string());
+                    let empty_type = models::Type::default();
                     models::EdgeKey::new(id, empty_type, Uuid::default())
                 }
             };
