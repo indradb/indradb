@@ -13,7 +13,6 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
 use super::api;
-use indradb::Transaction;
 
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
