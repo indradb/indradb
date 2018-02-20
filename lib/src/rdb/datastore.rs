@@ -374,6 +374,12 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
+    fn get_vertex_count(&self) -> Result<u64> {
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        Ok(iterator.count() as u64)
+    }
+
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
         if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?

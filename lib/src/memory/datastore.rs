@@ -317,6 +317,11 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
+    fn get_vertex_count(&self) -> Result<u64> {
+        let datastore = self.datastore.read().unwrap();
+        Ok(datastore.vertices.len() as u64)
+    }
+
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
 

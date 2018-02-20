@@ -183,6 +183,7 @@ impl UserData for ProxyTransaction {
         proxy_fn!(methods, "create_vertex", api::create_vertex);
         proxy_fn!(methods, "get_vertices", api::get_vertices);
         proxy_fn!(methods, "delete_vertices", api::delete_vertices);
+        proxy_fn!(methods, "get_vertex_count", api::get_vertex_count);
 
         proxy_fn!(methods, "create_edge", api::create_edge);
         proxy_fn!(methods, "get_edges", api::get_edges);

@@ -22,6 +22,7 @@ macro_rules! full_test_impl {
 		define_test!(should_get_single_vertices_nonexisting, $code);
 		define_test!(should_get_vertices, $code);
 		define_test!(should_get_vertices_piped, $code);
+		define_test!(should_get_a_vertex_count, $code);
 
 		// Vertex updates
 		define_test!(should_delete_a_valid_vertex, $code);

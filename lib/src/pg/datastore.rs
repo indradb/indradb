@@ -280,6 +280,17 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
+    fn get_vertex_count(&self) -> Result<u64> {
+        let results = self.trans.query("SELECT COUNT(*) FROM vertices", &[])?;
+
+        for row in &results {
+            let count: i64 = row.get(0);
+            return Ok(count as u64);
+        }
+
+        unreachable!();
+    }
+
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         let id = self.uuid_generator.next();
 

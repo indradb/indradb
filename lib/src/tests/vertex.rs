@@ -239,3 +239,16 @@ where
         })
         .unwrap();
 }
+
+pub fn should_get_a_vertex_count<D, T>(datastore: &mut D)
+where
+    D: Datastore<T>,
+    T: Transaction,
+{
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let trans = datastore.transaction().unwrap();
+    trans.create_vertex(vertex_t.clone()).unwrap();
+    let t = models::Type::new("test_edge_type".to_string()).unwrap();
+    let count = trans.get_vertex_count().unwrap();
+    assert!(count >= 1);
+}

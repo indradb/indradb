@@ -158,6 +158,12 @@ impl Transaction for BatchTransaction {
         }))
     }
 
+    fn get_vertex_count(&self) -> Result<u64, Error> {
+        self.request(&json!({
+            "action": "get_vertex_count"
+        }))
+    }
+
     fn create_edge(&self, e: EdgeKey) -> Result<bool, Error> {
         self.request(&json!({
             "action": "create_edge",

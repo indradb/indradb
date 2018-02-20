@@ -69,6 +69,10 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
+    fn get_vertex_count(&self) -> Result<u64, Error> {
+        proxy_transaction!(self, get_vertex_count, )
+    }
+
     fn create_edge(&self, key: EdgeKey) -> Result<bool, Error> {
         proxy_transaction!(self, create_edge, key)
     }

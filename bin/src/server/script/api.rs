@@ -28,6 +28,10 @@ pub fn delete_vertices(trans: &ProxyTransaction, q: converters::VertexQuery) -> 
     trans.delete_vertices(q.0)
 }
 
+pub fn get_vertex_count(trans: &ProxyTransaction, _: ()) -> Result<u64, Error> {
+    trans.get_vertex_count()
+}
+
 pub fn create_edge(trans: &ProxyTransaction, key: converters::EdgeKey) -> Result<(), Error> {
     trans.create_edge(key.0)?;
     Ok(())

@@ -71,6 +71,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 "create_vertex" => create_vertex(&trans, &obj),
                 "get_vertices" => get_vertices(&trans, &obj),
                 "delete_vertices" => delete_vertices(&trans, &obj),
+                "get_vertex_count" => get_vertex_count(&trans, &obj),
 
                 "create_edge" => create_edge(&trans, &obj),
                 "get_edges" => get_edges(&trans, &obj),
@@ -137,6 +138,13 @@ fn delete_vertices(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     execute_item(trans.delete_vertices(q))
+}
+
+fn get_vertex_count(
+    trans: &ProxyTransaction,
+    _: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
+    execute_item(trans.get_vertex_count())
 }
 
 fn create_edge(
