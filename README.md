@@ -74,7 +74,6 @@ Applications are configured via environment variables:
     * For a postgres datastore: `postgres://user:pass@localhost:5432/database-name`.
     * For a rocksdb datastore: `rocksdb://indradb.rdb`. This will store data in the directory `./indradb.rdb`.
 * `PORT` - The port to run the server on. Defaults to `8000`.
-* `SECRET` - The postgres implementation uses this as a [pepper](https://en.wikipedia.org/wiki/Pepper_%28cryptography%29) for increased security. Defaults to an empty string.
 * `INDRADB_SCRIPT_ROOT` - The directory housing the lua scripts. Defaults to `./scripts`.
 
 ## Install from source

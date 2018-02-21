@@ -11,7 +11,6 @@ fi
 
 export TEST_RDB_DIRECTORY=`mktemp -d 2>/dev/null || mktemp -d -t 'indradb'`
 export RUST_BACKTRACE=1
-export SECRET=QkrDxgVJCT
 export TEST_POSTGRES_URL="postgres://${PG_USER}@localhost:5432/indradb_test"
 
 ACTION=test
