@@ -16,7 +16,7 @@ use serde_json::value::Value as JsonValue;
 pub use regex::Regex;
 use uuid::Uuid;
 pub use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type,
-                  Vertex, VertexMetadata, VertexQuery};
+                  Vertex, VertexMetadata, VertexQuery, EdgeDirection};
 pub use indradb::tests;
 use std::collections::HashMap;
 use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
@@ -158,6 +158,12 @@ impl Transaction for BatchTransaction {
         }))
     }
 
+    fn get_vertex_count(&self) -> Result<u64, Error> {
+        self.request(&json!({
+            "action": "get_vertex_count"
+        }))
+    }
+
     fn create_edge(&self, e: EdgeKey) -> Result<bool, Error> {
         self.request(&json!({
             "action": "create_edge",
@@ -179,10 +185,12 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> Result<u64, Error> {
         self.request(&json!({
             "action": "get_edge_count",
-            "query": q
+            "id": id,
+            "type_filter": type_filter,
+            "direction": direction
         }))
     }
 
@@ -265,14 +273,6 @@ impl Transaction for BatchTransaction {
             "query": q,
             "name": name
         }))
-    }
-
-    fn commit(self) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<(), Error> {
-        Err("Cannot rollback an HTTP-based transaction".into())
     }
 }
 

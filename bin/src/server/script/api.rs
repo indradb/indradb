@@ -28,6 +28,10 @@ pub fn delete_vertices(trans: &ProxyTransaction, q: converters::VertexQuery) -> 
     trans.delete_vertices(q.0)
 }
 
+pub fn get_vertex_count(trans: &ProxyTransaction, _: ()) -> Result<u64, Error> {
+    trans.get_vertex_count()
+}
+
 pub fn create_edge(trans: &ProxyTransaction, key: converters::EdgeKey) -> Result<(), Error> {
     trans.create_edge(key.0)?;
     Ok(())
@@ -49,8 +53,8 @@ pub fn delete_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Resul
     Ok(())
 }
 
-pub fn get_edge_count(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Result<u64, Error> {
-    Ok(trans.get_edge_count(q.0)?)
+pub fn get_edge_count(trans: &ProxyTransaction, (id, type_filter, direction): (converters::Uuid, Option<converters::Type>, converters::EdgeDirection)) -> Result<u64, Error> {
+    Ok(trans.get_edge_count(id.0, type_filter.map(|t| t.0), direction.0)?)
 }
 
 pub fn get_global_metadata(

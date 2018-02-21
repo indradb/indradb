@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeQuery, QueryTypeConverter, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeQuery, EdgeDirection, Transaction, VertexQuery};
 use models;
 use uuid::Uuid;
 use errors::Result;
@@ -162,8 +162,8 @@ impl RocksdbTransaction {
                     let (outbound_id, _, _, inbound_id) = item?;
 
                     match converter {
-                        QueryTypeConverter::Outbound => Ok(outbound_id),
-                        QueryTypeConverter::Inbound => Ok(inbound_id),
+                        EdgeDirection::Outbound => Ok(outbound_id),
+                        EdgeDirection::Inbound => Ok(inbound_id),
                     }
                 }));
 
@@ -205,8 +205,8 @@ impl RocksdbTransaction {
                 let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
 
                 let edge_range_manager = match converter {
-                    QueryTypeConverter::Outbound => EdgeRangeManager::new(self.db.clone()),
-                    QueryTypeConverter::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
+                    EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
+                    EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
                 };
 
                 // Ideally we'd use iterators all the way down, but things
@@ -232,13 +232,13 @@ impl RocksdbTransaction {
                                 )) => {
                                     if edge_range_update_datetime >= low_filter {
                                         edges.push(match converter {
-                                            QueryTypeConverter::Outbound => Ok((
+                                            EdgeDirection::Outbound => Ok((
                                                 edge_range_first_id,
                                                 edge_range_t,
                                                 edge_range_update_datetime,
                                                 edge_range_second_id,
                                             )),
-                                            QueryTypeConverter::Inbound => Ok((
+                                            EdgeDirection::Inbound => Ok((
                                                 edge_range_second_id,
                                                 edge_range_t,
                                                 edge_range_update_datetime,
@@ -272,13 +272,13 @@ impl RocksdbTransaction {
                                     edge_range_second_id,
                                 )) => {
                                     edges.push(match converter {
-                                        QueryTypeConverter::Outbound => Ok((
+                                        EdgeDirection::Outbound => Ok((
                                             edge_range_first_id,
                                             edge_range_t,
                                             edge_range_update_datetime,
                                             edge_range_second_id,
                                         )),
-                                        QueryTypeConverter::Inbound => Ok((
+                                        EdgeDirection::Inbound => Ok((
                                             edge_range_second_id,
                                             edge_range_t,
                                             edge_range_update_datetime,
@@ -374,6 +374,12 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
+    fn get_vertex_count(&self) -> Result<u64> {
+        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        Ok(iterator.count() as u64)
+    }
+
     fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
         if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
@@ -425,9 +431,15 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64> {
-        let iterator = self.edge_query_to_iterator(q)?;
-        Ok(iterator.count() as u64)
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+        let edge_range_manager = match direction {
+            EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
+            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
+        };
+
+        let count = edge_range_manager.iterate_for_range(id, &type_filter, None)?.count();
+
+        Ok(count as u64)
     }
 
     fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
@@ -534,13 +546,5 @@ impl Transaction for RocksdbTransaction {
 
         self.db.write(batch)?;
         Ok(())
-    }
-
-    fn commit(self) -> Result<()> {
-        Ok(())
-    }
-
-    fn rollback(self) -> Result<()> {
-        Err("Transactions cannot be rolled back in the rocksdb datastore implementation".into())
     }
 }

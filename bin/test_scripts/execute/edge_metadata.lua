@@ -1,12 +1,10 @@
-local queries = require("../shared/queries");
-
 local trans = transaction();
 local outbound_id = trans:create_vertex("foo");
 local inbound_id = trans:create_vertex("bar");
-local key = queries.EdgeKey.new(outbound_id, "baz", inbound_id);
+local key = EdgeKey.new(outbound_id, "baz", inbound_id);
 trans:create_edge(key);
 
-local q = queries.EdgeQuery.edges({key});
+local q = EdgeQuery.edges({key});
 trans:set_edge_metadata(q, "script-test-edge", {foo={true, false}});
 local val = trans:get_edge_metadata(q, "script-test-edge");
 

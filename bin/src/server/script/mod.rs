@@ -1,6 +1,7 @@
 mod api;
 mod context;
 mod converters;
+mod globals;
 mod mapreduce;
 
 use rlua::prelude::*;
@@ -95,7 +96,6 @@ mod tests {
     test_script!(edge_metadata);
     test_script!(get_edge_count);
     test_script!(get_edges_bad_high);
-    test_script!(get_edges_bad_limit);
     test_script!(get_edges_bad_low);
     test_script!(get_edges);
     test_script!(global_metadata);

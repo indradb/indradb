@@ -9,4 +9,4 @@ end
 
 local status, err = pcall(test_create_vertex_bad_type);
 assert(status == false);
-assert(tostring(err) == "error converting Lua non-string to string");
+assert(tostring(err) == "error converting Lua function to String (expected string or number)");

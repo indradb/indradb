@@ -17,16 +17,13 @@ pub trait Datastore<T: Transaction> {
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
-/// Transactions are responsible for managing:
-///
-/// 1. Vertices.
-/// 2. Edges, which connect two vertices.
-/// 3. Global metadata: metadata that is not owned by anything, and as a
-///    result needs to be manually managed.
-/// 4. Vertex metadata: metadata that is owned by a vertex, and will be
-///    automatically deleted when the associated vertex is deleted.
-/// 5. Edge metadata: metadata that is owned by an edge, and will be
-///    automatically deleted when the associated edge is deleted.
+/// All datastore manipulations are done through transactions. Despite the
+/// name, different datastore implementations carry different guarantees.
+/// Depending on the implementation, it may not be possible to rollback the
+/// changes on error. See the documentation of individual implementations for
+/// details. Transactions are automatically committed on drop. Transactions
+/// should be designed to not fail on commit; i.e. errors should occur when a
+/// method is actually called instead.
 pub trait Transaction {
     /// Creates a new vertex.
     ///
@@ -45,6 +42,9 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     fn delete_vertices(&self, q: models::VertexQuery) -> Result<()>;
+
+    /// Gets the number of vertices in the datastore..
+    fn get_vertex_count(&self) -> Result<u64>;
 
     /// Creates a new edge. If the edge already exists, this will update it
     /// with a new update datetime. Returns whether the edge was successfully
@@ -67,11 +67,13 @@ pub trait Transaction {
     /// * `q` - The query to run.
     fn delete_edges(&self, q: models::EdgeQuery) -> Result<()>;
 
-    /// Gets the number of edges that match a query.
+    /// Gets the number of edges associated with a vertex.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    fn get_edge_count(&self, q: models::EdgeQuery) -> Result<u64>;
+    /// * `id` - The id of the vertex.
+    /// * `type_filter` - Only get the count for a specified edge type.
+    /// * `direction`: The direction of edges to get.
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets a global metadata value.
     ///
@@ -152,10 +154,4 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     fn delete_edge_metadata(&self, q: models::EdgeQuery, name: String) -> Result<()>;
-
-    /// Commits the transaction.
-    fn commit(self) -> Result<()>;
-
-    /// Rolls the transaction back.
-    fn rollback(self) -> Result<()>;
 }

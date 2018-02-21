@@ -22,6 +22,7 @@ macro_rules! full_test_impl {
 		define_test!(should_get_single_vertices_nonexisting, $code);
 		define_test!(should_get_vertices, $code);
 		define_test!(should_get_vertices_piped, $code);
+		define_test!(should_get_a_vertex_count, $code);
 
 		// Vertex updates
 		define_test!(should_delete_a_valid_vertex, $code);
@@ -37,6 +38,7 @@ macro_rules! full_test_impl {
 		define_test!(should_get_an_edge_count, $code);
 		define_test!(should_get_an_edge_count_with_no_type, $code);
 		define_test!(should_get_an_edge_count_for_an_invalid_edge, $code);
+		define_test!(should_get_an_inbound_edge_count, $code);
 		define_test!(should_get_an_edge_range, $code);
 		define_test!(should_get_edges_with_no_type, $code);
 		define_test!(should_get_no_edges_for_an_invalid_range, $code);

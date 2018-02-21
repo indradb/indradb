@@ -6,7 +6,8 @@
 use std::env;
 use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
               MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore,
-              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery,
+              EdgeDirection};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
@@ -68,6 +69,10 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_vertices, q)
     }
 
+    fn get_vertex_count(&self) -> Result<u64, Error> {
+        proxy_transaction!(self, get_vertex_count, )
+    }
+
     fn create_edge(&self, key: EdgeKey) -> Result<bool, Error> {
         proxy_transaction!(self, create_edge, key)
     }
@@ -80,8 +85,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(&self, q: EdgeQuery) -> Result<u64, Error> {
-        proxy_transaction!(self, get_edge_count, q)
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> Result<u64, Error> {
+        proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 
     fn get_global_metadata(&self, key: String) -> Result<Option<JsonValue>, Error> {
@@ -127,22 +132,6 @@ impl Transaction for ProxyTransaction {
 
     fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
         proxy_transaction!(self, delete_edge_metadata, q, key)
-    }
-
-    fn commit(self) -> Result<(), Error> {
-        match self {
-            ProxyTransaction::Postgres(pg) => pg.commit(),
-            ProxyTransaction::Rocksdb(r) => r.commit(),
-            ProxyTransaction::Memory(mem) => mem.commit(),
-        }
-    }
-
-    fn rollback(self) -> Result<(), Error> {
-        match self {
-            ProxyTransaction::Postgres(pg) => pg.rollback(),
-            ProxyTransaction::Rocksdb(r) => r.rollback(),
-            ProxyTransaction::Memory(mem) => mem.rollback(),
-        }
     }
 }
 

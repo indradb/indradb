@@ -33,8 +33,6 @@ where
         create_edge_from::<D, T>(&trans, outbound_id),
     ];
 
-    trans.commit().unwrap();
-
     (outbound_id, inbound_ids)
 }
 
@@ -70,8 +68,6 @@ where
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);
-
-    trans.commit().unwrap();
 
     (outbound_id, start_time, end_time, inbound_ids)
 }

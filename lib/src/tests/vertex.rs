@@ -28,7 +28,6 @@ where
             limit: u32::MAX,
         })
         .unwrap();
-    trans.commit().unwrap();
 
     assert!(range.len() >= 5);
 
@@ -68,7 +67,6 @@ where
             limit: 0,
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -95,7 +93,6 @@ where
             limit: u32::MAX,
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -112,7 +109,6 @@ where
             ids: vec![inserted_id],
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -131,7 +127,6 @@ where
             ids: vec![Uuid::default()],
         })
         .unwrap();
-    trans.commit().unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -159,7 +154,6 @@ where
             ],
         })
         .unwrap();
-    trans.commit().unwrap();
 
     assert!(range.len() == 3);
 
@@ -229,13 +223,7 @@ where
     let v = trans.get_vertices(q.clone()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans
-        .get_edge_count(
-            VertexQuery::Vertices {
-                ids: vec![outbound_id],
-            }.outbound_edges(Some(t), None, None, 10),
-        )
-        .unwrap();
+    let count = trans.get_edge_count(outbound_id, Some(t), models::EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -250,4 +238,16 @@ where
             ids: vec![Uuid::default()],
         })
         .unwrap();
+}
+
+pub fn should_get_a_vertex_count<D, T>(datastore: &mut D)
+where
+    D: Datastore<T>,
+    T: Transaction,
+{
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let trans = datastore.transaction().unwrap();
+    trans.create_vertex(vertex_t.clone()).unwrap();
+    let count = trans.get_vertex_count().unwrap();
+    assert!(count >= 1);
 }
