@@ -70,11 +70,13 @@ There's two applications:
 
 Applications are configured via environment variables:
 
-* `DATABASE_URL` - The connection string to the underlying database. Examples:
+* `DATABASE_URL`: The connection string to the underlying database. Examples:
     * For a postgres datastore: `postgres://user:pass@localhost:5432/database-name`.
     * For a rocksdb datastore: `rocksdb://indradb.rdb`. This will store data in the directory `./indradb.rdb`.
-* `PORT` - The port to run the server on. Defaults to `8000`.
-* `INDRADB_SCRIPT_ROOT` - The directory housing the lua scripts. Defaults to `./scripts`.
+* `PORT`: The port to run the server on. Defaults to `8000`.
+* `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
+* `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
+* `MAP_REDUCE_WORKER_POOL_SIZE`: How many worker threads to spawn for mapreduce tasks. Defaults to the number of CPUs.
 
 ## Install from source
 
