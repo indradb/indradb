@@ -1,12 +1,11 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, ToLua, UserData,
-           UserDataMethods, Value, Table};
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData,
+           UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use common::ProxyTransaction as ExternalProxyTransaction;
-use indradb::{Edge as ExternalEdge, EdgeKey as ExternalEdgeKey,
-              EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery,
-              EdgeDirection as ExternalEdgeDirection, Type as ExternalType,
-              Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata,
-              VertexQuery as ExternalVertexQuery};
+use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection,
+              EdgeKey as ExternalEdgeKey, EdgeMetadata as ExternalEdgeMetadata,
+              EdgeQuery as ExternalEdgeQuery, Type as ExternalType, Vertex as ExternalVertex,
+              VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
 use uuid::Uuid as ExternalUuid;
 use core::str::FromStr;
 use std::collections::BTreeMap;
@@ -45,9 +44,9 @@ impl<'lua> FromLua<'lua> for JsonValue {
         match value {
             Value::Nil => Ok(Self::new(ExternalJsonValue::Null)),
             Value::Boolean(value) => Ok(Self::new(ExternalJsonValue::Bool(value))),
-            Value::Integer(value) => {
-                Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(value))))
-            },
+            Value::Integer(value) => Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(
+                value,
+            )))),
             Value::Number(value) => {
                 let num = JsonNumber::from_f64(value)
                     .expect("Expected to be able to create a JSON number from a float");
@@ -68,7 +67,9 @@ impl<'lua> FromLua<'lua> for JsonValue {
                         JsonValue(ExternalJsonValue::String(key_string)) => {
                             map.insert(JsonMapKey::String(key_string), value_json.0);
                         }
-                        JsonValue(ExternalJsonValue::Number(ref key_number)) if key_number.is_u64() => {
+                        JsonValue(ExternalJsonValue::Number(ref key_number))
+                            if key_number.is_u64() =>
+                        {
                             map.insert(
                                 JsonMapKey::Number(key_number.as_u64().unwrap()),
                                 value_json.0,
@@ -114,7 +115,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
 
                     Ok(Self::new(ExternalJsonValue::Object(obj)))
                 }
-            },
+            }
             Value::LightUserData(_) => Err(new_from_lua_error("light userdata", "JSON", None)),
             Value::Function(_) => Err(new_from_lua_error("function", "JSON", None)),
             Value::Thread(_) => Err(new_from_lua_error("thread", "JSON", None)),
@@ -339,10 +340,9 @@ impl<'lua> FromLua<'lua> for VertexQuery {
 
         if t == "all" {
             let start_id = match Option::<String>::from_lua(table.get("start_id")?, l)? {
-                Some(s) => Some(ExternalUuid::from_str(&s).map_err(
-                    |e| new_from_lua_error("string", "uuid", Some(format!("{}", e))),
-                )?),
-                None => None
+                Some(s) => Some(ExternalUuid::from_str(&s)
+                    .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?),
+                None => None,
             };
 
             let limit = u32::from_lua(table.get("limit")?, l)?;
@@ -356,8 +356,7 @@ impl<'lua> FromLua<'lua> for VertexQuery {
             let ids: Vec<ExternalUuid> = ids.into_iter().map(|id| id.0).collect();
             Ok(VertexQuery::new(ExternalVertexQuery::Vertices { ids }))
         } else if t == "pipe" {
-            let edge_query =
-                Box::new(EdgeQuery::from_lua(table.get("edge_query")?, l)?.0);
+            let edge_query = Box::new(EdgeQuery::from_lua(table.get("edge_query")?, l)?.0);
             let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
             let limit = u32::from_lua(table.get("limit")?, l)?;
             Ok(VertexQuery::new(ExternalVertexQuery::Pipe {
@@ -394,21 +393,17 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
             let keys: Vec<ExternalEdgeKey> = keys.into_iter().map(|edge_key| edge_key.0).collect();
             Ok(EdgeQuery::new(ExternalEdgeQuery::Edges { keys }))
         } else if t == "pipe" {
-            let vertex_query =
-                Box::new(VertexQuery::from_lua(table.get("vertex_query")?, l)?.0);
+            let vertex_query = Box::new(VertexQuery::from_lua(table.get("vertex_query")?, l)?.0);
             let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
 
             let type_filter = match Option::<String>::from_lua(table.get("type_filter")?, l)? {
-                Some(s) => Some(ExternalType::new(s).map_err(
-                    |e| new_from_lua_error("string", "type", Some(format!("{}", e)))
-                )?),
-                None => None
+                Some(s) => Some(ExternalType::new(s)
+                    .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?),
+                None => None,
             };
 
-            let high_filter =
-                optional_datetime_from_value(&table.get("high_filter")?)?;
-            let low_filter =
-                optional_datetime_from_value(&table.get("low_filter")?)?;
+            let high_filter = optional_datetime_from_value(&table.get("high_filter")?)?;
+            let low_filter = optional_datetime_from_value(&table.get("low_filter")?)?;
             let limit = u32::from_lua(table.get("limit")?, l)?;
             Ok(EdgeQuery::new(ExternalEdgeQuery::Pipe {
                 vertex_query,

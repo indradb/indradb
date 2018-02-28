@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, VertexQuery, EdgeDirection};
+use super::super::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, VertexQuery};
 use models;
 use uuid::Uuid;
 use chrono::offset::Utc;
@@ -175,7 +175,9 @@ where
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans.get_edge_count(outbound_id, Some(t), EdgeDirection::Outbound).unwrap();
+    let count = trans
+        .get_edge_count(outbound_id, Some(t), EdgeDirection::Outbound)
+        .unwrap();
     assert_eq!(count, 5);
 }
 
@@ -186,7 +188,9 @@ where
 {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let count = trans.get_edge_count(outbound_id, None, EdgeDirection::Outbound).unwrap();
+    let count = trans
+        .get_edge_count(outbound_id, None, EdgeDirection::Outbound)
+        .unwrap();
     assert_eq!(count, 5);
 }
 
@@ -197,7 +201,9 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans.get_edge_count(Uuid::default(), Some(t), EdgeDirection::Outbound).unwrap();
+    let count = trans
+        .get_edge_count(Uuid::default(), Some(t), EdgeDirection::Outbound)
+        .unwrap();
     assert_eq!(count, 0);
 }
 
@@ -208,7 +214,9 @@ where
 {
     let (_, inbound_ids) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let count = trans.get_edge_count(inbound_ids[0], None, EdgeDirection::Inbound).unwrap();
+    let count = trans
+        .get_edge_count(inbound_ids[0], None, EdgeDirection::Inbound)
+        .unwrap();
     assert_eq!(count, 1);
 }
 

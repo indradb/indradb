@@ -6,6 +6,6 @@ mod vertices;
 
 pub use self::edges::{Edge, EdgeKey};
 pub use self::metadata::{EdgeMetadata, VertexMetadata};
-pub use self::queries::{EdgeQuery, EdgeDirection, VertexQuery};
+pub use self::queries::{EdgeDirection, EdgeQuery, VertexQuery};
 pub use self::types::Type;
 pub use self::vertices::Vertex;

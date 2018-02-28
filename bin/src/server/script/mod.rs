@@ -7,7 +7,7 @@ mod mapreduce;
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
 
-pub use self::mapreduce::{execute_mapreduce, Update, ResponseSender, ResponseReceiver, bounded};
+pub use self::mapreduce::{bounded, execute_mapreduce, ResponseReceiver, ResponseSender, Update};
 
 /// Runs a script.
 ///
@@ -16,11 +16,7 @@ pub use self::mapreduce::{execute_mapreduce, Update, ResponseSender, ResponseRec
 ///
 /// # Panics
 /// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn execute(
-    contents: &str,
-    path: &str,
-    arg: JsonValue,
-) -> Result<JsonValue, LuaError> {
+pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, LuaError> {
     let l = context::create(arg)?;
     let value: converters::JsonValue = l.exec(contents, Some(path))?;
     Ok(value.0)
@@ -48,10 +44,11 @@ mod tests {
             let file_path = Path::new(&file_path_str);
             let mut file = File::open(file_path).expect("Could not open script file");
             let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Could not get script file contents");
+            file.read_to_string(&mut contents)
+                .expect("Could not get script file contents");
             contents
         };
-        
+
         (contents, file_path_str)
     }
 

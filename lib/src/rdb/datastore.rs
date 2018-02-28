@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeQuery, EdgeDirection, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
 use models;
 use uuid::Uuid;
 use errors::Result;
@@ -431,13 +431,20 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+    fn get_edge_count(
+        &self,
+        id: Uuid,
+        type_filter: Option<models::Type>,
+        direction: models::EdgeDirection,
+    ) -> Result<u64> {
         let edge_range_manager = match direction {
             EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
         };
 
-        let count = edge_range_manager.iterate_for_range(id, &type_filter, None)?.count();
+        let count = edge_range_manager
+            .iterate_for_range(id, &type_filter, None)?
+            .count();
 
         Ok(count as u64)
     }

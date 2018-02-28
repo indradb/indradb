@@ -1,7 +1,7 @@
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use r2d2::{Pool, PooledConnection};
 use std::mem;
-use super::super::{Datastore, EdgeQuery, EdgeDirection, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
 use models;
 use errors::{Error, Result};
 use postgres;
@@ -42,7 +42,7 @@ impl PostgresDatastore {
     ) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
-            None => min(num_cpus::get() as u32, 128u32)
+            None => min(num_cpus::get() as u32, 128u32),
         };
 
         let manager = PostgresConnectionManager::new(&*connection_string, TlsMode::None)?;
@@ -353,20 +353,25 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+    fn get_edge_count(
+        &self,
+        id: Uuid,
+        type_filter: Option<models::Type>,
+        direction: models::EdgeDirection,
+    ) -> Result<u64> {
         let results = match (direction, type_filter) {
-            (models::EdgeDirection::Outbound, Some(t)) => {
-                self.trans.query("SELECT COUNT(*) FROM edges WHERE outbound_id=$1 AND type=$2", &[&id, &t.0])
-            },
-            (models::EdgeDirection::Outbound, None) => {
-                self.trans.query("SELECT COUNT(*) FROM edges WHERE outbound_id=$1", &[&id])
-            },
-            (models::EdgeDirection::Inbound, Some(t)) => {
-                self.trans.query("SELECT COUNT(*) FROM edges WHERE inbound_id=$1 AND type=$2", &[&id, &t.0])
-            },
-            (models::EdgeDirection::Inbound, None) => {
-                self.trans.query("SELECT COUNT(*) FROM edges WHERE inbound_id=$1", &[&id])
-            }
+            (models::EdgeDirection::Outbound, Some(t)) => self.trans.query(
+                "SELECT COUNT(*) FROM edges WHERE outbound_id=$1 AND type=$2",
+                &[&id, &t.0],
+            ),
+            (models::EdgeDirection::Outbound, None) => self.trans
+                .query("SELECT COUNT(*) FROM edges WHERE outbound_id=$1", &[&id]),
+            (models::EdgeDirection::Inbound, Some(t)) => self.trans.query(
+                "SELECT COUNT(*) FROM edges WHERE inbound_id=$1 AND type=$2",
+                &[&id, &t.0],
+            ),
+            (models::EdgeDirection::Inbound, None) => self.trans
+                .query("SELECT COUNT(*) FROM edges WHERE inbound_id=$1", &[&id]),
         }?;
 
         for row in &results {

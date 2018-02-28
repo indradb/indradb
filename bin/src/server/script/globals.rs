@@ -1,4 +1,4 @@
-pub const GLOBALS: &'static str = "
+pub const GLOBALS: &str = "
 EdgeKey = {}
 EdgeKey.__index = EdgeKey
 

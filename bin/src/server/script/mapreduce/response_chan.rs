@@ -1,22 +1,22 @@
-use crossbeam_channel::{Sender, Receiver, bounded as crossbeam_bounded};
+use crossbeam_channel::{bounded as crossbeam_bounded, Receiver, Sender};
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use iron::response::WriteBody;
-use std::io::{Write, Result as IoResult};
+use std::io::{Result as IoResult, Write};
 
 #[derive(Clone, Debug)]
 pub enum Update {
     Ping(JsonValue),
     Ok(JsonValue),
-    Err(JsonValue)
+    Err(JsonValue),
 }
 
 impl Update {
     fn contents(&self) -> JsonValue {
         match *self {
-            Update::Ping(ref value) => json!({"ping": value}),
-            Update::Ok(ref value) => json!({"ok": value}),
-            Update::Err(ref value) => json!({"error": value})
+            Update::Ping(ref value) => json!({ "ping": value }),
+            Update::Ok(ref value) => json!({ "ok": value }),
+            Update::Err(ref value) => json!({ "error": value }),
         }
     }
 
@@ -52,7 +52,7 @@ impl WriteBody for ResponseReceiver {
         loop {
             let update = match self.0.recv() {
                 Ok(update) => update,
-                Err(_) => return Ok(())
+                Err(_) => return Ok(()),
             };
 
             let mut s = serde_json::to_string(&update.contents()).unwrap();

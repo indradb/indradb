@@ -1,9 +1,10 @@
-//! IndraDB - a graph datastore.
+//! `IndraDB` - a graph datastore.
 //!
-//! IndraDB is broken up into a library and an application. This is the library,
-//! which you would use if you want to create new datastore implementations, or
-//! plug into the low-level details of IndraDB. For most use cases, you can use
-//! the application, which exposes an API and scripting layer.
+//! `IndraDB` is broken up into a library and an application. This is the
+//! library, which you would use if you want to create new datastore
+//! implementations, or plug into the low-level details of `IndraDB`. For most
+//! use cases, you can use the application, which exposes an API and scripting
+//! layer.
 
 // Used for error-chain, which can recurse deeply
 #![recursion_limit = "1024"]

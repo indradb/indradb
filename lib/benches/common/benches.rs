@@ -1,4 +1,4 @@
-use indradb::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery, EdgeDirection};
+use indradb::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use test::Bencher;
 
 pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)
@@ -97,6 +97,8 @@ where
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
         let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        trans.get_edge_count(outbound_id, Some(edge_t), EdgeDirection::Outbound).unwrap();
+        trans
+            .get_edge_count(outbound_id, Some(edge_t), EdgeDirection::Outbound)
+            .unwrap();
     });
 }

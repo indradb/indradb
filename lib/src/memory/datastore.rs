@@ -116,49 +116,47 @@ impl InternalMemoryDatastore {
                 let mut results = Vec::new();
 
                 match converter {
-                    models::EdgeDirection::Outbound => {
-                        for (id, _) in vertex_values {
-                            let lower_bound = match type_filter {
-                                Some(ref type_filter) => {
-                                    models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
-                                }
-                                None => {
-                                    let empty_type = models::Type::default();
-                                    models::EdgeKey::new(id, empty_type, Uuid::default())
-                                }
-                            };
+                    models::EdgeDirection::Outbound => for (id, _) in vertex_values {
+                        let lower_bound = match type_filter {
+                            Some(ref type_filter) => {
+                                models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
+                            }
+                            None => {
+                                let empty_type = models::Type::default();
+                                models::EdgeKey::new(id, empty_type, Uuid::default())
+                            }
+                        };
 
-                            for (key, update_datetime) in self.edges.range(lower_bound..) {
-                                if key.outbound_id != id {
+                        for (key, update_datetime) in self.edges.range(lower_bound..) {
+                            if key.outbound_id != id {
+                                break;
+                            }
+
+                            if let Some(ref type_filter) = type_filter {
+                                if &key.t != type_filter {
                                     break;
                                 }
+                            }
 
-                                if let Some(ref type_filter) = type_filter {
-                                    if &key.t != type_filter {
-                                        break;
-                                    }
-                                }
-
-                                if let Some(high_filter) = high_filter {
-                                    if *update_datetime > high_filter {
-                                        continue;
-                                    }
-                                }
-
-                                if let Some(low_filter) = low_filter {
-                                    if *update_datetime < low_filter {
-                                        continue;
-                                    }
-                                }
-
-                                results.push((key.clone(), *update_datetime));
-
-                                if results.len() == limit as usize {
-                                    return Ok(results);
+                            if let Some(high_filter) = high_filter {
+                                if *update_datetime > high_filter {
+                                    continue;
                                 }
                             }
+
+                            if let Some(low_filter) = low_filter {
+                                if *update_datetime < low_filter {
+                                    continue;
+                                }
+                            }
+
+                            results.push((key.clone(), *update_datetime));
+
+                            if results.len() == limit as usize {
+                                return Ok(results);
+                            }
                         }
-                    }
+                    },
                     models::EdgeDirection::Inbound => {
                         let mut candidate_ids = HashSet::new();
                         for (id, _) in vertex_values {
@@ -205,7 +203,7 @@ impl InternalMemoryDatastore {
     fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
         for vertex_id in vertices {
             self.vertices.remove(&vertex_id);
-            
+
             let mut deletable_vertex_metadata: Vec<(Uuid, String)> = Vec::new();
 
             for (metadata_key, _) in self.vertex_metadata.range((vertex_id, "".to_string())..) {
@@ -224,7 +222,7 @@ impl InternalMemoryDatastore {
 
             let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
 
-            for (edge_key, _) in self.edges.iter() {
+            for edge_key in self.edges.keys() {
                 if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
                     deletable_edges.push(edge_key.clone());
                 }
@@ -240,7 +238,9 @@ impl InternalMemoryDatastore {
 
             let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
 
-            for (metadata_key, _) in self.edge_metadata.range((edge_key.clone(), "".to_string())..) {
+            for (metadata_key, _) in self.edge_metadata
+                .range((edge_key.clone(), "".to_string())..)
+            {
                 let &(ref metadata_edge_key, _) = metadata_key;
 
                 if &edge_key != metadata_edge_key {
@@ -312,7 +312,11 @@ impl Transaction for MemoryTransaction {
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_vertices = datastore.get_vertex_values_by_query(q)?.into_iter().map(|(k, _)| k).collect();
+        let deletable_vertices = datastore
+            .get_vertex_values_by_query(q)?
+            .into_iter()
+            .map(|(k, _)| k)
+            .collect();
         datastore.delete_vertices(deletable_vertices);
         Ok(())
     }
@@ -349,12 +353,21 @@ impl Transaction for MemoryTransaction {
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<models::EdgeKey> = datastore.get_edge_values_by_query(q)?.into_iter().map(|(k, _)| k).collect();
+        let deletable_edges: Vec<models::EdgeKey> = datastore
+            .get_edge_values_by_query(q)?
+            .into_iter()
+            .map(|(k, _)| k)
+            .collect();
         datastore.delete_edges(deletable_edges);
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, type_filter: Option<models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+    fn get_edge_count(
+        &self,
+        id: Uuid,
+        type_filter: Option<models::Type>,
+        direction: models::EdgeDirection,
+    ) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         if direction == models::EdgeDirection::Outbound {

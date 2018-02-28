@@ -27,10 +27,15 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
 
         // Add globals
         g.set("arg", converters::JsonValue::new(arg))?;
-        g.set("transaction", l.create_function(|_, ()| {
-            let trans = statics::DATASTORE.transaction().map_err(|err| LuaError::RuntimeError(format!("{}", err)))?;
-            Ok(converters::ProxyTransaction::new(trans))
-        })?)?;
+        g.set(
+            "transaction",
+            l.create_function(|_, ()| {
+                let trans = statics::DATASTORE
+                    .transaction()
+                    .map_err(|err| LuaError::RuntimeError(format!("{}", err)))?;
+                Ok(converters::ProxyTransaction::new(trans))
+            })?,
+        )?;
     }
 
     let _: () = l.eval(globals::GLOBALS, Some("globals.lua"))?;

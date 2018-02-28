@@ -53,7 +53,14 @@ pub fn delete_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Resul
     Ok(())
 }
 
-pub fn get_edge_count(trans: &ProxyTransaction, (id, type_filter, direction): (converters::Uuid, Option<converters::Type>, converters::EdgeDirection)) -> Result<u64, Error> {
+pub fn get_edge_count(
+    trans: &ProxyTransaction,
+    (id, type_filter, direction): (
+        converters::Uuid,
+        Option<converters::Type>,
+        converters::EdgeDirection,
+    ),
+) -> Result<u64, Error> {
     Ok(trans.get_edge_count(id.0, type_filter.map(|t| t.0), direction.0)?)
 }
 
