@@ -12,7 +12,7 @@ use super::edges::EdgeKey;
 /// query to an edge query. `EdgeDirection`s are used to specify which
 /// end of things you want to pipe - either the outbound items or the inbound
 /// items.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
+#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Copy)]
 pub enum EdgeDirection {
     #[serde(rename = "outbound")] Outbound,
     #[serde(rename = "inbound")] Inbound,

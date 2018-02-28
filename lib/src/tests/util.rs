@@ -10,10 +10,10 @@ where
     T: Transaction,
 {
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type".to_string()).unwrap();
-    let inbound_id = trans.create_vertex(inbound_vertex_t).unwrap();
+    let inbound_id = trans.create_vertex(&inbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     let key = models::EdgeKey::new(outbound_id, edge_t, inbound_id);
-    trans.create_edge(key).unwrap();
+    trans.create_edge(&key).unwrap();
     inbound_id
 }
 
@@ -24,7 +24,7 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(outbound_vertex_t).unwrap();
+    let outbound_id = trans.create_vertex(&outbound_vertex_t).unwrap();
     let inbound_ids: [Uuid; 5] = [
         create_edge_from::<D, T>(&trans, outbound_id),
         create_edge_from::<D, T>(&trans, outbound_id),
@@ -45,7 +45,7 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(outbound_vertex_t).unwrap();
+    let outbound_id = trans.create_vertex(&outbound_vertex_t).unwrap();
 
     create_edge_from::<D, T>(&trans, outbound_id);
     create_edge_from::<D, T>(&trans, outbound_id);

@@ -52,7 +52,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             Ok(trans) => trans,
             Err(err) => {
                 let message = format!("Query setup failed: {:?}", err);
-                sender.0.send(Update::Err(json!(message))).ok();
+            sender.0.send(Update::Err(json!(message))).ok();
                 return;
             }
         };
@@ -66,7 +66,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
                 limit: *statics::MAP_REDUCE_QUERY_LIMIT,
             };
 
-            let vertices = match trans.get_vertices(q) {
+            let vertices = match trans.get_vertices(&q) {
                 Ok(vertices) => vertices,
                 Err(err) => {
                     let message = format!("Query failed: {:?}", err);
@@ -128,7 +128,7 @@ mod tests {
     fn add_seed() {
         let trans = statics::DATASTORE.transaction().unwrap();
         trans
-            .create_vertex(Type::new("foo".to_string()).unwrap())
+            .create_vertex(&Type::new("foo".to_string()).unwrap())
             .unwrap();
     }
 

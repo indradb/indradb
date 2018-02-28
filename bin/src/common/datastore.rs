@@ -57,15 +57,15 @@ pub enum ProxyTransaction {
 }
 
 impl Transaction for ProxyTransaction {
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>, Error> {
         proxy_transaction!(self, get_vertices, q)
     }
 
-    fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, t: &Type) -> Result<Uuid, Error> {
         proxy_transaction!(self, create_vertex, t)
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+    fn delete_vertices(&self, q: &VertexQuery) -> Result<(), Error> {
         proxy_transaction!(self, delete_vertices, q)
     }
 
@@ -73,69 +73,69 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_vertex_count,)
     }
 
-    fn create_edge(&self, key: EdgeKey) -> Result<bool, Error> {
+    fn create_edge(&self, key: &EdgeKey) -> Result<bool, Error> {
         proxy_transaction!(self, create_edge, key)
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
+    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<Edge>, Error> {
         proxy_transaction!(self, get_edges, q)
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+    fn delete_edges(&self, q: &EdgeQuery) -> Result<(), Error> {
         proxy_transaction!(self, delete_edges, q)
     }
 
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<Type>,
+        type_filter: Option<&Type>,
         direction: EdgeDirection,
     ) -> Result<u64, Error> {
         proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 
-    fn get_global_metadata(&self, key: String) -> Result<Option<JsonValue>, Error> {
+    fn get_global_metadata(&self, key: &str) -> Result<Option<JsonValue>, Error> {
         proxy_transaction!(self, get_global_metadata, key)
     }
 
-    fn set_global_metadata(&self, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, key: &str, value: JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_global_metadata, key, value)
     }
 
-    fn delete_global_metadata(&self, key: String) -> Result<(), Error> {
+    fn delete_global_metadata(&self, key: &str) -> Result<(), Error> {
         proxy_transaction!(self, delete_global_metadata, key)
     }
 
     fn get_vertex_metadata(
         &self,
-        q: VertexQuery,
-        key: String,
+        q: &VertexQuery,
+        key: &str,
     ) -> Result<Vec<VertexMetadata>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
     fn set_vertex_metadata(
         &self,
-        q: VertexQuery,
-        key: String,
+        q: &VertexQuery,
+        key: &str,
         value: JsonValue,
     ) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex_metadata, q, key, value)
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, key: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: &VertexQuery, key: &str) -> Result<(), Error> {
         proxy_transaction!(self, delete_vertex_metadata, q, key)
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<Vec<EdgeMetadata>, Error> {
+    fn get_edge_metadata(&self, q: &EdgeQuery, key: &str) -> Result<Vec<EdgeMetadata>, Error> {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, key: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, key: &str, value: JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_edge_metadata, q, key, value)
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, key: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: &EdgeQuery, key: &str) -> Result<(), Error> {
         proxy_transaction!(self, delete_edge_metadata, q, key)
     }
 }
