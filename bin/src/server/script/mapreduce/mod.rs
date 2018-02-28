@@ -59,7 +59,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             }
         };
 
-        let mapreducer = Master::start(contents, path, arg, sent, processing, finished);
+        let mapreducer = Master::start(&contents, &path, &arg, sent, &processing, &finished);
         let mut last_id: Option<Uuid> = None;
 
         loop {

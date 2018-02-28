@@ -224,7 +224,7 @@ impl InternalMemoryDatastore {
 
             let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
 
-            for (edge_key, _) in self.edges.iter() {
+            for (edge_key, _) in &self.edges {
                 if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
                     deletable_edges.push(edge_key.clone());
                 }

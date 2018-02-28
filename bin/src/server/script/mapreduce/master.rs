@@ -19,7 +19,7 @@ pub struct Master {
 }
 
 impl Master {
-    pub fn start(contents: String, path: String, arg: JsonValue, sent: Counter, processing: Counter, finished: Counter) -> Self {
+    pub fn start(contents: &str, path: &str, arg: &JsonValue, sent: Counter, processing: &Counter, finished: &Counter) -> Self {
         let (master_in_sender, master_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
         let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
         let (worker_out_sender, worker_out_receiver) = unbounded::<converters::JsonValue>();
@@ -29,8 +29,8 @@ impl Master {
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
-                contents.clone(),
-                path.clone(),
+                contents.to_string(),
+                path.to_string(),
                 arg.clone(),
                 worker_in_receiver.clone(),
                 worker_out_sender.clone(),
@@ -150,7 +150,7 @@ mod tests {
         let processing = Counter::new();
         let finished = Counter::new();
         
-        let engine = Master::start(contents, file_path_str.to_string(), json!(2), sent.clone(), processing.clone(), finished.clone());
+        let engine = Master::start(&contents, file_path_str, &json!(2), sent.clone(), &processing, &finished);
         
         for _ in 0..insert_count {
             engine.add_vertex(Vertex::new(Uuid::new_v4(), Type::new("foo".to_string()).unwrap()));
