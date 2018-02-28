@@ -27,7 +27,7 @@ lazy_static! {
 
 /// Constructs an `IronError`
 pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
-    let body = serde_json::to_string(&json!({"error": err})).unwrap();
+    let body = serde_json::to_string(&json!({ "error": err })).unwrap();
     let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
     let modifiers = (status_code, json_content_type_modifier, body);
     IronError::new(SimpleError::new(err), modifiers)
@@ -157,7 +157,12 @@ pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
 
     let path_str = match path.to_str() {
         Some(path_str) => path_str,
-        None => return Err(create_iron_error(status::InternalServerError, "Could not stringify script path".to_string()))
+        None => {
+            return Err(create_iron_error(
+                status::InternalServerError,
+                "Could not stringify script path".to_string(),
+            ))
+        }
     };
 
     match File::open(&path) {

@@ -8,7 +8,9 @@ pub struct Counter(Arc<Mutex<u64>>);
 
 impl Counter {
     pub fn new() -> Self {
-        Counter { 0: Arc::new(Mutex::new(0)) }
+        Counter {
+            0: Arc::new(Mutex::new(0)),
+        }
     }
 
     pub fn increment(&self) {

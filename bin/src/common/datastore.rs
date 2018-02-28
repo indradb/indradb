@@ -4,10 +4,10 @@
 /// done. However, rust is not flexible enough (yet) to support that.
 
 use std::env;
-use indradb::{Datastore, Edge, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
-              MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore,
-              RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata, VertexQuery,
-              EdgeDirection};
+use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error,
+              MemoryDatastore, MemoryTransaction, PostgresDatastore, PostgresTransaction,
+              RocksdbDatastore, RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata,
+              VertexQuery};
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
@@ -70,7 +70,7 @@ impl Transaction for ProxyTransaction {
     }
 
     fn get_vertex_count(&self) -> Result<u64, Error> {
-        proxy_transaction!(self, get_vertex_count, )
+        proxy_transaction!(self, get_vertex_count,)
     }
 
     fn create_edge(&self, key: EdgeKey) -> Result<bool, Error> {
@@ -85,7 +85,12 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(&self, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> Result<u64, Error> {
+    fn get_edge_count(
+        &self,
+        id: Uuid,
+        type_filter: Option<Type>,
+        direction: EdgeDirection,
+    ) -> Result<u64, Error> {
         proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 

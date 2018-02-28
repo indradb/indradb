@@ -1,16 +1,19 @@
-use rlua::{Table, Function, Error as LuaError};
+use rlua::{Error as LuaError, Function, Table};
 use serde_json::value::Value as JsonValue;
 use indradb::Vertex;
-use crossbeam_channel::{Receiver, Sender, bounded};
+use crossbeam_channel::{bounded, Receiver, Sender};
 use std::thread::{spawn, JoinHandle};
 use script::context;
 use script::converters;
 
 #[derive(Debug)]
 pub enum WorkerError {
-    Setup { description: String, cause: LuaError },
+    Setup {
+        description: String,
+        cause: LuaError,
+    },
     MapCall(LuaError),
-    ReduceCall(LuaError)
+    ReduceCall(LuaError),
 }
 
 macro_rules! try_or_send {
@@ -27,16 +30,23 @@ macro_rules! try_or_send {
 
 pub enum WorkerTask {
     Map(Vertex),
-    Reduce((converters::JsonValue, converters::JsonValue))
+    Reduce((converters::JsonValue, converters::JsonValue)),
 }
 
 pub struct Worker {
     thread: JoinHandle<()>,
-    shutdown_sender: Sender<()>
+    shutdown_sender: Sender<()>,
 }
 
 impl Worker {
-    pub fn start(contents: String, path: String, arg: JsonValue, in_receiver: Receiver<WorkerTask>, out_sender: Sender<converters::JsonValue>, error_sender: Sender<WorkerError>) -> Self {
+    pub fn start(
+        contents: String,
+        path: String,
+        arg: JsonValue,
+        in_receiver: Receiver<WorkerTask>,
+        out_sender: Sender<converters::JsonValue>,
+        error_sender: Sender<WorkerError>,
+    ) -> Self {
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
 
         let thread = spawn(move || {
@@ -44,7 +54,7 @@ impl Worker {
                 context::create(arg),
                 |err| WorkerError::Setup {
                     description: "Error occurred trying to to create a lua context".to_string(),
-                    cause: err
+                    cause: err,
                 },
                 error_sender
             );
@@ -52,8 +62,9 @@ impl Worker {
             let table: Table = try_or_send!(
                 l.exec(&contents, Some(&path)),
                 |err| WorkerError::Setup {
-                    description: "Error occurred trying to get a table from the mapreduce script".to_string(),
-                    cause: err
+                    description: "Error occurred trying to get a table from the mapreduce script"
+                        .to_string(),
+                    cause: err,
                 },
                 error_sender
             );
@@ -61,8 +72,10 @@ impl Worker {
             let mapper: Function = try_or_send!(
                 table.get("map"),
                 |err| WorkerError::Setup {
-                    description: "Error occurred trying to get the `map` function from the returned table".to_string(),
-                    cause: err
+                    description:
+                        "Error occurred trying to get the `map` function from the returned table"
+                            .to_string(),
+                    cause: err,
                 },
                 error_sender
             );
@@ -70,8 +83,10 @@ impl Worker {
             let reducer: Function = try_or_send!(
                 table.get("reduce"),
                 |err| WorkerError::Setup {
-                    description: "Error occurred trying to get the `reduce` function from the returned table".to_string(),
-                    cause: err
+                    description:
+                        "Error occurred trying to get the `reduce` function from the returned table"
+                            .to_string(),
+                    cause: err,
                 },
                 error_sender
             );
@@ -107,12 +122,14 @@ impl Worker {
 
         Self {
             thread: thread,
-            shutdown_sender: shutdown_sender
+            shutdown_sender: shutdown_sender,
         }
     }
 
     pub fn join(self) {
         self.shutdown_sender.send(()).ok();
-        self.thread.join().expect("Expected worker thread to not panic")
+        self.thread
+            .join()
+            .expect("Expected worker thread to not panic")
     }
 }

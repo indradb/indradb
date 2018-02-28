@@ -3,10 +3,10 @@ mod master;
 mod response_chan;
 mod worker;
 
-pub use self::response_chan::{Update, ResponseSender, ResponseReceiver, bounded};
+pub use self::response_chan::{bounded, ResponseReceiver, ResponseSender, Update};
 pub use self::master::Master;
 
-use std::thread::{spawn, sleep};
+use std::thread::{sleep, spawn};
 use statics;
 use uuid::Uuid;
 use self::counter::Counter;
@@ -31,19 +31,17 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
         let processing = processing.clone();
         let finished = finished.clone();
 
-        spawn(move || {
-            loop {
-                sleep(*REPORT_TIME);
+        spawn(move || loop {
+            sleep(*REPORT_TIME);
 
-                let message = json!({
+            let message = json!({
                     "sent": sent.get(),
                     "processing": processing.get(),
                     "finished": finished.get()
                 });
 
-                if sender.0.send(Update::Ping(message)).is_err() {
-                    return;
-                }
+            if sender.0.send(Update::Ping(message)).is_err() {
+                return;
             }
         });
     }
@@ -63,7 +61,10 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
         let mut last_id: Option<Uuid> = None;
 
         loop {
-            let q = VertexQuery::All { start_id: last_id, limit: *statics::MAP_REDUCE_QUERY_LIMIT };
+            let q = VertexQuery::All {
+                start_id: last_id,
+                limit: *statics::MAP_REDUCE_QUERY_LIMIT,
+            };
 
             let vertices = match trans.get_vertices(q) {
                 Ok(vertices) => vertices,
@@ -101,7 +102,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
         match mapreducer.join() {
             Ok(value) => {
                 sender.0.send(Update::Ok(value)).ok();
-            },
+            }
             Err(err) => {
                 let message = format!("Mapreduce failed: {:?}", err);
                 sender.0.send(Update::Err(json!(message))).ok();
@@ -126,14 +127,17 @@ mod tests {
     /// Ensures there's at least one vertex to process
     fn add_seed() {
         let trans = statics::DATASTORE.transaction().unwrap();
-        trans.create_vertex(Type::new("foo".to_string()).unwrap()).unwrap();
+        trans
+            .create_vertex(Type::new("foo".to_string()).unwrap())
+            .unwrap();
     }
 
     fn run(file_path_str: &str, input: JsonValue) -> JsonValue {
         let file_path = Path::new(file_path_str);
         let mut file = File::open(file_path).expect("Could not open script file");
         let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Could not get script file contents");
+        file.read_to_string(&mut contents)
+            .expect("Could not get script file contents");
 
         let (sender, receiver) = script::bounded(1);
         execute_mapreduce(contents, file_path_str.to_string(), input, sender);
@@ -143,7 +147,7 @@ mod tests {
         match update {
             Update::Err(err) => panic!("{:?}", err),
             Update::Ping(_) => panic!("Expected not to get a ping message"),
-            Update::Ok(message) => message
+            Update::Ok(message) => message,
         }
     }
 

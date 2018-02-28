@@ -223,7 +223,9 @@ where
     let v = trans.get_vertices(q.clone()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let count = trans.get_edge_count(outbound_id, Some(t), models::EdgeDirection::Outbound).unwrap();
+    let count = trans
+        .get_edge_count(outbound_id, Some(t), models::EdgeDirection::Outbound)
+        .unwrap();
     assert_eq!(count, 0);
 }
 

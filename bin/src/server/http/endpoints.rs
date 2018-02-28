@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery, EdgeDirection};
+use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 use script;
 use super::util::*;
 use iron::typemap::TypeMap;
-use iron::headers::{ContentType, Headers, Encoding, TransferEncoding};
+use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use std::thread::spawn;
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
@@ -51,7 +51,7 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
         status: Some(status::Ok),
         headers: hs,
         extensions: TypeMap::new(),
-        body: Some(Box::new(receiver))
+        body: Some(Box::new(receiver)),
     })
 }
 
