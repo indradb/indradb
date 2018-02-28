@@ -94,7 +94,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_global_metadata(&self, name: &str, value: JsonValue) -> Result<()>;
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()>;
 
     /// Deletes a global metadata value.
     ///
@@ -123,7 +123,7 @@ pub trait Transaction {
         &self,
         q: &models::VertexQuery,
         name: &str,
-        value: JsonValue,
+        value: &JsonValue,
     ) -> Result<()>;
 
     /// Deletes a vertex metadata value.
@@ -150,7 +150,7 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_edge_metadata(&self, q: &models::EdgeQuery, name: &str, value: JsonValue)
+    fn set_edge_metadata(&self, q: &models::EdgeQuery, name: &str, value: &JsonValue)
         -> Result<()>;
 
     /// Deletes an edge metadata value.

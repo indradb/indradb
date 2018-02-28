@@ -413,9 +413,9 @@ impl Transaction for MemoryTransaction {
         }
     }
 
-    fn set_global_metadata(&self, name: &str, value: JsonValue) -> Result<()> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        datastore.global_metadata.insert(name.to_string(), value);
+        datastore.global_metadata.insert(name.to_string(), value.clone());
         Ok(())
     }
 
@@ -445,7 +445,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
@@ -487,7 +487,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let edge_values = datastore.get_edge_values_by_query(q)?;

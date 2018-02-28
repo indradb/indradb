@@ -98,7 +98,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_global_metadata, key)
     }
 
-    fn set_global_metadata(&self, key: &str, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, key: &str, value: &JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_global_metadata, key, value)
     }
 
@@ -118,7 +118,7 @@ impl Transaction for ProxyTransaction {
         &self,
         q: &VertexQuery,
         key: &str,
-        value: JsonValue,
+        value: &JsonValue,
     ) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex_metadata, q, key, value)
     }
@@ -131,7 +131,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_edge_metadata, q, key)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, key: &str, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, key: &str, value: &JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_edge_metadata, q, key, value)
     }
 

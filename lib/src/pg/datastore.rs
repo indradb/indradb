@@ -394,7 +394,7 @@ impl Transaction for PostgresTransaction {
         Ok(None)
     }
 
-    fn set_global_metadata(&self, name: &str, value: JsonValue) -> Result<()> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         self.trans.execute(
             "
             INSERT INTO global_metadata (name, value)
@@ -403,7 +403,7 @@ impl Transaction for PostgresTransaction {
             DO UPDATE SET value=$2
             RETURNING 1
             ",
-            &[&name, &value],
+            &[&name, value],
         )?;
 
         Ok(())
@@ -439,7 +439,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -449,7 +449,7 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value)],
+            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value.clone())],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
@@ -498,7 +498,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -508,7 +508,7 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT edge_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value)],
+            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value.clone())],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;

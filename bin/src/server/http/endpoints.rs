@@ -195,7 +195,7 @@ fn set_global_metadata(
 ) -> Result<JsonValue, IronError> {
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_global_metadata(&name, value))
+    execute_item(trans.set_global_metadata(&name, &value))
 }
 
 fn delete_global_metadata(
@@ -222,7 +222,7 @@ fn set_vertex_metadata(
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_vertex_metadata(&q, &name, value))
+    execute_item(trans.set_vertex_metadata(&q, &name, &value))
 }
 
 fn delete_vertex_metadata(
@@ -250,7 +250,7 @@ fn set_edge_metadata(
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_edge_metadata(&q, &name, value))
+    execute_item(trans.set_edge_metadata(&q, &name, &value))
 }
 
 fn delete_edge_metadata(

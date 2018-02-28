@@ -17,7 +17,7 @@ where
 
     // Set and get the value as true
     trans
-        .set_global_metadata(&name, JsonValue::Bool(true))
+        .set_global_metadata(&name, &JsonValue::Bool(true))
         .unwrap();
 
     let result = trans.get_global_metadata(&name);
@@ -25,7 +25,7 @@ where
 
     // Set and get the value as false
     trans
-        .set_global_metadata(&name, JsonValue::Bool(false))
+        .set_global_metadata(&name, &JsonValue::Bool(false))
         .unwrap();
 
     let result = trans.get_global_metadata(&name);
@@ -57,7 +57,7 @@ where
 
     // Set and get the value as true
     trans
-        .set_vertex_metadata(&q, &name, JsonValue::Bool(true))
+        .set_vertex_metadata(&q, &name, &JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
@@ -66,7 +66,7 @@ where
 
     // Set and get the value as false
     trans
-        .set_vertex_metadata(&q, &name, JsonValue::Bool(false))
+        .set_vertex_metadata(&q, &name, &JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
@@ -91,7 +91,7 @@ where
         ids: vec![Uuid::default()],
     };
     trans
-        .set_vertex_metadata(&q, "foo", JsonValue::Null)
+        .set_vertex_metadata(&q, "foo", &JsonValue::Null)
         .unwrap();
     let result = trans.get_vertex_metadata(&q, "foo").unwrap();
     assert_eq!(result.len(), 0);
@@ -141,7 +141,7 @@ where
 
     // Set and get the value as true
     trans
-        .set_edge_metadata(&q, &name, JsonValue::Bool(true))
+        .set_edge_metadata(&q, &name, &JsonValue::Bool(true))
         .unwrap();
     let result = trans.get_edge_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
@@ -150,7 +150,7 @@ where
 
     // Set and get the value as false
     trans
-        .set_edge_metadata(&q, &name, JsonValue::Bool(false))
+        .set_edge_metadata(&q, &name, &JsonValue::Bool(false))
         .unwrap();
     let result = trans.get_edge_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
@@ -179,7 +179,7 @@ where
         ],
     };
     trans
-        .set_edge_metadata(&q, "bar", JsonValue::Null)
+        .set_edge_metadata(&q, "bar", &JsonValue::Null)
         .unwrap();
     let result = trans.get_edge_metadata(&q, "bar").unwrap();
     assert_eq!(result.len(), 0);

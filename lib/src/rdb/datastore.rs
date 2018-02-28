@@ -456,9 +456,9 @@ impl Transaction for RocksdbTransaction {
         manager.get(&name[..])
     }
 
-    fn set_global_metadata(&self, name: &str, value: JsonValue) -> Result<()> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         let manager = GlobalMetadataManager::new(self.db.clone());
-        manager.set(&name[..], &value)
+        manager.set(&name[..], value)
     }
 
     fn delete_global_metadata(&self, name: &str) -> Result<()> {
@@ -488,13 +488,13 @@ impl Transaction for RocksdbTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q)? {
             let (id, _) = item?;
-            manager.set(&mut batch, id, &name[..], &value)?;
+            manager.set(&mut batch, id, &name[..], value)?;
         }
 
         self.db.write(batch)?;
@@ -531,13 +531,13 @@ impl Transaction for RocksdbTransaction {
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: JsonValue) -> Result<()> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q)? {
             let (outbound_id, t, _, inbound_id) = item?;
-            manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], &value)?;
+            manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], value)?;
         }
 
         self.db.write(batch)?;

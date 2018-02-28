@@ -79,7 +79,7 @@ pub fn set_global_metadata(
     trans: &ProxyTransaction,
     (key, value): (String, converters::JsonValue),
 ) -> Result<(), Error> {
-    trans.set_global_metadata(&key, value.0)?;
+    trans.set_global_metadata(&key, &value.0)?;
     Ok(())
 }
 
@@ -103,7 +103,7 @@ pub fn set_vertex_metadata(
     trans: &ProxyTransaction,
     (q, key, value): (converters::VertexQuery, String, converters::JsonValue),
 ) -> Result<(), Error> {
-    Ok(trans.set_vertex_metadata(&q.0, &key, value.0)?)
+    Ok(trans.set_vertex_metadata(&q.0, &key, &value.0)?)
 }
 
 pub fn delete_vertex_metadata(
@@ -129,7 +129,7 @@ pub fn set_edge_metadata(
     trans: &ProxyTransaction,
     (q, key, value): (converters::EdgeQuery, String, converters::JsonValue),
 ) -> Result<(), Error> {
-    trans.set_edge_metadata(&q.0, &key, value.0)?;
+    trans.set_edge_metadata(&q.0, &key, &value.0)?;
     Ok(())
 }
 

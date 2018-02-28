@@ -206,7 +206,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn set_global_metadata(&self, name: &str, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_global_metadata",
             "name": name,
@@ -237,7 +237,7 @@ impl Transaction for BatchTransaction {
         &self,
         q: &VertexQuery,
         name: &str,
-        value: JsonValue,
+        value: &JsonValue,
     ) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_vertex_metadata",
@@ -263,7 +263,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_edge_metadata",
             "query": q,
