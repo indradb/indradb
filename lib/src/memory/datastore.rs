@@ -372,9 +372,7 @@ impl Transaction for MemoryTransaction {
 
         if direction == models::EdgeDirection::Outbound {
             let lower_bound = match type_filter {
-                Some(type_filter) => {
-                    models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
-                }
+                Some(type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
                 None => {
                     let empty_type = models::Type::default();
                     models::EdgeKey::new(id, empty_type, Uuid::default())
@@ -415,7 +413,9 @@ impl Transaction for MemoryTransaction {
 
     fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        datastore.global_metadata.insert(name.to_string(), value.clone());
+        datastore
+            .global_metadata
+            .insert(name.to_string(), value.clone());
         Ok(())
     }
 
@@ -477,7 +477,9 @@ impl Transaction for MemoryTransaction {
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.to_string()));
+            let metadata_value = datastore
+                .edge_metadata
+                .get(&(key.clone(), name.to_string()));
 
             if let Some(metadata_value) = metadata_value {
                 result.push(models::EdgeMetadata::new(key, metadata_value.clone()));

@@ -74,9 +74,7 @@ where
     assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
-    trans
-        .delete_vertex_metadata(&q, &name)
-        .unwrap();
+    trans.delete_vertex_metadata(&q, &name).unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 0);
 }

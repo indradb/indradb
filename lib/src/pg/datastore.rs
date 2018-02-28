@@ -111,7 +111,10 @@ impl PostgresTransaction {
 
     fn vertex_query_to_sql(&self, q: &VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            &VertexQuery::All { ref start_id, ref limit } => match start_id {
+            &VertexQuery::All {
+                ref start_id,
+                ref limit,
+            } => match start_id {
                 &Some(start_id) => {
                     let query_template =
                         "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
@@ -449,7 +452,11 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value.clone())],
+            vec![
+                Box::new(name.to_string()),
+                Box::new(value.clone()),
+                Box::new(value.clone()),
+            ],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
@@ -508,7 +515,11 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT edge_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name.to_string()), Box::new(value.clone()), Box::new(value.clone())],
+            vec![
+                Box::new(name.to_string()),
+                Box::new(value.clone()),
+                Box::new(value.clone()),
+            ],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;

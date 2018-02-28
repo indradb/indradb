@@ -52,7 +52,7 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
             Ok(trans) => trans,
             Err(err) => {
                 let message = format!("Query setup failed: {:?}", err);
-            sender.0.send(Update::Err(json!(message))).ok();
+                sender.0.send(Update::Err(json!(message))).ok();
                 return;
             }
         };

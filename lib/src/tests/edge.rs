@@ -103,11 +103,9 @@ where
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
     let e = trans
-        .get_edges(
-            &VertexQuery::Vertices {
-                ids: vec![outbound_id],
-            }.outbound_edges(None, None, None, 10),
-        )
+        .get_edges(&VertexQuery::Vertices {
+            ids: vec![outbound_id],
+        }.outbound_edges(None, None, None, 10))
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
