@@ -137,21 +137,21 @@ impl BatchTransaction {
 }
 
 impl Transaction for BatchTransaction {
-    fn create_vertex(&self, t: Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, t: &Type) -> Result<Uuid, Error> {
         self.request(&json!({
             "action": "create_vertex",
             "type": t.0
         }))
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>, Error> {
+    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>, Error> {
         self.request(&json!({
             "action": "get_vertices",
             "query": q
         }))
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<(), Error> {
+    fn delete_vertices(&self, q: &VertexQuery) -> Result<(), Error> {
         self.request(&json!({
             "action": "delete_vertices",
             "query": q
@@ -164,21 +164,21 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn create_edge(&self, e: EdgeKey) -> Result<bool, Error> {
+    fn create_edge(&self, e: &EdgeKey) -> Result<bool, Error> {
         self.request(&json!({
             "action": "create_edge",
             "key": e,
         }))
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>, Error> {
+    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<Edge>, Error> {
         self.request(&json!({
             "action": "get_edges",
             "query": q
         }))
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<(), Error> {
+    fn delete_edges(&self, q: &EdgeQuery) -> Result<(), Error> {
         self.request(&json!({
             "action": "delete_edges",
             "query": q
@@ -188,7 +188,7 @@ impl Transaction for BatchTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<Type>,
+        type_filter: Option<&Type>,
         direction: EdgeDirection,
     ) -> Result<u64, Error> {
         self.request(&json!({
@@ -199,14 +199,14 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>, Error> {
+    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, Error> {
         self.request(&json!({
             "action": "get_global_metadata",
             "name": name
         }))
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_global_metadata",
             "name": name,
@@ -214,7 +214,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<(), Error> {
+    fn delete_global_metadata(&self, name: &str) -> Result<(), Error> {
         self.request(&json!({
             "action": "delete_global_metadata",
             "name": name
@@ -223,8 +223,8 @@ impl Transaction for BatchTransaction {
 
     fn get_vertex_metadata(
         &self,
-        q: VertexQuery,
-        name: String,
+        q: &VertexQuery,
+        name: &str,
     ) -> Result<Vec<VertexMetadata>, Error> {
         self.request(&json!({
             "action": "get_vertex_metadata",
@@ -235,9 +235,9 @@ impl Transaction for BatchTransaction {
 
     fn set_vertex_metadata(
         &self,
-        q: VertexQuery,
-        name: String,
-        value: JsonValue,
+        q: &VertexQuery,
+        name: &str,
+        value: &JsonValue,
     ) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_vertex_metadata",
@@ -247,7 +247,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<(), Error> {
+    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<(), Error> {
         self.request(&json!({
             "action": "delete_vertex_metadata",
             "query": q,
@@ -255,7 +255,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<EdgeMetadata>, Error> {
+    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<EdgeMetadata>, Error> {
         self.request(&json!({
             "action": "get_edge_metadata",
             "query": q,
@@ -263,7 +263,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<(), Error> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_edge_metadata",
             "query": q,
@@ -272,7 +272,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<(), Error> {
+    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<(), Error> {
         self.request(&json!({
             "action": "delete_edge_metadata",
             "query": q,

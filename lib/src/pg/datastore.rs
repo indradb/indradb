@@ -109,28 +109,31 @@ impl PostgresTransaction {
         })
     }
 
-    fn vertex_query_to_sql(&self, q: VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
+    fn vertex_query_to_sql(&self, q: &VertexQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            VertexQuery::All { start_id, limit } => match start_id {
-                Some(start_id) => {
+            &VertexQuery::All {
+                ref start_id,
+                ref limit,
+            } => match start_id {
+                &Some(start_id) => {
                     let query_template =
                         "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
-                    let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(limit as i64)];
+                    let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(*limit as i64)];
                     sql_query_builder.push(query_template, "vertices", params);
                 }
-                None => {
+                &None => {
                     let query_template = "SELECT id, type FROM %t ORDER BY id LIMIT %p";
-                    let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
+                    let params: Vec<Box<ToSql>> = vec![Box::new(*limit as i64)];
                     sql_query_builder.push(query_template, "vertices", params);
                 }
             },
-            VertexQuery::Vertices { ids } => {
+            &VertexQuery::Vertices { ref ids } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
                 for id in ids {
                     params_template_builder.push("%p");
-                    params.push(Box::new(id));
+                    params.push(Box::new(*id));
                 }
 
                 let query_template = format!(
@@ -139,19 +142,19 @@ impl PostgresTransaction {
                 );
                 sql_query_builder.push(&query_template[..], "vertices", params);
             }
-            VertexQuery::Pipe {
-                edge_query,
-                converter,
-                limit,
+            &VertexQuery::Pipe {
+                ref edge_query,
+                ref converter,
+                ref limit,
             } => {
-                self.edge_query_to_sql(*edge_query, sql_query_builder);
-                let params: Vec<Box<ToSql>> = vec![Box::new(limit as i64)];
+                self.edge_query_to_sql(edge_query, sql_query_builder);
+                let params: Vec<Box<ToSql>> = vec![Box::new(*limit as i64)];
 
                 let query_template = match converter {
-                    EdgeDirection::Outbound => {
+                    &EdgeDirection::Outbound => {
                         "SELECT id, type FROM vertices WHERE id IN (SELECT outbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
-                    EdgeDirection::Inbound => {
+                    &EdgeDirection::Inbound => {
                         "SELECT id, type FROM vertices WHERE id IN (SELECT inbound_id FROM %t) ORDER BY id LIMIT %p"
                     }
                 };
@@ -161,16 +164,16 @@ impl PostgresTransaction {
         }
     }
 
-    fn edge_query_to_sql(&self, q: EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
+    fn edge_query_to_sql(&self, q: &EdgeQuery, sql_query_builder: &mut CTEQueryBuilder) {
         match q {
-            EdgeQuery::Edges { keys } => {
+            &EdgeQuery::Edges { ref keys } => {
                 let mut params_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
                 for key in keys {
                     params_template_builder.push("(%p, %p, %p)");
                     params.push(Box::new(key.outbound_id));
-                    params.push(Box::new(key.t.0));
+                    params.push(Box::new(key.t.0.to_string()));
                     params.push(Box::new(key.inbound_id));
                 }
 
@@ -180,22 +183,22 @@ impl PostgresTransaction {
                 );
                 sql_query_builder.push(&query_template[..], "edges", params);
             }
-            EdgeQuery::Pipe {
-                vertex_query,
+            &EdgeQuery::Pipe {
+                ref vertex_query,
                 converter,
-                type_filter,
+                ref type_filter,
                 high_filter,
                 low_filter,
                 limit,
             } => {
-                self.vertex_query_to_sql(*vertex_query, sql_query_builder);
+                self.vertex_query_to_sql(&*vertex_query, sql_query_builder);
 
                 let mut where_clause_template_builder = vec![];
                 let mut params: Vec<Box<ToSql>> = vec![];
 
-                if let Some(type_filter) = type_filter {
+                if let &Some(ref type_filter) = type_filter {
                     where_clause_template_builder.push("type = %p");
-                    params.push(Box::new(type_filter.0));
+                    params.push(Box::new(type_filter.0.to_string()));
                 }
 
                 if let Some(high_filter) = high_filter {
@@ -239,7 +242,7 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid> {
+    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
         let id = self.uuid_generator.next();
         self.trans.execute(
             "INSERT INTO vertices (id, type) VALUES ($1, $2)",
@@ -248,7 +251,7 @@ impl Transaction for PostgresTransaction {
         Ok(id)
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>> {
+    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) =
@@ -268,7 +271,7 @@ impl Transaction for PostgresTransaction {
         Ok(vertices)
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
+    fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -291,7 +294,7 @@ impl Transaction for PostgresTransaction {
         unreachable!();
     }
 
-    fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
+    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         let id = self.uuid_generator.next();
 
         // Because this command could fail, we need to set a savepoint to roll
@@ -317,7 +320,7 @@ impl Transaction for PostgresTransaction {
         }
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
+    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -343,7 +346,7 @@ impl Transaction for PostgresTransaction {
         Ok(edges)
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
+    fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder
@@ -356,7 +359,7 @@ impl Transaction for PostgresTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<models::Type>,
+        type_filter: Option<&models::Type>,
         direction: models::EdgeDirection,
     ) -> Result<u64> {
         let results = match (direction, type_filter) {
@@ -382,7 +385,7 @@ impl Transaction for PostgresTransaction {
         unreachable!();
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
+    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>> {
         let results = self.trans
             .query("SELECT value FROM global_metadata WHERE name=$1", &[&name])?;
 
@@ -394,7 +397,7 @@ impl Transaction for PostgresTransaction {
         Ok(None)
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<()> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         self.trans.execute(
             "
             INSERT INTO global_metadata (name, value)
@@ -403,13 +406,13 @@ impl Transaction for PostgresTransaction {
             DO UPDATE SET value=$2
             RETURNING 1
             ",
-            &[&name, &value],
+            &[&name, value],
         )?;
 
         Ok(())
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<()> {
+    fn delete_global_metadata(&self, name: &str) -> Result<()> {
         self.trans.execute(
             "DELETE FROM global_metadata WHERE name=$1 RETURNING 1",
             &[&name],
@@ -420,12 +423,12 @@ impl Transaction for PostgresTransaction {
 
     fn get_vertex_metadata(
         &self,
-        q: VertexQuery,
-        name: String,
+        q: &VertexQuery,
+        name: &str,
     ) -> Result<Vec<models::VertexMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name)]);
+        let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name.to_string())]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
         let mut metadata = Vec::new();
@@ -439,7 +442,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -449,26 +452,30 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT vertex_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name), Box::new(value.clone()), Box::new(value)],
+            vec![
+                Box::new(name.to_string()),
+                Box::new(value.clone()),
+                Box::new(value.clone()),
+            ],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<()> {
+    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
             "DELETE FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p",
-            vec![Box::new(name)],
+            vec![Box::new(name.to_string())],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
 
@@ -478,7 +485,7 @@ impl Transaction for PostgresTransaction {
             FROM edge_metadata JOIN edges ON edge_metadata.owner_id=edges.id
             WHERE owner_id IN (SELECT id FROM %t) AND name=%p
             ",
-            vec![Box::new(name)],
+            vec![Box::new(name.to_string())],
         );
 
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
@@ -498,7 +505,7 @@ impl Transaction for PostgresTransaction {
         Ok(metadata)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<()> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
@@ -508,19 +515,23 @@ impl Transaction for PostgresTransaction {
             ON CONFLICT ON CONSTRAINT edge_metadata_pkey
             DO UPDATE SET value=%p
             ",
-            vec![Box::new(name), Box::new(value.clone()), Box::new(value)],
+            vec![
+                Box::new(name.to_string()),
+                Box::new(value.clone()),
+                Box::new(value.clone()),
+            ],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<()> {
+    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
         let (query, params) = sql_query_builder.into_query_payload(
             "DELETE FROM edge_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p",
-            vec![Box::new(name)],
+            vec![Box::new(name.to_string())],
         );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;

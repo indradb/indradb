@@ -121,7 +121,7 @@ fn create_vertex(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let t = get_json_obj_value::<Type>(item, "type")?;
-    execute_item(trans.create_vertex(t))
+    execute_item(trans.create_vertex(&t))
 }
 
 fn get_vertices(
@@ -129,7 +129,7 @@ fn get_vertices(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-    execute_item(trans.get_vertices(q))
+    execute_item(trans.get_vertices(&q))
 }
 
 fn delete_vertices(
@@ -137,7 +137,7 @@ fn delete_vertices(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-    execute_item(trans.delete_vertices(q))
+    execute_item(trans.delete_vertices(&q))
 }
 
 fn get_vertex_count(
@@ -152,7 +152,7 @@ fn create_edge(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let key = get_json_obj_value::<EdgeKey>(item, "key")?;
-    execute_item(trans.create_edge(key))
+    execute_item(trans.create_edge(&key))
 }
 
 fn get_edges(
@@ -160,7 +160,7 @@ fn get_edges(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-    execute_item(trans.get_edges(q))
+    execute_item(trans.get_edges(&q))
 }
 
 fn delete_edges(
@@ -168,7 +168,7 @@ fn delete_edges(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-    execute_item(trans.delete_edges(q))
+    execute_item(trans.delete_edges(&q))
 }
 
 fn get_edge_count(
@@ -178,7 +178,7 @@ fn get_edge_count(
     let id = get_json_obj_value::<Uuid>(item, "id")?;
     let type_filter = get_json_obj_value::<Option<Type>>(item, "type_filter")?;
     let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
-    execute_item(trans.get_edge_count(id, type_filter, direction))
+    execute_item(trans.get_edge_count(id, type_filter.as_ref(), direction))
 }
 
 fn get_global_metadata(
@@ -186,7 +186,7 @@ fn get_global_metadata(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.get_global_metadata(name))
+    execute_item(trans.get_global_metadata(&name))
 }
 
 fn set_global_metadata(
@@ -195,7 +195,7 @@ fn set_global_metadata(
 ) -> Result<JsonValue, IronError> {
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_global_metadata(name, value))
+    execute_item(trans.set_global_metadata(&name, &value))
 }
 
 fn delete_global_metadata(
@@ -203,7 +203,7 @@ fn delete_global_metadata(
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.delete_global_metadata(name))
+    execute_item(trans.delete_global_metadata(&name))
 }
 
 fn get_vertex_metadata(
@@ -212,7 +212,7 @@ fn get_vertex_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.get_vertex_metadata(q, name))
+    execute_item(trans.get_vertex_metadata(&q, &name))
 }
 
 fn set_vertex_metadata(
@@ -222,7 +222,7 @@ fn set_vertex_metadata(
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_vertex_metadata(q, name, value))
+    execute_item(trans.set_vertex_metadata(&q, &name, &value))
 }
 
 fn delete_vertex_metadata(
@@ -231,7 +231,7 @@ fn delete_vertex_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.delete_vertex_metadata(q, name))
+    execute_item(trans.delete_vertex_metadata(&q, &name))
 }
 
 fn get_edge_metadata(
@@ -240,7 +240,7 @@ fn get_edge_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.get_edge_metadata(q, name))
+    execute_item(trans.get_edge_metadata(&q, &name))
 }
 
 fn set_edge_metadata(
@@ -250,7 +250,7 @@ fn set_edge_metadata(
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_edge_metadata(q, name, value))
+    execute_item(trans.set_edge_metadata(&q, &name, &value))
 }
 
 fn delete_edge_metadata(
@@ -259,7 +259,7 @@ fn delete_edge_metadata(
 ) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.delete_edge_metadata(q, name))
+    execute_item(trans.delete_edge_metadata(&q, &name))
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {

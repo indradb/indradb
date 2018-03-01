@@ -24,8 +24,8 @@ struct InternalMemoryDatastore {
 }
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
-        match q {
+    fn get_vertex_values_by_query(&self, q: &VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
+        match *q {
             VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
                 Ok(self.vertices
                     .range(start_id..)
@@ -39,27 +39,27 @@ impl InternalMemoryDatastore {
                     .map(|(k, v)| (*k, v.clone()))
                     .collect())
             },
-            VertexQuery::Vertices { ids } => {
+            VertexQuery::Vertices { ref ids } => {
                 let mut results = Vec::new();
 
                 for id in ids {
-                    let value = self.vertices.get(&id);
+                    let value = self.vertices.get(id);
 
                     if let Some(value) = value {
-                        results.push((id, value.clone()));
+                        results.push((*id, value.clone()));
                     }
                 }
 
                 Ok(results)
             }
             VertexQuery::Pipe {
-                edge_query,
+                ref edge_query,
                 converter,
                 limit,
             } => {
-                let edge_values = self.get_edge_values_by_query(*edge_query)?;
+                let edge_values = self.get_edge_values_by_query(&*edge_query)?;
 
-                let ids: Vec<Uuid> = match converter.clone() {
+                let ids: Vec<Uuid> = match converter {
                     models::EdgeDirection::Outbound => edge_values
                         .into_iter()
                         .take(limit as usize)
@@ -88,36 +88,36 @@ impl InternalMemoryDatastore {
 
     fn get_edge_values_by_query(
         &self,
-        q: EdgeQuery,
+        q: &EdgeQuery,
     ) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
-        match q {
-            EdgeQuery::Edges { keys } => {
+        match *q {
+            EdgeQuery::Edges { ref keys } => {
                 let mut results = Vec::new();
 
                 for key in keys {
-                    let value = self.edges.get(&key);
+                    let value = self.edges.get(key);
 
                     if let Some(update_datetime) = value {
-                        results.push((key, *update_datetime));
+                        results.push((key.clone(), *update_datetime));
                     }
                 }
 
                 Ok(results)
             }
             EdgeQuery::Pipe {
-                vertex_query,
+                ref vertex_query,
                 converter,
-                type_filter,
+                ref type_filter,
                 high_filter,
                 low_filter,
                 limit,
             } => {
-                let vertex_values = self.get_vertex_values_by_query(*vertex_query)?;
+                let vertex_values = self.get_vertex_values_by_query(&*vertex_query)?;
                 let mut results = Vec::new();
 
                 match converter {
                     models::EdgeDirection::Outbound => for (id, _) in vertex_values {
-                        let lower_bound = match type_filter {
+                        let lower_bound = match *type_filter {
                             Some(ref type_filter) => {
                                 models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
                             }
@@ -132,20 +132,20 @@ impl InternalMemoryDatastore {
                                 break;
                             }
 
-                            if let Some(ref type_filter) = type_filter {
+                            if let Some(ref type_filter) = *type_filter {
                                 if &key.t != type_filter {
                                     break;
                                 }
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if *update_datetime > high_filter {
+                                if update_datetime > &high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if *update_datetime < low_filter {
+                                if update_datetime < &low_filter {
                                     continue;
                                 }
                             }
@@ -168,20 +168,20 @@ impl InternalMemoryDatastore {
                                 continue;
                             }
 
-                            if let Some(ref type_filter) = type_filter {
+                            if let Some(ref type_filter) = *type_filter {
                                 if &key.t != type_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if *update_datetime > high_filter {
+                                if update_datetime > &high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if *update_datetime < low_filter {
+                                if update_datetime < &low_filter {
                                     continue;
                                 }
                             }
@@ -292,14 +292,14 @@ pub struct MemoryTransaction {
 }
 
 impl Transaction for MemoryTransaction {
-    fn create_vertex(&self, t: models::Type) -> Result<Uuid> {
+    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
         let mut datastore = self.datastore.write().unwrap();
         let id = datastore.uuid_generator.next();
-        datastore.vertices.insert(id, t);
+        datastore.vertices.insert(id, t.clone());
         Ok(id)
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<models::Vertex>> {
+    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
         let vertex_values = self.datastore
             .read()
             .unwrap()
@@ -310,7 +310,7 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
+    fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let deletable_vertices = datastore
             .get_vertex_values_by_query(q)?
@@ -326,7 +326,7 @@ impl Transaction for MemoryTransaction {
         Ok(datastore.vertices.len() as u64)
     }
 
-    fn create_edge(&self, key: models::EdgeKey) -> Result<bool> {
+    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
 
         if !datastore.vertices.contains_key(&key.outbound_id)
@@ -335,11 +335,11 @@ impl Transaction for MemoryTransaction {
             return Ok(false);
         }
 
-        datastore.edges.insert(key, Utc::now());
+        datastore.edges.insert(key.clone(), Utc::now());
         Ok(true)
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
+    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
         let edge_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q)?
@@ -351,7 +351,7 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
+    fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let deletable_edges: Vec<models::EdgeKey> = datastore
             .get_edge_values_by_query(q)?
@@ -365,16 +365,14 @@ impl Transaction for MemoryTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<models::Type>,
+        type_filter: Option<&models::Type>,
         direction: models::EdgeDirection,
     ) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         if direction == models::EdgeDirection::Outbound {
             let lower_bound = match type_filter {
-                Some(ref type_filter) => {
-                    models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
-                }
+                Some(type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
                 None => {
                     let empty_type = models::Type::default();
                     models::EdgeKey::new(id, empty_type, Uuid::default())
@@ -383,7 +381,7 @@ impl Transaction for MemoryTransaction {
             let range = datastore.edges.range(lower_bound..);
 
             let range = range.take_while(|&(k, _)| {
-                if let Some(ref type_filter) = type_filter {
+                if let Some(type_filter) = type_filter {
                     k.outbound_id == id && &k.t == type_filter
                 } else {
                     k.outbound_id == id
@@ -393,7 +391,7 @@ impl Transaction for MemoryTransaction {
             Ok(range.count() as u64)
         } else {
             let range = datastore.edges.iter().filter(|&(k, _)| {
-                if let Some(ref type_filter) = type_filter {
+                if let Some(type_filter) = type_filter {
                     k.inbound_id == id && &k.t == type_filter
                 } else {
                     k.inbound_id == id
@@ -404,38 +402,40 @@ impl Transaction for MemoryTransaction {
         }
     }
 
-    fn get_global_metadata(&self, name: String) -> Result<Option<JsonValue>> {
+    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>> {
         let datastore = self.datastore.read().unwrap();
 
-        match datastore.global_metadata.get(&name) {
+        match datastore.global_metadata.get(name) {
             Some(value) => Ok(Some(value.clone())),
             None => Ok(None),
         }
     }
 
-    fn set_global_metadata(&self, name: String, value: JsonValue) -> Result<()> {
+    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        datastore.global_metadata.insert(name, value);
+        datastore
+            .global_metadata
+            .insert(name.to_string(), value.clone());
         Ok(())
     }
 
-    fn delete_global_metadata(&self, name: String) -> Result<()> {
+    fn delete_global_metadata(&self, name: &str) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        datastore.global_metadata.remove(&name);
+        datastore.global_metadata.remove(name);
         Ok(())
     }
 
     fn get_vertex_metadata(
         &self,
-        q: VertexQuery,
-        name: String,
+        q: &VertexQuery,
+        name: &str,
     ) -> Result<Vec<models::VertexMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            let metadata_value = datastore.vertex_metadata.get(&(id, name.clone()));
+            let metadata_value = datastore.vertex_metadata.get(&(id, name.to_string()));
 
             if let Some(metadata_value) = metadata_value {
                 result.push(models::VertexMetadata::new(id, metadata_value.clone()));
@@ -445,7 +445,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_vertex_metadata(&self, q: VertexQuery, name: String, value: JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
@@ -453,31 +453,33 @@ impl Transaction for MemoryTransaction {
         for (id, _) in vertex_values {
             datastore
                 .vertex_metadata
-                .insert((id, name.clone()), value.clone());
+                .insert((id, name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: VertexQuery, name: String) -> Result<()> {
+    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            datastore.vertex_metadata.remove(&(id, name.clone()));
+            datastore.vertex_metadata.remove(&(id, name.to_string()));
         }
 
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.clone()));
+            let metadata_value = datastore
+                .edge_metadata
+                .get(&(key.clone(), name.to_string()));
 
             if let Some(metadata_value) = metadata_value {
                 result.push(models::EdgeMetadata::new(key, metadata_value.clone()));
@@ -487,7 +489,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn set_edge_metadata(&self, q: EdgeQuery, name: String, value: JsonValue) -> Result<()> {
+    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let edge_values = datastore.get_edge_values_by_query(q)?;
@@ -495,19 +497,19 @@ impl Transaction for MemoryTransaction {
         for (key, _) in edge_values {
             datastore
                 .edge_metadata
-                .insert((key, name.clone()), value.clone());
+                .insert((key, name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: EdgeQuery, name: String) -> Result<()> {
+    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            datastore.edge_metadata.remove(&(key, name.clone()));
+            datastore.edge_metadata.remove(&(key, name.to_string()));
         }
 
         Ok(())
