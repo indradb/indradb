@@ -39,9 +39,7 @@ By default, IndraDB starts an in-memory datastore that does not persist to disk.
 If you want to use the in-memory datastore, follow these steps:
 
 * Start the server: `PORT=8000 indradb-server`
-* Make a sample HTTP request to `http://localhost:8000`. Use a UUID with all
-0's (i.e. `00000000-0000-0000-0000-000000000000`) for the username, and no
-password.
+* Make a sample HTTP request to `http://localhost:8000`.
 
 ### Postgres
 
