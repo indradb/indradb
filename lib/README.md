@@ -37,7 +37,7 @@ features = ["rocksdb-datastore"]
 
 ### Custom datastores
 
-To implement a custom datastore, you need to implement the [Datastore and Transaction traits](https://github.com/indradb/indradb/blob/develop/lib/src/traits.rs). See the [in-memory datastore](https://github.com/indradb/indradb/blob/develop/lib/src/memory/datastore.rs) for a simpler example implementation. To help you get off the ground faster, there is a standard test suite that can execute against any datastore and check for common bugs and regressions. See the [in-memory datastore tests](https://github.com/indradb/indradb/blob/develop/lib/src/memory/tests.rs) for an implementation of it.
+To implement a custom datastore, you need to implement the [Datastore and Transaction traits](https://github.com/indradb/indradb/blob/master/lib/src/traits.rs). See the [in-memory datastore](https://github.com/indradb/indradb/blob/master/lib/src/memory/datastore.rs) for a simpler example implementation. To help you get off the ground faster, there is a standard test suite that can execute against any datastore and check for common bugs and regressions. See the [in-memory datastore tests](https://github.com/indradb/indradb/blob/master/lib/src/memory/tests.rs) for an implementation of it.
 
 ## Running tests
 
