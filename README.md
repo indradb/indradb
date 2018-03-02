@@ -6,6 +6,8 @@
 
 A graph database written in rust. This software is in the alpha state.
 
+IndraDB consists of an HTTP server an underlying library. Most users would use the HTTP server - either communicating with it directly, or using a [client library](https://github.com/indradb/python-client). For convenience, the HTTP server is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+
 ## Features
 
 * Support for directed and typed graphs.
