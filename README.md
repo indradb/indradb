@@ -48,8 +48,8 @@ If you want to use the in-memory datastore, follow these steps:
 If you want to use the postgres-backed datastore, follow these steps:
 
 * Create a database: `createdb indradb`
-* Initialize the database schema: `DATABASE_URL=postgres://localhost:5432/indradb indradb-admin init`
-* Start the server: `DATABASE_URL=postgres://localhost:5432/indradb PORT=8000 indradb-server`.
+* Initialize the database schema: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name indradb-admin init`
+* Start the server: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name PORT=8000 indradb-server`.
 * Make a sample HTTP request to `http://localhost:8000`.
 
 ### RocksDB
@@ -70,9 +70,7 @@ There's two applications:
 
 Applications are configured via environment variables:
 
-* `DATABASE_URL`: The connection string to the underlying database. Examples:
-    * For a postgres datastore: `postgres://user:pass@localhost:5432/database-name`.
-    * For a rocksdb datastore: `rocksdb://indradb.rdb`. This will store data in the directory `./indradb.rdb`.
+* `DATABASE_URL`: The connection string to the underlying database.
 * `PORT`: The port to run the server on. Defaults to `8000`.
 * `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
 * `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
