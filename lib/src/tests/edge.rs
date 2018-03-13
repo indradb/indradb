@@ -14,10 +14,12 @@ where
     let trans = datastore.transaction().unwrap();
 
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-    let inbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
+    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
@@ -28,13 +30,13 @@ where
 
     let e = trans
         .get_edges(&EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id, edge_t.clone(), inbound_id)],
+            keys: vec![EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id)],
         })
         .unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].key.outbound_id, outbound_id);
+    assert_eq!(e[0].key.outbound_id, outbound_v.id);
     assert_eq!(e[0].key.t, edge_t);
-    assert_eq!(e[0].key.inbound_id, inbound_id);
+    assert_eq!(e[0].key.inbound_id, inbound_v.id);
     assert!(e[0].created_datetime >= start_time);
     assert!(e[0].created_datetime <= end_time);
 }
@@ -47,19 +49,21 @@ where
     let trans = datastore.transaction().unwrap();
 
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-    let inbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
 
     let e = trans
         .get_edges(&EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id, edge_t.clone(), Uuid::default())],
+            keys: vec![EdgeKey::new(outbound_v.id, edge_t.clone(), Uuid::default())],
         })
         .unwrap();
     assert_eq!(e.len(), 0);
     let e = trans
         .get_edges(&EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(Uuid::default(), edge_t, inbound_id)],
+            keys: vec![EdgeKey::new(Uuid::default(), edge_t, inbound_v.id)],
         })
         .unwrap();
     assert_eq!(e.len(), 0);
@@ -72,12 +76,14 @@ where
 {
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let trans = datastore.transaction().unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let inbound_id = trans.create_vertex(&vertex_t).unwrap();
 
     // Set the edge and check
-    let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
+    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
     trans.create_edge(&key).unwrap();
     let e = trans
         .get_edges(&EdgeQuery::Edges {
@@ -104,7 +110,7 @@ where
     // single edge
     let e = trans
         .get_edges(&VertexQuery::Vertices {
-            ids: vec![outbound_id],
+            ids: vec![outbound_v.id],
         }.outbound_edges(None, None, None, 10))
         .unwrap();
     assert_eq!(e.len(), 1);
@@ -118,9 +124,10 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t);
+    trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let key = models::EdgeKey::new(outbound_id, edge_t.clone(), Uuid::default());
+    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), Uuid::default());
     let result = trans.create_edge(&key);
     assert_eq!(result.unwrap(), false);
 }
@@ -132,11 +139,13 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-    let inbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
 
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let key = models::EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
+    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
     trans.create_edge(&key).unwrap();
     trans
         .delete_edges(&EdgeQuery::Edges {
@@ -156,11 +165,12 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type".to_string()).unwrap();
     trans
         .delete_edges(&EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id, edge_t, Uuid::default())],
+            keys: vec![EdgeKey::new(outbound_v.id, edge_t, Uuid::default())],
         })
         .unwrap();
 }
@@ -350,13 +360,13 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let outbound_v = models::Vertex::new(vertex_t);
+    trans.create_vertex(&outbound_v).unwrap();
 
-    let inserted_id_1 = trans.create_vertex(&vertex_t).unwrap();
-    let inserted_id_2 = create_edge_from::<D, T>(&trans, inserted_id_1);
+    let inbound_id = create_edge_from::<D, T>(&trans, outbound_v.id);
 
-    // This query should get `inserted_id_2`
     let query_1 = VertexQuery::Vertices {
-        ids: vec![inserted_id_1],
+        ids: vec![outbound_v.id],
     }.outbound_edges(
         Some(models::Type::new("test_edge_type".to_string()).unwrap()),
         None,
@@ -368,13 +378,12 @@ where
     assert_eq!(
         range[0].key,
         models::EdgeKey::new(
-            inserted_id_1,
+            outbound_v.id,
             models::Type::new("test_edge_type".to_string()).unwrap(),
-            inserted_id_2
+            inbound_id
         )
     );
 
-    // This query should get `inserted_id_1`
     let query_2 = query_1.inbound_vertices(1).inbound_edges(
         Some(models::Type::new("test_edge_type".to_string()).unwrap()),
         None,
@@ -386,9 +395,9 @@ where
     assert_eq!(
         range[0].key,
         models::EdgeKey::new(
-            inserted_id_1,
+            outbound_v.id,
             models::Type::new("test_edge_type".to_string()).unwrap(),
-            inserted_id_2
+            inbound_id
         )
     );
 }

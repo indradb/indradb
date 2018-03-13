@@ -1,2 +1,4 @@
 local trans = transaction();
-return trans:create_vertex("foo");
+local v = vertex("foo");
+trans:create_vertex(v);
+return v

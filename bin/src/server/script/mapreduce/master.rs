@@ -180,10 +180,8 @@ mod tests {
         );
 
         for _ in 0..insert_count {
-            engine.add_vertex(Vertex::new(
-                Uuid::new_v4(),
-                Type::new("foo".to_string()).unwrap(),
-            ));
+            let t = Type::new("foo".to_string()).unwrap();
+            engine.add_vertex(Vertex::new(t));
         }
 
         assert_eq!(engine.join().unwrap(), expected_result);

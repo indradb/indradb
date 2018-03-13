@@ -266,6 +266,15 @@ impl Vertex {
     }
 }
 
+impl<'lua> FromLua<'lua> for Vertex {
+    fn from_lua(value: Value<'lua>, l: &'lua Lua) -> LuaResult<Self> {
+        let table = Table::from_lua(value, l)?;
+        let id = Uuid::from_lua(table.get("id")?, l)?;
+        let t = Type::from_lua(table.get("type")?, l)?;
+        Ok(Vertex::new(ExternalVertex::with_id(id.0, t.0)))
+    }
+}
+
 impl<'lua> ToLua<'lua> for Vertex {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let table = l.create_table()?;

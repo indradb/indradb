@@ -6,10 +6,12 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
+    let t = Type::new("bench_create_vertex".to_string()).unwrap();
+
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let t = Type::new("user".to_string()).unwrap();
-        trans.create_vertex(&t).unwrap();
+        let v = Vertex::new(t.clone());
+        trans.create_vertex(&v).unwrap();
     });
 }
 
@@ -20,8 +22,9 @@ where
 {
     let id = {
         let trans = datastore.transaction().unwrap();
-        let t = Type::new("test_name".to_string()).unwrap();
-        trans.create_vertex(&t).unwrap()
+        let t = Type::new("bench_get_vertices".to_string()).unwrap();
+        let v = Vertex::new(t);
+        trans.create_vertex(&v).unwrap()
     };
 
     b.iter(|| {
@@ -36,18 +39,20 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
+    let t = Type::new("bench_create_edge".to_string()).unwrap();
+
     let (outbound_id, inbound_id) = {
         let trans = datastore.transaction().unwrap();
-        let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-        let inbound_id = trans.create_vertex(&vertex_t).unwrap();
-        (outbound_id, inbound_id)
+        let outbound_v = Vertex::new(t.clone());
+        let inbound_v = Vertex::new(t.clone());
+        trans.create_vertex(&outbound_v).unwrap();
+        trans.create_vertex(&inbound_v).unwrap();
+        (outbound_v.id, inbound_v.id)
     };
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let k = EdgeKey::new(outbound_id, edge_t, inbound_id);
+        let k = EdgeKey::new(outbound_id, t.clone(), inbound_id);
         trans.create_edge(&k).unwrap();
     });
 }
@@ -57,23 +62,22 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let (outbound_id, inbound_id) = {
+    let t = Type::new("bench_get_edges".to_string()).unwrap();
+
+    let key = {
         let trans = datastore.transaction().unwrap();
-        let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-        let inbound_id = trans.create_vertex(&vertex_t).unwrap();
-        let key = EdgeKey::new(outbound_id, edge_t, inbound_id);
+        let outbound_v = Vertex::new(t.clone());
+        let inbound_v = Vertex::new(t.clone());
+        trans.create_vertex(&outbound_v).unwrap();
+        trans.create_vertex(&inbound_v).unwrap();
+        let key = EdgeKey::new(outbound_id, t.clone(), inbound_id);
         trans.create_edge(&key).unwrap();
-        (outbound_id, inbound_id)
+        key
     };
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let q = EdgeQuery::Edges {
-            keys: vec![EdgeKey::new(outbound_id, edge_t, inbound_id)],
-        };
+        let q = EdgeQuery::Edges { keys: vec![key.clone()] };
         trans.get_edges(&q).unwrap();
     });
 }
@@ -83,22 +87,23 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
+    let t = Type::new("bench_get_edge_count".to_string()).unwrap();
+
     let outbound_id = {
         let trans = datastore.transaction().unwrap();
-        let vertex_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
-        let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-        let inbound_id = trans.create_vertex(&vertex_t).unwrap();
-        let key = EdgeKey::new(outbound_id, edge_t, inbound_id);
+        let outbound_v = Vertex::new(t.clone());
+        let inbound_v = Vertex::new(t.clone());
+        trans.create_vertex(&outbound_v).unwrap();
+        trans.create_vertex(&inbound_v).unwrap();
+        let key = EdgeKey::new(outbound_id, t.clone(), inbound_id);
         trans.create_edge(&key).unwrap();
         outbound_id
     };
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let edge_t = Type::new("test_vertex_type".to_string()).unwrap();
         trans
-            .get_edge_count(outbound_id, Some(&edge_t), EdgeDirection::Outbound)
+            .get_edge_count(outbound_id, Some(&t), EdgeDirection::Outbound)
             .unwrap();
     });
 }

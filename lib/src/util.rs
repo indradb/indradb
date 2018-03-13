@@ -12,36 +12,17 @@ lazy_static! {
     static ref CONTEXT: UuidV1Context = UuidV1Context::new(0);
 }
 
-#[derive(Debug)]
-pub enum UuidGenerator {
-    V1,
-    V4,
-}
+/// Generates a UUID v1. this utility method uses a shared context and node ID
+/// to help ensure generated UUIDs are unique.
+pub fn generate_uuid_v1() -> Uuid {
+    let now = Utc::now();
 
-impl UuidGenerator {
-    pub fn new(secure: bool) -> Self {
-        if secure {
-            UuidGenerator::V4
-        } else {
-            UuidGenerator::V1
-        }
-    }
-
-    pub fn next(&self) -> Uuid {
-        match *self {
-            UuidGenerator::V1 => {
-                let now = Utc::now();
-
-                Uuid::new_v1(
-                    &CONTEXT,
-                    now.timestamp() as u64,
-                    now.timestamp_subsec_nanos(),
-                    &NODE_ID,
-                ).expect("Expected to be able to generate a UUID")
-            }
-            UuidGenerator::V4 => Uuid::new_v4(),
-        }
-    }
+    Uuid::new_v1(
+        &CONTEXT,
+        now.timestamp() as u64,
+        now.timestamp_subsec_nanos(),
+        &NODE_ID,
+    ).expect("Expected to be able to generate a UUID")
 }
 
 /// Generates a securely random string consisting of letters (uppercase and
@@ -95,21 +76,16 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, nanos_since_epoch, next_uuid, UuidGenerator};
+    use super::{generate_uuid_v1, generate_random_secret, nanos_since_epoch, next_uuid};
     use regex::Regex;
     use uuid::Uuid;
     use core::str::FromStr;
     use chrono::{DateTime, NaiveDateTime, Utc};
 
     #[test]
-    fn should_generate_uuids() {
-        let generator = UuidGenerator::new(false);
-        let first = generator.next();
-        let second = generator.next();
-        assert_ne!(first, second);
-        let generator = UuidGenerator::new(true);
-        let first = generator.next();
-        let second = generator.next();
+    fn should_generate_new_uuid_v1() {
+        let first = generate_uuid_v1();
+        let second = generate_uuid_v1();
         assert_ne!(first, second);
     }
 

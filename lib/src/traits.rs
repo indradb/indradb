@@ -28,8 +28,8 @@ pub trait Transaction {
     /// Creates a new vertex.
     ///
     /// # Arguments
-    /// * `t` - The type of the vertex.
-    fn create_vertex(&self, t: &models::Type) -> Result<Uuid>;
+    /// * `vertex`: The vertex to create.
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()>;
 
     /// Gets a range of vertices specified by a query.
     ///

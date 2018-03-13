@@ -1,5 +1,6 @@
 use uuid::Uuid;
 use super::types::Type;
+use util::generate_uuid_v1;
 
 /// A vertex.
 ///
@@ -16,13 +17,36 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    /// Creates a new vertex.
+    /// Creates a new vertex with an ID generated via UUIDv1. These vertex IDs
+    /// are trivially guessable and consequently less secure, but likely index
+    /// better depending on the datastore. This method is suggested unless you
+    /// need vertex IDs to not be trivially guessable.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The type of the vertex.
+    pub fn new(t: Type) -> Self {
+        Self::with_id(generate_uuid_v1(), t)
+    }
+
+    /// Creates a new vertex with an ID generated via UUIDv4. These vertex IDs
+    /// are not trivially guessable and consequently more secure, but likely
+    /// index worse depending on the datastore.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The type of the vertex.
+    pub fn new_secure(t: Type) -> Self {
+        Self::with_id(Uuid::new_v4(), t)
+    }
+
+    /// Creates a new vertex with a specified id.
     ///
     /// # Arguments
     ///
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
-    pub fn new(id: Uuid, t: Type) -> Vertex {
+    pub fn with_id(id: Uuid, t: Type) -> Self {
         Vertex { id: id, t: t }
     }
 }

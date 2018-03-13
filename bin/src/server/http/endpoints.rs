@@ -1,6 +1,6 @@
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery};
+use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
 use common::ProxyTransaction;
 use serde_json::value::Value as JsonValue;
 use serde_json;
@@ -120,8 +120,8 @@ fn create_vertex(
     trans: &ProxyTransaction,
     item: &serde_json::Map<String, JsonValue>,
 ) -> Result<JsonValue, IronError> {
-    let t = get_json_obj_value::<Type>(item, "type")?;
-    execute_item(trans.create_vertex(&t))
+    let v = get_json_obj_value::<Vertex>(item, "vertex")?;
+    execute_item(trans.create_vertex(&v))
 }
 
 fn get_vertices(

@@ -120,16 +120,15 @@ mod tests {
     use indradb::Type;
     use statics;
     use script;
-    use indradb::{Datastore, Transaction};
+    use indradb::{Vertex, Datastore, Transaction};
     use super::response_chan::Update;
     use serde_json::Value as JsonValue;
 
     /// Ensures there's at least one vertex to process
     fn add_seed() {
         let trans = statics::DATASTORE.transaction().unwrap();
-        trans
-            .create_vertex(&Type::new("foo".to_string()).unwrap())
-            .unwrap();
+        let vertex = Vertex::new(Type::new("foo".to_string()).unwrap());
+        trans.create_vertex(&vertex).unwrap();
     }
 
     fn run(file_path_str: &str, input: JsonValue) -> JsonValue {

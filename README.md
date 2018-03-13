@@ -75,6 +75,7 @@ Applications are configured via environment variables:
 * `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
 * `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
 * `MAP_REDUCE_WORKER_POOL_SIZE`: How many worker threads to spawn for mapreduce tasks. Defaults to the number of CPUs.
+* `INDRADB_SECURE_UUIDS`: Set to `true` to generate random UUID that are not trivial to guess. This likely decreases performance depending on the datastore used.
 
 ## Install from source
 

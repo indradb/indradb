@@ -7,7 +7,6 @@ use chrono::offset::Utc;
 use std::sync::{Arc, RwLock};
 use serde_json::Value as JsonValue;
 use errors::Result;
-use util::UuidGenerator;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -20,7 +19,6 @@ struct InternalMemoryDatastore {
     global_metadata: BTreeMap<String, JsonValue>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
-    uuid_generator: UuidGenerator,
 }
 
 impl InternalMemoryDatastore {
@@ -271,7 +269,6 @@ impl MemoryDatastore {
                 global_metadata: BTreeMap::new(),
                 vertex_metadata: BTreeMap::new(),
                 vertices: BTreeMap::new(),
-                uuid_generator: UuidGenerator::new(false),
             })),
         }
     }
@@ -292,11 +289,10 @@ pub struct MemoryTransaction {
 }
 
 impl Transaction for MemoryTransaction {
-    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let id = datastore.uuid_generator.next();
-        datastore.vertices.insert(id, t.clone());
-        Ok(id)
+        datastore.vertices.insert(vertex.id, vertex.t.clone());
+        Ok(())
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
@@ -306,7 +302,7 @@ impl Transaction for MemoryTransaction {
             .get_vertex_values_by_query(q)?;
         let iter = vertex_values
             .into_iter()
-            .map(|(uuid, t)| models::Vertex::new(uuid, t));
+            .map(|(uuid, t)| models::Vertex::with_id(uuid, t));
         Ok(iter.collect())
     }
 

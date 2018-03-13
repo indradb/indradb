@@ -11,17 +11,8 @@ where
     T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let mut inserted_ids = create_vertices(&trans);
 
-    let mut inserted_ids = vec![
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-    ];
-
-    inserted_ids.sort();
     let range = trans
         .get_vertices(&VertexQuery::All {
             start_id: None,
@@ -35,7 +26,7 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(vertex.t, vertex_t);
+            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
             inserted_ids.remove(index);
         }
 
@@ -50,23 +41,15 @@ where
     T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    create_vertices(&trans);
 
-    let mut inserted_ids = vec![
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-    ];
-
-    inserted_ids.sort();
     let range = trans
         .get_vertices(&VertexQuery::All {
             start_id: None,
             limit: 0,
         })
         .unwrap();
+
     assert_eq!(range.len(), 0);
 }
 
@@ -76,23 +59,15 @@ where
     T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    create_vertices(&trans);
 
-    let mut inserted_ids = vec![
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-    ];
-
-    inserted_ids.sort();
     let range = trans
         .get_vertices(&VertexQuery::All {
             start_id: Some(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
             limit: u32::MAX,
         })
         .unwrap();
+
     assert_eq!(range.len(), 0);
 }
 
@@ -103,14 +78,15 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let inserted_id = trans.create_vertex(&vertex_t).unwrap();
+    let vertex = models::Vertex::new(vertex_t);
+    trans.create_vertex(&vertex).unwrap();
     let range = trans
         .get_vertices(&VertexQuery::Vertices {
-            ids: vec![inserted_id],
+            ids: vec![vertex.id],
         })
         .unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0].id, inserted_id);
+    assert_eq!(range[0].id, vertex.id);
     assert_eq!(range[0].t.0, "test_vertex_type");
 }
 
@@ -121,7 +97,8 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    trans.create_vertex(&vertex_t).unwrap();
+    let vertex = models::Vertex::new(vertex_t);
+    trans.create_vertex(&vertex).unwrap();
     let range = trans
         .get_vertices(&VertexQuery::Vertices {
             ids: vec![Uuid::default()],
@@ -136,14 +113,8 @@ where
     T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
-    let mut inserted_ids = vec![
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-        trans.create_vertex(&vertex_t).unwrap(),
-    ];
+    let mut inserted_ids = create_vertices(&trans);
 
-    inserted_ids.sort();
     let range = trans
         .get_vertices(&VertexQuery::Vertices {
             ids: vec![
@@ -161,7 +132,7 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(vertex.t, vertex_t);
+            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
             inserted_ids.remove(index);
         }
 
@@ -178,12 +149,13 @@ where
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
 
-    let inserted_id_1 = trans.create_vertex(&vertex_t).unwrap();
-    let inserted_id_2 = create_edge_from::<D, T>(&trans, inserted_id_1);
+    let v = models::Vertex::new(vertex_t);
+    trans.create_vertex(&v).unwrap();
+    let inserted_id_2 = create_edge_from::<D, T>(&trans, v.id);
 
     // This query should get `inserted_id_2`
     let query_1 = VertexQuery::Vertices {
-        ids: vec![inserted_id_1],
+        ids: vec![v.id],
     }.outbound_edges(
         Some(models::Type::new("test_edge_type".to_string()).unwrap()),
         None,
@@ -195,7 +167,7 @@ where
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id_2);
 
-    // This query should get `inserted_id_1`
+    // This query should get `v`
     let query_2 = query_1
         .inbound_edges(
             Some(models::Type::new("test_edge_type".to_string()).unwrap()),
@@ -206,7 +178,7 @@ where
         .outbound_vertices(1);
     let range = trans.get_vertices(&query_2).unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0].id, inserted_id_1);
+    assert_eq!(range[0], v);
 }
 
 pub fn should_delete_a_valid_vertex<D, T>(datastore: &mut D)
@@ -247,9 +219,32 @@ where
     D: Datastore<T>,
     T: Transaction,
 {
-    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let trans = datastore.transaction().unwrap();
-    trans.create_vertex(&vertex_t).unwrap();
+    let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    let v = models::Vertex::new(vertex_t);
+    trans.create_vertex(&v).unwrap();
     let count = trans.get_vertex_count().unwrap();
     assert!(count >= 1);
+}
+
+fn create_vertices<T>(trans: &T) -> Vec<Uuid>
+where T: Transaction
+{
+    let t = models::Type::new("test_vertex_type".to_string()).unwrap();
+
+    let vertices = vec![
+        models::Vertex::new(t.clone()),
+        models::Vertex::new(t.clone()),
+        models::Vertex::new(t.clone()),
+        models::Vertex::new(t.clone()),
+        models::Vertex::new(t.clone()),
+    ];
+
+    for vertex in &vertices {
+        trans.create_vertex(vertex).unwrap();
+    }
+
+    let mut vertex_ids: Vec<Uuid> = vertices.into_iter().map(|v| v.id).collect();
+    vertex_ids.sort();
+    vertex_ids
 }

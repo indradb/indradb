@@ -15,14 +15,12 @@ use super::util::CTEQueryBuilder;
 use postgres::types::ToSql;
 use super::schema;
 use std::cmp::min;
-use util::UuidGenerator;
-use std::sync::Arc;
+use util::generate_uuid_v1;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
     pool: Pool<PostgresConnectionManager>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresDatastore {
@@ -32,13 +30,9 @@ impl PostgresDatastore {
     /// * `pool_size` - The maximum number of connections to maintain to
     ///   postgres. If `None`, it defaults to twice the number of CPUs.
     /// * `connetion_string` - The postgres database connection string.
-    /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
-    ///   difficult to guess UUIDs at the detriment of a more index-optimized
-    ///   (and thus faster) variant.
     pub fn new(
         pool_size: Option<u32>,
         connection_string: String,
-        secure_uuids: bool,
     ) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
@@ -52,7 +46,6 @@ impl PostgresDatastore {
 
         Ok(PostgresDatastore {
             pool: pool,
-            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
         })
     }
 
@@ -75,7 +68,7 @@ impl PostgresDatastore {
 impl Datastore<PostgresTransaction> for PostgresDatastore {
     fn transaction(&self) -> Result<PostgresTransaction> {
         let conn = self.pool.get()?;
-        let trans = PostgresTransaction::new(conn, self.uuid_generator.clone())?;
+        let trans = PostgresTransaction::new(conn)?;
         Ok(trans)
     }
 }
@@ -85,13 +78,11 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 pub struct PostgresTransaction {
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresTransaction {
     fn new(
         conn: PooledConnection<PostgresConnectionManager>,
-        uuid_generator: Arc<UuidGenerator>,
     ) -> Result<Self> {
         let conn = Box::new(conn);
 
@@ -105,7 +96,6 @@ impl PostgresTransaction {
         Ok(PostgresTransaction {
             conn: conn,
             trans: trans,
-            uuid_generator: uuid_generator,
         })
     }
 
@@ -242,13 +232,12 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
-    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
-        let id = self.uuid_generator.next();
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()> {
         self.trans.execute(
             "INSERT INTO vertices (id, type) VALUES ($1, $2)",
-            &[&id, &t.0],
+            &[&vertex.id, &vertex.t.0],
         )?;
-        Ok(id)
+        Ok(())
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
@@ -264,7 +253,7 @@ impl Transaction for PostgresTransaction {
         for row in &results {
             let id: Uuid = row.get(0);
             let t_str: String = row.get(1);
-            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
+            let v = models::Vertex::with_id(id, models::Type::new(t_str).unwrap());
             vertices.push(v);
         }
 
@@ -295,7 +284,7 @@ impl Transaction for PostgresTransaction {
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
-        let id = self.uuid_generator.next();
+        let id = generate_uuid_v1();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction

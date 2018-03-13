@@ -61,8 +61,8 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_vertices, q)
     }
 
-    fn create_vertex(&self, t: &Type) -> Result<Uuid, Error> {
-        proxy_transaction!(self, create_vertex, t)
+    fn create_vertex(&self, v: &Vertex) -> Result<(), Error> {
+        proxy_transaction!(self, create_vertex, v)
     }
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<(), Error> {
@@ -152,8 +152,6 @@ impl Transaction for ProxyTransaction {
 /// use.
 pub fn datastore() -> ProxyDatastore {
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
-    let secure_uuids =
-        env::var("INDRADB_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
 
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
@@ -165,7 +163,7 @@ pub fn datastore() -> ProxyDatastore {
              i32",
         );
 
-        let datastore = RocksdbDatastore::new(path, Some(max_open_files), secure_uuids)
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files))
             .expect("Expected to be able to create the RocksDB datastore");
 
         ProxyDatastore::Rocksdb(datastore)
@@ -178,7 +176,7 @@ pub fn datastore() -> ProxyDatastore {
             Err(_) => None,
         };
 
-        let datastore = PostgresDatastore::new(pool_size, connection_string, secure_uuids)
+        let datastore = PostgresDatastore::new(pool_size, connection_string)
             .expect("Expected to be able to create the postgres datastore");
         ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
