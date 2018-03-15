@@ -289,10 +289,15 @@ pub struct MemoryTransaction {
 }
 
 impl Transaction for MemoryTransaction {
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()> {
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
-        datastore.vertices.insert(vertex.id, vertex.t.clone());
-        Ok(())
+
+        if datastore.vertices.contains_key(&vertex.id) {
+            Ok(false)
+        } else {
+            datastore.vertices.insert(vertex.id, vertex.t.clone());
+            Ok(true)
+        }
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {

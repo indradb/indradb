@@ -350,8 +350,15 @@ impl RocksdbTransaction {
 }
 
 impl Transaction for RocksdbTransaction {
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()> {
-        VertexManager::new(self.db.clone()).create(vertex)
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+
+        if vertex_manager.exists(vertex.id)? {
+            Ok(false)
+        } else {
+            vertex_manager.create(vertex)?;
+            Ok(true)
+        }
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {

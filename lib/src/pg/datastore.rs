@@ -232,12 +232,23 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()> {
-        self.trans.execute(
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+        // Because this command could fail, we need to set a savepoint to roll
+        // back to, rather than spoiling the entire transaction
+        let trans = self.trans.savepoint("create_vertex")?;
+
+        let result = self.trans.execute(
             "INSERT INTO vertices (id, type) VALUES ($1, $2)",
             &[&vertex.id, &vertex.t.0],
-        )?;
-        Ok(())
+        );
+
+        if result.is_err() {
+            trans.set_rollback();
+            Ok(false)
+        } else {
+            trans.set_commit();
+            Ok(true)
+        }
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {

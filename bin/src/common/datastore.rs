@@ -61,7 +61,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_vertices, q)
     }
 
-    fn create_vertex(&self, v: &Vertex) -> Result<(), Error> {
+    fn create_vertex(&self, v: &Vertex) -> Result<bool, Error> {
         proxy_transaction!(self, create_vertex, v)
     }
 

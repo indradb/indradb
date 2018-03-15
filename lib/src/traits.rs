@@ -29,7 +29,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `vertex`: The vertex to create.
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<()>;
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool>;
 
     /// Gets a range of vertices specified by a query.
     ///
