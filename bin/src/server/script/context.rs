@@ -37,12 +37,7 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
             })?,
         )?;
         g.set("vertex", l.create_function(|_, (t,): (converters::Type,)| {
-            let v = if *statics::SECURE_UUIDS {
-                Vertex::new_secure(t.0)
-            } else {
-                Vertex::new(t.0)
-            };
-
+            let v = Vertex::new(t.0);
             Ok(converters::Vertex::new(v))
         })?)?;
     }

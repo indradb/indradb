@@ -37,7 +37,4 @@ lazy_static! {
         },
         Err(_) => num_cpus::get() as u16
     };
-
-    /// Whether to use secure UUIDs
-    pub static ref SECURE_UUIDS: bool = env::var("INDRADB_SECURE_UUIDS").unwrap_or_else(|_| "false".to_string()) == "true";
 }
