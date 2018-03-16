@@ -1,6 +1,6 @@
+use super::super::{Datastore, Transaction};
 use chrono::DateTime;
 use chrono::offset::Utc;
-use super::super::{Datastore, Transaction};
 use models;
 use uuid::Uuid;
 
@@ -36,9 +36,7 @@ where
     (outbound_id, inbound_ids)
 }
 
-pub fn create_time_range_queryable_edges<D, T>(
-    datastore: &mut D,
-) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5])
+pub fn create_time_range_queryable_edges<D, T>(datastore: &mut D) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5])
 where
     D: Datastore<T>,
     T: Transaction,

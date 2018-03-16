@@ -8,11 +8,11 @@ extern crate test;
 mod common;
 
 pub use indradb::RocksdbDatastore;
+pub use indradb::tests;
 pub use indradb::util::generate_random_secret;
 pub use std::env;
 use std::path::Path;
 pub use test::Bencher;
-pub use indradb::tests;
 
 fn datastore() -> RocksdbDatastore {
     // RocksDB can only have one connection open to a database at a time.

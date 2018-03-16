@@ -1,10 +1,10 @@
+use super::{converters, globals};
+use indradb::Datastore;
 use rlua::Table;
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
-use std::path::Path;
-use indradb::Datastore;
 use statics;
-use super::{converters, globals};
+use std::path::Path;
 
 pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
     let l = Lua::new();

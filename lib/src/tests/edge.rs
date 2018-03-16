@@ -1,10 +1,10 @@
 use super::super::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, VertexQuery};
-use models;
-use uuid::Uuid;
-use chrono::offset::Utc;
-use chrono::Timelike;
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
+use chrono::Timelike;
+use chrono::offset::Utc;
+use models;
 use std::collections::HashSet;
+use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D, T>(datastore: &mut D)
 where

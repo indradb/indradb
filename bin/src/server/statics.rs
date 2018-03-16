@@ -1,7 +1,7 @@
 use common::{datastore, ProxyDatastore};
+use num_cpus;
 use std::env;
 use std::path::Path;
-use num_cpus;
 
 lazy_static! {
     /// The underlying datastore

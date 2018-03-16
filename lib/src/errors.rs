@@ -1,12 +1,11 @@
+#[cfg(feature = "rocksdb-datastore")]
+use bincode::Error as BincodeError;
 #[cfg(feature = "postgres-datastore")]
 use postgres::Error as PostgresError;
 #[cfg(feature = "postgres-datastore")]
 use r2d2::Error as R2d2Error;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
-#[cfg(feature = "rocksdb-datastore")]
-use bincode::Error as BincodeError;
-
 use serde_json::Error as JsonError;
 
 error_chain!{

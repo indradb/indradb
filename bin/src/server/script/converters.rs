@@ -1,17 +1,15 @@
-use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData,
-           UserDataMethods, Value};
-use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
-use common::ProxyTransaction as ExternalProxyTransaction;
-use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection,
-              EdgeKey as ExternalEdgeKey, EdgeMetadata as ExternalEdgeMetadata,
-              EdgeQuery as ExternalEdgeQuery, Type as ExternalType, Vertex as ExternalVertex,
-              VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
-use uuid::Uuid as ExternalUuid;
-use core::str::FromStr;
-use std::collections::BTreeMap;
+use super::api;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use super::api;
+use common::ProxyTransaction as ExternalProxyTransaction;
+use core::str::FromStr;
+use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection, EdgeKey as ExternalEdgeKey,
+              EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery, Type as ExternalType,
+              Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
+use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData, UserDataMethods, Value};
+use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
+use std::collections::BTreeMap;
+use uuid::Uuid as ExternalUuid;
 
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
@@ -48,8 +46,8 @@ impl<'lua> FromLua<'lua> for JsonValue {
                 value,
             )))),
             Value::Number(value) => {
-                let num = JsonNumber::from_f64(value)
-                    .expect("Expected to be able to create a JSON number from a float");
+                let num =
+                    JsonNumber::from_f64(value).expect("Expected to be able to create a JSON number from a float");
                 Ok(Self::new(ExternalJsonValue::Number(num)))
             }
             Value::String(_) => {
@@ -67,9 +65,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
                         JsonValue(ExternalJsonValue::String(key_string)) => {
                             map.insert(JsonMapKey::String(key_string), value_json.0);
                         }
-                        JsonValue(ExternalJsonValue::Number(ref key_number))
-                            if key_number.is_u64() =>
-                        {
+                        JsonValue(ExternalJsonValue::Number(ref key_number)) if key_number.is_u64() => {
                             map.insert(
                                 JsonMapKey::Number(key_number.as_u64().unwrap()),
                                 value_json.0,
@@ -397,8 +393,9 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
             let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
 
             let type_filter = match Option::<String>::from_lua(table.get("type_filter")?, l)? {
-                Some(s) => Some(ExternalType::new(s)
-                    .map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?),
+                Some(s) => {
+                    Some(ExternalType::new(s).map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?)
+                }
                 None => None,
             };
 

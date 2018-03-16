@@ -1,12 +1,12 @@
-use serde_json::value::Value as JsonValue;
-use indradb::Vertex;
-use statics;
-use crossbeam_channel::{bounded, unbounded, Sender};
-use std::time::Duration;
-use std::thread::{spawn, JoinHandle};
-use script::converters;
-use super::worker::{Worker, WorkerError, WorkerTask};
 use super::counter::Counter;
+use super::worker::{Worker, WorkerError, WorkerTask};
+use crossbeam_channel::{bounded, unbounded, Sender};
+use indradb::Vertex;
+use script::converters;
+use serde_json::value::Value as JsonValue;
+use statics;
+use std::thread::{spawn, JoinHandle};
+use std::time::Duration;
 
 const CHANNEL_TIMEOUT: u64 = 5;
 const CHANNEL_CAPACITY: usize = 1000;
@@ -30,11 +30,9 @@ impl Master {
         let (master_in_sender, master_in_receiver) = bounded::<Vertex>(CHANNEL_CAPACITY);
         let (worker_in_sender, worker_in_receiver) = bounded::<WorkerTask>(CHANNEL_CAPACITY);
         let (worker_out_sender, worker_out_receiver) = unbounded::<converters::JsonValue>();
-        let (error_sender, error_receiver) =
-            bounded::<WorkerError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
+        let (error_sender, error_receiver) = bounded::<WorkerError>(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
         let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
-        let mut worker_threads: Vec<Worker> =
-            Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
+        let mut worker_threads: Vec<Worker> = Vec::with_capacity(*statics::MAP_REDUCE_WORKER_POOL_SIZE as usize);
 
         for _ in 0..*statics::MAP_REDUCE_WORKER_POOL_SIZE {
             worker_threads.push(Worker::start(
@@ -96,8 +94,7 @@ impl Master {
 
                     // Check to see if we should shutdown
                     if should_force_shutdown
-                        || (should_gracefully_shutdown && processing.get() == 0
-                            && master_in_receiver.is_empty())
+                        || (should_gracefully_shutdown && processing.get() == 0 && master_in_receiver.is_empty())
                     {
                         // Join all threads
                         for worker_thread in worker_threads {
@@ -149,14 +146,14 @@ impl Master {
 
 #[cfg(test)]
 mod tests {
-    use std::io::prelude::*;
-    use std::fs::File;
-    use serde_json::Value as JsonValue;
     use super::Master;
     use super::super::Counter;
+    use indradb::{Type, Vertex};
+    use serde_json::Value as JsonValue;
+    use std::fs::File;
+    use std::io::prelude::*;
     use std::path::Path;
     use uuid::Uuid;
-    use indradb::{Type, Vertex};
 
     fn run(insert_count: u64, expected_finish_count: u64, expected_result: JsonValue) {
         let file_path_str = "test_scripts/mapreduce/count.lua";

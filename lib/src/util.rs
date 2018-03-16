@@ -1,10 +1,10 @@
 //! Utility functions.
 
-use rand::{OsRng, Rng};
-use errors::ValidationResult;
-use uuid::{Uuid, UuidV1Context};
 use chrono::DateTime;
 use chrono::offset::Utc;
+use errors::ValidationResult;
+use rand::{OsRng, Rng};
+use uuid::{Uuid, UuidV1Context};
 
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
@@ -96,10 +96,10 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{generate_random_secret, nanos_since_epoch, next_uuid, UuidGenerator};
+    use chrono::{DateTime, NaiveDateTime, Utc};
+    use core::str::FromStr;
     use regex::Regex;
     use uuid::Uuid;
-    use core::str::FromStr;
-    use chrono::{DateTime, NaiveDateTime, Utc};
 
     #[test]
     fn should_generate_uuids() {

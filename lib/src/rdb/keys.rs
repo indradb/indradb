@@ -1,17 +1,17 @@
-use uuid::Uuid;
-use std::io::Write;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use chrono::{DateTime, NaiveDateTime};
+use chrono::{Duration, Timelike};
+use chrono::offset::Utc;
+use models;
 use std::i32;
 use std::i64;
+use std::io::{Cursor, Error as IoError};
+use std::io::Read;
+use std::io::Write;
 use std::str;
 use std::u8;
-use std::io::Read;
-use std::io::{Cursor, Error as IoError};
-use models;
-use chrono::{DateTime, NaiveDateTime};
-use chrono::offset::Utc;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use util::nanos_since_epoch;
-use chrono::{Duration, Timelike};
+use uuid::Uuid;
 
 lazy_static! {
     pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();

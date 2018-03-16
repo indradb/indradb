@@ -1,13 +1,13 @@
 use super::super::{Datastore, EdgeQuery, Transaction, VertexQuery};
-use models;
-use uuid::Uuid;
-use std::collections::{BTreeMap, HashSet};
 use chrono::DateTime;
 use chrono::offset::Utc;
-use std::sync::{Arc, RwLock};
-use serde_json::Value as JsonValue;
 use errors::Result;
+use models;
+use serde_json::Value as JsonValue;
+use std::collections::{BTreeMap, HashSet};
+use std::sync::{Arc, RwLock};
 use util::UuidGenerator;
+use uuid::Uuid;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -86,10 +86,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn get_edge_values_by_query(
-        &self,
-        q: &EdgeQuery,
-    ) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
+    fn get_edge_values_by_query(&self, q: &EdgeQuery) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
         match *q {
             EdgeQuery::Edges { ref keys } => {
                 let mut results = Vec::new();
@@ -118,9 +115,7 @@ impl InternalMemoryDatastore {
                 match converter {
                     models::EdgeDirection::Outbound => for (id, _) in vertex_values {
                         let lower_bound = match *type_filter {
-                            Some(ref type_filter) => {
-                                models::EdgeKey::new(id, type_filter.clone(), Uuid::default())
-                            }
+                            Some(ref type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
                             None => {
                                 let empty_type = models::Type::default();
                                 models::EdgeKey::new(id, empty_type, Uuid::default())
@@ -329,9 +324,7 @@ impl Transaction for MemoryTransaction {
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
 
-        if !datastore.vertices.contains_key(&key.outbound_id)
-            || !datastore.vertices.contains_key(&key.inbound_id)
-        {
+        if !datastore.vertices.contains_key(&key.outbound_id) || !datastore.vertices.contains_key(&key.inbound_id) {
             return Ok(false);
         }
 
@@ -425,11 +418,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        name: &str,
-    ) -> Result<Vec<models::VertexMetadata>> {
+    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q)?;

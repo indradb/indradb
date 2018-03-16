@@ -1,19 +1,19 @@
-use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
-use models;
-use uuid::Uuid;
-use errors::Result;
-use util::next_uuid;
-use serde_json::Value as JsonValue;
-use chrono::offset::Utc;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
-use std::sync::Arc;
-use std::usize;
-use std::i32;
-use std::u64;
 use super::managers::*;
-use core::fmt::Debug;
-use util::UuidGenerator;
+use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
 use chrono::DateTime;
+use chrono::offset::Utc;
+use core::fmt::Debug;
+use errors::Result;
+use models;
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
+use serde_json::Value as JsonValue;
+use std::i32;
+use std::sync::Arc;
+use std::u64;
+use std::usize;
+use util::UuidGenerator;
+use util::next_uuid;
+use uuid::Uuid;
 
 const CF_NAMES: [&'static str; 7] = [
     "vertices:v1",
@@ -64,11 +64,7 @@ impl RocksdbDatastore {
     /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
     ///   difficult to guess UUIDs at the detriment of a more index-optimized
     ///   (and thus faster) variant.
-    pub fn new(
-        path: &str,
-        max_open_files: Option<i32>,
-        secure_uuids: bool,
-    ) -> Result<RocksdbDatastore> {
+    pub fn new(path: &str, max_open_files: Option<i32>, secure_uuids: bool) -> Result<RocksdbDatastore> {
         let opts = get_options(max_open_files);
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
@@ -124,10 +120,7 @@ impl RocksdbTransaction {
         })
     }
 
-    fn vertex_query_to_iterator(
-        &self,
-        q: &VertexQuery,
-    ) -> Result<Box<Iterator<Item = VertexItem>>> {
+    fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {
         let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
 
         match q {
@@ -184,11 +177,9 @@ impl RocksdbTransaction {
             &EdgeQuery::Edges { ref keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges: Vec<
-                    Result<Option<(Uuid, models::Type, DateTime<Utc>, Uuid)>>,
-                > = keys.into_iter()
-                    .map(move |key| {
-                        match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                let edges: Vec<Result<Option<(Uuid, models::Type, DateTime<Utc>, Uuid)>>> = keys.into_iter()
+                    .map(
+                        move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                             Some(update_datetime) => Ok(Some((
                                 key.outbound_id,
                                 key.t.clone(),
@@ -196,8 +187,8 @@ impl RocksdbTransaction {
                                 key.inbound_id,
                             ))),
                             None => Ok(None),
-                        }
-                    })
+                        },
+                    )
                     .collect();
 
                 let iterator = self.remove_nones_from_iterator(Box::new(edges.into_iter()));
@@ -228,11 +219,8 @@ impl RocksdbTransaction {
                 if let Some(low_filter) = low_filter {
                     for item in vertex_iterator {
                         let (id, _) = item?;
-                        let edge_iterator = edge_range_manager.iterate_for_range(
-                            id,
-                            type_filter.as_ref(),
-                            high_filter,
-                        )?;
+                        let edge_iterator =
+                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
 
                         for item in edge_iterator {
                             match item {
@@ -272,11 +260,8 @@ impl RocksdbTransaction {
                 } else {
                     for item in vertex_iterator {
                         let (id, _) = item?;
-                        let edge_iterator = edge_range_manager.iterate_for_range(
-                            id,
-                            type_filter.as_ref(),
-                            high_filter,
-                        )?;
+                        let edge_iterator =
+                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
 
                         for item in edge_iterator {
                             match item {
@@ -397,8 +382,7 @@ impl Transaction for RocksdbTransaction {
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)?
-        {
+        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)? {
             return Ok(false);
         }
 
@@ -481,11 +465,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        name: &str,
-    ) -> Result<Vec<models::VertexMetadata>> {
+    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 

@@ -1,25 +1,25 @@
-use iron::prelude::*;
-use iron::status;
-use iron::headers::{ContentType, Headers};
-use iron::typemap::TypeMap;
-use router::Router;
-use indradb::Datastore;
-use util::SimpleError;
 use common::ProxyTransaction;
-use std::error::Error as StdError;
 use core::str::FromStr;
-use iron::modifiers::Header as HeaderModifier;
+use indradb::Datastore;
+use iron::headers::{ContentType, Headers};
 use iron::mime::{Attr, Mime, SubLevel, TopLevel, Value};
+use iron::modifiers::Header as HeaderModifier;
+use iron::prelude::*;
 use iron::request::Body;
+use iron::status;
+use iron::typemap::TypeMap;
+use regex;
+use router::Router;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use serde_json::value::Value as JsonValue;
+use statics;
+use std::error::Error as StdError;
+use std::fs::File;
 use std::io;
 use std::io::Read;
-use serde_json::value::Value as JsonValue;
-use serde_json;
-use serde::{Deserialize, Serialize};
-use statics;
-use std::fs::File;
 use std::path::Path;
-use regex;
+use util::SimpleError;
 
 lazy_static! {
     static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
@@ -75,17 +75,13 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
 /// # Errors
 /// Returns an `IronError` if the value is missing from the JSON object, or
 /// has an unexpected type.
-pub fn get_json_obj_value<T>(
-    json: &serde_json::Map<String, JsonValue>,
-    name: &str,
-) -> Result<T, IronError>
+pub fn get_json_obj_value<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError>
 where
     for<'a> T: Deserialize<'a>,
 {
     if let Some(obj) = json.get(name) {
-        Ok(serde_json::from_value::<T>(obj.clone()).map_err(|_| {
-            create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name))
-        })?)
+        Ok(serde_json::from_value::<T>(obj.clone())
+            .map_err(|_| create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))?)
     } else {
         Err(create_iron_error(
             status::BadRequest,

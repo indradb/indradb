@@ -2,21 +2,15 @@
 // Above ignore is there because otherwise the macro is noisy
 
 use super::converters;
-use indradb::{Error, Transaction};
 use common::ProxyTransaction;
+use indradb::{Error, Transaction};
 use serde_json::Value as JsonValue;
 
-pub fn create_vertex(
-    trans: &ProxyTransaction,
-    t: converters::Type,
-) -> Result<converters::Uuid, Error> {
+pub fn create_vertex(trans: &ProxyTransaction, t: converters::Type) -> Result<converters::Uuid, Error> {
     Ok(converters::Uuid::new(trans.create_vertex(&t.0)?))
 }
 
-pub fn get_vertices(
-    trans: &ProxyTransaction,
-    q: converters::VertexQuery,
-) -> Result<Vec<converters::Vertex>, Error> {
+pub fn get_vertices(trans: &ProxyTransaction, q: converters::VertexQuery) -> Result<Vec<converters::Vertex>, Error> {
     Ok(trans
         .get_vertices(&q.0)?
         .into_iter()
@@ -37,10 +31,7 @@ pub fn create_edge(trans: &ProxyTransaction, key: converters::EdgeKey) -> Result
     Ok(())
 }
 
-pub fn get_edges(
-    trans: &ProxyTransaction,
-    q: converters::EdgeQuery,
-) -> Result<Vec<converters::Edge>, Error> {
+pub fn get_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Result<Vec<converters::Edge>, Error> {
     Ok(trans
         .get_edges(&q.0)?
         .into_iter()
@@ -64,10 +55,7 @@ pub fn get_edge_count(
     Ok(trans.get_edge_count(id.0, type_filter.as_ref().map(|t| &t.0), direction.0)?)
 }
 
-pub fn get_global_metadata(
-    trans: &ProxyTransaction,
-    key: String,
-) -> Result<converters::JsonValue, Error> {
+pub fn get_global_metadata(trans: &ProxyTransaction, key: String) -> Result<converters::JsonValue, Error> {
     Ok(converters::JsonValue::new(
         trans
             .get_global_metadata(&key)?
@@ -133,10 +121,7 @@ pub fn set_edge_metadata(
     Ok(())
 }
 
-pub fn delete_edge_metadata(
-    trans: &ProxyTransaction,
-    (q, key): (converters::EdgeQuery, String),
-) -> Result<(), Error> {
+pub fn delete_edge_metadata(trans: &ProxyTransaction, (q, key): (converters::EdgeQuery, String)) -> Result<(), Error> {
     trans.delete_edge_metadata(&q.0, &key)?;
     Ok(())
 }
