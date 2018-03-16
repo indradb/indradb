@@ -1,7 +1,7 @@
 use crossbeam_channel::{bounded as crossbeam_bounded, Receiver, Sender};
+use iron::response::WriteBody;
 use serde_json;
 use serde_json::value::Value as JsonValue;
-use iron::response::WriteBody;
 use std::io::{Result as IoResult, Write};
 
 #[derive(Clone, Debug)]

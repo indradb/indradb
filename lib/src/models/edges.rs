@@ -1,7 +1,7 @@
-use uuid::Uuid;
+use super::types::Type;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use super::types::Type;
+use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]

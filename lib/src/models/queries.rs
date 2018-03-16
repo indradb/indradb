@@ -1,8 +1,8 @@
-use uuid::Uuid;
+use super::edges::EdgeKey;
+use super::types::Type;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use super::types::Type;
-use super::edges::EdgeKey;
+use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.

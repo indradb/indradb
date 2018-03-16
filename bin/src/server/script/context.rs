@@ -1,10 +1,10 @@
+use super::{converters, globals};
+use indradb::{Datastore, Vertex};
 use rlua::Table;
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
-use std::path::Path;
-use indradb::{Vertex, Datastore};
 use statics;
-use super::{converters, globals};
+use std::path::Path;
 
 pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
     let l = Lua::new();
@@ -36,10 +36,13 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
                 Ok(converters::ProxyTransaction::new(trans))
             })?,
         )?;
-        g.set("vertex", l.create_function(|_, (t,): (converters::Type,)| {
-            let v = Vertex::new(t.0);
-            Ok(converters::Vertex::new(v))
-        })?)?;
+        g.set(
+            "vertex",
+            l.create_function(|_, (t,): (converters::Type,)| {
+                let v = Vertex::new(t.0);
+                Ok(converters::Vertex::new(v))
+            })?,
+        )?;
     }
 
     let _: () = l.eval(globals::GLOBALS, Some("globals.lua"))?;

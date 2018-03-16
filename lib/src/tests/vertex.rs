@@ -1,9 +1,9 @@
 use super::super::{Datastore, Transaction, VertexQuery};
 use super::util::{create_edge_from, create_edges};
-use uuid::Uuid;
 use models;
-use std::u32;
 use std::collections::HashSet;
+use std::u32;
+use uuid::Uuid;
 
 pub fn should_get_all_vertices<D, T>(datastore: &mut D)
 where
@@ -26,7 +26,10 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
+            assert_eq!(
+                vertex.t,
+                models::Type::new("test_vertex_type".to_string()).unwrap()
+            );
             inserted_ids.remove(index);
         }
 
@@ -132,7 +135,10 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
+            assert_eq!(
+                vertex.t,
+                models::Type::new("test_vertex_type".to_string()).unwrap()
+            );
             inserted_ids.remove(index);
         }
 
@@ -154,14 +160,13 @@ where
     let inserted_id_2 = create_edge_from::<D, T>(&trans, v.id);
 
     // This query should get `inserted_id_2`
-    let query_1 = VertexQuery::Vertices {
-        ids: vec![v.id],
-    }.outbound_edges(
-        Some(models::Type::new("test_edge_type".to_string()).unwrap()),
-        None,
-        None,
-        1,
-    )
+    let query_1 = VertexQuery::Vertices { ids: vec![v.id] }
+        .outbound_edges(
+            Some(models::Type::new("test_edge_type".to_string()).unwrap()),
+            None,
+            None,
+            1,
+        )
         .inbound_vertices(1);
     let range = trans.get_vertices(&query_1).unwrap();
     assert_eq!(range.len(), 1);
@@ -228,7 +233,8 @@ where
 }
 
 fn create_vertices<T>(trans: &T) -> Vec<Uuid>
-where T: Transaction
+where
+    T: Transaction,
 {
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();
 

@@ -48,10 +48,9 @@ mod traits;
 pub mod util;
 
 pub use errors::*;
-pub use traits::*;
-pub use models::*;
-
 pub use memory::{MemoryDatastore, MemoryTransaction};
+pub use models::*;
+pub use traits::*;
 
 #[cfg(feature = "postgres-datastore")]
 mod pg;

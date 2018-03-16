@@ -11,19 +11,19 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
+pub use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex,
+                  VertexMetadata, VertexQuery};
+pub use indradb::tests;
+pub use regex::Regex;
+use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
-pub use regex::Regex;
-use uuid::Uuid;
-pub use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error,
-                  Transaction, Type, Vertex, VertexMetadata, VertexQuery};
-pub use indradb::tests;
 use std::collections::HashMap;
-use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
+use uuid::Uuid;
 
 const START_PORT: usize = 1024;
 
@@ -34,8 +34,8 @@ lazy_static! {
 
 fn request(port: usize, body: &JsonValue) -> Result<Response, ReqwestError> {
     let client = Client::new();
-    let url = Url::parse(&format!("http://localhost:{}/transaction", port))
-        .expect("Expected to be able to construct a URL");
+    let url =
+        Url::parse(&format!("http://localhost:{}/transaction", port)).expect("Expected to be able to construct a URL");
     let mut request = client.request(Method::Post, url);
     request.json(body);
     request.send()
@@ -185,12 +185,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        type_filter: Option<&Type>,
-        direction: EdgeDirection,
-    ) -> Result<u64, Error> {
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<&Type>, direction: EdgeDirection) -> Result<u64, Error> {
         self.request(&json!({
             "action": "get_edge_count",
             "id": id,
@@ -221,11 +216,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        name: &str,
-    ) -> Result<Vec<VertexMetadata>, Error> {
+    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<VertexMetadata>, Error> {
         self.request(&json!({
             "action": "get_vertex_metadata",
             "query": q,
@@ -233,12 +224,7 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        name: &str,
-        value: &JsonValue,
-    ) -> Result<(), Error> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<(), Error> {
         self.request(&json!({
             "action": "set_vertex_metadata",
             "query": q,

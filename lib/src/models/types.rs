@@ -1,6 +1,6 @@
-use regex::Regex;
-use errors::{ValidationError, ValidationResult};
 use core::str::FromStr;
+use errors::{ValidationError, ValidationResult};
+use regex::Regex;
 
 lazy_static! {
     static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();

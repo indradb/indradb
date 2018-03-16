@@ -1,21 +1,21 @@
-use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-use r2d2::{Pool, PooledConnection};
-use std::mem;
+use super::schema;
 use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
-use models;
-use errors::{Error, Result};
-use postgres;
+use super::util::CTEQueryBuilder;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use serde_json::Value as JsonValue;
+use errors::{Error, Result};
+use models;
 use num_cpus;
-use uuid::Uuid;
-use std::i64;
-use super::util::CTEQueryBuilder;
+use postgres;
 use postgres::types::ToSql;
-use super::schema;
+use r2d2::{Pool, PooledConnection};
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use serde_json::Value as JsonValue;
 use std::cmp::min;
+use std::i64;
+use std::mem;
 use util::generate_uuid_v1;
+use uuid::Uuid;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
@@ -30,10 +30,7 @@ impl PostgresDatastore {
     /// * `pool_size` - The maximum number of connections to maintain to
     ///   postgres. If `None`, it defaults to twice the number of CPUs.
     /// * `connetion_string` - The postgres database connection string.
-    pub fn new(
-        pool_size: Option<u32>,
-        connection_string: String,
-    ) -> Result<PostgresDatastore> {
+    pub fn new(pool_size: Option<u32>, connection_string: String) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => min(num_cpus::get() as u32, 128u32),
@@ -44,9 +41,7 @@ impl PostgresDatastore {
             .max_size(unwrapped_pool_size)
             .build(manager)?;
 
-        Ok(PostgresDatastore {
-            pool: pool,
-        })
+        Ok(PostgresDatastore { pool: pool })
     }
 
     /// Creates a new postgres-backed datastore.
@@ -81,9 +76,7 @@ pub struct PostgresTransaction {
 }
 
 impl PostgresTransaction {
-    fn new(
-        conn: PooledConnection<PostgresConnectionManager>,
-    ) -> Result<Self> {
+    fn new(conn: PooledConnection<PostgresConnectionManager>) -> Result<Self> {
         let conn = Box::new(conn);
 
         let trans: postgres::transaction::Transaction<'static> = unsafe {
@@ -106,8 +99,7 @@ impl PostgresTransaction {
                 ref limit,
             } => match start_id {
                 &Some(start_id) => {
-                    let query_template =
-                        "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
+                    let query_template = "SELECT id, type FROM %t WHERE id > %p ORDER BY id LIMIT %p";
                     let params: Vec<Box<ToSql>> = vec![Box::new(start_id), Box::new(*limit as i64)];
                     sql_query_builder.push(query_template, "vertices", params);
                 }
@@ -254,8 +246,7 @@ impl Transaction for PostgresTransaction {
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) =
-            sql_query_builder.into_query_payload("SELECT id, type FROM %t", vec![]);
+        let (query, params) = sql_query_builder.into_query_payload("SELECT id, type FROM %t", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
 
         let results = self.trans.query(&query[..], &params_refs[..])?;
@@ -349,8 +340,8 @@ impl Transaction for PostgresTransaction {
     fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.edge_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder
-            .into_query_payload("DELETE FROM edges WHERE id IN (SELECT id FROM %t)", vec![]);
+        let (query, params) =
+            sql_query_builder.into_query_payload("DELETE FROM edges WHERE id IN (SELECT id FROM %t)", vec![]);
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         self.trans.execute(&query[..], &params_refs[..])?;
         Ok(())
@@ -421,14 +412,13 @@ impl Transaction for PostgresTransaction {
         Ok(())
     }
 
-    fn get_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        name: &str,
-    ) -> Result<Vec<models::VertexMetadata>> {
+    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);
-        let (query, params) = sql_query_builder.into_query_payload("SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p", vec![Box::new(name.to_string())]);
+        let (query, params) = sql_query_builder.into_query_payload(
+            "SELECT owner_id, value FROM vertex_metadata WHERE owner_id IN (SELECT id FROM %t) AND name=%p",
+            vec![Box::new(name.to_string())],
+        );
         let params_refs: Vec<&ToSql> = params.iter().map(|x| &**x).collect();
         let results = self.trans.query(&query[..], &params_refs[..])?;
         let mut metadata = Vec::new();

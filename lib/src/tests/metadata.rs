@@ -1,7 +1,7 @@
 use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery};
+use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
-use serde_json::Value as JsonValue;
 
 pub fn should_handle_global_metadata<D, T>(datastore: &mut D)
 where
@@ -48,9 +48,7 @@ where
     let v = Vertex::new(t);
     trans.create_vertex(&v).unwrap();
     let name = format!("vertex-metadata-{}", generate_random_secret(8));
-    let q = VertexQuery::Vertices {
-        ids: vec![v.id],
-    };
+    let q = VertexQuery::Vertices { ids: vec![v.id] };
 
     // Check to make sure there's no initial value
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
@@ -110,9 +108,7 @@ where
     let v = Vertex::new(Type::new("foo".to_string()).unwrap());
     trans.create_vertex(&v).unwrap();
 
-    let q = VertexQuery::Vertices {
-        ids: vec![v.id],
-    };
+    let q = VertexQuery::Vertices { ids: vec![v.id] };
     trans.delete_vertex_metadata(&q, "foo").unwrap();
 }
 

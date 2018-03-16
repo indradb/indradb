@@ -77,7 +77,9 @@ where
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let q = EdgeQuery::Edges { keys: vec![key.clone()] };
+        let q = EdgeQuery::Edges {
+            keys: vec![key.clone()],
+        };
         trans.get_edges(&q).unwrap();
     });
 }

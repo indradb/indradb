@@ -1,16 +1,16 @@
+use super::util::*;
+use common::ProxyTransaction;
+use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
+use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
 use iron::status;
-use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
-use common::ProxyTransaction;
-use serde_json::value::Value as JsonValue;
-use serde_json;
-use serde::ser::Serialize;
-use uuid::Uuid;
-use script;
-use super::util::*;
 use iron::typemap::TypeMap;
-use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
+use script;
+use serde::ser::Serialize;
+use serde_json;
+use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
+use uuid::Uuid;
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -116,18 +116,12 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
     Ok(to_response(status::Ok, &jsonable_res))
 }
 
-fn create_vertex(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let v = get_json_obj_value::<Vertex>(item, "vertex")?;
     execute_item(trans.create_vertex(&v))
 }
 
-fn get_vertices(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
     execute_item(trans.get_vertices(&q))
 }
@@ -140,41 +134,26 @@ fn delete_vertices(
     execute_item(trans.delete_vertices(&q))
 }
 
-fn get_vertex_count(
-    trans: &ProxyTransaction,
-    _: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn get_vertex_count(trans: &ProxyTransaction, _: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     execute_item(trans.get_vertex_count())
 }
 
-fn create_edge(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn create_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let key = get_json_obj_value::<EdgeKey>(item, "key")?;
     execute_item(trans.create_edge(&key))
 }
 
-fn get_edges(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn get_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     execute_item(trans.get_edges(&q))
 }
 
-fn delete_edges(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn delete_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
     execute_item(trans.delete_edges(&q))
 }
 
-fn get_edge_count(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
+fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_json_obj_value::<Uuid>(item, "id")?;
     let type_filter = get_json_obj_value::<Option<Type>>(item, "type_filter")?;
     let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
@@ -263,8 +242,7 @@ fn delete_edge_metadata(
 }
 
 fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-    let value =
-        result.map_err(|err| create_iron_error(status::InternalServerError, format!("{}", err)))?;
+    let value = result.map_err(|err| create_iron_error(status::InternalServerError, format!("{}", err)))?;
 
     Ok(serde_json::to_value(value).map_err(|err| {
         create_iron_error(

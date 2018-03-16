@@ -1,15 +1,13 @@
+use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
+              MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
+              Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+use serde_json::Value as JsonValue;
 /// This module exposes a proxy datastore and transaction that in turn call
 /// actual datastore/transaction implementations. Ideally this would not be
 /// necessary, and we'd rely on something like trait objects to get the job
 /// done. However, rust is not flexible enough (yet) to support that.
-
 use std::env;
-use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error,
-              MemoryDatastore, MemoryTransaction, PostgresDatastore, PostgresTransaction,
-              RocksdbDatastore, RocksdbTransaction, Transaction, Type, Vertex, VertexMetadata,
-              VertexQuery};
 use uuid::Uuid;
-use serde_json::Value as JsonValue;
 
 #[derive(Debug)]
 pub enum ProxyDatastore {
@@ -85,12 +83,7 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_edges, q)
     }
 
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        type_filter: Option<&Type>,
-        direction: EdgeDirection,
-    ) -> Result<u64, Error> {
+    fn get_edge_count(&self, id: Uuid, type_filter: Option<&Type>, direction: EdgeDirection) -> Result<u64, Error> {
         proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 
@@ -106,20 +99,11 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, delete_global_metadata, key)
     }
 
-    fn get_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        key: &str,
-    ) -> Result<Vec<VertexMetadata>, Error> {
+    fn get_vertex_metadata(&self, q: &VertexQuery, key: &str) -> Result<Vec<VertexMetadata>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }
 
-    fn set_vertex_metadata(
-        &self,
-        q: &VertexQuery,
-        key: &str,
-        value: &JsonValue,
-    ) -> Result<(), Error> {
+    fn set_vertex_metadata(&self, q: &VertexQuery, key: &str, value: &JsonValue) -> Result<(), Error> {
         proxy_transaction!(self, set_vertex_metadata, q, key, value)
     }
 
@@ -156,8 +140,7 @@ pub fn datastore() -> ProxyDatastore {
     if connection_string.starts_with("rocksdb://") {
         let path = &connection_string[10..connection_string.len()];
 
-        let max_open_files_str =
-            env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
+        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
         let max_open_files = max_open_files_str.parse::<i32>().expect(
             "Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
              i32",

@@ -7,12 +7,7 @@ fn get_from_table_name(root_table_name: &str, table_number: usize) -> String {
     }
 }
 
-fn format_query(
-    template: &str,
-    from_table_name: &str,
-    cur_params_length: usize,
-    param_number: usize,
-) -> String {
+fn format_query(template: &str, from_table_name: &str, cur_params_length: usize, param_number: usize) -> String {
     // Turn the query template into an actual query.
     // TODO: This could be made much more efficient.
     let mut query = template.replace("%t", from_table_name);
@@ -53,11 +48,7 @@ impl CTEQueryBuilder {
         self.params.extend(params);
     }
 
-    pub fn into_query_payload(
-        self,
-        query_template: &str,
-        params: Vec<Box<ToSql>>,
-    ) -> (String, Vec<Box<ToSql>>) {
+    pub fn into_query_payload(self, query_template: &str, params: Vec<Box<ToSql>>) -> (String, Vec<Box<ToSql>>) {
         if self.queries.is_empty() {
             panic!("No queries");
         }

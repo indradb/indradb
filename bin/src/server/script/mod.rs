@@ -4,10 +4,9 @@ mod converters;
 mod globals;
 mod mapreduce;
 
+pub use self::mapreduce::{bounded, execute_mapreduce, ResponseReceiver, ResponseSender, Update};
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
-
-pub use self::mapreduce::{bounded, execute_mapreduce, ResponseReceiver, ResponseSender, Update};
 
 /// Runs a script.
 ///
@@ -24,12 +23,12 @@ pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, 
 
 #[cfg(test)]
 mod tests {
-    use std::io::prelude::*;
-    use std::fs::File;
-    use regex::Regex;
-    use serde_json::Value as JsonValue;
     use super::execute;
+    use regex::Regex;
     use serde_json;
+    use serde_json::Value as JsonValue;
+    use std::fs::File;
+    use std::io::prelude::*;
     use std::path::Path;
 
     lazy_static! {

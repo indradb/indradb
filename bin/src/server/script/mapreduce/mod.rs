@@ -3,17 +3,16 @@ mod master;
 mod response_chan;
 mod worker;
 
-pub use self::response_chan::{bounded, ResponseReceiver, ResponseSender, Update};
-pub use self::master::Master;
-
-use std::thread::{sleep, spawn};
-use statics;
-use uuid::Uuid;
 use self::counter::Counter;
+pub use self::master::Master;
+pub use self::response_chan::{bounded, ResponseReceiver, ResponseSender, Update};
+use indradb::{Datastore, Transaction};
 use indradb::VertexQuery;
 use serde_json::Value as JsonValue;
+use statics;
+use std::thread::{sleep, spawn};
 use std::time::Duration;
-use indradb::{Datastore, Transaction};
+use uuid::Uuid;
 
 lazy_static! {
     static ref REPORT_TIME: Duration = Duration::from_secs(10);
@@ -113,16 +112,16 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
 
 #[cfg(test)]
 mod tests {
-    use std::io::prelude::*;
-    use std::fs::File;
     use super::execute_mapreduce;
-    use std::path::Path;
-    use indradb::Type;
-    use statics;
-    use script;
-    use indradb::{Vertex, Datastore, Transaction};
     use super::response_chan::Update;
+    use indradb::{Datastore, Transaction, Vertex};
+    use indradb::Type;
+    use script;
     use serde_json::Value as JsonValue;
+    use statics;
+    use std::fs::File;
+    use std::io::prelude::*;
+    use std::path::Path;
 
     /// Ensures there's at least one vertex to process
     fn add_seed() {
