@@ -1,7 +1,7 @@
 use errors::Result;
-use std::vec::Vec;
-use serde_json::value::Value as JsonValue;
 use models;
+use serde_json::value::Value as JsonValue;
+use std::vec::Vec;
 use uuid::Uuid;
 
 /// Specifies a datastore implementation.
@@ -107,11 +107,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_vertex_metadata(
-        &self,
-        q: &models::VertexQuery,
-        name: &str,
-    ) -> Result<Vec<models::VertexMetadata>>;
+    fn get_vertex_metadata(&self, q: &models::VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>>;
 
     /// Sets a vertex metadata value.
     ///
@@ -119,12 +115,7 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_vertex_metadata(
-        &self,
-        q: &models::VertexQuery,
-        name: &str,
-        value: &JsonValue,
-    ) -> Result<()>;
+    fn set_vertex_metadata(&self, q: &models::VertexQuery, name: &str, value: &JsonValue) -> Result<()>;
 
     /// Deletes a vertex metadata value.
     ///
@@ -138,11 +129,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
-    fn get_edge_metadata(
-        &self,
-        q: &models::EdgeQuery,
-        name: &str,
-    ) -> Result<Vec<models::EdgeMetadata>>;
+    fn get_edge_metadata(&self, q: &models::EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>>;
 
     /// Sets an edge metadata value.
     ///
@@ -150,8 +137,7 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The metadata name.
     /// * `value` - The metadata value.
-    fn set_edge_metadata(&self, q: &models::EdgeQuery, name: &str, value: &JsonValue)
-        -> Result<()>;
+    fn set_edge_metadata(&self, q: &models::EdgeQuery, name: &str, value: &JsonValue) -> Result<()>;
 
     /// Deletes an edge metadata value.
     ///

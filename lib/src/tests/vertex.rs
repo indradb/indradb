@@ -1,9 +1,9 @@
 use super::super::{Datastore, Transaction, VertexQuery};
 use super::util::{create_edge_from, create_edges};
-use uuid::Uuid;
 use models;
-use std::u32;
 use std::collections::HashSet;
+use std::u32;
+use uuid::Uuid;
 
 pub fn should_get_all_vertices<D, T>(datastore: &mut D)
 where

@@ -1,7 +1,7 @@
 use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
+use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
-use serde_json::Value as JsonValue;
 
 pub fn should_handle_global_metadata<D, T>(datastore: &mut D)
 where

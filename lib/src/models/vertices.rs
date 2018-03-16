@@ -1,5 +1,5 @@
-use uuid::Uuid;
 use super::types::Type;
+use uuid::Uuid;
 
 /// A vertex.
 ///

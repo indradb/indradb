@@ -1,10 +1,10 @@
-use rlua::{Error as LuaError, Function, Table};
-use serde_json::value::Value as JsonValue;
-use indradb::Vertex;
 use crossbeam_channel::{bounded, Receiver, Sender};
-use std::thread::{spawn, JoinHandle};
+use indradb::Vertex;
+use rlua::{Error as LuaError, Function, Table};
 use script::context;
 use script::converters;
+use serde_json::value::Value as JsonValue;
+use std::thread::{spawn, JoinHandle};
 
 #[derive(Debug)]
 pub enum WorkerError {
@@ -62,8 +62,7 @@ impl Worker {
             let table: Table = try_or_send!(
                 l.exec(&contents, Some(&path)),
                 |err| WorkerError::Setup {
-                    description: "Error occurred trying to get a table from the mapreduce script"
-                        .to_string(),
+                    description: "Error occurred trying to get a table from the mapreduce script".to_string(),
                     cause: err,
                 },
                 error_sender
@@ -72,9 +71,7 @@ impl Worker {
             let mapper: Function = try_or_send!(
                 table.get("map"),
                 |err| WorkerError::Setup {
-                    description:
-                        "Error occurred trying to get the `map` function from the returned table"
-                            .to_string(),
+                    description: "Error occurred trying to get the `map` function from the returned table".to_string(),
                     cause: err,
                 },
                 error_sender
@@ -83,9 +80,8 @@ impl Worker {
             let reducer: Function = try_or_send!(
                 table.get("reduce"),
                 |err| WorkerError::Setup {
-                    description:
-                        "Error occurred trying to get the `reduce` function from the returned table"
-                            .to_string(),
+                    description: "Error occurred trying to get the `reduce` function from the returned table"
+                        .to_string(),
                     cause: err,
                 },
                 error_sender

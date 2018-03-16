@@ -1,8 +1,8 @@
-use iron::prelude::*;
+use super::util::*;
 use iron::middleware::AfterMiddleware;
+use iron::prelude::*;
 use iron::status;
 use router::NoRoute;
-use super::util::*;
 
 /// Error middleware
 ///

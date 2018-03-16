@@ -1,6 +1,6 @@
-use uuid::Uuid;
 use super::edges::EdgeKey;
 use serde_json::Value as JsonValue;
+use uuid::Uuid;
 
 /// Represents vertex metadata.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
