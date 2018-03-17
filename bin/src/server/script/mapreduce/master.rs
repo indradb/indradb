@@ -153,7 +153,6 @@ mod tests {
     use std::fs::File;
     use std::io::prelude::*;
     use std::path::Path;
-    use uuid::Uuid;
 
     fn run(insert_count: u64, expected_finish_count: u64, expected_result: JsonValue) {
         let file_path_str = "test_scripts/mapreduce/count.lua";
