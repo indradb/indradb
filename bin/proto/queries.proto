@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+import "models.proto";
+
+message VertexQuery {
+    oneof query {
+        AllVertexQuery all = 1;
+        VerticesVertexQuery vertices = 2;
+        PipeVertexQuery pipe = 3;
+    }
+}
+
+message AllVertexQuery {
+    string start_id = 1;
+    uint32 limit = 2;
+}
+
+message VerticesVertexQuery {
+    repeated string ids = 1;
+}
+
+message PipeVertexQuery {
+    EdgeQuery query = 1;
+    string converter = 2;
+    uint32 limit = 3;
+}
+
+message EdgeQuery {
+    oneof query {
+        EdgesEdgeQuery edges = 1;
+        PipeEdgeQuery pipe = 2;
+    }
+}
+
+message EdgesEdgeQuery {
+    repeated EdgeKey keys = 1;
+}
+
+message PipeEdgeQuery {
+    VertexQuery query = 1;
+    string converter = 2;
+    string type_filter = 3;
+    uint64 high_filter = 4;
+    uint64 low_filter = 5;
+    uint32 limit = 6;
+}

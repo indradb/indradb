@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+message Vertex {
+    string id = 1;
+    string type = 2;
+}
+
+message Vertices {
+    repeated Vertex vertices = 1;
+}
+
+message Edge {
+    EdgeKey key = 1;
+    uint32 created_datetime = 2;
+}
+
+message Edges {
+    repeated Edge edges = 1;
+}
+
+message EdgeKey {
+    string outbound_id = 1;
+    string type = 2;
+    string inbound_id = 3;
+}
+
+message VertexMetadata {
+    string id = 1;
+    string value = 2;
+}
+
+message VertexMetadatas {
+    repeated VertexMetadata metadata = 1;
+}
+
+message EdgeMetadata {
+    EdgeKey key = 1;
+    string value = 2;
+}
+
+message EdgeMetadatas {
+    repeated EdgeMetadata metadata = 1;
+}

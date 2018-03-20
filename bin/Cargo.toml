@@ -25,17 +25,18 @@ name = "common"
 path = "src/common/lib.rs"
 
 [dependencies]
+error-chain = "~0.11.0"
 serde = "^1.0.27"
 serde_json = "^1.0.9"
 serde_derive = "^1.0.27"
 libc = "0.2.26"
 rand = "~0.4.2"
 regex = "~0.2.5"
-clap = "^2.29.4"
+clap = "2.29.4"
 chan-signal = "0.3.1"
 grpcio = "0.2.1"
 protobuf = "1.4.4"
-futures = "^0.1.15"
+futures = "0.1.18"
 chrono = { version = "0.4.0", features = ["serde"] }
 uuid = { version = "0.5.1", features = ["serde", "v4"] }
 

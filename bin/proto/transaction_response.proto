@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+import "models.proto";
+
+message TransactionResponse {
+    oneof response {
+        CreateVertexResponse create_vertex = 1;
+        GetVerticesResponse get_vertices = 2;
+        DeleteVerticesResponse delete_vertices = 3;
+        GetVertexCountResponse get_vertex_count = 4;
+        CreateEdgeResponse create_edge = 5;
+        GetEdgesResponse get_edges = 6;
+        DeleteEdgesResponse delete_edges = 7;
+        GetEdgeCountResponse get_edge_count = 8;
+        GetGlobalMetadataResponse get_global_metadata = 9;
+        SetGlobalMetadataResponse set_global_metadata = 10;
+        DeleteGlobalMetadataResponse delete_global_metadata = 11;
+        GetVertexMetadataResponse get_vertex_metadata = 12;
+        SetVertexMetadataResponse set_vertex_metadata = 13;
+        DeleteVertexMetadataResponse delete_vertex_metadata = 14;
+        GetEdgeMetadataResponse get_edge_metadata = 15;
+        SetEdgeMetadataResponse set_edge_metadata = 16;
+        DeleteEdgeMetadataResponse delete_edge_metadata = 17;
+    }
+}
+
+message CreateVertexResponse {
+    string error = 1;
+}
+
+message GetVerticesResponse {
+    oneof response {
+        Vertices vertices = 1;
+        string error = 2;
+    }
+}
+
+message DeleteVerticesResponse {
+    string error = 1;
+}
+
+message GetVertexCountResponse {
+    oneof response {
+        uint64 count = 1;
+        string error = 2;
+    }
+}
+
+message CreateEdgeResponse {
+    oneof response {
+        bool created = 1;
+        string error = 2;
+    }
+}
+
+message GetEdgesResponse {
+    oneof response {
+        Edges edges = 1;
+        string error = 2;
+    }
+}
+
+message DeleteEdgesResponse {
+    string error = 1;
+}
+
+message GetEdgeCountResponse {
+    oneof response {
+        uint64 count = 1;
+        string error = 2;
+    }
+}
+
+message GetGlobalMetadataResponse {
+    oneof response {
+        string metadata = 1;
+        string error = 2;
+    }
+}
+
+message SetGlobalMetadataResponse {
+    string error = 1;
+}
+
+message DeleteGlobalMetadataResponse {
+    string error = 1;
+}
+
+message GetVertexMetadataResponse {
+    oneof response {
+        VertexMetadatas metadata = 1;
+        string error = 2;
+    }
+}
+
+message SetVertexMetadataResponse {
+    string error = 1;
+}
+
+message DeleteVertexMetadataResponse {
+    string error = 1;
+}
+
+message GetEdgeMetadataResponse {
+    oneof response {
+        VertexMetadatas metadata = 1;
+        string error = 2;
+    }
+}
+
+message SetEdgeMetadataResponse {
+    string error = 1;
+}
+
+message DeleteEdgeMetadataResponse {
+    string error = 1;
+}

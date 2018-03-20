@@ -4,6 +4,8 @@ extern crate chan_signal;
 extern crate chrono;
 extern crate common;
 extern crate core;
+#[macro_use]
+extern crate error_chain;
 extern crate grpcio;
 extern crate indradb;
 extern crate libc;
@@ -15,8 +17,13 @@ extern crate uuid;
 extern crate protobuf;
 extern crate futures;
 
-mod grpc;
+mod converters;
+mod models;
+mod queries;
 mod service;
+mod service_grpc;
+mod transaction_request;
+mod transaction_response;
 
 use std::sync::Arc;
 use futures::future::Future;
@@ -24,7 +31,7 @@ use futures::future::Future;
 fn main() {
     let env = Arc::new(grpcio::Environment::new(4));
     let instance = service::IndraDbService::new();
-    let service = grpc::create_indra_db(instance);
+    let service = service_grpc::create_indra_db(instance);
     let mut server = grpcio::ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", 27615)
@@ -37,6 +44,7 @@ fn main() {
         println!("listening on {}:{}", host, port);
     }
     
-    let _ = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
+    let signal = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
+    signal.recv().unwrap();
     let _ = server.shutdown().wait();
 }
