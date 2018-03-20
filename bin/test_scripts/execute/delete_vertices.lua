@@ -1,5 +1,6 @@
 local trans = transaction();
-local id = trans:create_vertex("foo");
-trans:delete_vertices(VertexQuery.vertices({id}));
-local vertices = trans:get_vertices(VertexQuery.vertices({id}));
+local v = vertex("foo");
+trans:create_vertex(v);
+trans:delete_vertices(VertexQuery.vertices({v.id}));
+local vertices = trans:get_vertices(VertexQuery.vertices({v.id}));
 assert(#vertices == 0);

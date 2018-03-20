@@ -11,7 +11,6 @@ use std::i32;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
-use util::UuidGenerator;
 use util::next_uuid;
 use uuid::Uuid;
 
@@ -51,7 +50,6 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 #[derive(Debug)]
 pub struct RocksdbDatastore {
     db: Arc<DB>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbDatastore {
@@ -61,10 +59,7 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
-    ///   difficult to guess UUIDs at the detriment of a more index-optimized
-    ///   (and thus faster) variant.
-    pub fn new(path: &str, max_open_files: Option<i32>, secure_uuids: bool) -> Result<RocksdbDatastore> {
+    pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
         let opts = get_options(max_open_files);
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
@@ -80,10 +75,7 @@ impl RocksdbDatastore {
             }
         };
 
-        Ok(RocksdbDatastore {
-            db: Arc::new(db),
-            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
-        })
+        Ok(RocksdbDatastore { db: Arc::new(db) })
     }
 
     /// Runs a repair operation on the rocksdb database.
@@ -101,7 +93,7 @@ impl RocksdbDatastore {
 
 impl Datastore<RocksdbTransaction> for RocksdbDatastore {
     fn transaction(&self) -> Result<RocksdbTransaction> {
-        RocksdbTransaction::new(self.db.clone(), self.uuid_generator.clone())
+        RocksdbTransaction::new(self.db.clone())
     }
 }
 
@@ -109,19 +101,15 @@ impl Datastore<RocksdbTransaction> for RocksdbDatastore {
 #[derive(Debug)]
 pub struct RocksdbTransaction {
     db: Arc<DB>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Result<Self> {
-        Ok(RocksdbTransaction {
-            db: db,
-            uuid_generator: uuid_generator,
-        })
+    fn new(db: Arc<DB>) -> Result<Self> {
+        Ok(RocksdbTransaction { db: db })
     }
 
     fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
 
         match q {
             &VertexQuery::All { start_id, limit } => {
@@ -327,7 +315,7 @@ impl RocksdbTransaction {
         &self,
         iterator: Box<Iterator<Item = Result<Uuid>>>,
     ) -> Box<Iterator<Item = VertexItem>> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
 
         let mapped = iterator.map(move |item| {
             let id = item?;
@@ -344,8 +332,15 @@ impl RocksdbTransaction {
 }
 
 impl Transaction for RocksdbTransaction {
-    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
-        VertexManager::new(self.db.clone(), self.uuid_generator.clone()).create(t)
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+        let vertex_manager = VertexManager::new(self.db.clone());
+
+        if vertex_manager.exists(vertex.id)? {
+            Ok(false)
+        } else {
+            vertex_manager.create(vertex)?;
+            Ok(true)
+        }
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
@@ -353,7 +348,7 @@ impl Transaction for RocksdbTransaction {
 
         let mapped = iterator.map(move |item| {
             let (id, t) = item?;
-            let vertex = models::Vertex::new(id, t);
+            let vertex = models::Vertex::with_id(id, t);
             Ok(vertex)
         });
 
@@ -362,7 +357,7 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
         let iterator = self.vertex_query_to_iterator(q)?;
-        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in iterator {
@@ -375,14 +370,14 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_vertex_count(&self) -> Result<u64> {
-        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
         let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
         Ok(iterator.count() as u64)
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone(), self.uuid_generator.clone()).exists(key.inbound_id)? {
+        if !VertexManager::new(self.db.clone()).exists(key.inbound_id)? {
             return Ok(false);
         }
 
@@ -414,7 +409,7 @@ impl Transaction for RocksdbTransaction {
 
     fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone(), self.uuid_generator.clone());
+        let vertex_manager = VertexManager::new(self.db.clone());
         let iterator = self.edge_query_to_iterator(q)?;
         let mut batch = WriteBatch::default();
 

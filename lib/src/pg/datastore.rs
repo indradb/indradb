@@ -14,15 +14,13 @@ use serde_json::Value as JsonValue;
 use std::cmp::min;
 use std::i64;
 use std::mem;
-use std::sync::Arc;
-use util::UuidGenerator;
+use util::generate_uuid_v1;
 use uuid::Uuid;
 
 /// A datastore that is backed by a postgres database.
 #[derive(Clone, Debug)]
 pub struct PostgresDatastore {
     pool: Pool<PostgresConnectionManager>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresDatastore {
@@ -32,10 +30,7 @@ impl PostgresDatastore {
     /// * `pool_size` - The maximum number of connections to maintain to
     ///   postgres. If `None`, it defaults to twice the number of CPUs.
     /// * `connetion_string` - The postgres database connection string.
-    /// * `secure_uuids` - If true, UUIDv4 will be used, which will result in
-    ///   difficult to guess UUIDs at the detriment of a more index-optimized
-    ///   (and thus faster) variant.
-    pub fn new(pool_size: Option<u32>, connection_string: String, secure_uuids: bool) -> Result<PostgresDatastore> {
+    pub fn new(pool_size: Option<u32>, connection_string: String) -> Result<PostgresDatastore> {
         let unwrapped_pool_size: u32 = match pool_size {
             Some(val) => val,
             None => min(num_cpus::get() as u32, 128u32),
@@ -46,10 +41,7 @@ impl PostgresDatastore {
             .max_size(unwrapped_pool_size)
             .build(manager)?;
 
-        Ok(PostgresDatastore {
-            pool: pool,
-            uuid_generator: Arc::new(UuidGenerator::new(secure_uuids)),
-        })
+        Ok(PostgresDatastore { pool: pool })
     }
 
     /// Creates a new postgres-backed datastore.
@@ -71,7 +63,7 @@ impl PostgresDatastore {
 impl Datastore<PostgresTransaction> for PostgresDatastore {
     fn transaction(&self) -> Result<PostgresTransaction> {
         let conn = self.pool.get()?;
-        let trans = PostgresTransaction::new(conn, self.uuid_generator.clone())?;
+        let trans = PostgresTransaction::new(conn)?;
         Ok(trans)
     }
 }
@@ -81,11 +73,10 @@ impl Datastore<PostgresTransaction> for PostgresDatastore {
 pub struct PostgresTransaction {
     trans: postgres::transaction::Transaction<'static>,
     conn: Box<PooledConnection<PostgresConnectionManager>>,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl PostgresTransaction {
-    fn new(conn: PooledConnection<PostgresConnectionManager>, uuid_generator: Arc<UuidGenerator>) -> Result<Self> {
+    fn new(conn: PooledConnection<PostgresConnectionManager>) -> Result<Self> {
         let conn = Box::new(conn);
 
         let trans: postgres::transaction::Transaction<'static> = unsafe {
@@ -98,7 +89,6 @@ impl PostgresTransaction {
         Ok(PostgresTransaction {
             conn: conn,
             trans: trans,
-            uuid_generator: uuid_generator,
         })
     }
 
@@ -234,13 +224,23 @@ impl PostgresTransaction {
 }
 
 impl Transaction for PostgresTransaction {
-    fn create_vertex(&self, t: &models::Type) -> Result<Uuid> {
-        let id = self.uuid_generator.next();
-        self.trans.execute(
+    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+        // Because this command could fail, we need to set a savepoint to roll
+        // back to, rather than spoiling the entire transaction
+        let trans = self.trans.savepoint("create_vertex")?;
+
+        let result = self.trans.execute(
             "INSERT INTO vertices (id, type) VALUES ($1, $2)",
-            &[&id, &t.0],
-        )?;
-        Ok(id)
+            &[&vertex.id, &vertex.t.0],
+        );
+
+        if result.is_err() {
+            trans.set_rollback();
+            Ok(false)
+        } else {
+            trans.set_commit();
+            Ok(true)
+        }
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
@@ -255,7 +255,7 @@ impl Transaction for PostgresTransaction {
         for row in &results {
             let id: Uuid = row.get(0);
             let t_str: String = row.get(1);
-            let v = models::Vertex::new(id, models::Type::new(t_str).unwrap());
+            let v = models::Vertex::with_id(id, models::Type::new(t_str).unwrap());
             vertices.push(v);
         }
 
@@ -286,7 +286,7 @@ impl Transaction for PostgresTransaction {
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
-        let id = self.uuid_generator.next();
+        let id = generate_uuid_v1();
 
         // Because this command could fail, we need to set a savepoint to roll
         // back to, rather than spoiling the entire transaction

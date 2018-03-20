@@ -137,10 +137,10 @@ impl BatchTransaction {
 }
 
 impl Transaction for BatchTransaction {
-    fn create_vertex(&self, t: &Type) -> Result<Uuid, Error> {
+    fn create_vertex(&self, v: &Vertex) -> Result<bool, Error> {
         self.request(&json!({
             "action": "create_vertex",
-            "type": t.0
+            "vertex": v
         }))
     }
 
