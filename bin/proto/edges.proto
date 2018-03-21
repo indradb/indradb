@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message Edge {
+    EdgeKey key = 1;
+    uint32 created_datetime = 2;
+}
+
+message Edges {
+    repeated Edge edges = 1;
+}
+
+message EdgeKey {
+    string outbound_id = 1;
+    string type = 2;
+    string inbound_id = 3;
+}

@@ -18,7 +18,7 @@
 #![allow(unused_imports)]
 #![allow(unused_results)]
 
-const METHOD_INDRA_DB_TRANSACTION: ::grpcio::Method<super::transaction_request::TransactionRequest, super::transaction_response::TransactionResponse> = ::grpcio::Method {
+const METHOD_INDRA_DB_TRANSACTION: ::grpcio::Method<super::request::TransactionRequest, super::response::TransactionResponse> = ::grpcio::Method {
     ty: ::grpcio::MethodType::Duplex,
     name: "/IndraDB/Transaction",
     req_mar: ::grpcio::Marshaller { ser: ::grpcio::pb_ser, de: ::grpcio::pb_de },
@@ -36,11 +36,11 @@ impl IndraDbClient {
         }
     }
 
-    pub fn transaction_opt(&self, opt: ::grpcio::CallOption) -> ::grpcio::Result<(::grpcio::ClientDuplexSender<super::transaction_request::TransactionRequest>, ::grpcio::ClientDuplexReceiver<super::transaction_response::TransactionResponse>)> {
+    pub fn transaction_opt(&self, opt: ::grpcio::CallOption) -> ::grpcio::Result<(::grpcio::ClientDuplexSender<super::request::TransactionRequest>, ::grpcio::ClientDuplexReceiver<super::response::TransactionResponse>)> {
         self.client.duplex_streaming(&METHOD_INDRA_DB_TRANSACTION, opt)
     }
 
-    pub fn transaction(&self) -> ::grpcio::Result<(::grpcio::ClientDuplexSender<super::transaction_request::TransactionRequest>, ::grpcio::ClientDuplexReceiver<super::transaction_response::TransactionResponse>)> {
+    pub fn transaction(&self) -> ::grpcio::Result<(::grpcio::ClientDuplexSender<super::request::TransactionRequest>, ::grpcio::ClientDuplexReceiver<super::response::TransactionResponse>)> {
         self.transaction_opt(::grpcio::CallOption::default())
     }
     pub fn spawn<F>(&self, f: F) where F: ::futures::Future<Item = (), Error = ()> + Send + 'static {
@@ -49,7 +49,7 @@ impl IndraDbClient {
 }
 
 pub trait IndraDb {
-    fn transaction(&self, ctx: ::grpcio::RpcContext, stream: ::grpcio::RequestStream<super::transaction_request::TransactionRequest>, sink: ::grpcio::DuplexSink<super::transaction_response::TransactionResponse>);
+    fn transaction(&self, ctx: ::grpcio::RpcContext, stream: ::grpcio::RequestStream<super::request::TransactionRequest>, sink: ::grpcio::DuplexSink<super::response::TransactionResponse>);
 }
 
 pub fn create_indra_db<S: IndraDb + Send + Clone + 'static>(s: S) -> ::grpcio::Service {

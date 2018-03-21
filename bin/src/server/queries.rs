@@ -1360,7 +1360,7 @@ impl ::protobuf::reflect::ProtobufValue for EdgeQuery {
 #[derive(PartialEq,Clone,Default)]
 pub struct EdgesEdgeQuery {
     // message fields
-    pub keys: ::protobuf::RepeatedField<super::models::EdgeKey>,
+    pub keys: ::protobuf::RepeatedField<super::edges::EdgeKey>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -1391,29 +1391,29 @@ impl EdgesEdgeQuery {
     }
 
     // Param is passed by value, moved
-    pub fn set_keys(&mut self, v: ::protobuf::RepeatedField<super::models::EdgeKey>) {
+    pub fn set_keys(&mut self, v: ::protobuf::RepeatedField<super::edges::EdgeKey>) {
         self.keys = v;
     }
 
     // Mutable pointer to the field.
-    pub fn mut_keys(&mut self) -> &mut ::protobuf::RepeatedField<super::models::EdgeKey> {
+    pub fn mut_keys(&mut self) -> &mut ::protobuf::RepeatedField<super::edges::EdgeKey> {
         &mut self.keys
     }
 
     // Take field
-    pub fn take_keys(&mut self) -> ::protobuf::RepeatedField<super::models::EdgeKey> {
+    pub fn take_keys(&mut self) -> ::protobuf::RepeatedField<super::edges::EdgeKey> {
         ::std::mem::replace(&mut self.keys, ::protobuf::RepeatedField::new())
     }
 
-    pub fn get_keys(&self) -> &[super::models::EdgeKey] {
+    pub fn get_keys(&self) -> &[super::edges::EdgeKey] {
         &self.keys
     }
 
-    fn get_keys_for_reflect(&self) -> &::protobuf::RepeatedField<super::models::EdgeKey> {
+    fn get_keys_for_reflect(&self) -> &::protobuf::RepeatedField<super::edges::EdgeKey> {
         &self.keys
     }
 
-    fn mut_keys_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<super::models::EdgeKey> {
+    fn mut_keys_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<super::edges::EdgeKey> {
         &mut self.keys
     }
 }
@@ -1506,7 +1506,7 @@ impl ::protobuf::MessageStatic for EdgesEdgeQuery {
         unsafe {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
-                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<super::models::EdgeKey>>(
+                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<super::edges::EdgeKey>>(
                     "keys",
                     EdgesEdgeQuery::get_keys_for_reflect,
                     EdgesEdgeQuery::mut_keys_for_reflect,
@@ -1961,7 +1961,7 @@ impl ::protobuf::reflect::ProtobufValue for PipeEdgeQuery {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\rqueries.proto\x1a\x0cmodels.proto\"\x97\x01\n\x0bVertexQuery\x12#\n\
+    \n\rqueries.proto\x1a\x0bedges.proto\"\x97\x01\n\x0bVertexQuery\x12#\n\
     \x03all\x18\x01\x20\x01(\x0b2\x0f.AllVertexQueryH\0R\x03all\x122\n\x08ve\
     rtices\x18\x02\x20\x01(\x0b2\x14.VerticesVertexQueryH\0R\x08vertices\x12\
     &\n\x04pipe\x18\x03\x20\x01(\x0b2\x10.PipeVertexQueryH\0R\x04pipeB\x07\n\
@@ -1980,7 +1980,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x1f\n\x0bhigh_filter\x18\x04\x20\x01(\x04R\nhighFilter\x12\x1d\n\nlow_f\
     ilter\x18\x05\x20\x01(\x04R\tlowFilter\x12\x14\n\x05limit\x18\x06\x20\
     \x01(\rR\x05limitJ\x9c\x0b\n\x06\x12\x04\0\0-\x01\n\x08\n\x01\x0c\x12\
-    \x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x15\n\n\n\x02\x04\0\x12\x04\
+    \x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x14\n\n\n\x02\x04\0\x12\x04\
     \x04\0\n\x01\n\n\n\x03\x04\0\x01\x12\x03\x04\x08\x13\n\x0c\n\x04\x04\0\
     \x08\0\x12\x04\x05\x04\t\x05\n\x0c\n\x05\x04\0\x08\0\x01\x12\x03\x05\n\
     \x0f\n\x0b\n\x04\x04\0\x02\0\x12\x03\x06\x08\x1f\n\x0c\n\x05\x04\0\x02\0\

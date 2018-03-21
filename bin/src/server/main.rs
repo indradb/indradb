@@ -18,12 +18,15 @@ extern crate protobuf;
 extern crate futures;
 
 mod converters;
-mod models;
+mod edges;
+mod errors;
+mod metadata;
 mod queries;
+mod request;
+mod response;
 mod service;
 mod service_grpc;
-mod transaction_request;
-mod transaction_response;
+mod vertices;
 
 use std::sync::Arc;
 use futures::future::Future;

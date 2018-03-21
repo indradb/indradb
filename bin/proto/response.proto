@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "vertices.proto";
+import "edges.proto";
+import "metadata.proto";
+
+message TransactionResponse {
+    oneof response {
+        bool ok = 1;
+        Vertices vertices = 2;
+        uint64 count = 3;
+        Edges edges = 4;
+        VertexMetadatas vertex_metadatas = 5;
+        EdgeMetadatas edge_metadatas = 6;
+        string error = 7;
+    }
+}
