@@ -31,6 +31,14 @@ pub trait Transaction {
     /// * `vertex`: The vertex to create.
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool>;
 
+    /// Creates a new vertex with just a type specification. As opposed to
+    /// `create_vertex`, this is used when you do not want to manually specify
+    /// the vertex's UUID.
+    ///
+    /// # Arguments
+    /// * `type`: The type of the vertex to create.
+    fn create_vertex_from_type(&self, type: &models::Type) -> Result<Uuid>;
+
     /// Gets a range of vertices specified by a query.
     ///
     /// # Arguments
