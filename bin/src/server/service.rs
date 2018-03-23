@@ -9,11 +9,12 @@ use converters::ReverseFrom;
 use indradb::{Datastore, Transaction};
 use errors::{Result, Error};
 use futures::{Future, Sink, Stream};
+use std::error::Error as StdError;
 
-fn build_response(trans: &Transaction, request: request::TransactionRequest) -> Result<response::TransactionResponse> {
+fn build_response(trans: &Transaction, request: &request::TransactionRequest) -> Result<(response::TransactionResponse, grpcio::WriteFlags)> {
     let response = if request.has_create_vertex() {
         let request = request.get_create_vertex();
-        let vertex = indradb::Vertex::reverse_from(request.take_vertex())?;
+        let vertex = indradb::Vertex::reverse_from(request.get_vertex().clone())?;
         let result = trans.create_vertex(&vertex)?;
         let mut response = response::TransactionResponse::new();
         response.set_ok(true);
@@ -70,7 +71,13 @@ fn build_response(trans: &Transaction, request: request::TransactionRequest) -> 
         panic!("Unexpected request: {:?}", request);
     };
 
-    Ok(response)
+    Ok((response, grpcio::WriteFlags::default()))
+}
+
+fn build_error_response<E: StdError>(err: &E) -> (response::TransactionResponse, grpcio::WriteFlags) {
+    let mut response = response::TransactionResponse::new();
+    response.set_error(format!("{}", err));
+    (response, grpcio::WriteFlags::default())
 }
 
 #[derive(Clone)]
@@ -85,35 +92,17 @@ impl IndraDbService {
 }
 
 impl service_grpc::IndraDb for IndraDbService {
-    fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<request::TransactionRequest>, sink: grpcio::DuplexSink<response::TransactionResponse>) {
+    fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<request::TransactionRequest>, mut sink: grpcio::DuplexSink<response::TransactionResponse>) {
         let datastore = self.datastore.clone();
+        let trans = datastore.transaction().unwrap();
 
-        let trans = match datastore.transaction() {
-            Ok(trans) => trans,
-            Err(err) => {
-                eprintln!("Error setting up transaction: {}", err);
-                return;
-            }
-        };
+        for result in stream.wait() {
+            let response = match result {
+                Ok(request) => build_response(&trans, &request).unwrap_or_else(|err| build_error_response(&err)),
+                Err(err) => build_error_response(&err)
+            };
 
-        let responses = stream
-            .map(|request| {
-                let response = match build_response(&trans, request) {
-                    Ok(response) => response,
-                    Err(err) => {
-                        let mut response = response::TransactionResponse::new();
-                        response.set_error(format!("{}", err));
-                        response
-                    }
-                };
-
-                (response, grpcio::WriteFlags::default())
-            });
-
-        let f = sink.send_all(responses)
-            .map(|_| {})
-            .map_err(|err| eprintln!("Error sending response: {}", err));
-
-        ctx.spawn(f)
+            sink = sink.send(response).wait().unwrap();
+        }
     }
 }
