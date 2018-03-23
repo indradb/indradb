@@ -159,7 +159,7 @@ impl ProxyTransaction {
 
 impl UserData for ProxyTransaction {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        proxy_fn!(methods, "create_vertex", api::create_vertex);
+        proxy_fn!(methods, "create_vertex_from_type", api::create_vertex_from_type);
         proxy_fn!(methods, "get_vertices", api::get_vertices);
         proxy_fn!(methods, "delete_vertices", api::delete_vertices);
         proxy_fn!(methods, "get_vertex_count", api::get_vertex_count);

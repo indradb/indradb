@@ -6,9 +6,8 @@ use common::ProxyTransaction;
 use indradb::{Error, Transaction};
 use serde_json::Value as JsonValue;
 
-pub fn create_vertex(trans: &ProxyTransaction, v: converters::Vertex) -> Result<(), Error> {
-    trans.create_vertex(&v.0)?;
-    Ok(())
+pub fn create_vertex_from_type(trans: &ProxyTransaction, t: converters::Type) -> Result<converters::Uuid, Error> {
+    Ok(converters::Uuid::new(trans.create_vertex_from_type(t.0)?))
 }
 
 pub fn get_vertices(trans: &ProxyTransaction, q: converters::VertexQuery) -> Result<Vec<converters::Vertex>, Error> {

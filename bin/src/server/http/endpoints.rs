@@ -69,6 +69,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 
             let result: Result<JsonValue, IronError> = match &action[..] {
                 "create_vertex" => create_vertex(&trans, &obj),
+                "create_vertex_from_type" => create_vertex_from_type(&trans, &obj),
                 "get_vertices" => get_vertices(&trans, &obj),
                 "delete_vertices" => delete_vertices(&trans, &obj),
                 "get_vertex_count" => get_vertex_count(&trans, &obj),
@@ -117,15 +118,13 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let t = get_optional_json_obj_value::<Type>(item, "type")?;
-
-    let v = if let Some(t) = t {
-        Vertex::new(t)
-    } else {
-        get_json_obj_value::<Vertex>(item, "vertex")?
-    };
-
+    let v = get_json_obj_value::<Vertex>(item, "vertex")?;
     execute_item(trans.create_vertex(&v))
+}
+
+fn create_vertex_from_type(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
+    let t = get_json_obj_value::<Type>(item, "type")?;
+    execute_item(trans.create_vertex_from_type(t))
 }
 
 fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
