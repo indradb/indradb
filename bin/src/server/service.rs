@@ -11,6 +11,18 @@ use errors::{Result, Error};
 use futures::{Future, Sink, Stream};
 use std::error::Error as StdError;
 
+macro_rules! send_sink {
+    ($sink:ident, $response:expr) => (
+        match $sink.send($response).wait() {
+            Ok(value) => value,
+            Err(err) => {
+                eprintln!("Could not send response: {}", err);
+                return;
+            }
+        }
+    )
+}
+
 fn build_response(trans: &Transaction, request: &request::TransactionRequest) -> Result<(response::TransactionResponse, grpcio::WriteFlags)> {
     let response = if request.has_create_vertex() {
         let request = request.get_create_vertex();
@@ -94,15 +106,20 @@ impl IndraDbService {
 impl service_grpc::IndraDb for IndraDbService {
     fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<request::TransactionRequest>, mut sink: grpcio::DuplexSink<response::TransactionResponse>) {
         let datastore = self.datastore.clone();
-        let trans = datastore.transaction().unwrap();
+
+        let trans = match datastore.transaction() {
+            Ok(trans) => trans,
+            Err(err) => {
+                sink = send_sink!(sink, build_error_response(&err));
+                return;
+            }
+        };
 
         for result in stream.wait() {
-            let response = match result {
+            sink = send_sink!(sink, match result {
                 Ok(request) => build_response(&trans, &request).unwrap_or_else(|err| build_error_response(&err)),
                 Err(err) => build_error_response(&err)
-            };
-
-            sink = sink.send(response).wait().unwrap();
+            });
         }
     }
 }
