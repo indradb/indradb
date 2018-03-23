@@ -1,13 +1,12 @@
 local trans = transaction();
-local v = vertex("foo");
-trans:create_vertex(v);
-local q = VertexQuery.vertices({v.id});
+local id = trans:create_vertex_from_type("foo");
+local q = VertexQuery.vertices({id});
 
 trans:set_vertex_metadata(q, "script-test-vertex", {foo={true, false}});
 
 local val = trans:get_vertex_metadata(q, "script-test-vertex");
 assert(#val == 1);
-assert(val[1].id == v.id);
+assert(val[1].id == id);
 assert(val[1].value.foo[1] == true);
 assert(val[1].value.foo[2] == false);
 

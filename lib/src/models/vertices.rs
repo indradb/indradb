@@ -29,17 +29,6 @@ impl Vertex {
         Self::with_id(generate_uuid_v1(), t)
     }
 
-    /// Creates a new vertex with an ID generated via UUIDv4. These vertex IDs
-    /// are not trivially guessable and consequently more secure, but likely
-    /// index worse depending on the datastore.
-    ///
-    /// # Arguments
-    ///
-    /// * `t` - The type of the vertex.
-    pub fn new_secure(t: Type) -> Self {
-        Self::with_id(Uuid::new_v4(), t)
-    }
-
     /// Creates a new vertex with a specified id.
     ///
     /// # Arguments

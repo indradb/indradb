@@ -85,7 +85,6 @@ mod tests {
     }
 
     test_script!(get_vertices);
-    test_script!(create_vertex_bad_type);
     test_script!(create_vertex);
     test_script!(delete_edges);
     test_script!(delete_vertices);
