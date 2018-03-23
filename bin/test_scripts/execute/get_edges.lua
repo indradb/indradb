@@ -1,16 +1,18 @@
 local trans = transaction();
-local outbound_id = trans:create_vertex("foo");
-local inbound_id = trans:create_vertex("bar");
-trans:create_edge(EdgeKey.new(outbound_id, "baz", inbound_id));
+local outbound = vertex("foo");
+trans:create_vertex(outbound);
+local inbound = vertex("foo");
+trans:create_vertex(inbound);
+trans:create_edge(EdgeKey.new(outbound.id, "baz", inbound.id));
 
-local edges = trans:get_edges(VertexQuery.vertices({outbound_id}):outbound_edges("baz", nil, nil, 10));
+local edges = trans:get_edges(VertexQuery.vertices({outbound.id}):outbound_edges("baz", nil, nil, 10));
 assert(#edges == 1);
-assert(edges[1].key.outbound_id == outbound_id);
+assert(edges[1].key.outbound_id == outbound.id);
 assert(edges[1].key.type == "baz");
-assert(edges[1].key.inbound_id == inbound_id);
+assert(edges[1].key.inbound_id == inbound.id);
 
-local edges = trans:get_edges(VertexQuery.vertices({outbound_id}):outbound_edges(nil, nil, nil, 10));
+local edges = trans:get_edges(VertexQuery.vertices({outbound.id}):outbound_edges(nil, nil, nil, 10));
 assert(#edges == 1);
-assert(edges[1].key.outbound_id == outbound_id);
+assert(edges[1].key.outbound_id == outbound.id);
 assert(edges[1].key.type == "baz");
-assert(edges[1].key.inbound_id == inbound_id);
+assert(edges[1].key.inbound_id == inbound.id);

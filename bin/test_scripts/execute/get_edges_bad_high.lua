@@ -1,6 +1,7 @@
 local trans = transaction();
-local id = trans:create_vertex("foo");
-local q = VertexQuery.vertices({id}):outbound_edges("purchased", "bar", 10, 10);
+local v = vertex("foo");
+trans:create_vertex(v);
+local q = VertexQuery.vertices({v.id}):outbound_edges("purchased", "bar", 10, 10);
 
 function test_get_edge_range_bad_high()
     trans:get_edges(q);

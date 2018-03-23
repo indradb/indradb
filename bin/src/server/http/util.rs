@@ -70,6 +70,27 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
     })
 }
 
+/// Gets an optional JSON object value.
+///
+/// # Errors
+/// Returns an `IronError` if the value has an unexpected type.
+pub fn get_optional_json_obj_value<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<T>, IronError>
+where
+    for<'a> T: Deserialize<'a>,
+{
+    if let Some(obj) = json.get(name) {
+        if obj.is_null() {
+            Ok(None)
+        } else {
+            let val = serde_json::from_value::<T>(obj.clone())
+                .map_err(|_| create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))?;
+            Ok(Some(val))
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 /// Gets a JSON object value.
 ///
 /// # Errors

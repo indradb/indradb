@@ -23,7 +23,7 @@ fn get_options() -> (String, i32) {
 
 full_test_impl!({
     let (path, max_open_files) = get_options();
-    RocksdbDatastore::new(&path[..], Some(max_open_files), false).unwrap()
+    RocksdbDatastore::new(&path[..], Some(max_open_files)).unwrap()
 });
 
 #[test]

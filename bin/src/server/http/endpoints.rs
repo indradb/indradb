@@ -1,6 +1,6 @@
 use super::util::*;
 use common::ProxyTransaction;
-use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, VertexQuery};
+use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
 use iron::status;
@@ -117,8 +117,15 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let t = get_json_obj_value::<Type>(item, "type")?;
-    execute_item(trans.create_vertex(&t))
+    let t = get_optional_json_obj_value::<Type>(item, "type")?;
+
+    let v = if let Some(t) = t {
+        Vertex::new(t)
+    } else {
+        get_json_obj_value::<Vertex>(item, "vertex")?
+    };
+
+    execute_item(trans.create_vertex(&v))
 }
 
 fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
@@ -155,7 +162,7 @@ fn delete_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonVal
 
 fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
     let id = get_json_obj_value::<Uuid>(item, "id")?;
-    let type_filter = get_json_obj_value::<Option<Type>>(item, "type_filter")?;
+    let type_filter = get_optional_json_obj_value::<Type>(item, "type_filter")?;
     let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
     execute_item(trans.get_edge_count(id, type_filter.as_ref(), direction))
 }

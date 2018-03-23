@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
+use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery};
 use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
@@ -45,11 +45,10 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let t = Type::new("test_edge_type".to_string()).unwrap();
-    let owner_id = trans.create_vertex(&t).unwrap();
+    let v = Vertex::new(t);
+    trans.create_vertex(&v).unwrap();
     let name = format!("vertex-metadata-{}", generate_random_secret(8));
-    let q = VertexQuery::Vertices {
-        ids: vec![owner_id],
-    };
+    let q = VertexQuery::Vertices { ids: vec![v.id] };
 
     // Check to make sure there's no initial value
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
@@ -61,7 +60,7 @@ where
         .unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, owner_id);
+    assert_eq!(result[0].id, v.id);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
@@ -70,7 +69,7 @@ where
         .unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, owner_id);
+    assert_eq!(result[0].id, v.id);
     assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
@@ -106,12 +105,10 @@ where
     };
     trans.delete_vertex_metadata(&q, "foo").unwrap();
 
-    let vertex_id = trans
-        .create_vertex(&Type::new("foo".to_string()).unwrap())
-        .unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![vertex_id],
-    };
+    let v = Vertex::new(Type::new("foo".to_string()).unwrap());
+    trans.create_vertex(&v).unwrap();
+
+    let q = VertexQuery::Vertices { ids: vec![v.id] };
     trans.delete_vertex_metadata(&q, "foo").unwrap();
 }
 
@@ -122,10 +119,12 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = Type::new("test_edge_type".to_string()).unwrap();
-    let outbound_id = trans.create_vertex(&vertex_t).unwrap();
-    let inbound_id = trans.create_vertex(&vertex_t).unwrap();
+    let outbound_v = Vertex::new(vertex_t.clone());
+    let inbound_v = Vertex::new(vertex_t.clone());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
     let edge_t = Type::new("test_edge_type".to_string()).unwrap();
-    let key = EdgeKey::new(outbound_id, edge_t.clone(), inbound_id);
+    let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
     let q = EdgeQuery::Edges {
         keys: vec![key.clone()],
     };
@@ -200,16 +199,15 @@ where
     };
     trans.delete_edge_metadata(&q, "bar").unwrap();
 
-    let outbound_id = trans
-        .create_vertex(&Type::new("foo".to_string()).unwrap())
-        .unwrap();
-    let inbound_id = trans
-        .create_vertex(&Type::new("bar".to_string()).unwrap())
-        .unwrap();
+    let outbound_v = Vertex::new(Type::new("foo".to_string()).unwrap());
+    let inbound_v = Vertex::new(Type::new("foo".to_string()).unwrap());
+    trans.create_vertex(&outbound_v).unwrap();
+    trans.create_vertex(&inbound_v).unwrap();
+
     let key = EdgeKey::new(
-        outbound_id,
+        outbound_v.id,
         Type::new("baz".to_string()).unwrap(),
-        inbound_id,
+        inbound_v.id,
     );
     trans.create_edge(&key).unwrap();
     trans

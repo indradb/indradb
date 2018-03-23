@@ -1,10 +1,12 @@
 local trans = transaction();
-local outbound_id = trans:create_vertex("foo");
-local inbound_id = trans:create_vertex("bar");
-trans:create_edge(EdgeKey.new(outbound_id, "baz", inbound_id));
+local outbound = vertex("foo");
+trans:create_vertex(outbound);
+local inbound = vertex("foo");
+trans:create_vertex(inbound);
+trans:create_edge(EdgeKey.new(outbound.id, "baz", inbound.id));
 
-local count = trans:get_edge_count(outbound_id, "baz", "outbound");
+local count = trans:get_edge_count(outbound.id, "baz", "outbound");
 assert(count == 1);
 
-local count = trans:get_edge_count(outbound_id, nil, "outbound");
+local count = trans:get_edge_count(outbound.id, nil, "outbound");
 assert(count == 1);

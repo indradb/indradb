@@ -1,4 +1,4 @@
 local trans = transaction();
-local vertices = trans:get_vertices(VertexQuery.vertices({arg}));
+local vertices = trans:get_vertices(VertexQuery.vertices({arg.id}));
 assert(#vertices == 1);
-assert(vertices[1].id == arg);
+assert(vertices[1].id == arg.id);

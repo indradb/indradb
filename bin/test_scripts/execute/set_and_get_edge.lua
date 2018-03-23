@@ -1,10 +1,12 @@
 local trans = transaction();
-local outbound_id = trans:create_vertex("foo");
-local inbound_id = trans:create_vertex("bar");
-local key = EdgeKey.new(outbound_id, "baz", inbound_id);
+local outbound = vertex("foo");
+local inbound = vertex("bar");
+trans:create_vertex(outbound);
+trans:create_vertex(inbound);
+local key = EdgeKey.new(outbound.id, "baz", inbound.id);
 trans:create_edge(key);
 local e = trans:get_edges(EdgeQuery.edges({key}));
 assert(#e == 1);
-assert(e[1].key.outbound_id == outbound_id);
+assert(e[1].key.outbound_id == outbound.id);
 assert(e[1].key.type == "baz");
-assert(e[1].key.inbound_id == inbound_id);
+assert(e[1].key.inbound_id == inbound.id);

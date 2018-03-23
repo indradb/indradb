@@ -11,7 +11,6 @@ use serde_json::Value as JsonValue;
 use std::io::Cursor;
 use std::sync::Arc;
 use std::u8;
-use util::UuidGenerator;
 use uuid::Uuid;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
@@ -93,15 +92,13 @@ fn iterate_metadata_for_owner<'a>(
 pub struct VertexManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
-    uuid_generator: Arc<UuidGenerator>,
 }
 
 impl VertexManager {
-    pub fn new(db: Arc<DB>, uuid_generator: Arc<UuidGenerator>) -> Self {
+    pub fn new(db: Arc<DB>) -> Self {
         VertexManager {
             cf: db.cf_handle("vertices:v1").unwrap(),
             db: db,
-            uuid_generator: uuid_generator,
         }
     }
 
@@ -138,10 +135,9 @@ impl VertexManager {
         self.iterate(iterator)
     }
 
-    pub fn create(&self, t: &models::Type) -> Result<Uuid> {
-        let id = self.uuid_generator.next();
-        set_bincode(&self.db, self.cf, self.key(id), t)?;
-        Ok(id)
+    pub fn create(&self, vertex: &models::Vertex) -> Result<()> {
+        set_bincode(&self.db, self.cf, self.key(vertex.id), &vertex.t)?;
+        Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {

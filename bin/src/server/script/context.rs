@@ -1,5 +1,5 @@
 use super::{converters, globals};
-use indradb::Datastore;
+use indradb::{Datastore, Vertex};
 use rlua::Table;
 use rlua::prelude::*;
 use serde_json::value::Value as JsonValue;
@@ -34,6 +34,13 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
                     .transaction()
                     .map_err(|err| LuaError::RuntimeError(format!("{}", err)))?;
                 Ok(converters::ProxyTransaction::new(trans))
+            })?,
+        )?;
+        g.set(
+            "vertex",
+            l.create_function(|_, (t,): (converters::Type,)| {
+                let v = Vertex::new(t.0);
+                Ok(converters::Vertex::new(v))
             })?,
         )?;
     }
