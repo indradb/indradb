@@ -117,14 +117,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
 }
 
 fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-    let t = get_optional_json_obj_value::<Type>(item, "type")?;
-
-    let v = if let Some(t) = t {
-        Vertex::new(t)
-    } else {
-        get_json_obj_value::<Vertex>(item, "vertex")?
-    };
-
+    let v = get_json_obj_value::<Vertex>(item, "vertex")?;
     execute_item(trans.create_vertex(&v))
 }
 
