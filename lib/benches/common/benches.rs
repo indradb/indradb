@@ -1,4 +1,4 @@
-use indradb::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
+use indradb::{Vertex, Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
 use test::Bencher;
 
 pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)
@@ -24,7 +24,8 @@ where
         let trans = datastore.transaction().unwrap();
         let t = Type::new("bench_get_vertices".to_string()).unwrap();
         let v = Vertex::new(t);
-        trans.create_vertex(&v).unwrap()
+        trans.create_vertex(&v).unwrap();
+        v.id
     };
 
     b.iter(|| {
@@ -70,7 +71,7 @@ where
         let inbound_v = Vertex::new(t.clone());
         trans.create_vertex(&outbound_v).unwrap();
         trans.create_vertex(&inbound_v).unwrap();
-        let key = EdgeKey::new(outbound_id, t.clone(), inbound_id);
+        let key = EdgeKey::new(outbound_v.id, t.clone(), inbound_v.id);
         trans.create_edge(&key).unwrap();
         key
     };
@@ -97,9 +98,9 @@ where
         let inbound_v = Vertex::new(t.clone());
         trans.create_vertex(&outbound_v).unwrap();
         trans.create_vertex(&inbound_v).unwrap();
-        let key = EdgeKey::new(outbound_id, t.clone(), inbound_id);
+        let key = EdgeKey::new(outbound_v.id, t.clone(), inbound_v.id);
         trans.create_edge(&key).unwrap();
-        outbound_id
+        outbound_v.id
     };
 
     b.iter(|| {
