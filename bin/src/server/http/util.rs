@@ -22,7 +22,7 @@ use std::path::Path;
 use util::SimpleError;
 
 lazy_static! {
-    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[\w-_]+(\.lua)?$").unwrap();
+    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[a-zA-Z0-9_-]+(\.lua)?$").unwrap();
 }
 
 /// Constructs an `IronError`
