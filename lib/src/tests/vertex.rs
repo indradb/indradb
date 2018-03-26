@@ -5,6 +5,16 @@ use std::collections::HashSet;
 use std::u32;
 use uuid::Uuid;
 
+pub fn should_create_vertex_from_type<D, T>(datastore: &mut D)
+where
+    D: Datastore<T>,
+    T: Transaction
+{
+    let trans = datastore.transaction().unwrap();
+    let t = models::Type::new("test_vertex_type".to_string()).unwrap();
+    trans.create_vertex_from_type(t).unwrap();
+}
+
 pub fn should_get_all_vertices<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,

@@ -15,6 +15,7 @@ macro_rules! define_test {
 macro_rules! full_test_impl {
 	($code:expr) => (
 		// Vertex queries
+		define_test!(should_create_vertex_from_type, $code);
 		define_test!(should_get_all_vertices, $code);
 		define_test!(should_get_all_vertices_with_zero_limit, $code);
 		define_test!(should_get_all_vertices_out_of_range, $code);

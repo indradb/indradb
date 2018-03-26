@@ -144,6 +144,13 @@ impl Transaction for BatchTransaction {
         }))
     }
 
+    fn create_vertex_from_type(&self, t: Type) -> Result<Uuid, Error> {
+        self.request(&json!({
+            "action": "create_vertex_from_type",
+            "type": t
+        }))
+    }
+
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>, Error> {
         self.request(&json!({
             "action": "get_vertices",

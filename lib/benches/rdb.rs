@@ -26,7 +26,7 @@ fn datastore() -> RocksdbDatastore {
     let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
     let max_open_files = max_open_files_str.parse::<i32>().unwrap();
 
-    RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files), false).unwrap()
+    RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files)).unwrap()
 }
 
 bench_transaction_impl!(datastore());

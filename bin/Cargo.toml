@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -42,7 +42,7 @@ uuid = { version = "0.5.1", features = ["serde", "v4"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "0.12.1"
+version = "0.13.0"
 features = ["postgres-datastore", "rocksdb-datastore"]
 
 [dev-dependencies]
