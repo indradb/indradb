@@ -14,10 +14,12 @@ use serde_json;
 use uuid;
 use uuid::Uuid;
 use errors::{Result, Error};
+use chrono::TimeZone;
 use std::str::FromStr;
+use chrono::{DateTime, NaiveDateTime, Utc};
 
 pub trait ReverseFrom<T>: Sized {
-    fn reverse_from(T) -> Result<Self>;
+    fn reverse_from(&T) -> Result<Self>;
 }
 
 impl From<indradb::Vertex> for grpc_vertices::Vertex {
@@ -30,9 +32,9 @@ impl From<indradb::Vertex> for grpc_vertices::Vertex {
 }
 
 impl ReverseFrom<grpc_vertices::Vertex> for indradb::Vertex {
-    fn reverse_from(grpc_vertex: grpc_vertices::Vertex) -> Result<Self> {
+    fn reverse_from(grpc_vertex: &grpc_vertices::Vertex) -> Result<Self> {
         let id = Uuid::from_str(&grpc_vertex.id)?;
-        let t = indradb::Type::new(grpc_vertex.field_type)?;
+        let t = indradb::Type::new(grpc_vertex.field_type.clone())?;
         Ok(indradb::Vertex::with_id(id, t))
     }
 }
@@ -57,7 +59,7 @@ impl From<indradb::Edge> for grpc_edges::Edge {
 
 impl From<Vec<indradb::Edge>> for grpc_edges::Edges {
     fn from(edges: Vec<indradb::Edge>) -> Self {
-        let mapped = edges.into_iter().map(|edge| grpc_edges::Edge::from(edge)).collect();
+        let mapped = edges.into_iter().map(grpc_edges::Edge::from).collect();
         let mut edges = grpc_edges::Edges::new();
         edges.set_edges(protobuf::RepeatedField::from_vec(mapped));
         edges
@@ -86,7 +88,7 @@ impl From<indradb::VertexMetadata> for grpc_metadata::VertexMetadata {
 
 impl From<Vec<indradb::VertexMetadata>> for grpc_metadata::VertexMetadatas {
     fn from(metadata: Vec<indradb::VertexMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(|metadata| grpc_metadata::VertexMetadata::from(metadata)).collect();
+        let mapped = metadata.into_iter().map(grpc_metadata::VertexMetadata::from).collect();
         let mut metadata = grpc_metadata::VertexMetadatas::new();
         metadata.set_metadata(protobuf::RepeatedField::from_vec(mapped));
         metadata
@@ -105,9 +107,98 @@ impl From<indradb::EdgeMetadata> for grpc_metadata::EdgeMetadata {
 
 impl From<Vec<indradb::EdgeMetadata>> for grpc_metadata::EdgeMetadatas {
     fn from(metadata: Vec<indradb::EdgeMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(|metadata| grpc_metadata::EdgeMetadata::from(metadata)).collect();
+        let mapped = metadata.into_iter().map(grpc_metadata::EdgeMetadata::from).collect();
         let mut metadata = grpc_metadata::EdgeMetadatas::new();
         metadata.set_metadata(protobuf::RepeatedField::from_vec(mapped));
         metadata
     }
+}
+
+impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
+    fn reverse_from(grpc_query: &grpc_queries::VertexQuery) -> Result<Self> {
+        if grpc_query.has_all() {
+            let query = grpc_query.get_all();
+            Ok(indradb::VertexQuery::All {
+                start_id: from_defaultable(&query.get_start_id(), |s| Ok(Uuid::from_str(s)?))?,
+                limit: query.get_limit()
+            })
+        } else if grpc_query.has_vertices() {
+            let query = grpc_query.get_vertices();
+            let ids: Result<Vec<Uuid>> = query.get_ids().iter().map(|s| Ok(Uuid::from_str(s)?)).collect();
+            Ok(indradb::VertexQuery::Vertices {
+                ids: ids?
+            })
+        } else if grpc_query.has_pipe() {
+            let query = grpc_query.get_pipe();
+            Ok(indradb::VertexQuery::Pipe {
+                edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_query())?),
+                converter: indradb::EdgeDirection::reverse_from(&query.get_converter())?,
+                limit: query.get_limit()
+            })
+        } else {
+            unreachable!();
+        }
+    }
+}
+
+impl ReverseFrom<grpc_queries::EdgeQuery> for indradb::EdgeQuery {
+    fn reverse_from(grpc_query: &grpc_queries::EdgeQuery) -> Result<Self> {
+        if grpc_query.has_edges() {
+            let query = grpc_query.get_edges();
+            let ids: Result<Vec<indradb::EdgeKey>> = query.get_keys().iter().map(indradb::EdgeKey::reverse_from).collect();
+            Ok(indradb::EdgeQuery::Edges {
+                keys: ids?
+            })
+        } else if grpc_query.has_pipe() {
+            let query = grpc_query.get_pipe();
+            Ok(indradb::EdgeQuery::Pipe {
+                vertex_query: Box::new(indradb::VertexQuery::reverse_from(query.get_query())?),
+                converter: indradb::EdgeDirection::reverse_from(&query.get_converter())?,
+                type_filter: from_defaultable(&query.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?,
+                high_filter: from_optional_timestamp(query.get_high_filter()),
+                low_filter: from_optional_timestamp(query.get_low_filter()),
+                limit: query.get_limit()
+            })
+        } else {
+            unreachable!();
+        }
+    }
+}
+
+impl<'a> ReverseFrom<&'a str> for indradb::EdgeDirection {
+    fn reverse_from(s: &&'a str) -> Result<Self> {
+        match *s {
+            "outbound" => Ok(indradb::EdgeDirection::Outbound),
+            "inbound" => Ok(indradb::EdgeDirection::Inbound),
+            _ => Err("Invalid edge direction value".into())
+        }
+    }
+}
+
+impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
+    fn reverse_from(grpc_key: &grpc_edges::EdgeKey) -> Result<Self> {
+        Ok(indradb::EdgeKey::new(
+            Uuid::from_str(grpc_key.get_outbound_id())?,
+            indradb::Type::new(grpc_key.get_field_type().to_string())?,
+            Uuid::from_str(grpc_key.get_inbound_id())?
+        ))
+    }
+}
+
+pub fn from_defaultable<T, U, F>(t: &T, mapper: F) -> Result<Option<U>>
+where T: Default + PartialEq,
+      F: Fn(&T) -> Result<U> {
+    if t == &T::default() {
+        Ok(None)
+    } else {
+        let val = mapper(t)?;
+        Ok(Some(val))
+    }
+}
+
+pub fn from_optional_timestamp(t: u64) -> Option<DateTime<Utc>> {
+    from_defaultable(&t, |t| {
+        let datetime = Utc.timestamp(*t as i64, 0);
+        Ok(datetime)
+    }).unwrap()
 }

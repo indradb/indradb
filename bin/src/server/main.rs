@@ -9,12 +9,12 @@ extern crate error_chain;
 extern crate grpcio;
 extern crate indradb;
 extern crate libc;
+extern crate protobuf;
 extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate uuid;
-extern crate protobuf;
 extern crate futures;
 
 mod converters;

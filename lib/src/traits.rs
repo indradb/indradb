@@ -43,7 +43,7 @@ pub trait Transaction {
         let v = models::Vertex::new(t);
         
         if !self.create_vertex(&v)? {
-            Err(ErrorKind::UuidConflict.into())
+            Err("UUID already taken".into())
         } else {
             Ok(v.id)
         }

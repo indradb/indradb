@@ -3,6 +3,7 @@ use super::types::Type;
 use chrono::DateTime;
 use chrono::offset::Utc;
 use uuid::Uuid;
+use errors;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.

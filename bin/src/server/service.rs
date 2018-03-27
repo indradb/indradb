@@ -2,14 +2,20 @@ use common::{ProxyDatastore, datastore};
 use std::sync::Arc;
 use request;
 use response;
+use vertices;
 use service_grpc;
 use grpcio;
+use edges;
 use indradb;
+use protobuf;
+use converters;
 use converters::ReverseFrom;
-use indradb::{Datastore, Transaction};
+use uuid::Uuid;
+use indradb::{Datastore, Transaction, EdgeDirection, Vertex, VertexQuery, Edge, EdgeQuery, EdgeKey};
 use errors::{Result, Error};
 use futures::{Future, Sink, Stream};
 use std::error::Error as StdError;
+use std::str::FromStr;
 
 macro_rules! send_sink {
     ($sink:ident, $response:expr) => (
@@ -24,34 +30,53 @@ macro_rules! send_sink {
 }
 
 fn build_response(trans: &Transaction, request: &request::TransactionRequest) -> Result<(response::TransactionResponse, grpcio::WriteFlags)> {
-    let response = if request.has_create_vertex() {
+    let mut response = response::TransactionResponse::new();
+
+    if request.has_create_vertex() {
         let request = request.get_create_vertex();
-        let vertex = indradb::Vertex::reverse_from(request.get_vertex().clone())?;
-        let result = trans.create_vertex(&vertex)?;
-        let mut response = response::TransactionResponse::new();
+        let vertex = indradb::Vertex::reverse_from(request.get_vertex())?;
+        trans.create_vertex(&vertex)?;
         response.set_ok(true);
-        response
     } else if request.has_get_vertices() {
         let request = request.get_get_vertices();
-        unimplemented!();
+        let query = indradb::VertexQuery::reverse_from(request.get_query())?;
+        let mut vertices = vertices::Vertices::new();
+        let list = trans.get_vertices(&query)?.into_iter().map(vertices::Vertex::from).collect();
+        vertices.set_vertices(protobuf::RepeatedField::from_vec(list));
+        response.set_vertices(vertices);
     } else if request.has_delete_vertices() {
         let request = request.get_delete_vertices();
-        unimplemented!();
+        let query = indradb::VertexQuery::reverse_from(request.get_query())?;
+        trans.delete_vertices(&query)?;
+        response.set_ok(true);
     } else if request.has_get_vertex_count() {
         let request = request.get_get_vertex_count();
-        unimplemented!();
+        let count = trans.get_vertex_count()?;
+        response.set_count(count);
     } else if request.has_create_edge() {
         let request = request.get_create_edge();
-        unimplemented!();
+        let key = indradb::EdgeKey::reverse_from(request.get_key())?;
+        let created = trans.create_edge(&key)?;
+        response.set_ok(created);
     } else if request.has_get_edges() {
         let request = request.get_get_edges();
-        unimplemented!();
+        let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
+        let mut edges = edges::Edges::new();
+        let list = trans.get_edges(&query)?.into_iter().map(edges::Edge::from).collect();
+        edges.set_edges(protobuf::RepeatedField::from_vec(list));
+        response.set_edges(edges);
     } else if request.has_delete_edges() {
         let request = request.get_delete_edges();
-        unimplemented!();
+        let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
+        let edges = trans.delete_edges(&query)?;
+        response.set_ok(true);
     } else if request.has_get_edge_count() {
         let request = request.get_get_edge_count();
-        unimplemented!();
+        let id = Uuid::from_str(request.get_id())?;
+        let type_filter = converters::from_defaultable(&request.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?;
+        let direction = indradb::EdgeDirection::reverse_from(&request.get_direction())?;
+        let count = trans.get_edge_count(id, type_filter.as_ref(), direction)?;
+        response.set_count(count);
     } else if request.has_get_global_metadata() {
         let request = request.get_get_global_metadata();
         unimplemented!();
