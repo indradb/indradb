@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "request.proto";
-import "response.proto";
+import "proto/request.proto";
+import "proto/response.proto";
 
 service IndraDB {
     rpc Transaction (stream TransactionRequest) returns (stream TransactionResponse);

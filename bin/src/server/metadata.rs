@@ -250,7 +250,7 @@ impl ::protobuf::reflect::ProtobufValue for VertexMetadata {
 #[derive(PartialEq,Clone,Default)]
 pub struct VertexMetadatas {
     // message fields
-    pub metadata: ::protobuf::RepeatedField<VertexMetadata>,
+    pub values: ::protobuf::RepeatedField<VertexMetadata>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -274,43 +274,43 @@ impl VertexMetadatas {
         }
     }
 
-    // repeated .VertexMetadata metadata = 1;
+    // repeated .VertexMetadata values = 1;
 
-    pub fn clear_metadata(&mut self) {
-        self.metadata.clear();
+    pub fn clear_values(&mut self) {
+        self.values.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_metadata(&mut self, v: ::protobuf::RepeatedField<VertexMetadata>) {
-        self.metadata = v;
+    pub fn set_values(&mut self, v: ::protobuf::RepeatedField<VertexMetadata>) {
+        self.values = v;
     }
 
     // Mutable pointer to the field.
-    pub fn mut_metadata(&mut self) -> &mut ::protobuf::RepeatedField<VertexMetadata> {
-        &mut self.metadata
+    pub fn mut_values(&mut self) -> &mut ::protobuf::RepeatedField<VertexMetadata> {
+        &mut self.values
     }
 
     // Take field
-    pub fn take_metadata(&mut self) -> ::protobuf::RepeatedField<VertexMetadata> {
-        ::std::mem::replace(&mut self.metadata, ::protobuf::RepeatedField::new())
+    pub fn take_values(&mut self) -> ::protobuf::RepeatedField<VertexMetadata> {
+        ::std::mem::replace(&mut self.values, ::protobuf::RepeatedField::new())
     }
 
-    pub fn get_metadata(&self) -> &[VertexMetadata] {
-        &self.metadata
+    pub fn get_values(&self) -> &[VertexMetadata] {
+        &self.values
     }
 
-    fn get_metadata_for_reflect(&self) -> &::protobuf::RepeatedField<VertexMetadata> {
-        &self.metadata
+    fn get_values_for_reflect(&self) -> &::protobuf::RepeatedField<VertexMetadata> {
+        &self.values
     }
 
-    fn mut_metadata_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<VertexMetadata> {
-        &mut self.metadata
+    fn mut_values_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<VertexMetadata> {
+        &mut self.values
     }
 }
 
 impl ::protobuf::Message for VertexMetadatas {
     fn is_initialized(&self) -> bool {
-        for v in &self.metadata {
+        for v in &self.values {
             if !v.is_initialized() {
                 return false;
             }
@@ -323,7 +323,7 @@ impl ::protobuf::Message for VertexMetadatas {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.metadata)?;
+                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.values)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -337,7 +337,7 @@ impl ::protobuf::Message for VertexMetadatas {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        for value in &self.metadata {
+        for value in &self.values {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
@@ -347,7 +347,7 @@ impl ::protobuf::Message for VertexMetadatas {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        for v in &self.metadata {
+        for v in &self.values {
             os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
@@ -397,9 +397,9 @@ impl ::protobuf::MessageStatic for VertexMetadatas {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<VertexMetadata>>(
-                    "metadata",
-                    VertexMetadatas::get_metadata_for_reflect,
-                    VertexMetadatas::mut_metadata_for_reflect,
+                    "values",
+                    VertexMetadatas::get_values_for_reflect,
+                    VertexMetadatas::mut_values_for_reflect,
                 ));
                 ::protobuf::reflect::MessageDescriptor::new::<VertexMetadatas>(
                     "VertexMetadatas",
@@ -413,7 +413,7 @@ impl ::protobuf::MessageStatic for VertexMetadatas {
 
 impl ::protobuf::Clear for VertexMetadatas {
     fn clear(&mut self) {
-        self.clear_metadata();
+        self.clear_values();
         self.unknown_fields.clear();
     }
 }
@@ -674,7 +674,7 @@ impl ::protobuf::reflect::ProtobufValue for EdgeMetadata {
 #[derive(PartialEq,Clone,Default)]
 pub struct EdgeMetadatas {
     // message fields
-    pub metadata: ::protobuf::RepeatedField<EdgeMetadata>,
+    pub values: ::protobuf::RepeatedField<EdgeMetadata>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -698,43 +698,43 @@ impl EdgeMetadatas {
         }
     }
 
-    // repeated .EdgeMetadata metadata = 1;
+    // repeated .EdgeMetadata values = 1;
 
-    pub fn clear_metadata(&mut self) {
-        self.metadata.clear();
+    pub fn clear_values(&mut self) {
+        self.values.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_metadata(&mut self, v: ::protobuf::RepeatedField<EdgeMetadata>) {
-        self.metadata = v;
+    pub fn set_values(&mut self, v: ::protobuf::RepeatedField<EdgeMetadata>) {
+        self.values = v;
     }
 
     // Mutable pointer to the field.
-    pub fn mut_metadata(&mut self) -> &mut ::protobuf::RepeatedField<EdgeMetadata> {
-        &mut self.metadata
+    pub fn mut_values(&mut self) -> &mut ::protobuf::RepeatedField<EdgeMetadata> {
+        &mut self.values
     }
 
     // Take field
-    pub fn take_metadata(&mut self) -> ::protobuf::RepeatedField<EdgeMetadata> {
-        ::std::mem::replace(&mut self.metadata, ::protobuf::RepeatedField::new())
+    pub fn take_values(&mut self) -> ::protobuf::RepeatedField<EdgeMetadata> {
+        ::std::mem::replace(&mut self.values, ::protobuf::RepeatedField::new())
     }
 
-    pub fn get_metadata(&self) -> &[EdgeMetadata] {
-        &self.metadata
+    pub fn get_values(&self) -> &[EdgeMetadata] {
+        &self.values
     }
 
-    fn get_metadata_for_reflect(&self) -> &::protobuf::RepeatedField<EdgeMetadata> {
-        &self.metadata
+    fn get_values_for_reflect(&self) -> &::protobuf::RepeatedField<EdgeMetadata> {
+        &self.values
     }
 
-    fn mut_metadata_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<EdgeMetadata> {
-        &mut self.metadata
+    fn mut_values_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<EdgeMetadata> {
+        &mut self.values
     }
 }
 
 impl ::protobuf::Message for EdgeMetadatas {
     fn is_initialized(&self) -> bool {
-        for v in &self.metadata {
+        for v in &self.values {
             if !v.is_initialized() {
                 return false;
             }
@@ -747,7 +747,7 @@ impl ::protobuf::Message for EdgeMetadatas {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.metadata)?;
+                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.values)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -761,7 +761,7 @@ impl ::protobuf::Message for EdgeMetadatas {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        for value in &self.metadata {
+        for value in &self.values {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         };
@@ -771,7 +771,7 @@ impl ::protobuf::Message for EdgeMetadatas {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        for v in &self.metadata {
+        for v in &self.values {
             os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
@@ -821,9 +821,9 @@ impl ::protobuf::MessageStatic for EdgeMetadatas {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<EdgeMetadata>>(
-                    "metadata",
-                    EdgeMetadatas::get_metadata_for_reflect,
-                    EdgeMetadatas::mut_metadata_for_reflect,
+                    "values",
+                    EdgeMetadatas::get_values_for_reflect,
+                    EdgeMetadatas::mut_values_for_reflect,
                 ));
                 ::protobuf::reflect::MessageDescriptor::new::<EdgeMetadatas>(
                     "EdgeMetadatas",
@@ -837,7 +837,7 @@ impl ::protobuf::MessageStatic for EdgeMetadatas {
 
 impl ::protobuf::Clear for EdgeMetadatas {
     fn clear(&mut self) {
-        self.clear_metadata();
+        self.clear_values();
         self.unknown_fields.clear();
     }
 }
@@ -855,27 +855,27 @@ impl ::protobuf::reflect::ProtobufValue for EdgeMetadatas {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0emetadata.proto\x1a\x0bedges.proto\"6\n\x0eVertexMetadata\x12\x0e\n\
-    \x02id\x18\x01\x20\x01(\tR\x02id\x12\x14\n\x05value\x18\x02\x20\x01(\tR\
-    \x05value\">\n\x0fVertexMetadatas\x12+\n\x08metadata\x18\x01\x20\x03(\
-    \x0b2\x0f.VertexMetadataR\x08metadata\"@\n\x0cEdgeMetadata\x12\x1a\n\x03\
-    key\x18\x01\x20\x01(\x0b2\x08.EdgeKeyR\x03key\x12\x14\n\x05value\x18\x02\
-    \x20\x01(\tR\x05value\":\n\rEdgeMetadatas\x12)\n\x08metadata\x18\x01\x20\
-    \x03(\x0b2\r.EdgeMetadataR\x08metadataJ\x9f\x04\n\x06\x12\x04\0\0\x14\
-    \x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x14\
-    \n\n\n\x02\x04\0\x12\x04\x04\0\x07\x01\n\n\n\x03\x04\0\x01\x12\x03\x04\
-    \x08\x16\n\x0b\n\x04\x04\0\x02\0\x12\x03\x05\x04\x12\n\r\n\x05\x04\0\x02\
-    \0\x04\x12\x04\x05\x04\x04\x18\n\x0c\n\x05\x04\0\x02\0\x05\x12\x03\x05\
-    \x04\n\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x05\x0b\r\n\x0c\n\x05\x04\0\
-    \x02\0\x03\x12\x03\x05\x10\x11\n\x0b\n\x04\x04\0\x02\x01\x12\x03\x06\x04\
-    \x15\n\r\n\x05\x04\0\x02\x01\x04\x12\x04\x06\x04\x05\x12\n\x0c\n\x05\x04\
-    \0\x02\x01\x05\x12\x03\x06\x04\n\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\
-    \x06\x0b\x10\n\x0c\n\x05\x04\0\x02\x01\x03\x12\x03\x06\x13\x14\n\n\n\x02\
-    \x04\x01\x12\x04\t\0\x0b\x01\n\n\n\x03\x04\x01\x01\x12\x03\t\x08\x17\n\
-    \x0b\n\x04\x04\x01\x02\0\x12\x03\n\x04)\n\x0c\n\x05\x04\x01\x02\0\x04\
+    \n\x14proto/metadata.proto\x1a\x11proto/edges.proto\"6\n\x0eVertexMetada\
+    ta\x12\x0e\n\x02id\x18\x01\x20\x01(\tR\x02id\x12\x14\n\x05value\x18\x02\
+    \x20\x01(\tR\x05value\":\n\x0fVertexMetadatas\x12'\n\x06values\x18\x01\
+    \x20\x03(\x0b2\x0f.VertexMetadataR\x06values\"@\n\x0cEdgeMetadata\x12\
+    \x1a\n\x03key\x18\x01\x20\x01(\x0b2\x08.EdgeKeyR\x03key\x12\x14\n\x05val\
+    ue\x18\x02\x20\x01(\tR\x05value\"6\n\rEdgeMetadatas\x12%\n\x06values\x18\
+    \x01\x20\x03(\x0b2\r.EdgeMetadataR\x06valuesJ\x9f\x04\n\x06\x12\x04\0\0\
+    \x14\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\
+    \x1a\n\n\n\x02\x04\0\x12\x04\x04\0\x07\x01\n\n\n\x03\x04\0\x01\x12\x03\
+    \x04\x08\x16\n\x0b\n\x04\x04\0\x02\0\x12\x03\x05\x04\x12\n\r\n\x05\x04\0\
+    \x02\0\x04\x12\x04\x05\x04\x04\x18\n\x0c\n\x05\x04\0\x02\0\x05\x12\x03\
+    \x05\x04\n\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x05\x0b\r\n\x0c\n\x05\x04\
+    \0\x02\0\x03\x12\x03\x05\x10\x11\n\x0b\n\x04\x04\0\x02\x01\x12\x03\x06\
+    \x04\x15\n\r\n\x05\x04\0\x02\x01\x04\x12\x04\x06\x04\x05\x12\n\x0c\n\x05\
+    \x04\0\x02\x01\x05\x12\x03\x06\x04\n\n\x0c\n\x05\x04\0\x02\x01\x01\x12\
+    \x03\x06\x0b\x10\n\x0c\n\x05\x04\0\x02\x01\x03\x12\x03\x06\x13\x14\n\n\n\
+    \x02\x04\x01\x12\x04\t\0\x0b\x01\n\n\n\x03\x04\x01\x01\x12\x03\t\x08\x17\
+    \n\x0b\n\x04\x04\x01\x02\0\x12\x03\n\x04'\n\x0c\n\x05\x04\x01\x02\0\x04\
     \x12\x03\n\x04\x0c\n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\n\r\x1b\n\x0c\n\
-    \x05\x04\x01\x02\0\x01\x12\x03\n\x1c$\n\x0c\n\x05\x04\x01\x02\0\x03\x12\
-    \x03\n'(\n\n\n\x02\x04\x02\x12\x04\r\0\x10\x01\n\n\n\x03\x04\x02\x01\x12\
+    \x05\x04\x01\x02\0\x01\x12\x03\n\x1c\"\n\x0c\n\x05\x04\x01\x02\0\x03\x12\
+    \x03\n%&\n\n\n\x02\x04\x02\x12\x04\r\0\x10\x01\n\n\n\x03\x04\x02\x01\x12\
     \x03\r\x08\x14\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x0e\x04\x14\n\r\n\x05\
     \x04\x02\x02\0\x04\x12\x04\x0e\x04\r\x16\n\x0c\n\x05\x04\x02\x02\0\x06\
     \x12\x03\x0e\x04\x0b\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x0e\x0c\x0f\n\
@@ -885,9 +885,9 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x04\x02\x02\x01\x01\x12\x03\x0f\x0b\x10\n\x0c\n\x05\x04\x02\x02\x01\x03\
     \x12\x03\x0f\x13\x14\n\n\n\x02\x04\x03\x12\x04\x12\0\x14\x01\n\n\n\x03\
     \x04\x03\x01\x12\x03\x12\x08\x15\n\x0b\n\x04\x04\x03\x02\0\x12\x03\x13\
-    \x04'\n\x0c\n\x05\x04\x03\x02\0\x04\x12\x03\x13\x04\x0c\n\x0c\n\x05\x04\
+    \x04%\n\x0c\n\x05\x04\x03\x02\0\x04\x12\x03\x13\x04\x0c\n\x0c\n\x05\x04\
     \x03\x02\0\x06\x12\x03\x13\r\x19\n\x0c\n\x05\x04\x03\x02\0\x01\x12\x03\
-    \x13\x1a\"\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03\x13%&b\x06proto3\
+    \x13\x1a\x20\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03\x13#$b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

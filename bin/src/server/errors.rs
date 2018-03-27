@@ -1,5 +1,6 @@
 use indradb;
 use uuid;
+use serde_json;
 
 error_chain!{
     types {
@@ -13,5 +14,6 @@ error_chain!{
 
     foreign_links {
         UuidParseError(uuid::ParseError);
+        JsonError(serde_json::Error);
     }
 }

@@ -90,7 +90,7 @@ impl From<Vec<indradb::VertexMetadata>> for grpc_metadata::VertexMetadatas {
     fn from(metadata: Vec<indradb::VertexMetadata>) -> Self {
         let mapped = metadata.into_iter().map(grpc_metadata::VertexMetadata::from).collect();
         let mut metadata = grpc_metadata::VertexMetadatas::new();
-        metadata.set_metadata(protobuf::RepeatedField::from_vec(mapped));
+        metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
         metadata
     }
 }
@@ -109,7 +109,7 @@ impl From<Vec<indradb::EdgeMetadata>> for grpc_metadata::EdgeMetadatas {
     fn from(metadata: Vec<indradb::EdgeMetadata>) -> Self {
         let mapped = metadata.into_iter().map(grpc_metadata::EdgeMetadata::from).collect();
         let mut metadata = grpc_metadata::EdgeMetadatas::new();
-        metadata.set_metadata(protobuf::RepeatedField::from_vec(mapped));
+        metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
         metadata
     }
 }

@@ -1,11 +1,13 @@
 use common::{ProxyDatastore, datastore};
 use std::sync::Arc;
-use request;
-use response;
-use vertices;
+use request as grpc_request;
+use response as grpc_response;
+use vertices as grpc_vertices;
+use metadata as grpc_metadata;
 use service_grpc;
 use grpcio;
-use edges;
+use serde_json;
+use edges as grpc_edges;
 use indradb;
 use protobuf;
 use converters;
@@ -29,8 +31,8 @@ macro_rules! send_sink {
     )
 }
 
-fn build_response(trans: &Transaction, request: &request::TransactionRequest) -> Result<(response::TransactionResponse, grpcio::WriteFlags)> {
-    let mut response = response::TransactionResponse::new();
+fn build_response(trans: &Transaction, request: &grpc_request::TransactionRequest) -> Result<(grpc_response::TransactionResponse, grpcio::WriteFlags)> {
+    let mut response = grpc_response::TransactionResponse::new();
 
     if request.has_create_vertex() {
         let request = request.get_create_vertex();
@@ -40,8 +42,8 @@ fn build_response(trans: &Transaction, request: &request::TransactionRequest) ->
     } else if request.has_get_vertices() {
         let request = request.get_get_vertices();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
-        let mut vertices = vertices::Vertices::new();
-        let list = trans.get_vertices(&query)?.into_iter().map(vertices::Vertex::from).collect();
+        let mut vertices = grpc_vertices::Vertices::new();
+        let list = trans.get_vertices(&query)?.into_iter().map(grpc_vertices::Vertex::from).collect();
         vertices.set_vertices(protobuf::RepeatedField::from_vec(list));
         response.set_vertices(vertices);
     } else if request.has_delete_vertices() {
@@ -61,8 +63,8 @@ fn build_response(trans: &Transaction, request: &request::TransactionRequest) ->
     } else if request.has_get_edges() {
         let request = request.get_get_edges();
         let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
-        let mut edges = edges::Edges::new();
-        let list = trans.get_edges(&query)?.into_iter().map(edges::Edge::from).collect();
+        let mut edges = grpc_edges::Edges::new();
+        let list = trans.get_edges(&query)?.into_iter().map(grpc_edges::Edge::from).collect();
         edges.set_edges(protobuf::RepeatedField::from_vec(list));
         response.set_edges(edges);
     } else if request.has_delete_edges() {
@@ -79,7 +81,9 @@ fn build_response(trans: &Transaction, request: &request::TransactionRequest) ->
         response.set_count(count);
     } else if request.has_get_global_metadata() {
         let request = request.get_get_global_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let metadata = trans.get_global_metadata(name)?;
+        response.set_json(serde_json::to_string(&metadata)?);
     } else if request.has_set_global_metadata() {
         let request = request.get_set_global_metadata();
         unimplemented!();
@@ -88,7 +92,13 @@ fn build_response(trans: &Transaction, request: &request::TransactionRequest) ->
         unimplemented!();
     } else if request.has_get_vertex_metadata() {
         let request = request.get_get_vertex_metadata();
-        unimplemented!();
+        let query = indradb::VertexQuery::reverse_from(request.get_query())?;
+        let name = request.get_name();
+        let metadata = trans.get_vertex_metadata(&query, name)?;
+        let mut metadatas = grpc_metadata::VertexMetadatas::new();
+        let list = trans.get_vertex_metadata(&query, name)?.into_iter().map(grpc_metadata::VertexMetadata::from).collect();
+        metadatas.set_values(protobuf::RepeatedField::from_vec(list));
+        response.set_vertex_metadatas(metadatas);
     } else if request.has_set_vertex_metadata() {
         let request = request.get_set_vertex_metadata();
         unimplemented!();
@@ -111,8 +121,8 @@ fn build_response(trans: &Transaction, request: &request::TransactionRequest) ->
     Ok((response, grpcio::WriteFlags::default()))
 }
 
-fn build_error_response<E: StdError>(err: &E) -> (response::TransactionResponse, grpcio::WriteFlags) {
-    let mut response = response::TransactionResponse::new();
+fn build_error_response<E: StdError>(err: &E) -> (grpc_response::TransactionResponse, grpcio::WriteFlags) {
+    let mut response = grpc_response::TransactionResponse::new();
     response.set_error(format!("{}", err));
     (response, grpcio::WriteFlags::default())
 }
@@ -129,7 +139,7 @@ impl IndraDbService {
 }
 
 impl service_grpc::IndraDb for IndraDbService {
-    fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<request::TransactionRequest>, mut sink: grpcio::DuplexSink<response::TransactionResponse>) {
+    fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<grpc_request::TransactionRequest>, mut sink: grpcio::DuplexSink<grpc_response::TransactionResponse>) {
         let datastore = self.datastore.clone();
 
         let trans = match datastore.transaction() {

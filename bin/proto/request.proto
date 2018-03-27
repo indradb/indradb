@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "edges.proto";
-import "queries.proto";
-import "vertices.proto";
+import "proto/edges.proto";
+import "proto/queries.proto";
+import "proto/vertices.proto";
 
 message TransactionRequest {
     oneof request {
