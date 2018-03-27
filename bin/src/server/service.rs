@@ -86,10 +86,15 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         response.set_json(serde_json::to_string(&metadata)?);
     } else if request.has_set_global_metadata() {
         let request = request.get_set_global_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let value = serde_json::from_str(request.get_value())?;
+        trans.set_global_metadata(name, &value)?;
+        response.set_ok(true);
     } else if request.has_delete_global_metadata() {
         let request = request.get_delete_global_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        trans.delete_global_metadata(name)?;
+        response.set_ok(true);
     } else if request.has_get_vertex_metadata() {
         let request = request.get_get_vertex_metadata();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
@@ -101,19 +106,39 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         response.set_vertex_metadatas(metadatas);
     } else if request.has_set_vertex_metadata() {
         let request = request.get_set_vertex_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let query = indradb::VertexQuery::reverse_from(request.get_query())?;
+        let value = serde_json::from_str(request.get_value())?;
+        trans.set_vertex_metadata(&query, name, &value)?;
+        response.set_ok(true);
     } else if request.has_delete_vertex_metadata() {
         let request = request.get_delete_vertex_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let query = indradb::VertexQuery::reverse_from(request.get_query())?;
+        trans.delete_vertex_metadata(&query, name)?;
+        response.set_ok(true);
     } else if request.has_get_edge_metadata() {
         let request = request.get_get_edge_metadata();
-        unimplemented!();
+        let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
+        let name = request.get_name();
+        let metadata = trans.get_edge_metadata(&query, name)?;
+        let mut metadatas = grpc_metadata::EdgeMetadatas::new();
+        let list = trans.get_edge_metadata(&query, name)?.into_iter().map(grpc_metadata::EdgeMetadata::from).collect();
+        metadatas.set_values(protobuf::RepeatedField::from_vec(list));
+        response.set_edge_metadatas(metadatas);
     } else if request.has_set_edge_metadata() {
         let request = request.get_set_edge_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
+        let value = serde_json::from_str(request.get_value())?;
+        trans.set_edge_metadata(&query, name, &value)?;
+        response.set_ok(true);
     } else if request.has_delete_edge_metadata() {
         let request = request.get_delete_edge_metadata();
-        unimplemented!();
+        let name = request.get_name();
+        let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
+        trans.delete_edge_metadata(&query, name)?;
+        response.set_ok(true);
     } else {
         panic!("Unexpected request: {:?}", request);
     };
