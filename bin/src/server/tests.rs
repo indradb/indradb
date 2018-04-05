@@ -17,8 +17,9 @@ use futures::sink::Send;
 use std::sync::Mutex;
 
 use request::*;
+use edges::EdgeKey;
 use vertices::Vertex;
-use queries::VertexQuery;
+use queries::{EdgeQuery, VertexQuery};
 use response::TransactionResponse;
 use service_grpc::IndraDbClient;
 use converters::ReverseFrom;
@@ -178,37 +179,46 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "create_edge",
-        //     "key": e,
-        // }))
-        unimplemented!();
+        let mut inner = CreateEdgeRequest::new();
+        inner.set_key(EdgeKey::from(e.clone()));
+        let mut request = TransactionRequest::new();
+        request.set_create_edge(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(response.get_ok())
     }
 
     fn get_edges(&self, q: &indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_edges",
-        //     "query": q
-        // }))
-        unimplemented!();
+        let mut inner = GetEdgesRequest::new();
+        inner.set_query(EdgeQuery::from(q.clone()));
+        let mut request = TransactionRequest::new();
+        request.set_get_edges(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        let vertices: Result<Vec<indradb::Edge>, errors::Error> = response.get_edges().get_edges().into_iter().map(indradb::Edge::reverse_from).collect();
+        Ok(vertices.unwrap())
     }
 
     fn delete_edges(&self, q: &indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "delete_edges",
-        //     "query": q
-        // }))
-        unimplemented!();
+        let mut inner = DeleteEdgesRequest::new();
+        inner.set_query(EdgeQuery::from(q.clone()));
+        let mut request = TransactionRequest::new();
+        request.set_delete_edges(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn get_edge_count(&self, id: Uuid, type_filter: Option<&indradb::Type>, direction: indradb::EdgeDirection) -> Result<u64, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_edge_count",
-        //     "id": id,
-        //     "type_filter": type_filter,
-        //     "direction": direction
-        // }))
-        unimplemented!();
+        let mut inner = GetEdgeCountRequest::new();
+        inner.set_id(id.hyphenated().to_string());
+
+        if let Some(type_filter) = type_filter {
+            inner.set_type_filter(type_filter.0.clone());
+        }
+
+        inner.set_direction(String::from(direction));
+        let mut request = TransactionRequest::new();
+        request.set_get_edge_count(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(response.get_count())
     }
 
     fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, indradb::Error> {

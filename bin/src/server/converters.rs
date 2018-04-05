@@ -50,13 +50,18 @@ impl From<Vec<indradb::Vertex>> for grpc_vertices::Vertices {
 
 impl From<indradb::Edge> for grpc_edges::Edge {
     fn from(edge: indradb::Edge) -> Self {
-        let mut timestamp = well_known_types::Timestamp::new();
-        timestamp.set_seconds(edge.created_datetime.timestamp());
-
         let mut grpc_edge: grpc_edges::Edge = grpc_edges::Edge::new();
         grpc_edge.set_key(grpc_edges::EdgeKey::from(edge.key));
-        grpc_edge.set_created_datetime(timestamp);
+        grpc_edge.set_created_datetime(timestamp_from_datetime(&edge.created_datetime));
         grpc_edge
+    }
+}
+
+impl ReverseFrom<grpc_edges::Edge> for indradb::Edge {
+    fn reverse_from(grpc_edge: &grpc_edges::Edge) -> Result<Self> {
+        let key = indradb::EdgeKey::reverse_from(grpc_edge.get_key())?;
+        let created_datetime = datetime_from_timestamp(grpc_edge.get_created_datetime());
+        Ok(indradb::Edge::new(key, created_datetime))
     }
 }
 
@@ -76,6 +81,16 @@ impl From<indradb::EdgeKey> for grpc_edges::EdgeKey {
         grpc_key.set_field_type(key.t.0);
         grpc_key.set_inbound_id(key.inbound_id.hyphenated().to_string());
         grpc_key
+    }
+}
+
+impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
+    fn reverse_from(grpc_key: &grpc_edges::EdgeKey) -> Result<Self> {
+        Ok(indradb::EdgeKey::new(
+            Uuid::from_str(grpc_key.get_outbound_id())?,
+            indradb::Type::new(grpc_key.get_field_type().to_string())?,
+            Uuid::from_str(grpc_key.get_inbound_id())?
+        ))
     }
 }
 
@@ -150,6 +165,33 @@ impl From<indradb::VertexQuery> for grpc_queries::VertexQuery {
     }
 }
 
+impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
+    fn reverse_from(grpc_query: &grpc_queries::VertexQuery) -> Result<Self> {
+        if grpc_query.has_all() {
+            let query = grpc_query.get_all();
+            Ok(indradb::VertexQuery::All {
+                start_id: from_defaultable(&query.get_start_id(), |s| Ok(Uuid::from_str(s)?))?,
+                limit: query.get_limit()
+            })
+        } else if grpc_query.has_vertices() {
+            let query = grpc_query.get_vertices();
+            let ids: Result<Vec<Uuid>> = query.get_ids().iter().map(|s| Ok(Uuid::from_str(s)?)).collect();
+            Ok(indradb::VertexQuery::Vertices {
+                ids: ids?
+            })
+        } else if grpc_query.has_pipe() {
+            let query = grpc_query.get_pipe();
+            Ok(indradb::VertexQuery::Pipe {
+                edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_edge_query())?),
+                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
+                limit: query.get_limit()
+            })
+        } else {
+            unreachable!();
+        }
+    }
+}
+
 impl From<indradb::EdgeQuery> for grpc_queries::EdgeQuery {
     fn from(query: indradb::EdgeQuery) -> Self {
         let mut grpc_query = grpc_queries::EdgeQuery::new();
@@ -186,33 +228,6 @@ impl From<indradb::EdgeQuery> for grpc_queries::EdgeQuery {
     }
 }
 
-impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
-    fn reverse_from(grpc_query: &grpc_queries::VertexQuery) -> Result<Self> {
-        if grpc_query.has_all() {
-            let query = grpc_query.get_all();
-            Ok(indradb::VertexQuery::All {
-                start_id: from_defaultable(&query.get_start_id(), |s| Ok(Uuid::from_str(s)?))?,
-                limit: query.get_limit()
-            })
-        } else if grpc_query.has_vertices() {
-            let query = grpc_query.get_vertices();
-            let ids: Result<Vec<Uuid>> = query.get_ids().iter().map(|s| Ok(Uuid::from_str(s)?)).collect();
-            Ok(indradb::VertexQuery::Vertices {
-                ids: ids?
-            })
-        } else if grpc_query.has_pipe() {
-            let query = grpc_query.get_pipe();
-            Ok(indradb::VertexQuery::Pipe {
-                edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_edge_query())?),
-                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
-                limit: query.get_limit()
-            })
-        } else {
-            unreachable!();
-        }
-    }
-}
-
 impl ReverseFrom<grpc_queries::EdgeQuery> for indradb::EdgeQuery {
     fn reverse_from(grpc_query: &grpc_queries::EdgeQuery) -> Result<Self> {
         if grpc_query.has_edges() {
@@ -242,16 +257,6 @@ impl ReverseFrom<grpc_queries::EdgeQuery> for indradb::EdgeQuery {
         } else {
             unreachable!();
         }
-    }
-}
-
-impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
-    fn reverse_from(grpc_key: &grpc_edges::EdgeKey) -> Result<Self> {
-        Ok(indradb::EdgeKey::new(
-            Uuid::from_str(grpc_key.get_outbound_id())?,
-            indradb::Type::new(grpc_key.get_field_type().to_string())?,
-            Uuid::from_str(grpc_key.get_inbound_id())?
-        ))
     }
 }
 
