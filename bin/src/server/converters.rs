@@ -117,6 +117,75 @@ impl From<Vec<indradb::EdgeMetadata>> for grpc_metadata::EdgeMetadatas {
     }
 }
 
+impl From<indradb::VertexQuery> for grpc_queries::VertexQuery {
+    fn from(query: indradb::VertexQuery) -> Self {
+        let mut grpc_query = grpc_queries::VertexQuery::new();
+
+        match query {
+            indradb::VertexQuery::All { start_id, limit } => {
+                let mut grpc_inner_query = grpc_queries::AllVertexQuery::new();
+
+                if let Some(start_id) = start_id {
+                    grpc_inner_query.set_start_id(start_id.hyphenated().to_string());
+                }
+
+                grpc_inner_query.set_limit(limit);
+                grpc_query.set_all(grpc_inner_query);
+            },
+            indradb::VertexQuery::Vertices { ids } => {
+                let mut grpc_inner_query = grpc_queries::VerticesVertexQuery::new();
+                grpc_inner_query.set_ids(ids.iter().map(|id| id.hyphenated().to_string()).collect());
+                grpc_query.set_vertices(grpc_inner_query);
+            },
+            indradb::VertexQuery::Pipe { edge_query, converter, limit } => {
+                let mut grpc_inner_query = grpc_queries::PipeVertexQuery::new();
+                grpc_inner_query.set_edge_query(grpc_queries::EdgeQuery::from(*edge_query));
+                grpc_inner_query.set_converter(String::from(converter));
+                grpc_inner_query.set_limit(limit);
+                grpc_query.set_pipe(grpc_inner_query);
+            }
+        };
+
+        grpc_query
+    }
+}
+
+impl From<indradb::EdgeQuery> for grpc_queries::EdgeQuery {
+    fn from(query: indradb::EdgeQuery) -> Self {
+        let mut grpc_query = grpc_queries::EdgeQuery::new();
+
+        match query {
+            indradb::EdgeQuery::Edges { keys } => {
+                let mut grpc_inner_query = grpc_queries::EdgesEdgeQuery::new();
+                grpc_inner_query.set_keys(keys.into_iter().map(grpc_edges::EdgeKey::from).collect());
+                grpc_query.set_edges(grpc_inner_query);
+            },
+            indradb::EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
+                let mut grpc_inner_query = grpc_queries::PipeEdgeQuery::new();
+                grpc_inner_query.set_vertex_query(grpc_queries::VertexQuery::from(*vertex_query));
+                grpc_inner_query.set_converter(String::from(converter));
+
+                if let Some(type_filter) = type_filter {
+                    grpc_inner_query.set_type_filter(type_filter.0);
+                }
+
+                if let Some(high_filter) = high_filter {
+                    grpc_inner_query.set_high_filter(timestamp_from_datetime(&high_filter));
+                }
+
+                if let Some(low_filter) = low_filter {
+                    grpc_inner_query.set_low_filter(timestamp_from_datetime(&low_filter));
+                }
+
+                grpc_inner_query.set_limit(limit);
+                grpc_query.set_pipe(grpc_inner_query);
+            }
+        };
+
+        grpc_query
+    }
+}
+
 impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
     fn reverse_from(grpc_query: &grpc_queries::VertexQuery) -> Result<Self> {
         if grpc_query.has_all() {
@@ -134,8 +203,8 @@ impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
         } else if grpc_query.has_pipe() {
             let query = grpc_query.get_pipe();
             Ok(indradb::VertexQuery::Pipe {
-                edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_query())?),
-                converter: indradb::EdgeDirection::reverse_from(&query.get_converter())?,
+                edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_edge_query())?),
+                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
                 limit: query.get_limit()
             })
         } else {
@@ -155,25 +224,23 @@ impl ReverseFrom<grpc_queries::EdgeQuery> for indradb::EdgeQuery {
         } else if grpc_query.has_pipe() {
             let query = grpc_query.get_pipe();
             Ok(indradb::EdgeQuery::Pipe {
-                vertex_query: Box::new(indradb::VertexQuery::reverse_from(query.get_query())?),
-                converter: indradb::EdgeDirection::reverse_from(&query.get_converter())?,
+                vertex_query: Box::new(indradb::VertexQuery::reverse_from(query.get_vertex_query())?),
+                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
                 type_filter: from_defaultable(&query.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?,
-                high_filter: from_optional_timestamp(query.get_high_filter()),
-                low_filter: from_optional_timestamp(query.get_low_filter()),
+                high_filter: if query.has_high_filter() {
+                    Some(datetime_from_timestamp(query.get_low_filter()))
+                } else {
+                    None
+                },
+                low_filter: if query.has_low_filter() {
+                    Some(datetime_from_timestamp(query.get_high_filter()))
+                } else {
+                    None
+                },
                 limit: query.get_limit()
             })
         } else {
             unreachable!();
-        }
-    }
-}
-
-impl<'a> ReverseFrom<&'a str> for indradb::EdgeDirection {
-    fn reverse_from(s: &&'a str) -> Result<Self> {
-        match *s {
-            "outbound" => Ok(indradb::EdgeDirection::Outbound),
-            "inbound" => Ok(indradb::EdgeDirection::Inbound),
-            _ => Err("Invalid edge direction value".into())
         }
     }
 }
@@ -188,6 +255,17 @@ impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
     }
 }
 
+fn datetime_from_timestamp(ts: &well_known_types::Timestamp) -> DateTime<Utc> {
+    Utc.timestamp(ts.get_seconds(), ts.get_nanos() as u32)
+}
+
+fn timestamp_from_datetime(dt: &DateTime<Utc>) -> well_known_types::Timestamp {
+    let mut timestamp = well_known_types::Timestamp::new();
+    timestamp.set_seconds(dt.timestamp());
+    timestamp.set_nanos(dt.timestamp_subsec_nanos() as i32);
+    timestamp
+}
+
 pub fn from_defaultable<T, U, F>(t: &T, mapper: F) -> Result<Option<U>>
 where T: Default + PartialEq,
       F: Fn(&T) -> Result<U> {
@@ -197,11 +275,4 @@ where T: Default + PartialEq,
         let val = mapper(t)?;
         Ok(Some(val))
     }
-}
-
-pub fn from_optional_timestamp(t: u64) -> Option<DateTime<Utc>> {
-    from_defaultable(&t, |t| {
-        let datetime = Utc.timestamp(*t as i64, 0);
-        Ok(datetime)
-    }).unwrap()
 }

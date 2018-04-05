@@ -19,6 +19,25 @@ pub enum EdgeDirection {
     #[serde(rename = "inbound")] Inbound,
 }
 
+impl EdgeDirection {
+    pub fn from_str(s: &str) -> errors::ValidationResult<EdgeDirection> {
+        match s {
+            "outbound" => Ok(EdgeDirection::Outbound),
+            "inbound" => Ok(EdgeDirection::Inbound),
+            _ => Err("invalid value".into())
+        }
+    }
+}
+
+impl From<EdgeDirection> for String {
+    fn from(d: EdgeDirection) -> Self {
+        match d {
+            Outbound => "outbound".to_string(),
+            Inbound => "inbound".to_string()
+        }
+    }
+}
+
 /// A query for vertices.
 ///
 /// This is used by transactions to get, set and delete vertices and vertex

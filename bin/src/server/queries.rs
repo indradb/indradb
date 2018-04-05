@@ -785,7 +785,7 @@ impl ::protobuf::reflect::ProtobufValue for VerticesVertexQuery {
 #[derive(PartialEq,Clone,Default)]
 pub struct PipeVertexQuery {
     // message fields
-    pub query: ::protobuf::SingularPtrField<EdgeQuery>,
+    pub edge_query: ::protobuf::SingularPtrField<EdgeQuery>,
     pub converter: ::std::string::String,
     pub limit: u32,
     // special fields
@@ -811,45 +811,45 @@ impl PipeVertexQuery {
         }
     }
 
-    // .EdgeQuery query = 1;
+    // .EdgeQuery edge_query = 1;
 
-    pub fn clear_query(&mut self) {
-        self.query.clear();
+    pub fn clear_edge_query(&mut self) {
+        self.edge_query.clear();
     }
 
-    pub fn has_query(&self) -> bool {
-        self.query.is_some()
+    pub fn has_edge_query(&self) -> bool {
+        self.edge_query.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_query(&mut self, v: EdgeQuery) {
-        self.query = ::protobuf::SingularPtrField::some(v);
+    pub fn set_edge_query(&mut self, v: EdgeQuery) {
+        self.edge_query = ::protobuf::SingularPtrField::some(v);
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_query(&mut self) -> &mut EdgeQuery {
-        if self.query.is_none() {
-            self.query.set_default();
+    pub fn mut_edge_query(&mut self) -> &mut EdgeQuery {
+        if self.edge_query.is_none() {
+            self.edge_query.set_default();
         }
-        self.query.as_mut().unwrap()
+        self.edge_query.as_mut().unwrap()
     }
 
     // Take field
-    pub fn take_query(&mut self) -> EdgeQuery {
-        self.query.take().unwrap_or_else(|| EdgeQuery::new())
+    pub fn take_edge_query(&mut self) -> EdgeQuery {
+        self.edge_query.take().unwrap_or_else(|| EdgeQuery::new())
     }
 
-    pub fn get_query(&self) -> &EdgeQuery {
-        self.query.as_ref().unwrap_or_else(|| EdgeQuery::default_instance())
+    pub fn get_edge_query(&self) -> &EdgeQuery {
+        self.edge_query.as_ref().unwrap_or_else(|| EdgeQuery::default_instance())
     }
 
-    fn get_query_for_reflect(&self) -> &::protobuf::SingularPtrField<EdgeQuery> {
-        &self.query
+    fn get_edge_query_for_reflect(&self) -> &::protobuf::SingularPtrField<EdgeQuery> {
+        &self.edge_query
     }
 
-    fn mut_query_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<EdgeQuery> {
-        &mut self.query
+    fn mut_edge_query_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<EdgeQuery> {
+        &mut self.edge_query
     }
 
     // string converter = 2;
@@ -912,7 +912,7 @@ impl PipeVertexQuery {
 
 impl ::protobuf::Message for PipeVertexQuery {
     fn is_initialized(&self) -> bool {
-        for v in &self.query {
+        for v in &self.edge_query {
             if !v.is_initialized() {
                 return false;
             }
@@ -925,7 +925,7 @@ impl ::protobuf::Message for PipeVertexQuery {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.query)?;
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.edge_query)?;
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.converter)?;
@@ -949,7 +949,7 @@ impl ::protobuf::Message for PipeVertexQuery {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if let Some(ref v) = self.query.as_ref() {
+        if let Some(ref v) = self.edge_query.as_ref() {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
@@ -965,7 +965,7 @@ impl ::protobuf::Message for PipeVertexQuery {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        if let Some(ref v) = self.query.as_ref() {
+        if let Some(ref v) = self.edge_query.as_ref() {
             os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
@@ -1021,9 +1021,9 @@ impl ::protobuf::MessageStatic for PipeVertexQuery {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<EdgeQuery>>(
-                    "query",
-                    PipeVertexQuery::get_query_for_reflect,
-                    PipeVertexQuery::mut_query_for_reflect,
+                    "edge_query",
+                    PipeVertexQuery::get_edge_query_for_reflect,
+                    PipeVertexQuery::mut_edge_query_for_reflect,
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                     "converter",
@@ -1047,7 +1047,7 @@ impl ::protobuf::MessageStatic for PipeVertexQuery {
 
 impl ::protobuf::Clear for PipeVertexQuery {
     fn clear(&mut self) {
-        self.clear_query();
+        self.clear_edge_query();
         self.clear_converter();
         self.clear_limit();
         self.unknown_fields.clear();
@@ -1543,11 +1543,11 @@ impl ::protobuf::reflect::ProtobufValue for EdgesEdgeQuery {
 #[derive(PartialEq,Clone,Default)]
 pub struct PipeEdgeQuery {
     // message fields
-    pub query: ::protobuf::SingularPtrField<VertexQuery>,
+    pub vertex_query: ::protobuf::SingularPtrField<VertexQuery>,
     pub converter: ::std::string::String,
     pub type_filter: ::std::string::String,
-    pub high_filter: u64,
-    pub low_filter: u64,
+    pub high_filter: ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp>,
+    pub low_filter: ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp>,
     pub limit: u32,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
@@ -1572,45 +1572,45 @@ impl PipeEdgeQuery {
         }
     }
 
-    // .VertexQuery query = 1;
+    // .VertexQuery vertex_query = 1;
 
-    pub fn clear_query(&mut self) {
-        self.query.clear();
+    pub fn clear_vertex_query(&mut self) {
+        self.vertex_query.clear();
     }
 
-    pub fn has_query(&self) -> bool {
-        self.query.is_some()
+    pub fn has_vertex_query(&self) -> bool {
+        self.vertex_query.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_query(&mut self, v: VertexQuery) {
-        self.query = ::protobuf::SingularPtrField::some(v);
+    pub fn set_vertex_query(&mut self, v: VertexQuery) {
+        self.vertex_query = ::protobuf::SingularPtrField::some(v);
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_query(&mut self) -> &mut VertexQuery {
-        if self.query.is_none() {
-            self.query.set_default();
+    pub fn mut_vertex_query(&mut self) -> &mut VertexQuery {
+        if self.vertex_query.is_none() {
+            self.vertex_query.set_default();
         }
-        self.query.as_mut().unwrap()
+        self.vertex_query.as_mut().unwrap()
     }
 
     // Take field
-    pub fn take_query(&mut self) -> VertexQuery {
-        self.query.take().unwrap_or_else(|| VertexQuery::new())
+    pub fn take_vertex_query(&mut self) -> VertexQuery {
+        self.vertex_query.take().unwrap_or_else(|| VertexQuery::new())
     }
 
-    pub fn get_query(&self) -> &VertexQuery {
-        self.query.as_ref().unwrap_or_else(|| VertexQuery::default_instance())
+    pub fn get_vertex_query(&self) -> &VertexQuery {
+        self.vertex_query.as_ref().unwrap_or_else(|| VertexQuery::default_instance())
     }
 
-    fn get_query_for_reflect(&self) -> &::protobuf::SingularPtrField<VertexQuery> {
-        &self.query
+    fn get_vertex_query_for_reflect(&self) -> &::protobuf::SingularPtrField<VertexQuery> {
+        &self.vertex_query
     }
 
-    fn mut_query_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<VertexQuery> {
-        &mut self.query
+    fn mut_vertex_query_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<VertexQuery> {
+        &mut self.vertex_query
     }
 
     // string converter = 2;
@@ -1681,49 +1681,85 @@ impl PipeEdgeQuery {
         &mut self.type_filter
     }
 
-    // uint64 high_filter = 4;
+    // .google.protobuf.Timestamp high_filter = 4;
 
     pub fn clear_high_filter(&mut self) {
-        self.high_filter = 0;
+        self.high_filter.clear();
+    }
+
+    pub fn has_high_filter(&self) -> bool {
+        self.high_filter.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_high_filter(&mut self, v: u64) {
-        self.high_filter = v;
+    pub fn set_high_filter(&mut self, v: ::protobuf::well_known_types::Timestamp) {
+        self.high_filter = ::protobuf::SingularPtrField::some(v);
     }
 
-    pub fn get_high_filter(&self) -> u64 {
-        self.high_filter
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_high_filter(&mut self) -> &mut ::protobuf::well_known_types::Timestamp {
+        if self.high_filter.is_none() {
+            self.high_filter.set_default();
+        }
+        self.high_filter.as_mut().unwrap()
     }
 
-    fn get_high_filter_for_reflect(&self) -> &u64 {
+    // Take field
+    pub fn take_high_filter(&mut self) -> ::protobuf::well_known_types::Timestamp {
+        self.high_filter.take().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::new())
+    }
+
+    pub fn get_high_filter(&self) -> &::protobuf::well_known_types::Timestamp {
+        self.high_filter.as_ref().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::default_instance())
+    }
+
+    fn get_high_filter_for_reflect(&self) -> &::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &self.high_filter
     }
 
-    fn mut_high_filter_for_reflect(&mut self) -> &mut u64 {
+    fn mut_high_filter_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &mut self.high_filter
     }
 
-    // uint64 low_filter = 5;
+    // .google.protobuf.Timestamp low_filter = 5;
 
     pub fn clear_low_filter(&mut self) {
-        self.low_filter = 0;
+        self.low_filter.clear();
+    }
+
+    pub fn has_low_filter(&self) -> bool {
+        self.low_filter.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_low_filter(&mut self, v: u64) {
-        self.low_filter = v;
+    pub fn set_low_filter(&mut self, v: ::protobuf::well_known_types::Timestamp) {
+        self.low_filter = ::protobuf::SingularPtrField::some(v);
     }
 
-    pub fn get_low_filter(&self) -> u64 {
-        self.low_filter
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_low_filter(&mut self) -> &mut ::protobuf::well_known_types::Timestamp {
+        if self.low_filter.is_none() {
+            self.low_filter.set_default();
+        }
+        self.low_filter.as_mut().unwrap()
     }
 
-    fn get_low_filter_for_reflect(&self) -> &u64 {
+    // Take field
+    pub fn take_low_filter(&mut self) -> ::protobuf::well_known_types::Timestamp {
+        self.low_filter.take().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::new())
+    }
+
+    pub fn get_low_filter(&self) -> &::protobuf::well_known_types::Timestamp {
+        self.low_filter.as_ref().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::default_instance())
+    }
+
+    fn get_low_filter_for_reflect(&self) -> &::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &self.low_filter
     }
 
-    fn mut_low_filter_for_reflect(&mut self) -> &mut u64 {
+    fn mut_low_filter_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &mut self.low_filter
     }
 
@@ -1753,7 +1789,17 @@ impl PipeEdgeQuery {
 
 impl ::protobuf::Message for PipeEdgeQuery {
     fn is_initialized(&self) -> bool {
-        for v in &self.query {
+        for v in &self.vertex_query {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        for v in &self.high_filter {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        for v in &self.low_filter {
             if !v.is_initialized() {
                 return false;
             }
@@ -1766,7 +1812,7 @@ impl ::protobuf::Message for PipeEdgeQuery {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.query)?;
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.vertex_query)?;
                 },
                 2 => {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.converter)?;
@@ -1775,18 +1821,10 @@ impl ::protobuf::Message for PipeEdgeQuery {
                     ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.type_filter)?;
                 },
                 4 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
-                    }
-                    let tmp = is.read_uint64()?;
-                    self.high_filter = tmp;
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.high_filter)?;
                 },
                 5 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
-                    }
-                    let tmp = is.read_uint64()?;
-                    self.low_filter = tmp;
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.low_filter)?;
                 },
                 6 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
@@ -1807,7 +1845,7 @@ impl ::protobuf::Message for PipeEdgeQuery {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if let Some(ref v) = self.query.as_ref() {
+        if let Some(ref v) = self.vertex_query.as_ref() {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
@@ -1817,11 +1855,13 @@ impl ::protobuf::Message for PipeEdgeQuery {
         if !self.type_filter.is_empty() {
             my_size += ::protobuf::rt::string_size(3, &self.type_filter);
         }
-        if self.high_filter != 0 {
-            my_size += ::protobuf::rt::value_size(4, self.high_filter, ::protobuf::wire_format::WireTypeVarint);
+        if let Some(ref v) = self.high_filter.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
-        if self.low_filter != 0 {
-            my_size += ::protobuf::rt::value_size(5, self.low_filter, ::protobuf::wire_format::WireTypeVarint);
+        if let Some(ref v) = self.low_filter.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
         if self.limit != 0 {
             my_size += ::protobuf::rt::value_size(6, self.limit, ::protobuf::wire_format::WireTypeVarint);
@@ -1832,7 +1872,7 @@ impl ::protobuf::Message for PipeEdgeQuery {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
-        if let Some(ref v) = self.query.as_ref() {
+        if let Some(ref v) = self.vertex_query.as_ref() {
             os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
@@ -1843,11 +1883,15 @@ impl ::protobuf::Message for PipeEdgeQuery {
         if !self.type_filter.is_empty() {
             os.write_string(3, &self.type_filter)?;
         }
-        if self.high_filter != 0 {
-            os.write_uint64(4, self.high_filter)?;
+        if let Some(ref v) = self.high_filter.as_ref() {
+            os.write_tag(4, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
         }
-        if self.low_filter != 0 {
-            os.write_uint64(5, self.low_filter)?;
+        if let Some(ref v) = self.low_filter.as_ref() {
+            os.write_tag(5, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
         }
         if self.limit != 0 {
             os.write_uint32(6, self.limit)?;
@@ -1897,9 +1941,9 @@ impl ::protobuf::MessageStatic for PipeEdgeQuery {
             descriptor.get(|| {
                 let mut fields = ::std::vec::Vec::new();
                 fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<VertexQuery>>(
-                    "query",
-                    PipeEdgeQuery::get_query_for_reflect,
-                    PipeEdgeQuery::mut_query_for_reflect,
+                    "vertex_query",
+                    PipeEdgeQuery::get_vertex_query_for_reflect,
+                    PipeEdgeQuery::mut_vertex_query_for_reflect,
                 ));
                 fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                     "converter",
@@ -1911,12 +1955,12 @@ impl ::protobuf::MessageStatic for PipeEdgeQuery {
                     PipeEdgeQuery::get_type_filter_for_reflect,
                     PipeEdgeQuery::mut_type_filter_for_reflect,
                 ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<::protobuf::well_known_types::Timestamp>>(
                     "high_filter",
                     PipeEdgeQuery::get_high_filter_for_reflect,
                     PipeEdgeQuery::mut_high_filter_for_reflect,
                 ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint64>(
+                fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<::protobuf::well_known_types::Timestamp>>(
                     "low_filter",
                     PipeEdgeQuery::get_low_filter_for_reflect,
                     PipeEdgeQuery::mut_low_filter_for_reflect,
@@ -1938,7 +1982,7 @@ impl ::protobuf::MessageStatic for PipeEdgeQuery {
 
 impl ::protobuf::Clear for PipeEdgeQuery {
     fn clear(&mut self) {
-        self.clear_query();
+        self.clear_vertex_query();
         self.clear_converter();
         self.clear_type_filter();
         self.clear_high_filter();
@@ -1961,95 +2005,96 @@ impl ::protobuf::reflect::ProtobufValue for PipeEdgeQuery {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x13proto/queries.proto\x1a\x11proto/edges.proto\"\x97\x01\n\x0bVertex\
-    Query\x12#\n\x03all\x18\x01\x20\x01(\x0b2\x0f.AllVertexQueryH\0R\x03all\
-    \x122\n\x08vertices\x18\x02\x20\x01(\x0b2\x14.VerticesVertexQueryH\0R\
-    \x08vertices\x12&\n\x04pipe\x18\x03\x20\x01(\x0b2\x10.PipeVertexQueryH\0\
-    R\x04pipeB\x07\n\x05query\"A\n\x0eAllVertexQuery\x12\x19\n\x08start_id\
-    \x18\x01\x20\x01(\tR\x07startId\x12\x14\n\x05limit\x18\x02\x20\x01(\rR\
-    \x05limit\"'\n\x13VerticesVertexQuery\x12\x10\n\x03ids\x18\x01\x20\x03(\
-    \tR\x03ids\"g\n\x0fPipeVertexQuery\x12\x20\n\x05query\x18\x01\x20\x01(\
-    \x0b2\n.EdgeQueryR\x05query\x12\x1c\n\tconverter\x18\x02\x20\x01(\tR\tco\
-    nverter\x12\x14\n\x05limit\x18\x03\x20\x01(\rR\x05limit\"c\n\tEdgeQuery\
-    \x12'\n\x05edges\x18\x01\x20\x01(\x0b2\x0f.EdgesEdgeQueryH\0R\x05edges\
-    \x12$\n\x04pipe\x18\x02\x20\x01(\x0b2\x0e.PipeEdgeQueryH\0R\x04pipeB\x07\
-    \n\x05query\".\n\x0eEdgesEdgeQuery\x12\x1c\n\x04keys\x18\x01\x20\x03(\
-    \x0b2\x08.EdgeKeyR\x04keys\"\xc8\x01\n\rPipeEdgeQuery\x12\"\n\x05query\
-    \x18\x01\x20\x01(\x0b2\x0c.VertexQueryR\x05query\x12\x1c\n\tconverter\
-    \x18\x02\x20\x01(\tR\tconverter\x12\x1f\n\x0btype_filter\x18\x03\x20\x01\
-    (\tR\ntypeFilter\x12\x1f\n\x0bhigh_filter\x18\x04\x20\x01(\x04R\nhighFil\
-    ter\x12\x1d\n\nlow_filter\x18\x05\x20\x01(\x04R\tlowFilter\x12\x14\n\x05\
-    limit\x18\x06\x20\x01(\rR\x05limitJ\x9c\x0b\n\x06\x12\x04\0\0-\x01\n\x08\
-    \n\x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x1a\n\n\n\x02\
-    \x04\0\x12\x04\x04\0\n\x01\n\n\n\x03\x04\0\x01\x12\x03\x04\x08\x13\n\x0c\
-    \n\x04\x04\0\x08\0\x12\x04\x05\x04\t\x05\n\x0c\n\x05\x04\0\x08\0\x01\x12\
-    \x03\x05\n\x0f\n\x0b\n\x04\x04\0\x02\0\x12\x03\x06\x08\x1f\n\x0c\n\x05\
-    \x04\0\x02\0\x06\x12\x03\x06\x08\x16\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\
-    \x06\x17\x1a\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x06\x1d\x1e\n\x0b\n\x04\
-    \x04\0\x02\x01\x12\x03\x07\x08)\n\x0c\n\x05\x04\0\x02\x01\x06\x12\x03\
-    \x07\x08\x1b\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\x07\x1c$\n\x0c\n\x05\
-    \x04\0\x02\x01\x03\x12\x03\x07'(\n\x0b\n\x04\x04\0\x02\x02\x12\x03\x08\
-    \x08!\n\x0c\n\x05\x04\0\x02\x02\x06\x12\x03\x08\x08\x17\n\x0c\n\x05\x04\
-    \0\x02\x02\x01\x12\x03\x08\x18\x1c\n\x0c\n\x05\x04\0\x02\x02\x03\x12\x03\
-    \x08\x1f\x20\n\n\n\x02\x04\x01\x12\x04\x0c\0\x0f\x01\n\n\n\x03\x04\x01\
-    \x01\x12\x03\x0c\x08\x16\n\x0b\n\x04\x04\x01\x02\0\x12\x03\r\x04\x18\n\r\
-    \n\x05\x04\x01\x02\0\x04\x12\x04\r\x04\x0c\x18\n\x0c\n\x05\x04\x01\x02\0\
-    \x05\x12\x03\r\x04\n\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\r\x0b\x13\n\
-    \x0c\n\x05\x04\x01\x02\0\x03\x12\x03\r\x16\x17\n\x0b\n\x04\x04\x01\x02\
-    \x01\x12\x03\x0e\x04\x15\n\r\n\x05\x04\x01\x02\x01\x04\x12\x04\x0e\x04\r\
-    \x18\n\x0c\n\x05\x04\x01\x02\x01\x05\x12\x03\x0e\x04\n\n\x0c\n\x05\x04\
-    \x01\x02\x01\x01\x12\x03\x0e\x0b\x10\n\x0c\n\x05\x04\x01\x02\x01\x03\x12\
-    \x03\x0e\x13\x14\n\n\n\x02\x04\x02\x12\x04\x11\0\x13\x01\n\n\n\x03\x04\
-    \x02\x01\x12\x03\x11\x08\x1b\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x12\x04\
-    \x1c\n\x0c\n\x05\x04\x02\x02\0\x04\x12\x03\x12\x04\x0c\n\x0c\n\x05\x04\
-    \x02\x02\0\x05\x12\x03\x12\r\x13\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\
-    \x12\x14\x17\n\x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x12\x1a\x1b\n\n\n\x02\
-    \x04\x03\x12\x04\x15\0\x19\x01\n\n\n\x03\x04\x03\x01\x12\x03\x15\x08\x17\
-    \n\x0b\n\x04\x04\x03\x02\0\x12\x03\x16\x04\x18\n\r\n\x05\x04\x03\x02\0\
-    \x04\x12\x04\x16\x04\x15\x19\n\x0c\n\x05\x04\x03\x02\0\x06\x12\x03\x16\
-    \x04\r\n\x0c\n\x05\x04\x03\x02\0\x01\x12\x03\x16\x0e\x13\n\x0c\n\x05\x04\
-    \x03\x02\0\x03\x12\x03\x16\x16\x17\n\x0b\n\x04\x04\x03\x02\x01\x12\x03\
-    \x17\x04\x19\n\r\n\x05\x04\x03\x02\x01\x04\x12\x04\x17\x04\x16\x18\n\x0c\
-    \n\x05\x04\x03\x02\x01\x05\x12\x03\x17\x04\n\n\x0c\n\x05\x04\x03\x02\x01\
-    \x01\x12\x03\x17\x0b\x14\n\x0c\n\x05\x04\x03\x02\x01\x03\x12\x03\x17\x17\
-    \x18\n\x0b\n\x04\x04\x03\x02\x02\x12\x03\x18\x04\x15\n\r\n\x05\x04\x03\
-    \x02\x02\x04\x12\x04\x18\x04\x17\x19\n\x0c\n\x05\x04\x03\x02\x02\x05\x12\
-    \x03\x18\x04\n\n\x0c\n\x05\x04\x03\x02\x02\x01\x12\x03\x18\x0b\x10\n\x0c\
-    \n\x05\x04\x03\x02\x02\x03\x12\x03\x18\x13\x14\n\n\n\x02\x04\x04\x12\x04\
-    \x1b\0\x20\x01\n\n\n\x03\x04\x04\x01\x12\x03\x1b\x08\x11\n\x0c\n\x04\x04\
-    \x04\x08\0\x12\x04\x1c\x04\x1f\x05\n\x0c\n\x05\x04\x04\x08\0\x01\x12\x03\
-    \x1c\n\x0f\n\x0b\n\x04\x04\x04\x02\0\x12\x03\x1d\x08!\n\x0c\n\x05\x04\
-    \x04\x02\0\x06\x12\x03\x1d\x08\x16\n\x0c\n\x05\x04\x04\x02\0\x01\x12\x03\
-    \x1d\x17\x1c\n\x0c\n\x05\x04\x04\x02\0\x03\x12\x03\x1d\x1f\x20\n\x0b\n\
-    \x04\x04\x04\x02\x01\x12\x03\x1e\x08\x1f\n\x0c\n\x05\x04\x04\x02\x01\x06\
-    \x12\x03\x1e\x08\x15\n\x0c\n\x05\x04\x04\x02\x01\x01\x12\x03\x1e\x16\x1a\
-    \n\x0c\n\x05\x04\x04\x02\x01\x03\x12\x03\x1e\x1d\x1e\n\n\n\x02\x04\x05\
-    \x12\x04\"\0$\x01\n\n\n\x03\x04\x05\x01\x12\x03\"\x08\x16\n\x0b\n\x04\
-    \x04\x05\x02\0\x12\x03#\x04\x1e\n\x0c\n\x05\x04\x05\x02\0\x04\x12\x03#\
-    \x04\x0c\n\x0c\n\x05\x04\x05\x02\0\x06\x12\x03#\r\x14\n\x0c\n\x05\x04\
-    \x05\x02\0\x01\x12\x03#\x15\x19\n\x0c\n\x05\x04\x05\x02\0\x03\x12\x03#\
-    \x1c\x1d\n\n\n\x02\x04\x06\x12\x04&\0-\x01\n\n\n\x03\x04\x06\x01\x12\x03\
-    &\x08\x15\n\x0b\n\x04\x04\x06\x02\0\x12\x03'\x04\x1a\n\r\n\x05\x04\x06\
-    \x02\0\x04\x12\x04'\x04&\x17\n\x0c\n\x05\x04\x06\x02\0\x06\x12\x03'\x04\
-    \x0f\n\x0c\n\x05\x04\x06\x02\0\x01\x12\x03'\x10\x15\n\x0c\n\x05\x04\x06\
-    \x02\0\x03\x12\x03'\x18\x19\n\x0b\n\x04\x04\x06\x02\x01\x12\x03(\x04\x19\
-    \n\r\n\x05\x04\x06\x02\x01\x04\x12\x04(\x04'\x1a\n\x0c\n\x05\x04\x06\x02\
-    \x01\x05\x12\x03(\x04\n\n\x0c\n\x05\x04\x06\x02\x01\x01\x12\x03(\x0b\x14\
-    \n\x0c\n\x05\x04\x06\x02\x01\x03\x12\x03(\x17\x18\n\x0b\n\x04\x04\x06\
-    \x02\x02\x12\x03)\x04\x1b\n\r\n\x05\x04\x06\x02\x02\x04\x12\x04)\x04(\
-    \x19\n\x0c\n\x05\x04\x06\x02\x02\x05\x12\x03)\x04\n\n\x0c\n\x05\x04\x06\
-    \x02\x02\x01\x12\x03)\x0b\x16\n\x0c\n\x05\x04\x06\x02\x02\x03\x12\x03)\
-    \x19\x1a\n\x0b\n\x04\x04\x06\x02\x03\x12\x03*\x04\x1b\n\r\n\x05\x04\x06\
-    \x02\x03\x04\x12\x04*\x04)\x1b\n\x0c\n\x05\x04\x06\x02\x03\x05\x12\x03*\
-    \x04\n\n\x0c\n\x05\x04\x06\x02\x03\x01\x12\x03*\x0b\x16\n\x0c\n\x05\x04\
-    \x06\x02\x03\x03\x12\x03*\x19\x1a\n\x0b\n\x04\x04\x06\x02\x04\x12\x03+\
-    \x04\x1a\n\r\n\x05\x04\x06\x02\x04\x04\x12\x04+\x04*\x1b\n\x0c\n\x05\x04\
-    \x06\x02\x04\x05\x12\x03+\x04\n\n\x0c\n\x05\x04\x06\x02\x04\x01\x12\x03+\
-    \x0b\x15\n\x0c\n\x05\x04\x06\x02\x04\x03\x12\x03+\x18\x19\n\x0b\n\x04\
-    \x04\x06\x02\x05\x12\x03,\x04\x15\n\r\n\x05\x04\x06\x02\x05\x04\x12\x04,\
-    \x04+\x1a\n\x0c\n\x05\x04\x06\x02\x05\x05\x12\x03,\x04\n\n\x0c\n\x05\x04\
-    \x06\x02\x05\x01\x12\x03,\x0b\x10\n\x0c\n\x05\x04\x06\x02\x05\x03\x12\
-    \x03,\x13\x14b\x06proto3\
+    \n\x13proto/queries.proto\x1a\x11proto/edges.proto\x1a\x1fgoogle/protobu\
+    f/timestamp.proto\"\x97\x01\n\x0bVertexQuery\x12#\n\x03all\x18\x01\x20\
+    \x01(\x0b2\x0f.AllVertexQueryH\0R\x03all\x122\n\x08vertices\x18\x02\x20\
+    \x01(\x0b2\x14.VerticesVertexQueryH\0R\x08vertices\x12&\n\x04pipe\x18\
+    \x03\x20\x01(\x0b2\x10.PipeVertexQueryH\0R\x04pipeB\x07\n\x05query\"A\n\
+    \x0eAllVertexQuery\x12\x19\n\x08start_id\x18\x01\x20\x01(\tR\x07startId\
+    \x12\x14\n\x05limit\x18\x02\x20\x01(\rR\x05limit\"'\n\x13VerticesVertexQ\
+    uery\x12\x10\n\x03ids\x18\x01\x20\x03(\tR\x03ids\"p\n\x0fPipeVertexQuery\
+    \x12)\n\nedge_query\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\tedgeQuery\x12\
+    \x1c\n\tconverter\x18\x02\x20\x01(\tR\tconverter\x12\x14\n\x05limit\x18\
+    \x03\x20\x01(\rR\x05limit\"c\n\tEdgeQuery\x12'\n\x05edges\x18\x01\x20\
+    \x01(\x0b2\x0f.EdgesEdgeQueryH\0R\x05edges\x12$\n\x04pipe\x18\x02\x20\
+    \x01(\x0b2\x0e.PipeEdgeQueryH\0R\x04pipeB\x07\n\x05query\".\n\x0eEdgesEd\
+    geQuery\x12\x1c\n\x04keys\x18\x01\x20\x03(\x0b2\x08.EdgeKeyR\x04keys\"\
+    \x8d\x02\n\rPipeEdgeQuery\x12/\n\x0cvertex_query\x18\x01\x20\x01(\x0b2\
+    \x0c.VertexQueryR\x0bvertexQuery\x12\x1c\n\tconverter\x18\x02\x20\x01(\t\
+    R\tconverter\x12\x1f\n\x0btype_filter\x18\x03\x20\x01(\tR\ntypeFilter\
+    \x12;\n\x0bhigh_filter\x18\x04\x20\x01(\x0b2\x1a.google.protobuf.Timesta\
+    mpR\nhighFilter\x129\n\nlow_filter\x18\x05\x20\x01(\x0b2\x1a.google.prot\
+    obuf.TimestampR\tlowFilter\x12\x14\n\x05limit\x18\x06\x20\x01(\rR\x05lim\
+    itJ\xa7\x0b\n\x06\x12\x04\0\0.\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\
+    \x02\x03\0\x12\x03\x02\x07\x1a\n\t\n\x02\x03\x01\x12\x03\x03\x07(\n\n\n\
+    \x02\x04\0\x12\x04\x05\0\x0b\x01\n\n\n\x03\x04\0\x01\x12\x03\x05\x08\x13\
+    \n\x0c\n\x04\x04\0\x08\0\x12\x04\x06\x04\n\x05\n\x0c\n\x05\x04\0\x08\0\
+    \x01\x12\x03\x06\n\x0f\n\x0b\n\x04\x04\0\x02\0\x12\x03\x07\x08\x1f\n\x0c\
+    \n\x05\x04\0\x02\0\x06\x12\x03\x07\x08\x16\n\x0c\n\x05\x04\0\x02\0\x01\
+    \x12\x03\x07\x17\x1a\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x07\x1d\x1e\n\
+    \x0b\n\x04\x04\0\x02\x01\x12\x03\x08\x08)\n\x0c\n\x05\x04\0\x02\x01\x06\
+    \x12\x03\x08\x08\x1b\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\x08\x1c$\n\
+    \x0c\n\x05\x04\0\x02\x01\x03\x12\x03\x08'(\n\x0b\n\x04\x04\0\x02\x02\x12\
+    \x03\t\x08!\n\x0c\n\x05\x04\0\x02\x02\x06\x12\x03\t\x08\x17\n\x0c\n\x05\
+    \x04\0\x02\x02\x01\x12\x03\t\x18\x1c\n\x0c\n\x05\x04\0\x02\x02\x03\x12\
+    \x03\t\x1f\x20\n\n\n\x02\x04\x01\x12\x04\r\0\x10\x01\n\n\n\x03\x04\x01\
+    \x01\x12\x03\r\x08\x16\n\x0b\n\x04\x04\x01\x02\0\x12\x03\x0e\x04\x18\n\r\
+    \n\x05\x04\x01\x02\0\x04\x12\x04\x0e\x04\r\x18\n\x0c\n\x05\x04\x01\x02\0\
+    \x05\x12\x03\x0e\x04\n\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\x0e\x0b\x13\
+    \n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\x0e\x16\x17\n\x0b\n\x04\x04\x01\
+    \x02\x01\x12\x03\x0f\x04\x15\n\r\n\x05\x04\x01\x02\x01\x04\x12\x04\x0f\
+    \x04\x0e\x18\n\x0c\n\x05\x04\x01\x02\x01\x05\x12\x03\x0f\x04\n\n\x0c\n\
+    \x05\x04\x01\x02\x01\x01\x12\x03\x0f\x0b\x10\n\x0c\n\x05\x04\x01\x02\x01\
+    \x03\x12\x03\x0f\x13\x14\n\n\n\x02\x04\x02\x12\x04\x12\0\x14\x01\n\n\n\
+    \x03\x04\x02\x01\x12\x03\x12\x08\x1b\n\x0b\n\x04\x04\x02\x02\0\x12\x03\
+    \x13\x04\x1c\n\x0c\n\x05\x04\x02\x02\0\x04\x12\x03\x13\x04\x0c\n\x0c\n\
+    \x05\x04\x02\x02\0\x05\x12\x03\x13\r\x13\n\x0c\n\x05\x04\x02\x02\0\x01\
+    \x12\x03\x13\x14\x17\n\x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x13\x1a\x1b\n\
+    \n\n\x02\x04\x03\x12\x04\x16\0\x1a\x01\n\n\n\x03\x04\x03\x01\x12\x03\x16\
+    \x08\x17\n\x0b\n\x04\x04\x03\x02\0\x12\x03\x17\x04\x1d\n\r\n\x05\x04\x03\
+    \x02\0\x04\x12\x04\x17\x04\x16\x19\n\x0c\n\x05\x04\x03\x02\0\x06\x12\x03\
+    \x17\x04\r\n\x0c\n\x05\x04\x03\x02\0\x01\x12\x03\x17\x0e\x18\n\x0c\n\x05\
+    \x04\x03\x02\0\x03\x12\x03\x17\x1b\x1c\n\x0b\n\x04\x04\x03\x02\x01\x12\
+    \x03\x18\x04\x19\n\r\n\x05\x04\x03\x02\x01\x04\x12\x04\x18\x04\x17\x1d\n\
+    \x0c\n\x05\x04\x03\x02\x01\x05\x12\x03\x18\x04\n\n\x0c\n\x05\x04\x03\x02\
+    \x01\x01\x12\x03\x18\x0b\x14\n\x0c\n\x05\x04\x03\x02\x01\x03\x12\x03\x18\
+    \x17\x18\n\x0b\n\x04\x04\x03\x02\x02\x12\x03\x19\x04\x15\n\r\n\x05\x04\
+    \x03\x02\x02\x04\x12\x04\x19\x04\x18\x19\n\x0c\n\x05\x04\x03\x02\x02\x05\
+    \x12\x03\x19\x04\n\n\x0c\n\x05\x04\x03\x02\x02\x01\x12\x03\x19\x0b\x10\n\
+    \x0c\n\x05\x04\x03\x02\x02\x03\x12\x03\x19\x13\x14\n\n\n\x02\x04\x04\x12\
+    \x04\x1c\0!\x01\n\n\n\x03\x04\x04\x01\x12\x03\x1c\x08\x11\n\x0c\n\x04\
+    \x04\x04\x08\0\x12\x04\x1d\x04\x20\x05\n\x0c\n\x05\x04\x04\x08\0\x01\x12\
+    \x03\x1d\n\x0f\n\x0b\n\x04\x04\x04\x02\0\x12\x03\x1e\x08!\n\x0c\n\x05\
+    \x04\x04\x02\0\x06\x12\x03\x1e\x08\x16\n\x0c\n\x05\x04\x04\x02\0\x01\x12\
+    \x03\x1e\x17\x1c\n\x0c\n\x05\x04\x04\x02\0\x03\x12\x03\x1e\x1f\x20\n\x0b\
+    \n\x04\x04\x04\x02\x01\x12\x03\x1f\x08\x1f\n\x0c\n\x05\x04\x04\x02\x01\
+    \x06\x12\x03\x1f\x08\x15\n\x0c\n\x05\x04\x04\x02\x01\x01\x12\x03\x1f\x16\
+    \x1a\n\x0c\n\x05\x04\x04\x02\x01\x03\x12\x03\x1f\x1d\x1e\n\n\n\x02\x04\
+    \x05\x12\x04#\0%\x01\n\n\n\x03\x04\x05\x01\x12\x03#\x08\x16\n\x0b\n\x04\
+    \x04\x05\x02\0\x12\x03$\x04\x1e\n\x0c\n\x05\x04\x05\x02\0\x04\x12\x03$\
+    \x04\x0c\n\x0c\n\x05\x04\x05\x02\0\x06\x12\x03$\r\x14\n\x0c\n\x05\x04\
+    \x05\x02\0\x01\x12\x03$\x15\x19\n\x0c\n\x05\x04\x05\x02\0\x03\x12\x03$\
+    \x1c\x1d\n\n\n\x02\x04\x06\x12\x04'\0.\x01\n\n\n\x03\x04\x06\x01\x12\x03\
+    '\x08\x15\n\x0b\n\x04\x04\x06\x02\0\x12\x03(\x04!\n\r\n\x05\x04\x06\x02\
+    \0\x04\x12\x04(\x04'\x17\n\x0c\n\x05\x04\x06\x02\0\x06\x12\x03(\x04\x0f\
+    \n\x0c\n\x05\x04\x06\x02\0\x01\x12\x03(\x10\x1c\n\x0c\n\x05\x04\x06\x02\
+    \0\x03\x12\x03(\x1f\x20\n\x0b\n\x04\x04\x06\x02\x01\x12\x03)\x04\x19\n\r\
+    \n\x05\x04\x06\x02\x01\x04\x12\x04)\x04(!\n\x0c\n\x05\x04\x06\x02\x01\
+    \x05\x12\x03)\x04\n\n\x0c\n\x05\x04\x06\x02\x01\x01\x12\x03)\x0b\x14\n\
+    \x0c\n\x05\x04\x06\x02\x01\x03\x12\x03)\x17\x18\n\x0b\n\x04\x04\x06\x02\
+    \x02\x12\x03*\x04\x1b\n\r\n\x05\x04\x06\x02\x02\x04\x12\x04*\x04)\x19\n\
+    \x0c\n\x05\x04\x06\x02\x02\x05\x12\x03*\x04\n\n\x0c\n\x05\x04\x06\x02\
+    \x02\x01\x12\x03*\x0b\x16\n\x0c\n\x05\x04\x06\x02\x02\x03\x12\x03*\x19\
+    \x1a\n\x0b\n\x04\x04\x06\x02\x03\x12\x03+\x04.\n\r\n\x05\x04\x06\x02\x03\
+    \x04\x12\x04+\x04*\x1b\n\x0c\n\x05\x04\x06\x02\x03\x06\x12\x03+\x04\x1d\
+    \n\x0c\n\x05\x04\x06\x02\x03\x01\x12\x03+\x1e)\n\x0c\n\x05\x04\x06\x02\
+    \x03\x03\x12\x03+,-\n\x0b\n\x04\x04\x06\x02\x04\x12\x03,\x04-\n\r\n\x05\
+    \x04\x06\x02\x04\x04\x12\x04,\x04+.\n\x0c\n\x05\x04\x06\x02\x04\x06\x12\
+    \x03,\x04\x1d\n\x0c\n\x05\x04\x06\x02\x04\x01\x12\x03,\x1e(\n\x0c\n\x05\
+    \x04\x06\x02\x04\x03\x12\x03,+,\n\x0b\n\x04\x04\x06\x02\x05\x12\x03-\x04\
+    \x15\n\r\n\x05\x04\x06\x02\x05\x04\x12\x04-\x04,-\n\x0c\n\x05\x04\x06\
+    \x02\x05\x05\x12\x03-\x04\n\n\x0c\n\x05\x04\x06\x02\x05\x01\x12\x03-\x0b\
+    \x10\n\x0c\n\x05\x04\x06\x02\x05\x03\x12\x03-\x13\x14b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

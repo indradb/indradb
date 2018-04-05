@@ -16,10 +16,13 @@ use futures::stream::Wait;
 use futures::sink::Send;
 use std::sync::Mutex;
 
-use super::request::*;
-use super::vertices::Vertex;
-use super::response::TransactionResponse;
-use super::service_grpc::IndraDbClient;
+use request::*;
+use vertices::Vertex;
+use queries::VertexQuery;
+use response::TransactionResponse;
+use service_grpc::IndraDbClient;
+use converters::ReverseFrom;
+use errors;
 
 const START_PORT: usize = 27615;
 
@@ -28,7 +31,7 @@ lazy_static! {
 }
 
 fn create_client(port: usize) -> IndraDbClient {
-    let env = Arc::new(Environment::new(1));
+    let env = Arc::new(Environment::new(4));
     let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
     IndraDbClient::new(channel)
 }
@@ -149,26 +152,29 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_vertices",
-        //     "query": q
-        // }))
-        unimplemented!();
+        let mut inner = GetVerticesRequest::new();
+        inner.set_query(VertexQuery::from(q.clone()));
+        let mut request = TransactionRequest::new();
+        request.set_get_vertices(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        let vertices: Result<Vec<indradb::Vertex>, errors::Error> = response.get_vertices().get_vertices().into_iter().map(indradb::Vertex::reverse_from).collect();
+        Ok(vertices.unwrap())
     }
 
     fn delete_vertices(&self, q: &indradb::VertexQuery) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "delete_vertices",
-        //     "query": q
-        // }))
-        unimplemented!();
+        let mut inner = DeleteVerticesRequest::new();
+        inner.set_query(VertexQuery::from(q.clone()));
+        let mut request = TransactionRequest::new();
+        request.set_delete_vertices(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_vertex_count"
-        // }))
-        unimplemented!();
+        let mut request = TransactionRequest::new();
+        request.set_get_vertex_count(GetVertexCountRequest::new());
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(response.get_count())
     }
 
     fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {

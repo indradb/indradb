@@ -46,7 +46,7 @@ fn main() {
         .parse::<u16>()
         .expect("Could not parse environment variable `PORT`");
 
-    let env = Arc::new(grpcio::Environment::new(4));
+    let env = Arc::new(grpcio::Environment::new(1));
     let instance = service::IndraDbService::new();
     let service = service_grpc::create_indra_db(instance);
     let mut server = grpcio::ServerBuilder::new(env)

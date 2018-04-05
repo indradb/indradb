@@ -18,6 +18,7 @@ use errors::Result;
 use futures::{Future, Sink, Stream};
 use std::error::Error as StdError;
 use std::str::FromStr;
+use std::thread::spawn;
 
 macro_rules! send_sink {
     ($sink:ident, $response:expr) => (
@@ -80,7 +81,7 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         let request = request.get_get_edge_count();
         let id = Uuid::from_str(request.get_id())?;
         let type_filter = converters::from_defaultable(&request.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?;
-        let direction = indradb::EdgeDirection::reverse_from(&request.get_direction())?;
+        let direction = indradb::EdgeDirection::from_str(&request.get_direction())?;
         let count = trans.get_edge_count(id, type_filter.as_ref(), direction)?;
         response.set_count(count);
     } else if request.has_get_global_metadata() {
@@ -176,19 +177,22 @@ impl service_grpc::IndraDb for IndraDbService {
     fn transaction(&self, _: grpcio::RpcContext, stream: grpcio::RequestStream<grpc_request::TransactionRequest>, mut sink: grpcio::DuplexSink<grpc_response::TransactionResponse>) {
         let datastore = self.datastore.clone();
 
-        let trans = match datastore.transaction() {
-            Ok(trans) => trans,
-            Err(err) => {
-                sink = send_sink!(sink, build_error_response(&err));
-                return;
-            }
-        };
+        // TODO: ensure thread joins
+        spawn(move || {
+            let trans = match datastore.transaction() {
+                Ok(trans) => trans,
+                Err(err) => {
+                    sink = send_sink!(sink, build_error_response(&err));
+                    return;
+                }
+            };
 
-        for result in stream.wait() {
-            sink = send_sink!(sink, match result {
-                Ok(request) => build_response(&trans, &request).unwrap_or_else(|err| build_error_response(&err)),
-                Err(err) => build_error_response(&err)
-            });
-        }
+            for result in stream.wait() {
+                sink = send_sink!(sink, match result {
+                    Ok(request) => build_response(&trans, &request).unwrap_or_else(|err| build_error_response(&err)),
+                    Err(err) => build_error_response(&err)
+                });
+            }
+        });
     }
 }

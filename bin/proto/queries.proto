@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "proto/edges.proto";
+import "google/protobuf/timestamp.proto";
 
 message VertexQuery {
     oneof query {
@@ -20,7 +21,7 @@ message VerticesVertexQuery {
 }
 
 message PipeVertexQuery {
-    EdgeQuery query = 1;
+    EdgeQuery edge_query = 1;
     string converter = 2;
     uint32 limit = 3;
 }
@@ -37,10 +38,10 @@ message EdgesEdgeQuery {
 }
 
 message PipeEdgeQuery {
-    VertexQuery query = 1;
+    VertexQuery vertex_query = 1;
     string converter = 2;
     string type_filter = 3;
-    uint64 high_filter = 4;
-    uint64 low_filter = 5;
+    google.protobuf.Timestamp high_filter = 4;
+    google.protobuf.Timestamp low_filter = 5;
     uint32 limit = 6;
 }
