@@ -4,6 +4,10 @@ import "proto/vertices.proto";
 import "proto/edges.proto";
 import "proto/metadata.proto";
 
+message PingResponse {
+    bool ok = 1;
+}
+
 message TransactionResponse {
     oneof response {
         bool ok = 1;

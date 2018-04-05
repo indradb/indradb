@@ -13,8 +13,8 @@ use protobuf;
 use converters;
 use converters::ReverseFrom;
 use uuid::Uuid;
-use indradb::{Datastore, Transaction, EdgeDirection, Vertex, VertexQuery, Edge, EdgeQuery, EdgeKey};
-use errors::{Result, Error};
+use indradb::{Datastore, Transaction};
+use errors::Result;
 use futures::{Future, Sink, Stream};
 use std::error::Error as StdError;
 use std::str::FromStr;
@@ -52,7 +52,6 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         trans.delete_vertices(&query)?;
         response.set_ok(true);
     } else if request.has_get_vertex_count() {
-        let request = request.get_get_vertex_count();
         let count = trans.get_vertex_count()?;
         response.set_count(count);
     } else if request.has_create_edge() {
@@ -70,7 +69,7 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
     } else if request.has_delete_edges() {
         let request = request.get_delete_edges();
         let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
-        let edges = trans.delete_edges(&query)?;
+        trans.delete_edges(&query)?;
         response.set_ok(true);
     } else if request.has_get_edge_count() {
         let request = request.get_get_edge_count();
@@ -99,7 +98,6 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         let request = request.get_get_vertex_metadata();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
         let name = request.get_name();
-        let metadata = trans.get_vertex_metadata(&query, name)?;
         let mut metadatas = grpc_metadata::VertexMetadatas::new();
         let list = trans.get_vertex_metadata(&query, name)?.into_iter().map(grpc_metadata::VertexMetadata::from).collect();
         metadatas.set_values(protobuf::RepeatedField::from_vec(list));
@@ -121,7 +119,6 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         let request = request.get_get_edge_metadata();
         let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
         let name = request.get_name();
-        let metadata = trans.get_edge_metadata(&query, name)?;
         let mut metadatas = grpc_metadata::EdgeMetadatas::new();
         let list = trans.get_edge_metadata(&query, name)?.into_iter().map(grpc_metadata::EdgeMetadata::from).collect();
         metadatas.set_values(protobuf::RepeatedField::from_vec(list));
@@ -164,7 +161,14 @@ impl IndraDbService {
 }
 
 impl service_grpc::IndraDb for IndraDbService {
-    fn transaction(&self, ctx: grpcio::RpcContext, stream: grpcio::RequestStream<grpc_request::TransactionRequest>, mut sink: grpcio::DuplexSink<grpc_response::TransactionResponse>) {
+    fn ping(&self, ctx: grpcio::RpcContext, _: super::request::PingRequest, sink: grpcio::UnarySink<super::response::PingResponse>) {
+        let mut response = grpc_response::PingResponse::new();
+        response.set_ok(true);
+        let f = sink.success(response).map_err(|err| eprintln!("Could not send response: {}", err));
+        ctx.spawn(f);
+    }
+
+    fn transaction(&self, _: grpcio::RpcContext, stream: grpcio::RequestStream<grpc_request::TransactionRequest>, mut sink: grpcio::DuplexSink<grpc_response::TransactionResponse>) {
         let datastore = self.datastore.clone();
 
         let trans = match datastore.transaction() {

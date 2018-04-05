@@ -4,6 +4,9 @@ import "proto/edges.proto";
 import "proto/queries.proto";
 import "proto/vertices.proto";
 
+message PingRequest {
+}
+
 message TransactionRequest {
     oneof request {
         CreateVertexRequest create_vertex = 1;

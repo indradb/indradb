@@ -11,12 +11,12 @@ use queries as grpc_queries;
 use metadata as grpc_metadata;
 use protobuf;
 use serde_json;
-use uuid;
 use uuid::Uuid;
-use errors::{Result, Error};
+use errors::Result;
 use chrono::TimeZone;
 use std::str::FromStr;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
+use protobuf::well_known_types;
 
 pub trait ReverseFrom<T>: Sized {
     fn reverse_from(&T) -> Result<Self>;
@@ -50,9 +50,12 @@ impl From<Vec<indradb::Vertex>> for grpc_vertices::Vertices {
 
 impl From<indradb::Edge> for grpc_edges::Edge {
     fn from(edge: indradb::Edge) -> Self {
+        let mut timestamp = well_known_types::Timestamp::new();
+        timestamp.set_seconds(edge.created_datetime.timestamp());
+
         let mut grpc_edge: grpc_edges::Edge = grpc_edges::Edge::new();
         grpc_edge.set_key(grpc_edges::EdgeKey::from(edge.key));
-        grpc_edge.set_created_datetime(edge.created_datetime.timestamp() as u32);
+        grpc_edge.set_created_datetime(timestamp);
         grpc_edge
     }
 }

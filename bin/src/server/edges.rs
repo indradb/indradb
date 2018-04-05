@@ -25,7 +25,7 @@ use protobuf::ProtobufEnum as ProtobufEnum_imported_for_functions;
 pub struct Edge {
     // message fields
     pub key: ::protobuf::SingularPtrField<EdgeKey>,
-    pub created_datetime: u32,
+    pub created_datetime: ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp>,
     // special fields
     unknown_fields: ::protobuf::UnknownFields,
     cached_size: ::protobuf::CachedSize,
@@ -90,26 +90,44 @@ impl Edge {
         &mut self.key
     }
 
-    // uint32 created_datetime = 2;
+    // .google.protobuf.Timestamp created_datetime = 2;
 
     pub fn clear_created_datetime(&mut self) {
-        self.created_datetime = 0;
+        self.created_datetime.clear();
+    }
+
+    pub fn has_created_datetime(&self) -> bool {
+        self.created_datetime.is_some()
     }
 
     // Param is passed by value, moved
-    pub fn set_created_datetime(&mut self, v: u32) {
-        self.created_datetime = v;
+    pub fn set_created_datetime(&mut self, v: ::protobuf::well_known_types::Timestamp) {
+        self.created_datetime = ::protobuf::SingularPtrField::some(v);
     }
 
-    pub fn get_created_datetime(&self) -> u32 {
-        self.created_datetime
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_created_datetime(&mut self) -> &mut ::protobuf::well_known_types::Timestamp {
+        if self.created_datetime.is_none() {
+            self.created_datetime.set_default();
+        }
+        self.created_datetime.as_mut().unwrap()
     }
 
-    fn get_created_datetime_for_reflect(&self) -> &u32 {
+    // Take field
+    pub fn take_created_datetime(&mut self) -> ::protobuf::well_known_types::Timestamp {
+        self.created_datetime.take().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::new())
+    }
+
+    pub fn get_created_datetime(&self) -> &::protobuf::well_known_types::Timestamp {
+        self.created_datetime.as_ref().unwrap_or_else(|| ::protobuf::well_known_types::Timestamp::default_instance())
+    }
+
+    fn get_created_datetime_for_reflect(&self) -> &::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &self.created_datetime
     }
 
-    fn mut_created_datetime_for_reflect(&mut self) -> &mut u32 {
+    fn mut_created_datetime_for_reflect(&mut self) -> &mut ::protobuf::SingularPtrField<::protobuf::well_known_types::Timestamp> {
         &mut self.created_datetime
     }
 }
@@ -117,6 +135,11 @@ impl Edge {
 impl ::protobuf::Message for Edge {
     fn is_initialized(&self) -> bool {
         for v in &self.key {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        for v in &self.created_datetime {
             if !v.is_initialized() {
                 return false;
             }
@@ -132,11 +155,7 @@ impl ::protobuf::Message for Edge {
                     ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.key)?;
                 },
                 2 => {
-                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
-                    }
-                    let tmp = is.read_uint32()?;
-                    self.created_datetime = tmp;
+                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.created_datetime)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -154,8 +173,9 @@ impl ::protobuf::Message for Edge {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
-        if self.created_datetime != 0 {
-            my_size += ::protobuf::rt::value_size(2, self.created_datetime, ::protobuf::wire_format::WireTypeVarint);
+        if let Some(ref v) = self.created_datetime.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -168,8 +188,10 @@ impl ::protobuf::Message for Edge {
             os.write_raw_varint32(v.get_cached_size())?;
             v.write_to_with_cached_sizes(os)?;
         }
-        if self.created_datetime != 0 {
-            os.write_uint32(2, self.created_datetime)?;
+        if let Some(ref v) = self.created_datetime.as_ref() {
+            os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -220,7 +242,7 @@ impl ::protobuf::MessageStatic for Edge {
                     Edge::get_key_for_reflect,
                     Edge::mut_key_for_reflect,
                 ));
-                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeUint32>(
+                fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<::protobuf::well_known_types::Timestamp>>(
                     "created_datetime",
                     Edge::get_created_datetime_for_reflect,
                     Edge::mut_created_datetime_for_reflect,
@@ -715,37 +737,39 @@ impl ::protobuf::reflect::ProtobufValue for EdgeKey {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x11proto/edges.proto\"M\n\x04Edge\x12\x1a\n\x03key\x18\x01\x20\x01(\
-    \x0b2\x08.EdgeKeyR\x03key\x12)\n\x10created_datetime\x18\x02\x20\x01(\rR\
-    \x0fcreatedDatetime\"$\n\x05Edges\x12\x1b\n\x05edges\x18\x01\x20\x03(\
+    \n\x11proto/edges.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"i\n\x04E\
+    dge\x12\x1a\n\x03key\x18\x01\x20\x01(\x0b2\x08.EdgeKeyR\x03key\x12E\n\
+    \x10created_datetime\x18\x02\x20\x01(\x0b2\x1a.google.protobuf.Timestamp\
+    R\x0fcreatedDatetime\"$\n\x05Edges\x12\x1b\n\x05edges\x18\x01\x20\x03(\
     \x0b2\x05.EdgeR\x05edges\"]\n\x07EdgeKey\x12\x1f\n\x0boutbound_id\x18\
     \x01\x20\x01(\tR\noutboundId\x12\x12\n\x04type\x18\x02\x20\x01(\tR\x04ty\
-    pe\x12\x1d\n\ninbound_id\x18\x03\x20\x01(\tR\tinboundIdJ\xfd\x03\n\x06\
-    \x12\x04\0\0\x0f\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\n\n\x02\x04\0\x12\
-    \x04\x02\0\x05\x01\n\n\n\x03\x04\0\x01\x12\x03\x02\x08\x0c\n\x0b\n\x04\
-    \x04\0\x02\0\x12\x03\x03\x04\x14\n\r\n\x05\x04\0\x02\0\x04\x12\x04\x03\
-    \x04\x02\x0e\n\x0c\n\x05\x04\0\x02\0\x06\x12\x03\x03\x04\x0b\n\x0c\n\x05\
-    \x04\0\x02\0\x01\x12\x03\x03\x0c\x0f\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\
-    \x03\x12\x13\n\x0b\n\x04\x04\0\x02\x01\x12\x03\x04\x04\x20\n\r\n\x05\x04\
-    \0\x02\x01\x04\x12\x04\x04\x04\x03\x14\n\x0c\n\x05\x04\0\x02\x01\x05\x12\
-    \x03\x04\x04\n\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\x04\x0b\x1b\n\x0c\n\
-    \x05\x04\0\x02\x01\x03\x12\x03\x04\x1e\x1f\n\n\n\x02\x04\x01\x12\x04\x07\
-    \0\t\x01\n\n\n\x03\x04\x01\x01\x12\x03\x07\x08\r\n\x0b\n\x04\x04\x01\x02\
-    \0\x12\x03\x08\x04\x1c\n\x0c\n\x05\x04\x01\x02\0\x04\x12\x03\x08\x04\x0c\
-    \n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\x08\r\x11\n\x0c\n\x05\x04\x01\x02\
-    \0\x01\x12\x03\x08\x12\x17\n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\x08\x1a\
-    \x1b\n\n\n\x02\x04\x02\x12\x04\x0b\0\x0f\x01\n\n\n\x03\x04\x02\x01\x12\
-    \x03\x0b\x08\x0f\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x0c\x04\x1b\n\r\n\x05\
-    \x04\x02\x02\0\x04\x12\x04\x0c\x04\x0b\x11\n\x0c\n\x05\x04\x02\x02\0\x05\
-    \x12\x03\x0c\x04\n\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x0c\x0b\x16\n\
-    \x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x0c\x19\x1a\n\x0b\n\x04\x04\x02\x02\
-    \x01\x12\x03\r\x04\x14\n\r\n\x05\x04\x02\x02\x01\x04\x12\x04\r\x04\x0c\
-    \x1b\n\x0c\n\x05\x04\x02\x02\x01\x05\x12\x03\r\x04\n\n\x0c\n\x05\x04\x02\
-    \x02\x01\x01\x12\x03\r\x0b\x0f\n\x0c\n\x05\x04\x02\x02\x01\x03\x12\x03\r\
-    \x12\x13\n\x0b\n\x04\x04\x02\x02\x02\x12\x03\x0e\x04\x1a\n\r\n\x05\x04\
-    \x02\x02\x02\x04\x12\x04\x0e\x04\r\x14\n\x0c\n\x05\x04\x02\x02\x02\x05\
-    \x12\x03\x0e\x04\n\n\x0c\n\x05\x04\x02\x02\x02\x01\x12\x03\x0e\x0b\x15\n\
-    \x0c\n\x05\x04\x02\x02\x02\x03\x12\x03\x0e\x18\x19b\x06proto3\
+    pe\x12\x1d\n\ninbound_id\x18\x03\x20\x01(\tR\tinboundIdJ\x88\x04\n\x06\
+    \x12\x04\0\0\x11\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\
+    \x03\x02\x07(\n\n\n\x02\x04\0\x12\x04\x04\0\x07\x01\n\n\n\x03\x04\0\x01\
+    \x12\x03\x04\x08\x0c\n\x0b\n\x04\x04\0\x02\0\x12\x03\x05\x04\x14\n\r\n\
+    \x05\x04\0\x02\0\x04\x12\x04\x05\x04\x04\x0e\n\x0c\n\x05\x04\0\x02\0\x06\
+    \x12\x03\x05\x04\x0b\n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x05\x0c\x0f\n\
+    \x0c\n\x05\x04\0\x02\0\x03\x12\x03\x05\x12\x13\n\x0b\n\x04\x04\0\x02\x01\
+    \x12\x03\x06\x043\n\r\n\x05\x04\0\x02\x01\x04\x12\x04\x06\x04\x05\x14\n\
+    \x0c\n\x05\x04\0\x02\x01\x06\x12\x03\x06\x04\x1d\n\x0c\n\x05\x04\0\x02\
+    \x01\x01\x12\x03\x06\x1e.\n\x0c\n\x05\x04\0\x02\x01\x03\x12\x03\x0612\n\
+    \n\n\x02\x04\x01\x12\x04\t\0\x0b\x01\n\n\n\x03\x04\x01\x01\x12\x03\t\x08\
+    \r\n\x0b\n\x04\x04\x01\x02\0\x12\x03\n\x04\x1c\n\x0c\n\x05\x04\x01\x02\0\
+    \x04\x12\x03\n\x04\x0c\n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\n\r\x11\n\
+    \x0c\n\x05\x04\x01\x02\0\x01\x12\x03\n\x12\x17\n\x0c\n\x05\x04\x01\x02\0\
+    \x03\x12\x03\n\x1a\x1b\n\n\n\x02\x04\x02\x12\x04\r\0\x11\x01\n\n\n\x03\
+    \x04\x02\x01\x12\x03\r\x08\x0f\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x0e\x04\
+    \x1b\n\r\n\x05\x04\x02\x02\0\x04\x12\x04\x0e\x04\r\x11\n\x0c\n\x05\x04\
+    \x02\x02\0\x05\x12\x03\x0e\x04\n\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\
+    \x0e\x0b\x16\n\x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x0e\x19\x1a\n\x0b\n\
+    \x04\x04\x02\x02\x01\x12\x03\x0f\x04\x14\n\r\n\x05\x04\x02\x02\x01\x04\
+    \x12\x04\x0f\x04\x0e\x1b\n\x0c\n\x05\x04\x02\x02\x01\x05\x12\x03\x0f\x04\
+    \n\n\x0c\n\x05\x04\x02\x02\x01\x01\x12\x03\x0f\x0b\x0f\n\x0c\n\x05\x04\
+    \x02\x02\x01\x03\x12\x03\x0f\x12\x13\n\x0b\n\x04\x04\x02\x02\x02\x12\x03\
+    \x10\x04\x1a\n\r\n\x05\x04\x02\x02\x02\x04\x12\x04\x10\x04\x0f\x14\n\x0c\
+    \n\x05\x04\x02\x02\x02\x05\x12\x03\x10\x04\n\n\x0c\n\x05\x04\x02\x02\x02\
+    \x01\x12\x03\x10\x0b\x15\n\x0c\n\x05\x04\x02\x02\x02\x03\x12\x03\x10\x18\
+    \x19b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

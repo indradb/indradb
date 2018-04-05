@@ -22,6 +22,175 @@ use protobuf::Message as Message_imported_for_functions;
 use protobuf::ProtobufEnum as ProtobufEnum_imported_for_functions;
 
 #[derive(PartialEq,Clone,Default)]
+pub struct PingResponse {
+    // message fields
+    pub ok: bool,
+    // special fields
+    unknown_fields: ::protobuf::UnknownFields,
+    cached_size: ::protobuf::CachedSize,
+}
+
+// see codegen.rs for the explanation why impl Sync explicitly
+unsafe impl ::std::marker::Sync for PingResponse {}
+
+impl PingResponse {
+    pub fn new() -> PingResponse {
+        ::std::default::Default::default()
+    }
+
+    pub fn default_instance() -> &'static PingResponse {
+        static mut instance: ::protobuf::lazy::Lazy<PingResponse> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const PingResponse,
+        };
+        unsafe {
+            instance.get(PingResponse::new)
+        }
+    }
+
+    // bool ok = 1;
+
+    pub fn clear_ok(&mut self) {
+        self.ok = false;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_ok(&mut self, v: bool) {
+        self.ok = v;
+    }
+
+    pub fn get_ok(&self) -> bool {
+        self.ok
+    }
+
+    fn get_ok_for_reflect(&self) -> &bool {
+        &self.ok
+    }
+
+    fn mut_ok_for_reflect(&mut self) -> &mut bool {
+        &mut self.ok
+    }
+}
+
+impl ::protobuf::Message for PingResponse {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_bool()?;
+                    self.ok = tmp;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if self.ok != false {
+            my_size += 2;
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
+        if self.ok != false {
+            os.write_bool(1, self.ok)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &::std::any::Any {
+        self as &::std::any::Any
+    }
+    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+        self as &mut ::std::any::Any
+    }
+    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        ::protobuf::MessageStatic::descriptor_static(None::<Self>)
+    }
+}
+
+impl ::protobuf::MessageStatic for PingResponse {
+    fn new() -> PingResponse {
+        PingResponse::new()
+    }
+
+    fn descriptor_static(_: ::std::option::Option<PingResponse>) -> &'static ::protobuf::reflect::MessageDescriptor {
+        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
+        };
+        unsafe {
+            descriptor.get(|| {
+                let mut fields = ::std::vec::Vec::new();
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeBool>(
+                    "ok",
+                    PingResponse::get_ok_for_reflect,
+                    PingResponse::mut_ok_for_reflect,
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<PingResponse>(
+                    "PingResponse",
+                    fields,
+                    file_descriptor_proto()
+                )
+            })
+        }
+    }
+}
+
+impl ::protobuf::Clear for PingResponse {
+    fn clear(&mut self) {
+        self.clear_ok();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for PingResponse {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for PingResponse {
+    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
+        ::protobuf::reflect::ProtobufValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
 pub struct TransactionResponse {
     // message oneof groups
     response: ::std::option::Option<TransactionResponse_oneof_response>,
@@ -690,7 +859,8 @@ impl ::protobuf::reflect::ProtobufValue for TransactionResponse {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x14proto/response.proto\x1a\x14proto/vertices.proto\x1a\x11proto/edge\
-    s.proto\x1a\x14proto/metadata.proto\"\xba\x02\n\x13TransactionResponse\
+    s.proto\x1a\x14proto/metadata.proto\"\x1e\n\x0cPingResponse\x12\x0e\n\
+    \x02ok\x18\x01\x20\x01(\x08R\x02ok\"\xba\x02\n\x13TransactionResponse\
     \x12\x10\n\x02ok\x18\x01\x20\x01(\x08H\0R\x02ok\x12'\n\x08vertices\x18\
     \x02\x20\x01(\x0b2\t.VerticesH\0R\x08vertices\x12\x16\n\x05count\x18\x03\
     \x20\x01(\x04H\0R\x05count\x12\x1e\n\x05edges\x18\x04\x20\x01(\x0b2\x06.\
@@ -698,33 +868,39 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x10vertex_metadatas\x18\x06\x20\x01(\x0b2\x10.VertexMetadatasH\0R\x0f\
     vertexMetadatas\x127\n\x0eedge_metadatas\x18\x07\x20\x01(\x0b2\x0e.EdgeM\
     etadatasH\0R\redgeMetadatas\x12\x16\n\x05error\x18\x08\x20\x01(\tH\0R\
-    \x05errorB\n\n\x08responseJ\x9f\x04\n\x06\x12\x04\0\0\x11\x01\n\x08\n\
+    \x05errorB\n\n\x08responseJ\xfd\x04\n\x06\x12\x04\0\0\x15\x01\n\x08\n\
     \x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x1d\n\t\n\x02\
     \x03\x01\x12\x03\x03\x07\x1a\n\t\n\x02\x03\x02\x12\x03\x04\x07\x1d\n\n\n\
-    \x02\x04\0\x12\x04\x06\0\x11\x01\n\n\n\x03\x04\0\x01\x12\x03\x06\x08\x1b\
-    \n\x0c\n\x04\x04\0\x08\0\x12\x04\x07\x04\x10\x05\n\x0c\n\x05\x04\0\x08\0\
-    \x01\x12\x03\x07\n\x12\n\x0b\n\x04\x04\0\x02\0\x12\x03\x08\x08\x14\n\x0c\
-    \n\x05\x04\0\x02\0\x05\x12\x03\x08\x08\x0c\n\x0c\n\x05\x04\0\x02\0\x01\
-    \x12\x03\x08\r\x0f\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x08\x12\x13\n\x0b\
-    \n\x04\x04\0\x02\x01\x12\x03\t\x08\x1e\n\x0c\n\x05\x04\0\x02\x01\x06\x12\
-    \x03\t\x08\x10\n\x0c\n\x05\x04\0\x02\x01\x01\x12\x03\t\x11\x19\n\x0c\n\
-    \x05\x04\0\x02\x01\x03\x12\x03\t\x1c\x1d\n\x0b\n\x04\x04\0\x02\x02\x12\
-    \x03\n\x08\x19\n\x0c\n\x05\x04\0\x02\x02\x05\x12\x03\n\x08\x0e\n\x0c\n\
-    \x05\x04\0\x02\x02\x01\x12\x03\n\x0f\x14\n\x0c\n\x05\x04\0\x02\x02\x03\
-    \x12\x03\n\x17\x18\n\x0b\n\x04\x04\0\x02\x03\x12\x03\x0b\x08\x18\n\x0c\n\
-    \x05\x04\0\x02\x03\x06\x12\x03\x0b\x08\r\n\x0c\n\x05\x04\0\x02\x03\x01\
-    \x12\x03\x0b\x0e\x13\n\x0c\n\x05\x04\0\x02\x03\x03\x12\x03\x0b\x16\x17\n\
-    \x0b\n\x04\x04\0\x02\x04\x12\x03\x0c\x08\x18\n\x0c\n\x05\x04\0\x02\x04\
-    \x05\x12\x03\x0c\x08\x0e\n\x0c\n\x05\x04\0\x02\x04\x01\x12\x03\x0c\x0f\
-    \x13\n\x0c\n\x05\x04\0\x02\x04\x03\x12\x03\x0c\x16\x17\n\x0b\n\x04\x04\0\
-    \x02\x05\x12\x03\r\x08-\n\x0c\n\x05\x04\0\x02\x05\x06\x12\x03\r\x08\x17\
-    \n\x0c\n\x05\x04\0\x02\x05\x01\x12\x03\r\x18(\n\x0c\n\x05\x04\0\x02\x05\
-    \x03\x12\x03\r+,\n\x0b\n\x04\x04\0\x02\x06\x12\x03\x0e\x08)\n\x0c\n\x05\
-    \x04\0\x02\x06\x06\x12\x03\x0e\x08\x15\n\x0c\n\x05\x04\0\x02\x06\x01\x12\
-    \x03\x0e\x16$\n\x0c\n\x05\x04\0\x02\x06\x03\x12\x03\x0e'(\n\x0b\n\x04\
-    \x04\0\x02\x07\x12\x03\x0f\x08\x19\n\x0c\n\x05\x04\0\x02\x07\x05\x12\x03\
-    \x0f\x08\x0e\n\x0c\n\x05\x04\0\x02\x07\x01\x12\x03\x0f\x0f\x14\n\x0c\n\
-    \x05\x04\0\x02\x07\x03\x12\x03\x0f\x17\x18b\x06proto3\
+    \x02\x04\0\x12\x04\x06\0\x08\x01\n\n\n\x03\x04\0\x01\x12\x03\x06\x08\x14\
+    \n\x0b\n\x04\x04\0\x02\0\x12\x03\x07\x04\x10\n\r\n\x05\x04\0\x02\0\x04\
+    \x12\x04\x07\x04\x06\x16\n\x0c\n\x05\x04\0\x02\0\x05\x12\x03\x07\x04\x08\
+    \n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x07\t\x0b\n\x0c\n\x05\x04\0\x02\0\
+    \x03\x12\x03\x07\x0e\x0f\n\n\n\x02\x04\x01\x12\x04\n\0\x15\x01\n\n\n\x03\
+    \x04\x01\x01\x12\x03\n\x08\x1b\n\x0c\n\x04\x04\x01\x08\0\x12\x04\x0b\x04\
+    \x14\x05\n\x0c\n\x05\x04\x01\x08\0\x01\x12\x03\x0b\n\x12\n\x0b\n\x04\x04\
+    \x01\x02\0\x12\x03\x0c\x08\x14\n\x0c\n\x05\x04\x01\x02\0\x05\x12\x03\x0c\
+    \x08\x0c\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\x0c\r\x0f\n\x0c\n\x05\x04\
+    \x01\x02\0\x03\x12\x03\x0c\x12\x13\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\r\
+    \x08\x1e\n\x0c\n\x05\x04\x01\x02\x01\x06\x12\x03\r\x08\x10\n\x0c\n\x05\
+    \x04\x01\x02\x01\x01\x12\x03\r\x11\x19\n\x0c\n\x05\x04\x01\x02\x01\x03\
+    \x12\x03\r\x1c\x1d\n\x0b\n\x04\x04\x01\x02\x02\x12\x03\x0e\x08\x19\n\x0c\
+    \n\x05\x04\x01\x02\x02\x05\x12\x03\x0e\x08\x0e\n\x0c\n\x05\x04\x01\x02\
+    \x02\x01\x12\x03\x0e\x0f\x14\n\x0c\n\x05\x04\x01\x02\x02\x03\x12\x03\x0e\
+    \x17\x18\n\x0b\n\x04\x04\x01\x02\x03\x12\x03\x0f\x08\x18\n\x0c\n\x05\x04\
+    \x01\x02\x03\x06\x12\x03\x0f\x08\r\n\x0c\n\x05\x04\x01\x02\x03\x01\x12\
+    \x03\x0f\x0e\x13\n\x0c\n\x05\x04\x01\x02\x03\x03\x12\x03\x0f\x16\x17\n\
+    \x0b\n\x04\x04\x01\x02\x04\x12\x03\x10\x08\x18\n\x0c\n\x05\x04\x01\x02\
+    \x04\x05\x12\x03\x10\x08\x0e\n\x0c\n\x05\x04\x01\x02\x04\x01\x12\x03\x10\
+    \x0f\x13\n\x0c\n\x05\x04\x01\x02\x04\x03\x12\x03\x10\x16\x17\n\x0b\n\x04\
+    \x04\x01\x02\x05\x12\x03\x11\x08-\n\x0c\n\x05\x04\x01\x02\x05\x06\x12\
+    \x03\x11\x08\x17\n\x0c\n\x05\x04\x01\x02\x05\x01\x12\x03\x11\x18(\n\x0c\
+    \n\x05\x04\x01\x02\x05\x03\x12\x03\x11+,\n\x0b\n\x04\x04\x01\x02\x06\x12\
+    \x03\x12\x08)\n\x0c\n\x05\x04\x01\x02\x06\x06\x12\x03\x12\x08\x15\n\x0c\
+    \n\x05\x04\x01\x02\x06\x01\x12\x03\x12\x16$\n\x0c\n\x05\x04\x01\x02\x06\
+    \x03\x12\x03\x12'(\n\x0b\n\x04\x04\x01\x02\x07\x12\x03\x13\x08\x19\n\x0c\
+    \n\x05\x04\x01\x02\x07\x05\x12\x03\x13\x08\x0e\n\x0c\n\x05\x04\x01\x02\
+    \x07\x01\x12\x03\x13\x0f\x14\n\x0c\n\x05\x04\x01\x02\x07\x03\x12\x03\x13\
+    \x17\x18b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

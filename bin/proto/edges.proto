@@ -1,8 +1,10 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 message Edge {
     EdgeKey key = 1;
-    uint32 created_datetime = 2;
+    google.protobuf.Timestamp created_datetime = 2;
 }
 
 message Edges {
