@@ -14,6 +14,7 @@ use grpcio::{Environment, ChannelBuilder, ClientDuplexSender, ClientDuplexReceiv
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
 use futures::sink::Send;
+use std::sync::Mutex;
 
 use super::request::*;
 use super::vertices::Vertex;
@@ -86,10 +87,35 @@ impl indradb::Datastore<GrpcTransaction> for GrpcDatastore {
     }
 }
 
-pub struct GrpcTransaction {
-    client: IndraDbClient,
+struct GrpcTransactionDuplex {
     sink: Option<ClientDuplexSender<TransactionRequest>>,
     receiver: Wait<ClientDuplexReceiver<TransactionResponse>>
+}
+
+impl GrpcTransactionDuplex {
+    fn new(sink: ClientDuplexSender<TransactionRequest>, receiver: Wait<ClientDuplexReceiver<TransactionResponse>>) -> Self {
+        Self {
+            sink: Some(sink),
+            receiver: receiver,
+        }
+    }
+
+    fn request(&mut self, req: TransactionRequest) -> Result<TransactionResponse, indradb::Error> {
+        let sink: ClientDuplexSender<TransactionRequest> = self.sink.take().unwrap();
+        self.sink = Some(sink.send((req, WriteFlags::default())).wait().unwrap());
+        let response = self.receiver.next().unwrap().unwrap();
+
+        if response.has_error() {
+            Err(response.get_error().into())
+        } else {
+            Ok(response)
+        }
+    }
+}
+
+pub struct GrpcTransaction {
+    client: IndraDbClient,
+    channel: Mutex<GrpcTransactionDuplex>
 }
 
 impl GrpcTransaction {
@@ -98,39 +124,28 @@ impl GrpcTransaction {
         
         GrpcTransaction {
             client: client,
-            sink: Some(sink),
-            receiver: receiver.wait()
+            channel: Mutex::new(GrpcTransactionDuplex::new(sink, receiver.wait()))
         }
-    }
-
-    fn request(&mut self, req: TransactionRequest) -> TransactionResponse {
-        let sink: ClientDuplexSender<TransactionRequest> = self.sink.take().unwrap();
-        self.sink = Some(sink.send((req, WriteFlags::default())).wait().unwrap());
-        self.receiver.next().unwrap().unwrap()
     }
 }
 
 impl indradb::Transaction for GrpcTransaction {
-    fn create_vertex(&mut self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
+    fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
         let mut inner = CreateVertexRequest::new();
         inner.set_vertex(Vertex::from(v.clone()));
         let mut request = TransactionRequest::new();
         request.set_create_vertex(inner);
-        let response = self.request(request);
-
-        if response.has_error() {
-            Err(response.get_error().into())
-        } else {
-            Ok(response.get_ok())
-        }
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(response.get_ok())
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "create_vertex_from_type",
-        //     "type": t
-        // }))
-        unimplemented!();
+        let mut inner = CreateVertexFromTypeRequest::new();
+        inner.set_field_type(t.0);
+        let mut request = TransactionRequest::new();
+        request.set_create_vertex_from_type(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        Ok(Uuid::parse_str(response.get_uuid()).unwrap())
     }
 
     fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {

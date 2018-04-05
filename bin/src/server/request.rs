@@ -161,6 +161,7 @@ unsafe impl ::std::marker::Sync for TransactionRequest {}
 #[derive(Clone,PartialEq)]
 pub enum TransactionRequest_oneof_request {
     create_vertex(CreateVertexRequest),
+    create_vertex_from_type(CreateVertexFromTypeRequest),
     get_vertices(GetVerticesRequest),
     delete_vertices(DeleteVerticesRequest),
     get_vertex_count(GetVertexCountRequest),
@@ -243,7 +244,56 @@ impl TransactionRequest {
         }
     }
 
-    // .GetVerticesRequest get_vertices = 2;
+    // .CreateVertexFromTypeRequest create_vertex_from_type = 2;
+
+    pub fn clear_create_vertex_from_type(&mut self) {
+        self.request = ::std::option::Option::None;
+    }
+
+    pub fn has_create_vertex_from_type(&self) -> bool {
+        match self.request {
+            ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_create_vertex_from_type(&mut self, v: CreateVertexFromTypeRequest) {
+        self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_create_vertex_from_type(&mut self) -> &mut CreateVertexFromTypeRequest {
+        if let ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(_)) = self.request {
+        } else {
+            self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(CreateVertexFromTypeRequest::new()));
+        }
+        match self.request {
+            ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_create_vertex_from_type(&mut self) -> CreateVertexFromTypeRequest {
+        if self.has_create_vertex_from_type() {
+            match self.request.take() {
+                ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            CreateVertexFromTypeRequest::new()
+        }
+    }
+
+    pub fn get_create_vertex_from_type(&self) -> &CreateVertexFromTypeRequest {
+        match self.request {
+            ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(ref v)) => v,
+            _ => CreateVertexFromTypeRequest::default_instance(),
+        }
+    }
+
+    // .GetVerticesRequest get_vertices = 3;
 
     pub fn clear_get_vertices(&mut self) {
         self.request = ::std::option::Option::None;
@@ -292,7 +342,7 @@ impl TransactionRequest {
         }
     }
 
-    // .DeleteVerticesRequest delete_vertices = 3;
+    // .DeleteVerticesRequest delete_vertices = 4;
 
     pub fn clear_delete_vertices(&mut self) {
         self.request = ::std::option::Option::None;
@@ -341,7 +391,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetVertexCountRequest get_vertex_count = 4;
+    // .GetVertexCountRequest get_vertex_count = 5;
 
     pub fn clear_get_vertex_count(&mut self) {
         self.request = ::std::option::Option::None;
@@ -390,7 +440,7 @@ impl TransactionRequest {
         }
     }
 
-    // .CreateEdgeRequest create_edge = 5;
+    // .CreateEdgeRequest create_edge = 6;
 
     pub fn clear_create_edge(&mut self) {
         self.request = ::std::option::Option::None;
@@ -439,7 +489,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetEdgesRequest get_edges = 6;
+    // .GetEdgesRequest get_edges = 7;
 
     pub fn clear_get_edges(&mut self) {
         self.request = ::std::option::Option::None;
@@ -488,7 +538,7 @@ impl TransactionRequest {
         }
     }
 
-    // .DeleteEdgesRequest delete_edges = 7;
+    // .DeleteEdgesRequest delete_edges = 8;
 
     pub fn clear_delete_edges(&mut self) {
         self.request = ::std::option::Option::None;
@@ -537,7 +587,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetEdgeCountRequest get_edge_count = 8;
+    // .GetEdgeCountRequest get_edge_count = 9;
 
     pub fn clear_get_edge_count(&mut self) {
         self.request = ::std::option::Option::None;
@@ -586,7 +636,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetGlobalMetadataRequest get_global_metadata = 9;
+    // .GetGlobalMetadataRequest get_global_metadata = 10;
 
     pub fn clear_get_global_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -635,7 +685,7 @@ impl TransactionRequest {
         }
     }
 
-    // .SetGlobalMetadataRequest set_global_metadata = 10;
+    // .SetGlobalMetadataRequest set_global_metadata = 11;
 
     pub fn clear_set_global_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -684,7 +734,7 @@ impl TransactionRequest {
         }
     }
 
-    // .DeleteGlobalMetadataRequest delete_global_metadata = 11;
+    // .DeleteGlobalMetadataRequest delete_global_metadata = 12;
 
     pub fn clear_delete_global_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -733,7 +783,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetVertexMetadataRequest get_vertex_metadata = 12;
+    // .GetVertexMetadataRequest get_vertex_metadata = 13;
 
     pub fn clear_get_vertex_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -782,7 +832,7 @@ impl TransactionRequest {
         }
     }
 
-    // .SetVertexMetadataRequest set_vertex_metadata = 13;
+    // .SetVertexMetadataRequest set_vertex_metadata = 14;
 
     pub fn clear_set_vertex_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -831,7 +881,7 @@ impl TransactionRequest {
         }
     }
 
-    // .DeleteVertexMetadataRequest delete_vertex_metadata = 14;
+    // .DeleteVertexMetadataRequest delete_vertex_metadata = 15;
 
     pub fn clear_delete_vertex_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -880,7 +930,7 @@ impl TransactionRequest {
         }
     }
 
-    // .GetEdgeMetadataRequest get_edge_metadata = 15;
+    // .GetEdgeMetadataRequest get_edge_metadata = 16;
 
     pub fn clear_get_edge_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -929,7 +979,7 @@ impl TransactionRequest {
         }
     }
 
-    // .SetEdgeMetadataRequest set_edge_metadata = 16;
+    // .SetEdgeMetadataRequest set_edge_metadata = 17;
 
     pub fn clear_set_edge_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -978,7 +1028,7 @@ impl TransactionRequest {
         }
     }
 
-    // .DeleteEdgeMetadataRequest delete_edge_metadata = 17;
+    // .DeleteEdgeMetadataRequest delete_edge_metadata = 18;
 
     pub fn clear_delete_edge_metadata(&mut self) {
         self.request = ::std::option::Option::None;
@@ -1031,6 +1081,11 @@ impl TransactionRequest {
 impl ::protobuf::Message for TransactionRequest {
     fn is_initialized(&self) -> bool {
         if let Some(TransactionRequest_oneof_request::create_vertex(ref v)) = self.request {
+            if !v.is_initialized() {
+                return false;
+            }
+        }
+        if let Some(TransactionRequest_oneof_request::create_vertex_from_type(ref v)) = self.request {
             if !v.is_initialized() {
                 return false;
             }
@@ -1132,93 +1187,99 @@ impl ::protobuf::Message for TransactionRequest {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertices(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::create_vertex_from_type(is.read_message()?));
                 },
                 3 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_vertices(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertices(is.read_message()?));
                 },
                 4 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertex_count(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_vertices(is.read_message()?));
                 },
                 5 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::create_edge(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertex_count(is.read_message()?));
                 },
                 6 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edges(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::create_edge(is.read_message()?));
                 },
                 7 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_edges(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edges(is.read_message()?));
                 },
                 8 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edge_count(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_edges(is.read_message()?));
                 },
                 9 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_global_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edge_count(is.read_message()?));
                 },
                 10 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_global_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_global_metadata(is.read_message()?));
                 },
                 11 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_global_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_global_metadata(is.read_message()?));
                 },
                 12 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertex_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_global_metadata(is.read_message()?));
                 },
                 13 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_vertex_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_vertex_metadata(is.read_message()?));
                 },
                 14 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_vertex_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_vertex_metadata(is.read_message()?));
                 },
                 15 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edge_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::delete_vertex_metadata(is.read_message()?));
                 },
                 16 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_edge_metadata(is.read_message()?));
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::get_edge_metadata(is.read_message()?));
                 },
                 17 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.request = ::std::option::Option::Some(TransactionRequest_oneof_request::set_edge_metadata(is.read_message()?));
+                },
+                18 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
@@ -1239,6 +1300,10 @@ impl ::protobuf::Message for TransactionRequest {
         if let ::std::option::Option::Some(ref v) = self.request {
             match v {
                 &TransactionRequest_oneof_request::create_vertex(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                },
+                &TransactionRequest_oneof_request::create_vertex_from_type(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
@@ -1296,7 +1361,7 @@ impl ::protobuf::Message for TransactionRequest {
                 },
                 &TransactionRequest_oneof_request::get_edge_metadata(ref v) => {
                     let len = v.compute_size();
-                    my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+                    my_size += 2 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
                 &TransactionRequest_oneof_request::set_edge_metadata(ref v) => {
                     let len = v.compute_size();
@@ -1321,83 +1386,88 @@ impl ::protobuf::Message for TransactionRequest {
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_vertices(ref v) => {
+                &TransactionRequest_oneof_request::create_vertex_from_type(ref v) => {
                     os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::delete_vertices(ref v) => {
+                &TransactionRequest_oneof_request::get_vertices(ref v) => {
                     os.write_tag(3, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_vertex_count(ref v) => {
+                &TransactionRequest_oneof_request::delete_vertices(ref v) => {
                     os.write_tag(4, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::create_edge(ref v) => {
+                &TransactionRequest_oneof_request::get_vertex_count(ref v) => {
                     os.write_tag(5, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_edges(ref v) => {
+                &TransactionRequest_oneof_request::create_edge(ref v) => {
                     os.write_tag(6, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::delete_edges(ref v) => {
+                &TransactionRequest_oneof_request::get_edges(ref v) => {
                     os.write_tag(7, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_edge_count(ref v) => {
+                &TransactionRequest_oneof_request::delete_edges(ref v) => {
                     os.write_tag(8, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_global_metadata(ref v) => {
+                &TransactionRequest_oneof_request::get_edge_count(ref v) => {
                     os.write_tag(9, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::set_global_metadata(ref v) => {
+                &TransactionRequest_oneof_request::get_global_metadata(ref v) => {
                     os.write_tag(10, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::delete_global_metadata(ref v) => {
+                &TransactionRequest_oneof_request::set_global_metadata(ref v) => {
                     os.write_tag(11, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_vertex_metadata(ref v) => {
+                &TransactionRequest_oneof_request::delete_global_metadata(ref v) => {
                     os.write_tag(12, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::set_vertex_metadata(ref v) => {
+                &TransactionRequest_oneof_request::get_vertex_metadata(ref v) => {
                     os.write_tag(13, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::delete_vertex_metadata(ref v) => {
+                &TransactionRequest_oneof_request::set_vertex_metadata(ref v) => {
                     os.write_tag(14, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::get_edge_metadata(ref v) => {
+                &TransactionRequest_oneof_request::delete_vertex_metadata(ref v) => {
                     os.write_tag(15, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::set_edge_metadata(ref v) => {
+                &TransactionRequest_oneof_request::get_edge_metadata(ref v) => {
                     os.write_tag(16, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
-                &TransactionRequest_oneof_request::delete_edge_metadata(ref v) => {
+                &TransactionRequest_oneof_request::set_edge_metadata(ref v) => {
                     os.write_tag(17, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
+                },
+                &TransactionRequest_oneof_request::delete_edge_metadata(ref v) => {
+                    os.write_tag(18, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
@@ -1451,6 +1521,11 @@ impl ::protobuf::MessageStatic for TransactionRequest {
                     "create_vertex",
                     TransactionRequest::has_create_vertex,
                     TransactionRequest::get_create_vertex,
+                ));
+                fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, CreateVertexFromTypeRequest>(
+                    "create_vertex_from_type",
+                    TransactionRequest::has_create_vertex_from_type,
+                    TransactionRequest::get_create_vertex_from_type,
                 ));
                 fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, GetVerticesRequest>(
                     "get_vertices",
@@ -1545,6 +1620,7 @@ impl ::protobuf::MessageStatic for TransactionRequest {
 impl ::protobuf::Clear for TransactionRequest {
     fn clear(&mut self) {
         self.clear_create_vertex();
+        self.clear_create_vertex_from_type();
         self.clear_get_vertices();
         self.clear_delete_vertices();
         self.clear_get_vertex_count();
@@ -1763,6 +1839,182 @@ impl ::std::fmt::Debug for CreateVertexRequest {
 }
 
 impl ::protobuf::reflect::ProtobufValue for CreateVertexRequest {
+    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
+        ::protobuf::reflect::ProtobufValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct CreateVertexFromTypeRequest {
+    // message fields
+    pub field_type: ::std::string::String,
+    // special fields
+    unknown_fields: ::protobuf::UnknownFields,
+    cached_size: ::protobuf::CachedSize,
+}
+
+// see codegen.rs for the explanation why impl Sync explicitly
+unsafe impl ::std::marker::Sync for CreateVertexFromTypeRequest {}
+
+impl CreateVertexFromTypeRequest {
+    pub fn new() -> CreateVertexFromTypeRequest {
+        ::std::default::Default::default()
+    }
+
+    pub fn default_instance() -> &'static CreateVertexFromTypeRequest {
+        static mut instance: ::protobuf::lazy::Lazy<CreateVertexFromTypeRequest> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const CreateVertexFromTypeRequest,
+        };
+        unsafe {
+            instance.get(CreateVertexFromTypeRequest::new)
+        }
+    }
+
+    // string type = 1;
+
+    pub fn clear_field_type(&mut self) {
+        self.field_type.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_field_type(&mut self, v: ::std::string::String) {
+        self.field_type = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_field_type(&mut self) -> &mut ::std::string::String {
+        &mut self.field_type
+    }
+
+    // Take field
+    pub fn take_field_type(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.field_type, ::std::string::String::new())
+    }
+
+    pub fn get_field_type(&self) -> &str {
+        &self.field_type
+    }
+
+    fn get_field_type_for_reflect(&self) -> &::std::string::String {
+        &self.field_type
+    }
+
+    fn mut_field_type_for_reflect(&mut self) -> &mut ::std::string::String {
+        &mut self.field_type
+    }
+}
+
+impl ::protobuf::Message for CreateVertexFromTypeRequest {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.field_type)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.field_type.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.field_type);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
+        if !self.field_type.is_empty() {
+            os.write_string(1, &self.field_type)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &::std::any::Any {
+        self as &::std::any::Any
+    }
+    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+        self as &mut ::std::any::Any
+    }
+    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        ::protobuf::MessageStatic::descriptor_static(None::<Self>)
+    }
+}
+
+impl ::protobuf::MessageStatic for CreateVertexFromTypeRequest {
+    fn new() -> CreateVertexFromTypeRequest {
+        CreateVertexFromTypeRequest::new()
+    }
+
+    fn descriptor_static(_: ::std::option::Option<CreateVertexFromTypeRequest>) -> &'static ::protobuf::reflect::MessageDescriptor {
+        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
+        };
+        unsafe {
+            descriptor.get(|| {
+                let mut fields = ::std::vec::Vec::new();
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                    "type",
+                    CreateVertexFromTypeRequest::get_field_type_for_reflect,
+                    CreateVertexFromTypeRequest::mut_field_type_for_reflect,
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<CreateVertexFromTypeRequest>(
+                    "CreateVertexFromTypeRequest",
+                    fields,
+                    file_descriptor_proto()
+                )
+            })
+        }
+    }
+}
+
+impl ::protobuf::Clear for CreateVertexFromTypeRequest {
+    fn clear(&mut self) {
+        self.clear_field_type();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for CreateVertexFromTypeRequest {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for CreateVertexFromTypeRequest {
     fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
         ::protobuf::reflect::ProtobufValueRef::Message(self)
     }
@@ -5250,216 +5502,225 @@ impl ::protobuf::reflect::ProtobufValue for DeleteEdgeMetadataRequest {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x13proto/request.proto\x1a\x11proto/edges.proto\x1a\x13proto/queries.\
-    proto\x1a\x14proto/vertices.proto\"\r\n\x0bPingRequest\"\xbb\t\n\x12Tran\
+    proto\x1a\x14proto/vertices.proto\"\r\n\x0bPingRequest\"\x92\n\n\x12Tran\
     sactionRequest\x12;\n\rcreate_vertex\x18\x01\x20\x01(\x0b2\x14.CreateVer\
-    texRequestH\0R\x0ccreateVertex\x128\n\x0cget_vertices\x18\x02\x20\x01(\
-    \x0b2\x13.GetVerticesRequestH\0R\x0bgetVertices\x12A\n\x0fdelete_vertice\
-    s\x18\x03\x20\x01(\x0b2\x16.DeleteVerticesRequestH\0R\x0edeleteVertices\
-    \x12B\n\x10get_vertex_count\x18\x04\x20\x01(\x0b2\x16.GetVertexCountRequ\
-    estH\0R\x0egetVertexCount\x125\n\x0bcreate_edge\x18\x05\x20\x01(\x0b2\
-    \x12.CreateEdgeRequestH\0R\ncreateEdge\x12/\n\tget_edges\x18\x06\x20\x01\
-    (\x0b2\x10.GetEdgesRequestH\0R\x08getEdges\x128\n\x0cdelete_edges\x18\
-    \x07\x20\x01(\x0b2\x13.DeleteEdgesRequestH\0R\x0bdeleteEdges\x12<\n\x0eg\
-    et_edge_count\x18\x08\x20\x01(\x0b2\x14.GetEdgeCountRequestH\0R\x0cgetEd\
-    geCount\x12K\n\x13get_global_metadata\x18\t\x20\x01(\x0b2\x19.GetGlobalM\
-    etadataRequestH\0R\x11getGlobalMetadata\x12K\n\x13set_global_metadata\
-    \x18\n\x20\x01(\x0b2\x19.SetGlobalMetadataRequestH\0R\x11setGlobalMetada\
-    ta\x12T\n\x16delete_global_metadata\x18\x0b\x20\x01(\x0b2\x1c.DeleteGlob\
-    alMetadataRequestH\0R\x14deleteGlobalMetadata\x12K\n\x13get_vertex_metad\
-    ata\x18\x0c\x20\x01(\x0b2\x19.GetVertexMetadataRequestH\0R\x11getVertexM\
-    etadata\x12K\n\x13set_vertex_metadata\x18\r\x20\x01(\x0b2\x19.SetVertexM\
-    etadataRequestH\0R\x11setVertexMetadata\x12T\n\x16delete_vertex_metadata\
-    \x18\x0e\x20\x01(\x0b2\x1c.DeleteVertexMetadataRequestH\0R\x14deleteVert\
-    exMetadata\x12E\n\x11get_edge_metadata\x18\x0f\x20\x01(\x0b2\x17.GetEdge\
-    MetadataRequestH\0R\x0fgetEdgeMetadata\x12E\n\x11set_edge_metadata\x18\
-    \x10\x20\x01(\x0b2\x17.SetEdgeMetadataRequestH\0R\x0fsetEdgeMetadata\x12\
-    N\n\x14delete_edge_metadata\x18\x11\x20\x01(\x0b2\x1a.DeleteEdgeMetadata\
-    RequestH\0R\x12deleteEdgeMetadataB\t\n\x07request\"6\n\x13CreateVertexRe\
-    quest\x12\x1f\n\x06vertex\x18\x01\x20\x01(\x0b2\x07.VertexR\x06vertex\"8\
-    \n\x12GetVerticesRequest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.Vert\
-    exQueryR\x05query\";\n\x15DeleteVerticesRequest\x12\"\n\x05query\x18\x01\
-    \x20\x01(\x0b2\x0c.VertexQueryR\x05query\"\x17\n\x15GetVertexCountReques\
-    t\"/\n\x11CreateEdgeRequest\x12\x1a\n\x03key\x18\x01\x20\x01(\x0b2\x08.E\
-    dgeKeyR\x03key\"3\n\x0fGetEdgesRequest\x12\x20\n\x05query\x18\x01\x20\
-    \x01(\x0b2\n.EdgeQueryR\x05query\"6\n\x12DeleteEdgesRequest\x12\x20\n\
-    \x05query\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\x05query\"d\n\x13GetEdgeCou\
-    ntRequest\x12\x0e\n\x02id\x18\x01\x20\x01(\tR\x02id\x12\x1f\n\x0btype_fi\
-    lter\x18\x02\x20\x01(\tR\ntypeFilter\x12\x1c\n\tdirection\x18\x03\x20\
-    \x01(\tR\tdirection\".\n\x18GetGlobalMetadataRequest\x12\x12\n\x04name\
-    \x18\x01\x20\x01(\tR\x04name\"D\n\x18SetGlobalMetadataRequest\x12\x12\n\
-    \x04name\x18\x01\x20\x01(\tR\x04name\x12\x14\n\x05value\x18\x02\x20\x01(\
-    \tR\x05value\"1\n\x1bDeleteGlobalMetadataRequest\x12\x12\n\x04name\x18\
-    \x01\x20\x01(\tR\x04name\"R\n\x18GetVertexMetadataRequest\x12\"\n\x05que\
-    ry\x18\x01\x20\x01(\x0b2\x0c.VertexQueryR\x05query\x12\x12\n\x04name\x18\
-    \x02\x20\x01(\tR\x04name\"h\n\x18SetVertexMetadataRequest\x12\"\n\x05que\
-    ry\x18\x01\x20\x01(\x0b2\x0c.VertexQueryR\x05query\x12\x12\n\x04name\x18\
-    \x02\x20\x01(\tR\x04name\x12\x14\n\x05value\x18\x03\x20\x01(\tR\x05value\
-    \"U\n\x1bDeleteVertexMetadataRequest\x12\"\n\x05query\x18\x01\x20\x01(\
-    \x0b2\x0c.VertexQueryR\x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\
-    \x04name\"N\n\x16GetEdgeMetadataRequest\x12\x20\n\x05query\x18\x01\x20\
-    \x01(\x0b2\n.EdgeQueryR\x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\
-    \x04name\"d\n\x16SetEdgeMetadataRequest\x12\x20\n\x05query\x18\x01\x20\
-    \x01(\x0b2\n.EdgeQueryR\x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\
-    \x04name\x12\x14\n\x05value\x18\x03\x20\x01(\tR\x05value\"Q\n\x19DeleteE\
-    dgeMetadataRequest\x12\x20\n\x05query\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\
-    \x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04nameJ\x9f\x1a\n\x06\
-    \x12\x04\0\0j\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\
-    \x03\x02\x07\x1a\n\t\n\x02\x03\x01\x12\x03\x03\x07\x1c\n\t\n\x02\x03\x02\
-    \x12\x03\x04\x07\x1d\n\n\n\x02\x04\0\x12\x04\x06\0\x07\x01\n\n\n\x03\x04\
-    \0\x01\x12\x03\x06\x08\x13\n\n\n\x02\x04\x01\x12\x04\t\0\x1d\x01\n\n\n\
-    \x03\x04\x01\x01\x12\x03\t\x08\x1a\n\x0c\n\x04\x04\x01\x08\0\x12\x04\n\
-    \x04\x1c\x05\n\x0c\n\x05\x04\x01\x08\0\x01\x12\x03\n\n\x11\n\x0b\n\x04\
-    \x04\x01\x02\0\x12\x03\x0b\x08.\n\x0c\n\x05\x04\x01\x02\0\x06\x12\x03\
-    \x0b\x08\x1b\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\x0b\x1c)\n\x0c\n\x05\
-    \x04\x01\x02\0\x03\x12\x03\x0b,-\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\x0c\
-    \x08,\n\x0c\n\x05\x04\x01\x02\x01\x06\x12\x03\x0c\x08\x1a\n\x0c\n\x05\
-    \x04\x01\x02\x01\x01\x12\x03\x0c\x1b'\n\x0c\n\x05\x04\x01\x02\x01\x03\
-    \x12\x03\x0c*+\n\x0b\n\x04\x04\x01\x02\x02\x12\x03\r\x082\n\x0c\n\x05\
-    \x04\x01\x02\x02\x06\x12\x03\r\x08\x1d\n\x0c\n\x05\x04\x01\x02\x02\x01\
-    \x12\x03\r\x1e-\n\x0c\n\x05\x04\x01\x02\x02\x03\x12\x03\r01\n\x0b\n\x04\
-    \x04\x01\x02\x03\x12\x03\x0e\x083\n\x0c\n\x05\x04\x01\x02\x03\x06\x12\
-    \x03\x0e\x08\x1d\n\x0c\n\x05\x04\x01\x02\x03\x01\x12\x03\x0e\x1e.\n\x0c\
-    \n\x05\x04\x01\x02\x03\x03\x12\x03\x0e12\n\x0b\n\x04\x04\x01\x02\x04\x12\
-    \x03\x0f\x08*\n\x0c\n\x05\x04\x01\x02\x04\x06\x12\x03\x0f\x08\x19\n\x0c\
-    \n\x05\x04\x01\x02\x04\x01\x12\x03\x0f\x1a%\n\x0c\n\x05\x04\x01\x02\x04\
-    \x03\x12\x03\x0f()\n\x0b\n\x04\x04\x01\x02\x05\x12\x03\x10\x08&\n\x0c\n\
-    \x05\x04\x01\x02\x05\x06\x12\x03\x10\x08\x17\n\x0c\n\x05\x04\x01\x02\x05\
-    \x01\x12\x03\x10\x18!\n\x0c\n\x05\x04\x01\x02\x05\x03\x12\x03\x10$%\n\
-    \x0b\n\x04\x04\x01\x02\x06\x12\x03\x11\x08,\n\x0c\n\x05\x04\x01\x02\x06\
-    \x06\x12\x03\x11\x08\x1a\n\x0c\n\x05\x04\x01\x02\x06\x01\x12\x03\x11\x1b\
-    '\n\x0c\n\x05\x04\x01\x02\x06\x03\x12\x03\x11*+\n\x0b\n\x04\x04\x01\x02\
-    \x07\x12\x03\x12\x08/\n\x0c\n\x05\x04\x01\x02\x07\x06\x12\x03\x12\x08\
-    \x1b\n\x0c\n\x05\x04\x01\x02\x07\x01\x12\x03\x12\x1c*\n\x0c\n\x05\x04\
-    \x01\x02\x07\x03\x12\x03\x12-.\n\x0b\n\x04\x04\x01\x02\x08\x12\x03\x13\
-    \x089\n\x0c\n\x05\x04\x01\x02\x08\x06\x12\x03\x13\x08\x20\n\x0c\n\x05\
-    \x04\x01\x02\x08\x01\x12\x03\x13!4\n\x0c\n\x05\x04\x01\x02\x08\x03\x12\
-    \x03\x1378\n\x0b\n\x04\x04\x01\x02\t\x12\x03\x14\x08:\n\x0c\n\x05\x04\
-    \x01\x02\t\x06\x12\x03\x14\x08\x20\n\x0c\n\x05\x04\x01\x02\t\x01\x12\x03\
-    \x14!4\n\x0c\n\x05\x04\x01\x02\t\x03\x12\x03\x1479\n\x0b\n\x04\x04\x01\
-    \x02\n\x12\x03\x15\x08@\n\x0c\n\x05\x04\x01\x02\n\x06\x12\x03\x15\x08#\n\
-    \x0c\n\x05\x04\x01\x02\n\x01\x12\x03\x15$:\n\x0c\n\x05\x04\x01\x02\n\x03\
-    \x12\x03\x15=?\n\x0b\n\x04\x04\x01\x02\x0b\x12\x03\x16\x08:\n\x0c\n\x05\
-    \x04\x01\x02\x0b\x06\x12\x03\x16\x08\x20\n\x0c\n\x05\x04\x01\x02\x0b\x01\
-    \x12\x03\x16!4\n\x0c\n\x05\x04\x01\x02\x0b\x03\x12\x03\x1679\n\x0b\n\x04\
-    \x04\x01\x02\x0c\x12\x03\x17\x08:\n\x0c\n\x05\x04\x01\x02\x0c\x06\x12\
-    \x03\x17\x08\x20\n\x0c\n\x05\x04\x01\x02\x0c\x01\x12\x03\x17!4\n\x0c\n\
-    \x05\x04\x01\x02\x0c\x03\x12\x03\x1779\n\x0b\n\x04\x04\x01\x02\r\x12\x03\
-    \x18\x08@\n\x0c\n\x05\x04\x01\x02\r\x06\x12\x03\x18\x08#\n\x0c\n\x05\x04\
-    \x01\x02\r\x01\x12\x03\x18$:\n\x0c\n\x05\x04\x01\x02\r\x03\x12\x03\x18=?\
-    \n\x0b\n\x04\x04\x01\x02\x0e\x12\x03\x19\x086\n\x0c\n\x05\x04\x01\x02\
-    \x0e\x06\x12\x03\x19\x08\x1e\n\x0c\n\x05\x04\x01\x02\x0e\x01\x12\x03\x19\
-    \x1f0\n\x0c\n\x05\x04\x01\x02\x0e\x03\x12\x03\x1935\n\x0b\n\x04\x04\x01\
-    \x02\x0f\x12\x03\x1a\x086\n\x0c\n\x05\x04\x01\x02\x0f\x06\x12\x03\x1a\
-    \x08\x1e\n\x0c\n\x05\x04\x01\x02\x0f\x01\x12\x03\x1a\x1f0\n\x0c\n\x05\
-    \x04\x01\x02\x0f\x03\x12\x03\x1a35\n\x0b\n\x04\x04\x01\x02\x10\x12\x03\
-    \x1b\x08<\n\x0c\n\x05\x04\x01\x02\x10\x06\x12\x03\x1b\x08!\n\x0c\n\x05\
-    \x04\x01\x02\x10\x01\x12\x03\x1b\"6\n\x0c\n\x05\x04\x01\x02\x10\x03\x12\
-    \x03\x1b9;\n\n\n\x02\x04\x02\x12\x04\x1f\0!\x01\n\n\n\x03\x04\x02\x01\
-    \x12\x03\x1f\x08\x1b\n\x0b\n\x04\x04\x02\x02\0\x12\x03\x20\x04\x16\n\r\n\
-    \x05\x04\x02\x02\0\x04\x12\x04\x20\x04\x1f\x1d\n\x0c\n\x05\x04\x02\x02\0\
-    \x06\x12\x03\x20\x04\n\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03\x20\x0b\x11\
-    \n\x0c\n\x05\x04\x02\x02\0\x03\x12\x03\x20\x14\x15\n\n\n\x02\x04\x03\x12\
-    \x04#\0%\x01\n\n\n\x03\x04\x03\x01\x12\x03#\x08\x1a\n\x0b\n\x04\x04\x03\
-    \x02\0\x12\x03$\x04\x1a\n\r\n\x05\x04\x03\x02\0\x04\x12\x04$\x04#\x1c\n\
-    \x0c\n\x05\x04\x03\x02\0\x06\x12\x03$\x04\x0f\n\x0c\n\x05\x04\x03\x02\0\
-    \x01\x12\x03$\x10\x15\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03$\x18\x19\n\n\
-    \n\x02\x04\x04\x12\x04'\0)\x01\n\n\n\x03\x04\x04\x01\x12\x03'\x08\x1d\n\
-    \x0b\n\x04\x04\x04\x02\0\x12\x03(\x04\x1a\n\r\n\x05\x04\x04\x02\0\x04\
-    \x12\x04(\x04'\x1f\n\x0c\n\x05\x04\x04\x02\0\x06\x12\x03(\x04\x0f\n\x0c\
-    \n\x05\x04\x04\x02\0\x01\x12\x03(\x10\x15\n\x0c\n\x05\x04\x04\x02\0\x03\
-    \x12\x03(\x18\x19\n\t\n\x02\x04\x05\x12\x03+\0!\n\n\n\x03\x04\x05\x01\
-    \x12\x03+\x08\x1d\n\n\n\x02\x04\x06\x12\x04-\0/\x01\n\n\n\x03\x04\x06\
-    \x01\x12\x03-\x08\x19\n\x0b\n\x04\x04\x06\x02\0\x12\x03.\x04\x14\n\r\n\
-    \x05\x04\x06\x02\0\x04\x12\x04.\x04-\x1b\n\x0c\n\x05\x04\x06\x02\0\x06\
-    \x12\x03.\x04\x0b\n\x0c\n\x05\x04\x06\x02\0\x01\x12\x03.\x0c\x0f\n\x0c\n\
-    \x05\x04\x06\x02\0\x03\x12\x03.\x12\x13\n\n\n\x02\x04\x07\x12\x041\03\
-    \x01\n\n\n\x03\x04\x07\x01\x12\x031\x08\x17\n\x0b\n\x04\x04\x07\x02\0\
-    \x12\x032\x04\x18\n\r\n\x05\x04\x07\x02\0\x04\x12\x042\x041\x19\n\x0c\n\
-    \x05\x04\x07\x02\0\x06\x12\x032\x04\r\n\x0c\n\x05\x04\x07\x02\0\x01\x12\
-    \x032\x0e\x13\n\x0c\n\x05\x04\x07\x02\0\x03\x12\x032\x16\x17\n\n\n\x02\
-    \x04\x08\x12\x045\07\x01\n\n\n\x03\x04\x08\x01\x12\x035\x08\x1a\n\x0b\n\
-    \x04\x04\x08\x02\0\x12\x036\x04\x18\n\r\n\x05\x04\x08\x02\0\x04\x12\x046\
-    \x045\x1c\n\x0c\n\x05\x04\x08\x02\0\x06\x12\x036\x04\r\n\x0c\n\x05\x04\
-    \x08\x02\0\x01\x12\x036\x0e\x13\n\x0c\n\x05\x04\x08\x02\0\x03\x12\x036\
-    \x16\x17\n\n\n\x02\x04\t\x12\x049\0=\x01\n\n\n\x03\x04\t\x01\x12\x039\
-    \x08\x1b\n\x0b\n\x04\x04\t\x02\0\x12\x03:\x04\x12\n\r\n\x05\x04\t\x02\0\
-    \x04\x12\x04:\x049\x1d\n\x0c\n\x05\x04\t\x02\0\x05\x12\x03:\x04\n\n\x0c\
-    \n\x05\x04\t\x02\0\x01\x12\x03:\x0b\r\n\x0c\n\x05\x04\t\x02\0\x03\x12\
-    \x03:\x10\x11\n\x0b\n\x04\x04\t\x02\x01\x12\x03;\x04\x1b\n\r\n\x05\x04\t\
-    \x02\x01\x04\x12\x04;\x04:\x12\n\x0c\n\x05\x04\t\x02\x01\x05\x12\x03;\
-    \x04\n\n\x0c\n\x05\x04\t\x02\x01\x01\x12\x03;\x0b\x16\n\x0c\n\x05\x04\t\
-    \x02\x01\x03\x12\x03;\x19\x1a\n\x0b\n\x04\x04\t\x02\x02\x12\x03<\x04\x19\
-    \n\r\n\x05\x04\t\x02\x02\x04\x12\x04<\x04;\x1b\n\x0c\n\x05\x04\t\x02\x02\
-    \x05\x12\x03<\x04\n\n\x0c\n\x05\x04\t\x02\x02\x01\x12\x03<\x0b\x14\n\x0c\
-    \n\x05\x04\t\x02\x02\x03\x12\x03<\x17\x18\n\n\n\x02\x04\n\x12\x04?\0A\
-    \x01\n\n\n\x03\x04\n\x01\x12\x03?\x08\x20\n\x0b\n\x04\x04\n\x02\0\x12\
-    \x03@\x04\x14\n\r\n\x05\x04\n\x02\0\x04\x12\x04@\x04?\"\n\x0c\n\x05\x04\
-    \n\x02\0\x05\x12\x03@\x04\n\n\x0c\n\x05\x04\n\x02\0\x01\x12\x03@\x0b\x0f\
-    \n\x0c\n\x05\x04\n\x02\0\x03\x12\x03@\x12\x13\n\n\n\x02\x04\x0b\x12\x04C\
-    \0F\x01\n\n\n\x03\x04\x0b\x01\x12\x03C\x08\x20\n\x0b\n\x04\x04\x0b\x02\0\
-    \x12\x03D\x04\x14\n\r\n\x05\x04\x0b\x02\0\x04\x12\x04D\x04C\"\n\x0c\n\
-    \x05\x04\x0b\x02\0\x05\x12\x03D\x04\n\n\x0c\n\x05\x04\x0b\x02\0\x01\x12\
-    \x03D\x0b\x0f\n\x0c\n\x05\x04\x0b\x02\0\x03\x12\x03D\x12\x13\n\x0b\n\x04\
-    \x04\x0b\x02\x01\x12\x03E\x04\x15\n\r\n\x05\x04\x0b\x02\x01\x04\x12\x04E\
-    \x04D\x14\n\x0c\n\x05\x04\x0b\x02\x01\x05\x12\x03E\x04\n\n\x0c\n\x05\x04\
-    \x0b\x02\x01\x01\x12\x03E\x0b\x10\n\x0c\n\x05\x04\x0b\x02\x01\x03\x12\
-    \x03E\x13\x14\n\n\n\x02\x04\x0c\x12\x04H\0J\x01\n\n\n\x03\x04\x0c\x01\
-    \x12\x03H\x08#\n\x0b\n\x04\x04\x0c\x02\0\x12\x03I\x04\x14\n\r\n\x05\x04\
-    \x0c\x02\0\x04\x12\x04I\x04H%\n\x0c\n\x05\x04\x0c\x02\0\x05\x12\x03I\x04\
-    \n\n\x0c\n\x05\x04\x0c\x02\0\x01\x12\x03I\x0b\x0f\n\x0c\n\x05\x04\x0c\
-    \x02\0\x03\x12\x03I\x12\x13\n\n\n\x02\x04\r\x12\x04L\0O\x01\n\n\n\x03\
-    \x04\r\x01\x12\x03L\x08\x20\n\x0b\n\x04\x04\r\x02\0\x12\x03M\x04\x1a\n\r\
-    \n\x05\x04\r\x02\0\x04\x12\x04M\x04L\"\n\x0c\n\x05\x04\r\x02\0\x06\x12\
-    \x03M\x04\x0f\n\x0c\n\x05\x04\r\x02\0\x01\x12\x03M\x10\x15\n\x0c\n\x05\
-    \x04\r\x02\0\x03\x12\x03M\x18\x19\n\x0b\n\x04\x04\r\x02\x01\x12\x03N\x04\
-    \x14\n\r\n\x05\x04\r\x02\x01\x04\x12\x04N\x04M\x1a\n\x0c\n\x05\x04\r\x02\
-    \x01\x05\x12\x03N\x04\n\n\x0c\n\x05\x04\r\x02\x01\x01\x12\x03N\x0b\x0f\n\
-    \x0c\n\x05\x04\r\x02\x01\x03\x12\x03N\x12\x13\n\n\n\x02\x04\x0e\x12\x04Q\
-    \0U\x01\n\n\n\x03\x04\x0e\x01\x12\x03Q\x08\x20\n\x0b\n\x04\x04\x0e\x02\0\
-    \x12\x03R\x04\x1a\n\r\n\x05\x04\x0e\x02\0\x04\x12\x04R\x04Q\"\n\x0c\n\
-    \x05\x04\x0e\x02\0\x06\x12\x03R\x04\x0f\n\x0c\n\x05\x04\x0e\x02\0\x01\
-    \x12\x03R\x10\x15\n\x0c\n\x05\x04\x0e\x02\0\x03\x12\x03R\x18\x19\n\x0b\n\
-    \x04\x04\x0e\x02\x01\x12\x03S\x04\x14\n\r\n\x05\x04\x0e\x02\x01\x04\x12\
-    \x04S\x04R\x1a\n\x0c\n\x05\x04\x0e\x02\x01\x05\x12\x03S\x04\n\n\x0c\n\
-    \x05\x04\x0e\x02\x01\x01\x12\x03S\x0b\x0f\n\x0c\n\x05\x04\x0e\x02\x01\
-    \x03\x12\x03S\x12\x13\n\x0b\n\x04\x04\x0e\x02\x02\x12\x03T\x04\x15\n\r\n\
-    \x05\x04\x0e\x02\x02\x04\x12\x04T\x04S\x14\n\x0c\n\x05\x04\x0e\x02\x02\
-    \x05\x12\x03T\x04\n\n\x0c\n\x05\x04\x0e\x02\x02\x01\x12\x03T\x0b\x10\n\
-    \x0c\n\x05\x04\x0e\x02\x02\x03\x12\x03T\x13\x14\n\n\n\x02\x04\x0f\x12\
-    \x04W\0Z\x01\n\n\n\x03\x04\x0f\x01\x12\x03W\x08#\n\x0b\n\x04\x04\x0f\x02\
-    \0\x12\x03X\x04\x1a\n\r\n\x05\x04\x0f\x02\0\x04\x12\x04X\x04W%\n\x0c\n\
-    \x05\x04\x0f\x02\0\x06\x12\x03X\x04\x0f\n\x0c\n\x05\x04\x0f\x02\0\x01\
-    \x12\x03X\x10\x15\n\x0c\n\x05\x04\x0f\x02\0\x03\x12\x03X\x18\x19\n\x0b\n\
-    \x04\x04\x0f\x02\x01\x12\x03Y\x04\x14\n\r\n\x05\x04\x0f\x02\x01\x04\x12\
-    \x04Y\x04X\x1a\n\x0c\n\x05\x04\x0f\x02\x01\x05\x12\x03Y\x04\n\n\x0c\n\
-    \x05\x04\x0f\x02\x01\x01\x12\x03Y\x0b\x0f\n\x0c\n\x05\x04\x0f\x02\x01\
-    \x03\x12\x03Y\x12\x13\n\n\n\x02\x04\x10\x12\x04\\\0_\x01\n\n\n\x03\x04\
-    \x10\x01\x12\x03\\\x08\x1e\n\x0b\n\x04\x04\x10\x02\0\x12\x03]\x04\x18\n\
-    \r\n\x05\x04\x10\x02\0\x04\x12\x04]\x04\\\x20\n\x0c\n\x05\x04\x10\x02\0\
-    \x06\x12\x03]\x04\r\n\x0c\n\x05\x04\x10\x02\0\x01\x12\x03]\x0e\x13\n\x0c\
-    \n\x05\x04\x10\x02\0\x03\x12\x03]\x16\x17\n\x0b\n\x04\x04\x10\x02\x01\
-    \x12\x03^\x04\x14\n\r\n\x05\x04\x10\x02\x01\x04\x12\x04^\x04]\x18\n\x0c\
-    \n\x05\x04\x10\x02\x01\x05\x12\x03^\x04\n\n\x0c\n\x05\x04\x10\x02\x01\
-    \x01\x12\x03^\x0b\x0f\n\x0c\n\x05\x04\x10\x02\x01\x03\x12\x03^\x12\x13\n\
-    \n\n\x02\x04\x11\x12\x04a\0e\x01\n\n\n\x03\x04\x11\x01\x12\x03a\x08\x1e\
-    \n\x0b\n\x04\x04\x11\x02\0\x12\x03b\x04\x18\n\r\n\x05\x04\x11\x02\0\x04\
-    \x12\x04b\x04a\x20\n\x0c\n\x05\x04\x11\x02\0\x06\x12\x03b\x04\r\n\x0c\n\
-    \x05\x04\x11\x02\0\x01\x12\x03b\x0e\x13\n\x0c\n\x05\x04\x11\x02\0\x03\
-    \x12\x03b\x16\x17\n\x0b\n\x04\x04\x11\x02\x01\x12\x03c\x04\x14\n\r\n\x05\
-    \x04\x11\x02\x01\x04\x12\x04c\x04b\x18\n\x0c\n\x05\x04\x11\x02\x01\x05\
-    \x12\x03c\x04\n\n\x0c\n\x05\x04\x11\x02\x01\x01\x12\x03c\x0b\x0f\n\x0c\n\
-    \x05\x04\x11\x02\x01\x03\x12\x03c\x12\x13\n\x0b\n\x04\x04\x11\x02\x02\
-    \x12\x03d\x04\x15\n\r\n\x05\x04\x11\x02\x02\x04\x12\x04d\x04c\x14\n\x0c\
-    \n\x05\x04\x11\x02\x02\x05\x12\x03d\x04\n\n\x0c\n\x05\x04\x11\x02\x02\
-    \x01\x12\x03d\x0b\x10\n\x0c\n\x05\x04\x11\x02\x02\x03\x12\x03d\x13\x14\n\
-    \n\n\x02\x04\x12\x12\x04g\0j\x01\n\n\n\x03\x04\x12\x01\x12\x03g\x08!\n\
-    \x0b\n\x04\x04\x12\x02\0\x12\x03h\x04\x18\n\r\n\x05\x04\x12\x02\0\x04\
-    \x12\x04h\x04g#\n\x0c\n\x05\x04\x12\x02\0\x06\x12\x03h\x04\r\n\x0c\n\x05\
-    \x04\x12\x02\0\x01\x12\x03h\x0e\x13\n\x0c\n\x05\x04\x12\x02\0\x03\x12\
-    \x03h\x16\x17\n\x0b\n\x04\x04\x12\x02\x01\x12\x03i\x04\x14\n\r\n\x05\x04\
-    \x12\x02\x01\x04\x12\x04i\x04h\x18\n\x0c\n\x05\x04\x12\x02\x01\x05\x12\
-    \x03i\x04\n\n\x0c\n\x05\x04\x12\x02\x01\x01\x12\x03i\x0b\x0f\n\x0c\n\x05\
-    \x04\x12\x02\x01\x03\x12\x03i\x12\x13b\x06proto3\
+    texRequestH\0R\x0ccreateVertex\x12U\n\x17create_vertex_from_type\x18\x02\
+    \x20\x01(\x0b2\x1c.CreateVertexFromTypeRequestH\0R\x14createVertexFromTy\
+    pe\x128\n\x0cget_vertices\x18\x03\x20\x01(\x0b2\x13.GetVerticesRequestH\
+    \0R\x0bgetVertices\x12A\n\x0fdelete_vertices\x18\x04\x20\x01(\x0b2\x16.D\
+    eleteVerticesRequestH\0R\x0edeleteVertices\x12B\n\x10get_vertex_count\
+    \x18\x05\x20\x01(\x0b2\x16.GetVertexCountRequestH\0R\x0egetVertexCount\
+    \x125\n\x0bcreate_edge\x18\x06\x20\x01(\x0b2\x12.CreateEdgeRequestH\0R\n\
+    createEdge\x12/\n\tget_edges\x18\x07\x20\x01(\x0b2\x10.GetEdgesRequestH\
+    \0R\x08getEdges\x128\n\x0cdelete_edges\x18\x08\x20\x01(\x0b2\x13.DeleteE\
+    dgesRequestH\0R\x0bdeleteEdges\x12<\n\x0eget_edge_count\x18\t\x20\x01(\
+    \x0b2\x14.GetEdgeCountRequestH\0R\x0cgetEdgeCount\x12K\n\x13get_global_m\
+    etadata\x18\n\x20\x01(\x0b2\x19.GetGlobalMetadataRequestH\0R\x11getGloba\
+    lMetadata\x12K\n\x13set_global_metadata\x18\x0b\x20\x01(\x0b2\x19.SetGlo\
+    balMetadataRequestH\0R\x11setGlobalMetadata\x12T\n\x16delete_global_meta\
+    data\x18\x0c\x20\x01(\x0b2\x1c.DeleteGlobalMetadataRequestH\0R\x14delete\
+    GlobalMetadata\x12K\n\x13get_vertex_metadata\x18\r\x20\x01(\x0b2\x19.Get\
+    VertexMetadataRequestH\0R\x11getVertexMetadata\x12K\n\x13set_vertex_meta\
+    data\x18\x0e\x20\x01(\x0b2\x19.SetVertexMetadataRequestH\0R\x11setVertex\
+    Metadata\x12T\n\x16delete_vertex_metadata\x18\x0f\x20\x01(\x0b2\x1c.Dele\
+    teVertexMetadataRequestH\0R\x14deleteVertexMetadata\x12E\n\x11get_edge_m\
+    etadata\x18\x10\x20\x01(\x0b2\x17.GetEdgeMetadataRequestH\0R\x0fgetEdgeM\
+    etadata\x12E\n\x11set_edge_metadata\x18\x11\x20\x01(\x0b2\x17.SetEdgeMet\
+    adataRequestH\0R\x0fsetEdgeMetadata\x12N\n\x14delete_edge_metadata\x18\
+    \x12\x20\x01(\x0b2\x1a.DeleteEdgeMetadataRequestH\0R\x12deleteEdgeMetada\
+    taB\t\n\x07request\"6\n\x13CreateVertexRequest\x12\x1f\n\x06vertex\x18\
+    \x01\x20\x01(\x0b2\x07.VertexR\x06vertex\"1\n\x1bCreateVertexFromTypeReq\
+    uest\x12\x12\n\x04type\x18\x01\x20\x01(\tR\x04type\"8\n\x12GetVerticesRe\
+    quest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.VertexQueryR\x05query\"\
+    ;\n\x15DeleteVerticesRequest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.\
+    VertexQueryR\x05query\"\x17\n\x15GetVertexCountRequest\"/\n\x11CreateEdg\
+    eRequest\x12\x1a\n\x03key\x18\x01\x20\x01(\x0b2\x08.EdgeKeyR\x03key\"3\n\
+    \x0fGetEdgesRequest\x12\x20\n\x05query\x18\x01\x20\x01(\x0b2\n.EdgeQuery\
+    R\x05query\"6\n\x12DeleteEdgesRequest\x12\x20\n\x05query\x18\x01\x20\x01\
+    (\x0b2\n.EdgeQueryR\x05query\"d\n\x13GetEdgeCountRequest\x12\x0e\n\x02id\
+    \x18\x01\x20\x01(\tR\x02id\x12\x1f\n\x0btype_filter\x18\x02\x20\x01(\tR\
+    \ntypeFilter\x12\x1c\n\tdirection\x18\x03\x20\x01(\tR\tdirection\".\n\
+    \x18GetGlobalMetadataRequest\x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04na\
+    me\"D\n\x18SetGlobalMetadataRequest\x12\x12\n\x04name\x18\x01\x20\x01(\t\
+    R\x04name\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value\"1\n\x1bDelete\
+    GlobalMetadataRequest\x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\"R\n\
+    \x18GetVertexMetadataRequest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.\
+    VertexQueryR\x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\"h\n\
+    \x18SetVertexMetadataRequest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.\
+    VertexQueryR\x05query\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\x12\
+    \x14\n\x05value\x18\x03\x20\x01(\tR\x05value\"U\n\x1bDeleteVertexMetadat\
+    aRequest\x12\"\n\x05query\x18\x01\x20\x01(\x0b2\x0c.VertexQueryR\x05quer\
+    y\x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\"N\n\x16GetEdgeMetadataR\
+    equest\x12\x20\n\x05query\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\x05query\
+    \x12\x12\n\x04name\x18\x02\x20\x01(\tR\x04name\"d\n\x16SetEdgeMetadataRe\
+    quest\x12\x20\n\x05query\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\x05query\x12\
+    \x12\n\x04name\x18\x02\x20\x01(\tR\x04name\x12\x14\n\x05value\x18\x03\
+    \x20\x01(\tR\x05value\"Q\n\x19DeleteEdgeMetadataRequest\x12\x20\n\x05que\
+    ry\x18\x01\x20\x01(\x0b2\n.EdgeQueryR\x05query\x12\x12\n\x04name\x18\x02\
+    \x20\x01(\tR\x04nameJ\xb4\x1b\n\x06\x12\x04\0\0o\x01\n\x08\n\x01\x0c\x12\
+    \x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x1a\n\t\n\x02\x03\x01\x12\
+    \x03\x03\x07\x1c\n\t\n\x02\x03\x02\x12\x03\x04\x07\x1d\n\n\n\x02\x04\0\
+    \x12\x04\x06\0\x07\x01\n\n\n\x03\x04\0\x01\x12\x03\x06\x08\x13\n\n\n\x02\
+    \x04\x01\x12\x04\t\0\x1e\x01\n\n\n\x03\x04\x01\x01\x12\x03\t\x08\x1a\n\
+    \x0c\n\x04\x04\x01\x08\0\x12\x04\n\x04\x1d\x05\n\x0c\n\x05\x04\x01\x08\0\
+    \x01\x12\x03\n\n\x11\n\x0b\n\x04\x04\x01\x02\0\x12\x03\x0b\x08.\n\x0c\n\
+    \x05\x04\x01\x02\0\x06\x12\x03\x0b\x08\x1b\n\x0c\n\x05\x04\x01\x02\0\x01\
+    \x12\x03\x0b\x1c)\n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\x0b,-\n\x0b\n\
+    \x04\x04\x01\x02\x01\x12\x03\x0c\x08@\n\x0c\n\x05\x04\x01\x02\x01\x06\
+    \x12\x03\x0c\x08#\n\x0c\n\x05\x04\x01\x02\x01\x01\x12\x03\x0c$;\n\x0c\n\
+    \x05\x04\x01\x02\x01\x03\x12\x03\x0c>?\n\x0b\n\x04\x04\x01\x02\x02\x12\
+    \x03\r\x08,\n\x0c\n\x05\x04\x01\x02\x02\x06\x12\x03\r\x08\x1a\n\x0c\n\
+    \x05\x04\x01\x02\x02\x01\x12\x03\r\x1b'\n\x0c\n\x05\x04\x01\x02\x02\x03\
+    \x12\x03\r*+\n\x0b\n\x04\x04\x01\x02\x03\x12\x03\x0e\x082\n\x0c\n\x05\
+    \x04\x01\x02\x03\x06\x12\x03\x0e\x08\x1d\n\x0c\n\x05\x04\x01\x02\x03\x01\
+    \x12\x03\x0e\x1e-\n\x0c\n\x05\x04\x01\x02\x03\x03\x12\x03\x0e01\n\x0b\n\
+    \x04\x04\x01\x02\x04\x12\x03\x0f\x083\n\x0c\n\x05\x04\x01\x02\x04\x06\
+    \x12\x03\x0f\x08\x1d\n\x0c\n\x05\x04\x01\x02\x04\x01\x12\x03\x0f\x1e.\n\
+    \x0c\n\x05\x04\x01\x02\x04\x03\x12\x03\x0f12\n\x0b\n\x04\x04\x01\x02\x05\
+    \x12\x03\x10\x08*\n\x0c\n\x05\x04\x01\x02\x05\x06\x12\x03\x10\x08\x19\n\
+    \x0c\n\x05\x04\x01\x02\x05\x01\x12\x03\x10\x1a%\n\x0c\n\x05\x04\x01\x02\
+    \x05\x03\x12\x03\x10()\n\x0b\n\x04\x04\x01\x02\x06\x12\x03\x11\x08&\n\
+    \x0c\n\x05\x04\x01\x02\x06\x06\x12\x03\x11\x08\x17\n\x0c\n\x05\x04\x01\
+    \x02\x06\x01\x12\x03\x11\x18!\n\x0c\n\x05\x04\x01\x02\x06\x03\x12\x03\
+    \x11$%\n\x0b\n\x04\x04\x01\x02\x07\x12\x03\x12\x08,\n\x0c\n\x05\x04\x01\
+    \x02\x07\x06\x12\x03\x12\x08\x1a\n\x0c\n\x05\x04\x01\x02\x07\x01\x12\x03\
+    \x12\x1b'\n\x0c\n\x05\x04\x01\x02\x07\x03\x12\x03\x12*+\n\x0b\n\x04\x04\
+    \x01\x02\x08\x12\x03\x13\x08/\n\x0c\n\x05\x04\x01\x02\x08\x06\x12\x03\
+    \x13\x08\x1b\n\x0c\n\x05\x04\x01\x02\x08\x01\x12\x03\x13\x1c*\n\x0c\n\
+    \x05\x04\x01\x02\x08\x03\x12\x03\x13-.\n\x0b\n\x04\x04\x01\x02\t\x12\x03\
+    \x14\x08:\n\x0c\n\x05\x04\x01\x02\t\x06\x12\x03\x14\x08\x20\n\x0c\n\x05\
+    \x04\x01\x02\t\x01\x12\x03\x14!4\n\x0c\n\x05\x04\x01\x02\t\x03\x12\x03\
+    \x1479\n\x0b\n\x04\x04\x01\x02\n\x12\x03\x15\x08:\n\x0c\n\x05\x04\x01\
+    \x02\n\x06\x12\x03\x15\x08\x20\n\x0c\n\x05\x04\x01\x02\n\x01\x12\x03\x15\
+    !4\n\x0c\n\x05\x04\x01\x02\n\x03\x12\x03\x1579\n\x0b\n\x04\x04\x01\x02\
+    \x0b\x12\x03\x16\x08@\n\x0c\n\x05\x04\x01\x02\x0b\x06\x12\x03\x16\x08#\n\
+    \x0c\n\x05\x04\x01\x02\x0b\x01\x12\x03\x16$:\n\x0c\n\x05\x04\x01\x02\x0b\
+    \x03\x12\x03\x16=?\n\x0b\n\x04\x04\x01\x02\x0c\x12\x03\x17\x08:\n\x0c\n\
+    \x05\x04\x01\x02\x0c\x06\x12\x03\x17\x08\x20\n\x0c\n\x05\x04\x01\x02\x0c\
+    \x01\x12\x03\x17!4\n\x0c\n\x05\x04\x01\x02\x0c\x03\x12\x03\x1779\n\x0b\n\
+    \x04\x04\x01\x02\r\x12\x03\x18\x08:\n\x0c\n\x05\x04\x01\x02\r\x06\x12\
+    \x03\x18\x08\x20\n\x0c\n\x05\x04\x01\x02\r\x01\x12\x03\x18!4\n\x0c\n\x05\
+    \x04\x01\x02\r\x03\x12\x03\x1879\n\x0b\n\x04\x04\x01\x02\x0e\x12\x03\x19\
+    \x08@\n\x0c\n\x05\x04\x01\x02\x0e\x06\x12\x03\x19\x08#\n\x0c\n\x05\x04\
+    \x01\x02\x0e\x01\x12\x03\x19$:\n\x0c\n\x05\x04\x01\x02\x0e\x03\x12\x03\
+    \x19=?\n\x0b\n\x04\x04\x01\x02\x0f\x12\x03\x1a\x086\n\x0c\n\x05\x04\x01\
+    \x02\x0f\x06\x12\x03\x1a\x08\x1e\n\x0c\n\x05\x04\x01\x02\x0f\x01\x12\x03\
+    \x1a\x1f0\n\x0c\n\x05\x04\x01\x02\x0f\x03\x12\x03\x1a35\n\x0b\n\x04\x04\
+    \x01\x02\x10\x12\x03\x1b\x086\n\x0c\n\x05\x04\x01\x02\x10\x06\x12\x03\
+    \x1b\x08\x1e\n\x0c\n\x05\x04\x01\x02\x10\x01\x12\x03\x1b\x1f0\n\x0c\n\
+    \x05\x04\x01\x02\x10\x03\x12\x03\x1b35\n\x0b\n\x04\x04\x01\x02\x11\x12\
+    \x03\x1c\x08<\n\x0c\n\x05\x04\x01\x02\x11\x06\x12\x03\x1c\x08!\n\x0c\n\
+    \x05\x04\x01\x02\x11\x01\x12\x03\x1c\"6\n\x0c\n\x05\x04\x01\x02\x11\x03\
+    \x12\x03\x1c9;\n\n\n\x02\x04\x02\x12\x04\x20\0\"\x01\n\n\n\x03\x04\x02\
+    \x01\x12\x03\x20\x08\x1b\n\x0b\n\x04\x04\x02\x02\0\x12\x03!\x04\x16\n\r\
+    \n\x05\x04\x02\x02\0\x04\x12\x04!\x04\x20\x1d\n\x0c\n\x05\x04\x02\x02\0\
+    \x06\x12\x03!\x04\n\n\x0c\n\x05\x04\x02\x02\0\x01\x12\x03!\x0b\x11\n\x0c\
+    \n\x05\x04\x02\x02\0\x03\x12\x03!\x14\x15\n\n\n\x02\x04\x03\x12\x04$\0&\
+    \x01\n\n\n\x03\x04\x03\x01\x12\x03$\x08#\n\x0b\n\x04\x04\x03\x02\0\x12\
+    \x03%\x04\x14\n\r\n\x05\x04\x03\x02\0\x04\x12\x04%\x04$%\n\x0c\n\x05\x04\
+    \x03\x02\0\x05\x12\x03%\x04\n\n\x0c\n\x05\x04\x03\x02\0\x01\x12\x03%\x0b\
+    \x0f\n\x0c\n\x05\x04\x03\x02\0\x03\x12\x03%\x12\x13\n\n\n\x02\x04\x04\
+    \x12\x04(\0*\x01\n\n\n\x03\x04\x04\x01\x12\x03(\x08\x1a\n\x0b\n\x04\x04\
+    \x04\x02\0\x12\x03)\x04\x1a\n\r\n\x05\x04\x04\x02\0\x04\x12\x04)\x04(\
+    \x1c\n\x0c\n\x05\x04\x04\x02\0\x06\x12\x03)\x04\x0f\n\x0c\n\x05\x04\x04\
+    \x02\0\x01\x12\x03)\x10\x15\n\x0c\n\x05\x04\x04\x02\0\x03\x12\x03)\x18\
+    \x19\n\n\n\x02\x04\x05\x12\x04,\0.\x01\n\n\n\x03\x04\x05\x01\x12\x03,\
+    \x08\x1d\n\x0b\n\x04\x04\x05\x02\0\x12\x03-\x04\x1a\n\r\n\x05\x04\x05\
+    \x02\0\x04\x12\x04-\x04,\x1f\n\x0c\n\x05\x04\x05\x02\0\x06\x12\x03-\x04\
+    \x0f\n\x0c\n\x05\x04\x05\x02\0\x01\x12\x03-\x10\x15\n\x0c\n\x05\x04\x05\
+    \x02\0\x03\x12\x03-\x18\x19\n\t\n\x02\x04\x06\x12\x030\0!\n\n\n\x03\x04\
+    \x06\x01\x12\x030\x08\x1d\n\n\n\x02\x04\x07\x12\x042\04\x01\n\n\n\x03\
+    \x04\x07\x01\x12\x032\x08\x19\n\x0b\n\x04\x04\x07\x02\0\x12\x033\x04\x14\
+    \n\r\n\x05\x04\x07\x02\0\x04\x12\x043\x042\x1b\n\x0c\n\x05\x04\x07\x02\0\
+    \x06\x12\x033\x04\x0b\n\x0c\n\x05\x04\x07\x02\0\x01\x12\x033\x0c\x0f\n\
+    \x0c\n\x05\x04\x07\x02\0\x03\x12\x033\x12\x13\n\n\n\x02\x04\x08\x12\x046\
+    \08\x01\n\n\n\x03\x04\x08\x01\x12\x036\x08\x17\n\x0b\n\x04\x04\x08\x02\0\
+    \x12\x037\x04\x18\n\r\n\x05\x04\x08\x02\0\x04\x12\x047\x046\x19\n\x0c\n\
+    \x05\x04\x08\x02\0\x06\x12\x037\x04\r\n\x0c\n\x05\x04\x08\x02\0\x01\x12\
+    \x037\x0e\x13\n\x0c\n\x05\x04\x08\x02\0\x03\x12\x037\x16\x17\n\n\n\x02\
+    \x04\t\x12\x04:\0<\x01\n\n\n\x03\x04\t\x01\x12\x03:\x08\x1a\n\x0b\n\x04\
+    \x04\t\x02\0\x12\x03;\x04\x18\n\r\n\x05\x04\t\x02\0\x04\x12\x04;\x04:\
+    \x1c\n\x0c\n\x05\x04\t\x02\0\x06\x12\x03;\x04\r\n\x0c\n\x05\x04\t\x02\0\
+    \x01\x12\x03;\x0e\x13\n\x0c\n\x05\x04\t\x02\0\x03\x12\x03;\x16\x17\n\n\n\
+    \x02\x04\n\x12\x04>\0B\x01\n\n\n\x03\x04\n\x01\x12\x03>\x08\x1b\n\x0b\n\
+    \x04\x04\n\x02\0\x12\x03?\x04\x12\n\r\n\x05\x04\n\x02\0\x04\x12\x04?\x04\
+    >\x1d\n\x0c\n\x05\x04\n\x02\0\x05\x12\x03?\x04\n\n\x0c\n\x05\x04\n\x02\0\
+    \x01\x12\x03?\x0b\r\n\x0c\n\x05\x04\n\x02\0\x03\x12\x03?\x10\x11\n\x0b\n\
+    \x04\x04\n\x02\x01\x12\x03@\x04\x1b\n\r\n\x05\x04\n\x02\x01\x04\x12\x04@\
+    \x04?\x12\n\x0c\n\x05\x04\n\x02\x01\x05\x12\x03@\x04\n\n\x0c\n\x05\x04\n\
+    \x02\x01\x01\x12\x03@\x0b\x16\n\x0c\n\x05\x04\n\x02\x01\x03\x12\x03@\x19\
+    \x1a\n\x0b\n\x04\x04\n\x02\x02\x12\x03A\x04\x19\n\r\n\x05\x04\n\x02\x02\
+    \x04\x12\x04A\x04@\x1b\n\x0c\n\x05\x04\n\x02\x02\x05\x12\x03A\x04\n\n\
+    \x0c\n\x05\x04\n\x02\x02\x01\x12\x03A\x0b\x14\n\x0c\n\x05\x04\n\x02\x02\
+    \x03\x12\x03A\x17\x18\n\n\n\x02\x04\x0b\x12\x04D\0F\x01\n\n\n\x03\x04\
+    \x0b\x01\x12\x03D\x08\x20\n\x0b\n\x04\x04\x0b\x02\0\x12\x03E\x04\x14\n\r\
+    \n\x05\x04\x0b\x02\0\x04\x12\x04E\x04D\"\n\x0c\n\x05\x04\x0b\x02\0\x05\
+    \x12\x03E\x04\n\n\x0c\n\x05\x04\x0b\x02\0\x01\x12\x03E\x0b\x0f\n\x0c\n\
+    \x05\x04\x0b\x02\0\x03\x12\x03E\x12\x13\n\n\n\x02\x04\x0c\x12\x04H\0K\
+    \x01\n\n\n\x03\x04\x0c\x01\x12\x03H\x08\x20\n\x0b\n\x04\x04\x0c\x02\0\
+    \x12\x03I\x04\x14\n\r\n\x05\x04\x0c\x02\0\x04\x12\x04I\x04H\"\n\x0c\n\
+    \x05\x04\x0c\x02\0\x05\x12\x03I\x04\n\n\x0c\n\x05\x04\x0c\x02\0\x01\x12\
+    \x03I\x0b\x0f\n\x0c\n\x05\x04\x0c\x02\0\x03\x12\x03I\x12\x13\n\x0b\n\x04\
+    \x04\x0c\x02\x01\x12\x03J\x04\x15\n\r\n\x05\x04\x0c\x02\x01\x04\x12\x04J\
+    \x04I\x14\n\x0c\n\x05\x04\x0c\x02\x01\x05\x12\x03J\x04\n\n\x0c\n\x05\x04\
+    \x0c\x02\x01\x01\x12\x03J\x0b\x10\n\x0c\n\x05\x04\x0c\x02\x01\x03\x12\
+    \x03J\x13\x14\n\n\n\x02\x04\r\x12\x04M\0O\x01\n\n\n\x03\x04\r\x01\x12\
+    \x03M\x08#\n\x0b\n\x04\x04\r\x02\0\x12\x03N\x04\x14\n\r\n\x05\x04\r\x02\
+    \0\x04\x12\x04N\x04M%\n\x0c\n\x05\x04\r\x02\0\x05\x12\x03N\x04\n\n\x0c\n\
+    \x05\x04\r\x02\0\x01\x12\x03N\x0b\x0f\n\x0c\n\x05\x04\r\x02\0\x03\x12\
+    \x03N\x12\x13\n\n\n\x02\x04\x0e\x12\x04Q\0T\x01\n\n\n\x03\x04\x0e\x01\
+    \x12\x03Q\x08\x20\n\x0b\n\x04\x04\x0e\x02\0\x12\x03R\x04\x1a\n\r\n\x05\
+    \x04\x0e\x02\0\x04\x12\x04R\x04Q\"\n\x0c\n\x05\x04\x0e\x02\0\x06\x12\x03\
+    R\x04\x0f\n\x0c\n\x05\x04\x0e\x02\0\x01\x12\x03R\x10\x15\n\x0c\n\x05\x04\
+    \x0e\x02\0\x03\x12\x03R\x18\x19\n\x0b\n\x04\x04\x0e\x02\x01\x12\x03S\x04\
+    \x14\n\r\n\x05\x04\x0e\x02\x01\x04\x12\x04S\x04R\x1a\n\x0c\n\x05\x04\x0e\
+    \x02\x01\x05\x12\x03S\x04\n\n\x0c\n\x05\x04\x0e\x02\x01\x01\x12\x03S\x0b\
+    \x0f\n\x0c\n\x05\x04\x0e\x02\x01\x03\x12\x03S\x12\x13\n\n\n\x02\x04\x0f\
+    \x12\x04V\0Z\x01\n\n\n\x03\x04\x0f\x01\x12\x03V\x08\x20\n\x0b\n\x04\x04\
+    \x0f\x02\0\x12\x03W\x04\x1a\n\r\n\x05\x04\x0f\x02\0\x04\x12\x04W\x04V\"\
+    \n\x0c\n\x05\x04\x0f\x02\0\x06\x12\x03W\x04\x0f\n\x0c\n\x05\x04\x0f\x02\
+    \0\x01\x12\x03W\x10\x15\n\x0c\n\x05\x04\x0f\x02\0\x03\x12\x03W\x18\x19\n\
+    \x0b\n\x04\x04\x0f\x02\x01\x12\x03X\x04\x14\n\r\n\x05\x04\x0f\x02\x01\
+    \x04\x12\x04X\x04W\x1a\n\x0c\n\x05\x04\x0f\x02\x01\x05\x12\x03X\x04\n\n\
+    \x0c\n\x05\x04\x0f\x02\x01\x01\x12\x03X\x0b\x0f\n\x0c\n\x05\x04\x0f\x02\
+    \x01\x03\x12\x03X\x12\x13\n\x0b\n\x04\x04\x0f\x02\x02\x12\x03Y\x04\x15\n\
+    \r\n\x05\x04\x0f\x02\x02\x04\x12\x04Y\x04X\x14\n\x0c\n\x05\x04\x0f\x02\
+    \x02\x05\x12\x03Y\x04\n\n\x0c\n\x05\x04\x0f\x02\x02\x01\x12\x03Y\x0b\x10\
+    \n\x0c\n\x05\x04\x0f\x02\x02\x03\x12\x03Y\x13\x14\n\n\n\x02\x04\x10\x12\
+    \x04\\\0_\x01\n\n\n\x03\x04\x10\x01\x12\x03\\\x08#\n\x0b\n\x04\x04\x10\
+    \x02\0\x12\x03]\x04\x1a\n\r\n\x05\x04\x10\x02\0\x04\x12\x04]\x04\\%\n\
+    \x0c\n\x05\x04\x10\x02\0\x06\x12\x03]\x04\x0f\n\x0c\n\x05\x04\x10\x02\0\
+    \x01\x12\x03]\x10\x15\n\x0c\n\x05\x04\x10\x02\0\x03\x12\x03]\x18\x19\n\
+    \x0b\n\x04\x04\x10\x02\x01\x12\x03^\x04\x14\n\r\n\x05\x04\x10\x02\x01\
+    \x04\x12\x04^\x04]\x1a\n\x0c\n\x05\x04\x10\x02\x01\x05\x12\x03^\x04\n\n\
+    \x0c\n\x05\x04\x10\x02\x01\x01\x12\x03^\x0b\x0f\n\x0c\n\x05\x04\x10\x02\
+    \x01\x03\x12\x03^\x12\x13\n\n\n\x02\x04\x11\x12\x04a\0d\x01\n\n\n\x03\
+    \x04\x11\x01\x12\x03a\x08\x1e\n\x0b\n\x04\x04\x11\x02\0\x12\x03b\x04\x18\
+    \n\r\n\x05\x04\x11\x02\0\x04\x12\x04b\x04a\x20\n\x0c\n\x05\x04\x11\x02\0\
+    \x06\x12\x03b\x04\r\n\x0c\n\x05\x04\x11\x02\0\x01\x12\x03b\x0e\x13\n\x0c\
+    \n\x05\x04\x11\x02\0\x03\x12\x03b\x16\x17\n\x0b\n\x04\x04\x11\x02\x01\
+    \x12\x03c\x04\x14\n\r\n\x05\x04\x11\x02\x01\x04\x12\x04c\x04b\x18\n\x0c\
+    \n\x05\x04\x11\x02\x01\x05\x12\x03c\x04\n\n\x0c\n\x05\x04\x11\x02\x01\
+    \x01\x12\x03c\x0b\x0f\n\x0c\n\x05\x04\x11\x02\x01\x03\x12\x03c\x12\x13\n\
+    \n\n\x02\x04\x12\x12\x04f\0j\x01\n\n\n\x03\x04\x12\x01\x12\x03f\x08\x1e\
+    \n\x0b\n\x04\x04\x12\x02\0\x12\x03g\x04\x18\n\r\n\x05\x04\x12\x02\0\x04\
+    \x12\x04g\x04f\x20\n\x0c\n\x05\x04\x12\x02\0\x06\x12\x03g\x04\r\n\x0c\n\
+    \x05\x04\x12\x02\0\x01\x12\x03g\x0e\x13\n\x0c\n\x05\x04\x12\x02\0\x03\
+    \x12\x03g\x16\x17\n\x0b\n\x04\x04\x12\x02\x01\x12\x03h\x04\x14\n\r\n\x05\
+    \x04\x12\x02\x01\x04\x12\x04h\x04g\x18\n\x0c\n\x05\x04\x12\x02\x01\x05\
+    \x12\x03h\x04\n\n\x0c\n\x05\x04\x12\x02\x01\x01\x12\x03h\x0b\x0f\n\x0c\n\
+    \x05\x04\x12\x02\x01\x03\x12\x03h\x12\x13\n\x0b\n\x04\x04\x12\x02\x02\
+    \x12\x03i\x04\x15\n\r\n\x05\x04\x12\x02\x02\x04\x12\x04i\x04h\x14\n\x0c\
+    \n\x05\x04\x12\x02\x02\x05\x12\x03i\x04\n\n\x0c\n\x05\x04\x12\x02\x02\
+    \x01\x12\x03i\x0b\x10\n\x0c\n\x05\x04\x12\x02\x02\x03\x12\x03i\x13\x14\n\
+    \n\n\x02\x04\x13\x12\x04l\0o\x01\n\n\n\x03\x04\x13\x01\x12\x03l\x08!\n\
+    \x0b\n\x04\x04\x13\x02\0\x12\x03m\x04\x18\n\r\n\x05\x04\x13\x02\0\x04\
+    \x12\x04m\x04l#\n\x0c\n\x05\x04\x13\x02\0\x06\x12\x03m\x04\r\n\x0c\n\x05\
+    \x04\x13\x02\0\x01\x12\x03m\x0e\x13\n\x0c\n\x05\x04\x13\x02\0\x03\x12\
+    \x03m\x16\x17\n\x0b\n\x04\x04\x13\x02\x01\x12\x03n\x04\x14\n\r\n\x05\x04\
+    \x13\x02\x01\x04\x12\x04n\x04m\x18\n\x0c\n\x05\x04\x13\x02\x01\x05\x12\
+    \x03n\x04\n\n\x0c\n\x05\x04\x13\x02\x01\x01\x12\x03n\x0b\x0f\n\x0c\n\x05\
+    \x04\x13\x02\x01\x03\x12\x03n\x12\x13b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

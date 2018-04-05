@@ -10,27 +10,32 @@ message PingRequest {
 message TransactionRequest {
     oneof request {
         CreateVertexRequest create_vertex = 1;
-        GetVerticesRequest get_vertices = 2;
-        DeleteVerticesRequest delete_vertices = 3;
-        GetVertexCountRequest get_vertex_count = 4;
-        CreateEdgeRequest create_edge = 5;
-        GetEdgesRequest get_edges = 6;
-        DeleteEdgesRequest delete_edges = 7;
-        GetEdgeCountRequest get_edge_count = 8;
-        GetGlobalMetadataRequest get_global_metadata = 9;
-        SetGlobalMetadataRequest set_global_metadata = 10;
-        DeleteGlobalMetadataRequest delete_global_metadata = 11;
-        GetVertexMetadataRequest get_vertex_metadata = 12;
-        SetVertexMetadataRequest set_vertex_metadata = 13;
-        DeleteVertexMetadataRequest delete_vertex_metadata = 14;
-        GetEdgeMetadataRequest get_edge_metadata = 15;
-        SetEdgeMetadataRequest set_edge_metadata = 16;
-        DeleteEdgeMetadataRequest delete_edge_metadata = 17;
+        CreateVertexFromTypeRequest create_vertex_from_type = 2;
+        GetVerticesRequest get_vertices = 3;
+        DeleteVerticesRequest delete_vertices = 4;
+        GetVertexCountRequest get_vertex_count = 5;
+        CreateEdgeRequest create_edge = 6;
+        GetEdgesRequest get_edges = 7;
+        DeleteEdgesRequest delete_edges = 8;
+        GetEdgeCountRequest get_edge_count = 9;
+        GetGlobalMetadataRequest get_global_metadata = 10;
+        SetGlobalMetadataRequest set_global_metadata = 11;
+        DeleteGlobalMetadataRequest delete_global_metadata = 12;
+        GetVertexMetadataRequest get_vertex_metadata = 13;
+        SetVertexMetadataRequest set_vertex_metadata = 14;
+        DeleteVertexMetadataRequest delete_vertex_metadata = 15;
+        GetEdgeMetadataRequest get_edge_metadata = 16;
+        SetEdgeMetadataRequest set_edge_metadata = 17;
+        DeleteEdgeMetadataRequest delete_edge_metadata = 18;
     }
 }
 
 message CreateVertexRequest {
     Vertex vertex = 1;
+}
+
+message CreateVertexFromTypeRequest {
+    string type = 1;
 }
 
 message GetVerticesRequest {

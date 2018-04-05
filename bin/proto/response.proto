@@ -15,8 +15,9 @@ message TransactionResponse {
         uint64 count = 3;
         Edges edges = 4;
         string json = 5;
-        VertexMetadatas vertex_metadatas = 6;
-        EdgeMetadatas edge_metadatas = 7;
-        string error = 8;
+        string uuid = 6;
+        VertexMetadatas vertex_metadatas = 7;
+        EdgeMetadatas edge_metadatas = 8;
+        string error = 9;
     }
 }

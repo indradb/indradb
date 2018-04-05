@@ -209,6 +209,7 @@ pub enum TransactionResponse_oneof_response {
     count(u64),
     edges(super::edges::Edges),
     json(::std::string::String),
+    uuid(::std::string::String),
     vertex_metadatas(super::metadata::VertexMetadatas),
     edge_metadatas(super::metadata::EdgeMetadatas),
     error(::std::string::String),
@@ -426,7 +427,56 @@ impl TransactionResponse {
         }
     }
 
-    // .VertexMetadatas vertex_metadatas = 6;
+    // string uuid = 6;
+
+    pub fn clear_uuid(&mut self) {
+        self.response = ::std::option::Option::None;
+    }
+
+    pub fn has_uuid(&self) -> bool {
+        match self.response {
+            ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_uuid(&mut self, v: ::std::string::String) {
+        self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_uuid(&mut self) -> &mut ::std::string::String {
+        if let ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(_)) = self.response {
+        } else {
+            self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(::std::string::String::new()));
+        }
+        match self.response {
+            ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_uuid(&mut self) -> ::std::string::String {
+        if self.has_uuid() {
+            match self.response.take() {
+                ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            ::std::string::String::new()
+        }
+    }
+
+    pub fn get_uuid(&self) -> &str {
+        match self.response {
+            ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(ref v)) => v,
+            _ => "",
+        }
+    }
+
+    // .VertexMetadatas vertex_metadatas = 7;
 
     pub fn clear_vertex_metadatas(&mut self) {
         self.response = ::std::option::Option::None;
@@ -475,7 +525,7 @@ impl TransactionResponse {
         }
     }
 
-    // .EdgeMetadatas edge_metadatas = 7;
+    // .EdgeMetadatas edge_metadatas = 8;
 
     pub fn clear_edge_metadatas(&mut self) {
         self.response = ::std::option::Option::None;
@@ -524,7 +574,7 @@ impl TransactionResponse {
         }
     }
 
-    // string error = 8;
+    // string error = 9;
 
     pub fn clear_error(&mut self) {
         self.response = ::std::option::Option::None;
@@ -637,15 +687,21 @@ impl ::protobuf::Message for TransactionResponse {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::vertex_metadatas(is.read_message()?));
+                    self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::uuid(is.read_string()?));
                 },
                 7 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
-                    self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::edge_metadatas(is.read_message()?));
+                    self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::vertex_metadatas(is.read_message()?));
                 },
                 8 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    self.response = ::std::option::Option::Some(TransactionResponse_oneof_response::edge_metadatas(is.read_message()?));
+                },
+                9 => {
                     if wire_type != ::protobuf::wire_format::WireTypeLengthDelimited {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
@@ -682,6 +738,9 @@ impl ::protobuf::Message for TransactionResponse {
                 &TransactionResponse_oneof_response::json(ref v) => {
                     my_size += ::protobuf::rt::string_size(5, &v);
                 },
+                &TransactionResponse_oneof_response::uuid(ref v) => {
+                    my_size += ::protobuf::rt::string_size(6, &v);
+                },
                 &TransactionResponse_oneof_response::vertex_metadatas(ref v) => {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
@@ -691,7 +750,7 @@ impl ::protobuf::Message for TransactionResponse {
                     my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
                 },
                 &TransactionResponse_oneof_response::error(ref v) => {
-                    my_size += ::protobuf::rt::string_size(8, &v);
+                    my_size += ::protobuf::rt::string_size(9, &v);
                 },
             };
         }
@@ -722,18 +781,21 @@ impl ::protobuf::Message for TransactionResponse {
                 &TransactionResponse_oneof_response::json(ref v) => {
                     os.write_string(5, v)?;
                 },
-                &TransactionResponse_oneof_response::vertex_metadatas(ref v) => {
-                    os.write_tag(6, ::protobuf::wire_format::WireTypeLengthDelimited)?;
-                    os.write_raw_varint32(v.get_cached_size())?;
-                    v.write_to_with_cached_sizes(os)?;
+                &TransactionResponse_oneof_response::uuid(ref v) => {
+                    os.write_string(6, v)?;
                 },
-                &TransactionResponse_oneof_response::edge_metadatas(ref v) => {
+                &TransactionResponse_oneof_response::vertex_metadatas(ref v) => {
                     os.write_tag(7, ::protobuf::wire_format::WireTypeLengthDelimited)?;
                     os.write_raw_varint32(v.get_cached_size())?;
                     v.write_to_with_cached_sizes(os)?;
                 },
+                &TransactionResponse_oneof_response::edge_metadatas(ref v) => {
+                    os.write_tag(8, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+                    os.write_raw_varint32(v.get_cached_size())?;
+                    v.write_to_with_cached_sizes(os)?;
+                },
                 &TransactionResponse_oneof_response::error(ref v) => {
-                    os.write_string(8, v)?;
+                    os.write_string(9, v)?;
                 },
             };
         }
@@ -806,6 +868,11 @@ impl ::protobuf::MessageStatic for TransactionResponse {
                     TransactionResponse::has_json,
                     TransactionResponse::get_json,
                 ));
+                fields.push(::protobuf::reflect::accessor::make_singular_string_accessor::<_>(
+                    "uuid",
+                    TransactionResponse::has_uuid,
+                    TransactionResponse::get_uuid,
+                ));
                 fields.push(::protobuf::reflect::accessor::make_singular_message_accessor::<_, super::metadata::VertexMetadatas>(
                     "vertex_metadatas",
                     TransactionResponse::has_vertex_metadatas,
@@ -838,6 +905,7 @@ impl ::protobuf::Clear for TransactionResponse {
         self.clear_count();
         self.clear_edges();
         self.clear_json();
+        self.clear_uuid();
         self.clear_vertex_metadatas();
         self.clear_edge_metadatas();
         self.clear_error();
@@ -860,47 +928,50 @@ impl ::protobuf::reflect::ProtobufValue for TransactionResponse {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x14proto/response.proto\x1a\x14proto/vertices.proto\x1a\x11proto/edge\
     s.proto\x1a\x14proto/metadata.proto\"\x1e\n\x0cPingResponse\x12\x0e\n\
-    \x02ok\x18\x01\x20\x01(\x08R\x02ok\"\xba\x02\n\x13TransactionResponse\
+    \x02ok\x18\x01\x20\x01(\x08R\x02ok\"\xd0\x02\n\x13TransactionResponse\
     \x12\x10\n\x02ok\x18\x01\x20\x01(\x08H\0R\x02ok\x12'\n\x08vertices\x18\
     \x02\x20\x01(\x0b2\t.VerticesH\0R\x08vertices\x12\x16\n\x05count\x18\x03\
     \x20\x01(\x04H\0R\x05count\x12\x1e\n\x05edges\x18\x04\x20\x01(\x0b2\x06.\
-    EdgesH\0R\x05edges\x12\x14\n\x04json\x18\x05\x20\x01(\tH\0R\x04json\x12=\
-    \n\x10vertex_metadatas\x18\x06\x20\x01(\x0b2\x10.VertexMetadatasH\0R\x0f\
-    vertexMetadatas\x127\n\x0eedge_metadatas\x18\x07\x20\x01(\x0b2\x0e.EdgeM\
-    etadatasH\0R\redgeMetadatas\x12\x16\n\x05error\x18\x08\x20\x01(\tH\0R\
-    \x05errorB\n\n\x08responseJ\xfd\x04\n\x06\x12\x04\0\0\x15\x01\n\x08\n\
-    \x01\x0c\x12\x03\0\0\x12\n\t\n\x02\x03\0\x12\x03\x02\x07\x1d\n\t\n\x02\
-    \x03\x01\x12\x03\x03\x07\x1a\n\t\n\x02\x03\x02\x12\x03\x04\x07\x1d\n\n\n\
-    \x02\x04\0\x12\x04\x06\0\x08\x01\n\n\n\x03\x04\0\x01\x12\x03\x06\x08\x14\
-    \n\x0b\n\x04\x04\0\x02\0\x12\x03\x07\x04\x10\n\r\n\x05\x04\0\x02\0\x04\
-    \x12\x04\x07\x04\x06\x16\n\x0c\n\x05\x04\0\x02\0\x05\x12\x03\x07\x04\x08\
-    \n\x0c\n\x05\x04\0\x02\0\x01\x12\x03\x07\t\x0b\n\x0c\n\x05\x04\0\x02\0\
-    \x03\x12\x03\x07\x0e\x0f\n\n\n\x02\x04\x01\x12\x04\n\0\x15\x01\n\n\n\x03\
-    \x04\x01\x01\x12\x03\n\x08\x1b\n\x0c\n\x04\x04\x01\x08\0\x12\x04\x0b\x04\
-    \x14\x05\n\x0c\n\x05\x04\x01\x08\0\x01\x12\x03\x0b\n\x12\n\x0b\n\x04\x04\
-    \x01\x02\0\x12\x03\x0c\x08\x14\n\x0c\n\x05\x04\x01\x02\0\x05\x12\x03\x0c\
-    \x08\x0c\n\x0c\n\x05\x04\x01\x02\0\x01\x12\x03\x0c\r\x0f\n\x0c\n\x05\x04\
-    \x01\x02\0\x03\x12\x03\x0c\x12\x13\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\r\
-    \x08\x1e\n\x0c\n\x05\x04\x01\x02\x01\x06\x12\x03\r\x08\x10\n\x0c\n\x05\
-    \x04\x01\x02\x01\x01\x12\x03\r\x11\x19\n\x0c\n\x05\x04\x01\x02\x01\x03\
-    \x12\x03\r\x1c\x1d\n\x0b\n\x04\x04\x01\x02\x02\x12\x03\x0e\x08\x19\n\x0c\
-    \n\x05\x04\x01\x02\x02\x05\x12\x03\x0e\x08\x0e\n\x0c\n\x05\x04\x01\x02\
-    \x02\x01\x12\x03\x0e\x0f\x14\n\x0c\n\x05\x04\x01\x02\x02\x03\x12\x03\x0e\
-    \x17\x18\n\x0b\n\x04\x04\x01\x02\x03\x12\x03\x0f\x08\x18\n\x0c\n\x05\x04\
-    \x01\x02\x03\x06\x12\x03\x0f\x08\r\n\x0c\n\x05\x04\x01\x02\x03\x01\x12\
-    \x03\x0f\x0e\x13\n\x0c\n\x05\x04\x01\x02\x03\x03\x12\x03\x0f\x16\x17\n\
-    \x0b\n\x04\x04\x01\x02\x04\x12\x03\x10\x08\x18\n\x0c\n\x05\x04\x01\x02\
-    \x04\x05\x12\x03\x10\x08\x0e\n\x0c\n\x05\x04\x01\x02\x04\x01\x12\x03\x10\
-    \x0f\x13\n\x0c\n\x05\x04\x01\x02\x04\x03\x12\x03\x10\x16\x17\n\x0b\n\x04\
-    \x04\x01\x02\x05\x12\x03\x11\x08-\n\x0c\n\x05\x04\x01\x02\x05\x06\x12\
-    \x03\x11\x08\x17\n\x0c\n\x05\x04\x01\x02\x05\x01\x12\x03\x11\x18(\n\x0c\
-    \n\x05\x04\x01\x02\x05\x03\x12\x03\x11+,\n\x0b\n\x04\x04\x01\x02\x06\x12\
-    \x03\x12\x08)\n\x0c\n\x05\x04\x01\x02\x06\x06\x12\x03\x12\x08\x15\n\x0c\
-    \n\x05\x04\x01\x02\x06\x01\x12\x03\x12\x16$\n\x0c\n\x05\x04\x01\x02\x06\
-    \x03\x12\x03\x12'(\n\x0b\n\x04\x04\x01\x02\x07\x12\x03\x13\x08\x19\n\x0c\
-    \n\x05\x04\x01\x02\x07\x05\x12\x03\x13\x08\x0e\n\x0c\n\x05\x04\x01\x02\
-    \x07\x01\x12\x03\x13\x0f\x14\n\x0c\n\x05\x04\x01\x02\x07\x03\x12\x03\x13\
-    \x17\x18b\x06proto3\
+    EdgesH\0R\x05edges\x12\x14\n\x04json\x18\x05\x20\x01(\tH\0R\x04json\x12\
+    \x14\n\x04uuid\x18\x06\x20\x01(\tH\0R\x04uuid\x12=\n\x10vertex_metadatas\
+    \x18\x07\x20\x01(\x0b2\x10.VertexMetadatasH\0R\x0fvertexMetadatas\x127\n\
+    \x0eedge_metadatas\x18\x08\x20\x01(\x0b2\x0e.EdgeMetadatasH\0R\redgeMeta\
+    datas\x12\x16\n\x05error\x18\t\x20\x01(\tH\0R\x05errorB\n\n\x08responseJ\
+    \xb4\x05\n\x06\x12\x04\0\0\x16\x01\n\x08\n\x01\x0c\x12\x03\0\0\x12\n\t\n\
+    \x02\x03\0\x12\x03\x02\x07\x1d\n\t\n\x02\x03\x01\x12\x03\x03\x07\x1a\n\t\
+    \n\x02\x03\x02\x12\x03\x04\x07\x1d\n\n\n\x02\x04\0\x12\x04\x06\0\x08\x01\
+    \n\n\n\x03\x04\0\x01\x12\x03\x06\x08\x14\n\x0b\n\x04\x04\0\x02\0\x12\x03\
+    \x07\x04\x10\n\r\n\x05\x04\0\x02\0\x04\x12\x04\x07\x04\x06\x16\n\x0c\n\
+    \x05\x04\0\x02\0\x05\x12\x03\x07\x04\x08\n\x0c\n\x05\x04\0\x02\0\x01\x12\
+    \x03\x07\t\x0b\n\x0c\n\x05\x04\0\x02\0\x03\x12\x03\x07\x0e\x0f\n\n\n\x02\
+    \x04\x01\x12\x04\n\0\x16\x01\n\n\n\x03\x04\x01\x01\x12\x03\n\x08\x1b\n\
+    \x0c\n\x04\x04\x01\x08\0\x12\x04\x0b\x04\x15\x05\n\x0c\n\x05\x04\x01\x08\
+    \0\x01\x12\x03\x0b\n\x12\n\x0b\n\x04\x04\x01\x02\0\x12\x03\x0c\x08\x14\n\
+    \x0c\n\x05\x04\x01\x02\0\x05\x12\x03\x0c\x08\x0c\n\x0c\n\x05\x04\x01\x02\
+    \0\x01\x12\x03\x0c\r\x0f\n\x0c\n\x05\x04\x01\x02\0\x03\x12\x03\x0c\x12\
+    \x13\n\x0b\n\x04\x04\x01\x02\x01\x12\x03\r\x08\x1e\n\x0c\n\x05\x04\x01\
+    \x02\x01\x06\x12\x03\r\x08\x10\n\x0c\n\x05\x04\x01\x02\x01\x01\x12\x03\r\
+    \x11\x19\n\x0c\n\x05\x04\x01\x02\x01\x03\x12\x03\r\x1c\x1d\n\x0b\n\x04\
+    \x04\x01\x02\x02\x12\x03\x0e\x08\x19\n\x0c\n\x05\x04\x01\x02\x02\x05\x12\
+    \x03\x0e\x08\x0e\n\x0c\n\x05\x04\x01\x02\x02\x01\x12\x03\x0e\x0f\x14\n\
+    \x0c\n\x05\x04\x01\x02\x02\x03\x12\x03\x0e\x17\x18\n\x0b\n\x04\x04\x01\
+    \x02\x03\x12\x03\x0f\x08\x18\n\x0c\n\x05\x04\x01\x02\x03\x06\x12\x03\x0f\
+    \x08\r\n\x0c\n\x05\x04\x01\x02\x03\x01\x12\x03\x0f\x0e\x13\n\x0c\n\x05\
+    \x04\x01\x02\x03\x03\x12\x03\x0f\x16\x17\n\x0b\n\x04\x04\x01\x02\x04\x12\
+    \x03\x10\x08\x18\n\x0c\n\x05\x04\x01\x02\x04\x05\x12\x03\x10\x08\x0e\n\
+    \x0c\n\x05\x04\x01\x02\x04\x01\x12\x03\x10\x0f\x13\n\x0c\n\x05\x04\x01\
+    \x02\x04\x03\x12\x03\x10\x16\x17\n\x0b\n\x04\x04\x01\x02\x05\x12\x03\x11\
+    \x08\x18\n\x0c\n\x05\x04\x01\x02\x05\x05\x12\x03\x11\x08\x0e\n\x0c\n\x05\
+    \x04\x01\x02\x05\x01\x12\x03\x11\x0f\x13\n\x0c\n\x05\x04\x01\x02\x05\x03\
+    \x12\x03\x11\x16\x17\n\x0b\n\x04\x04\x01\x02\x06\x12\x03\x12\x08-\n\x0c\
+    \n\x05\x04\x01\x02\x06\x06\x12\x03\x12\x08\x17\n\x0c\n\x05\x04\x01\x02\
+    \x06\x01\x12\x03\x12\x18(\n\x0c\n\x05\x04\x01\x02\x06\x03\x12\x03\x12+,\
+    \n\x0b\n\x04\x04\x01\x02\x07\x12\x03\x13\x08)\n\x0c\n\x05\x04\x01\x02\
+    \x07\x06\x12\x03\x13\x08\x15\n\x0c\n\x05\x04\x01\x02\x07\x01\x12\x03\x13\
+    \x16$\n\x0c\n\x05\x04\x01\x02\x07\x03\x12\x03\x13'(\n\x0b\n\x04\x04\x01\
+    \x02\x08\x12\x03\x14\x08\x19\n\x0c\n\x05\x04\x01\x02\x08\x05\x12\x03\x14\
+    \x08\x0e\n\x0c\n\x05\x04\x01\x02\x08\x01\x12\x03\x14\x0f\x14\n\x0c\n\x05\
+    \x04\x01\x02\x08\x03\x12\x03\x14\x17\x18b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

@@ -39,6 +39,11 @@ fn build_response(trans: &Transaction, request: &grpc_request::TransactionReques
         let vertex = indradb::Vertex::reverse_from(request.get_vertex())?;
         trans.create_vertex(&vertex)?;
         response.set_ok(true);
+    } else if request.has_create_vertex_from_type() {
+        let request = request.get_create_vertex_from_type();
+        let t = indradb::Type::new(request.get_field_type().to_string())?;
+        let id = trans.create_vertex_from_type(t)?;
+        response.set_uuid(id.hyphenated().to_string());
     } else if request.has_get_vertices() {
         let request = request.get_get_vertices();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
