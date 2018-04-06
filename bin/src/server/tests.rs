@@ -2,8 +2,8 @@ pub use indradb::tests;
 pub use regex::Regex;
 use indradb;
 use autogen;
-use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
+use serde_json;
 use std::collections::HashMap;
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -14,7 +14,6 @@ use std::sync::Arc;
 use grpcio::{Environment, ChannelBuilder, ClientDuplexSender, ClientDuplexReceiver, WriteFlags};
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
-use futures::sink::Send;
 use std::sync::Mutex;
 
 use converters::ReverseFrom;
@@ -27,7 +26,6 @@ lazy_static! {
 }
 
 pub struct GrpcDatastore {
-    port: usize,
     server: Child,
     client: autogen::IndraDbClient
 }
@@ -51,12 +49,9 @@ impl GrpcDatastore {
         for _ in 0..5 {
             sleep(Duration::from_secs(1));
 
-            let request = autogen::PingRequest::new();
-
             if let Ok(response) = client.ping(&autogen::PingRequest::new()) {
                 if response.get_ok() {
                     return Self {
-                        port: port,
                         server: server,
                         client: client
                     };
@@ -156,7 +151,7 @@ impl indradb::Transaction for GrpcTransaction {
         inner.set_query(autogen::VertexQuery::from(q.clone()));
         let mut request = autogen::TransactionRequest::new();
         request.set_delete_vertices(inner);
-        let response = self.channel.lock().unwrap().request(request)?;
+        self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
@@ -191,7 +186,7 @@ impl indradb::Transaction for GrpcTransaction {
         inner.set_query(autogen::EdgeQuery::from(q.clone()));
         let mut request = autogen::TransactionRequest::new();
         request.set_delete_edges(inner);
-        let response = self.channel.lock().unwrap().request(request)?;
+        self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
@@ -211,84 +206,100 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_global_metadata",
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::GetGlobalMetadataRequest::new();
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_get_global_metadata(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+
+        if response.get_json() == "" {
+            Ok(None)
+        } else {
+            Ok(Some(serde_json::from_str(response.get_json()).unwrap()))
+        }
     }
 
     fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "set_global_metadata",
-        //     "name": name,
-        //     "value": value
-        // }))
-        unimplemented!();
+        let mut inner = autogen::SetGlobalMetadataRequest::new();
+        inner.set_name(name.to_string());
+        inner.set_value(value.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_set_global_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn delete_global_metadata(&self, name: &str) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "delete_global_metadata",
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::DeleteGlobalMetadataRequest::new();
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_delete_global_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn get_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<Vec<indradb::VertexMetadata>, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_vertex_metadata",
-        //     "query": q,
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::GetVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_get_vertex_metadata(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        let metadata: Result<Vec<indradb::VertexMetadata>, errors::Error> = response.get_vertex_metadatas().get_values().into_iter().map(indradb::VertexMetadata::reverse_from).collect();
+        Ok(metadata.unwrap())
     }
 
     fn set_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "set_vertex_metadata",
-        //     "query": q,
-        //     "name": name,
-        //     "value": value
-        // }))
-        unimplemented!();
+        let mut inner = autogen::SetVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        inner.set_value(value.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_set_vertex_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn delete_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "delete_vertex_metadata",
-        //     "query": q,
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::DeleteVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_delete_vertex_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn get_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<Vec<indradb::EdgeMetadata>, indradb::Error> {
-        // self.request(&json!({
-        //     "action": "get_edge_metadata",
-        //     "query": q,
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::GetEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_get_edge_metadata(inner);
+        let response = self.channel.lock().unwrap().request(request)?;
+        let metadata: Result<Vec<indradb::EdgeMetadata>, errors::Error> = response.get_edge_metadatas().get_values().into_iter().map(indradb::EdgeMetadata::reverse_from).collect();
+        Ok(metadata.unwrap())
     }
 
     fn set_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "set_edge_metadata",
-        //     "query": q,
-        //     "name": name,
-        //     "value": value
-        // }))
-        unimplemented!();
+        let mut inner = autogen::SetEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        inner.set_value(value.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_set_edge_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 
     fn delete_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
-        // self.request(&json!({
-        //     "action": "delete_edge_metadata",
-        //     "query": q,
-        //     "name": name
-        // }))
-        unimplemented!();
+        let mut inner = autogen::DeleteEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        inner.set_name(name.to_string());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_delete_edge_metadata(inner);
+        self.channel.lock().unwrap().request(request)?;
+        Ok(())
     }
 }
 

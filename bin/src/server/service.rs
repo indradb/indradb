@@ -83,7 +83,12 @@ fn build_response(trans: &Transaction, request: &autogen::TransactionRequest) ->
         let request = request.get_get_global_metadata();
         let name = request.get_name();
         let metadata = trans.get_global_metadata(name)?;
-        response.set_json(serde_json::to_string(&metadata)?);
+
+        if metadata.is_some() {
+            response.set_json(serde_json::to_string(&metadata)?);
+        } else {
+            response.set_json("".to_string());
+        }
     } else if request.has_set_global_metadata() {
         let request = request.get_set_global_metadata();
         let name = request.get_name();

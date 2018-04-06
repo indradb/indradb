@@ -101,6 +101,15 @@ impl From<indradb::VertexMetadata> for autogen::VertexMetadata {
     }
 }
 
+impl ReverseFrom<autogen::VertexMetadata> for indradb::VertexMetadata {
+    fn reverse_from(grpc_metadata: &autogen::VertexMetadata) -> Result<Self> {
+        Ok(indradb::VertexMetadata::new(
+            Uuid::from_str(grpc_metadata.get_id())?,
+            serde_json::from_str(grpc_metadata.get_value())?
+        ))
+    }
+}
+
 impl From<Vec<indradb::VertexMetadata>> for autogen::VertexMetadatas {
     fn from(metadata: Vec<indradb::VertexMetadata>) -> Self {
         let mapped = metadata.into_iter().map(autogen::VertexMetadata::from).collect();
@@ -117,6 +126,15 @@ impl From<indradb::EdgeMetadata> for autogen::EdgeMetadata {
         grpc_metadata.set_key(autogen::EdgeKey::from(metadata.key));
         grpc_metadata.set_value(value);
         grpc_metadata
+    }
+}
+
+impl ReverseFrom<autogen::EdgeMetadata> for indradb::EdgeMetadata {
+    fn reverse_from(grpc_metadata: &autogen::EdgeMetadata) -> Result<Self> {
+        Ok(indradb::EdgeMetadata::new(
+            indradb::EdgeKey::reverse_from(grpc_metadata.get_key())?,
+            serde_json::from_str(grpc_metadata.get_value())?
+        ))
     }
 }
 
