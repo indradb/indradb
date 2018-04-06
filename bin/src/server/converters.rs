@@ -5,10 +5,7 @@
 //! newtypes, but that would introduce its own baggage.
 
 use indradb;
-use edges as grpc_edges;
-use vertices as grpc_vertices;
-use queries as grpc_queries;
-use metadata as grpc_metadata;
+use autogen;
 use protobuf;
 use serde_json;
 use uuid::Uuid;
@@ -22,61 +19,61 @@ pub trait ReverseFrom<T>: Sized {
     fn reverse_from(&T) -> Result<Self>;
 }
 
-impl From<indradb::Vertex> for grpc_vertices::Vertex {
+impl From<indradb::Vertex> for autogen::Vertex {
     fn from(vertex: indradb::Vertex) -> Self {
-        let mut grpc_vertex: grpc_vertices::Vertex = grpc_vertices::Vertex::new();
+        let mut grpc_vertex: autogen::Vertex = autogen::Vertex::new();
         grpc_vertex.id = vertex.id.hyphenated().to_string();
         grpc_vertex.field_type = vertex.t.0;
         grpc_vertex
     }
 }
 
-impl ReverseFrom<grpc_vertices::Vertex> for indradb::Vertex {
-    fn reverse_from(grpc_vertex: &grpc_vertices::Vertex) -> Result<Self> {
+impl ReverseFrom<autogen::Vertex> for indradb::Vertex {
+    fn reverse_from(grpc_vertex: &autogen::Vertex) -> Result<Self> {
         let id = Uuid::from_str(&grpc_vertex.id)?;
         let t = indradb::Type::new(grpc_vertex.field_type.clone())?;
         Ok(indradb::Vertex::with_id(id, t))
     }
 }
 
-impl From<Vec<indradb::Vertex>> for grpc_vertices::Vertices {
+impl From<Vec<indradb::Vertex>> for autogen::Vertices {
     fn from(vertices: Vec<indradb::Vertex>) -> Self {
-        let mapped = vertices.into_iter().map(grpc_vertices::Vertex::from).collect();
-        let mut vertices = grpc_vertices::Vertices::new();
+        let mapped = vertices.into_iter().map(autogen::Vertex::from).collect();
+        let mut vertices = autogen::Vertices::new();
         vertices.set_vertices(protobuf::RepeatedField::from_vec(mapped));
         vertices
     }
 }
 
-impl From<indradb::Edge> for grpc_edges::Edge {
+impl From<indradb::Edge> for autogen::Edge {
     fn from(edge: indradb::Edge) -> Self {
-        let mut grpc_edge: grpc_edges::Edge = grpc_edges::Edge::new();
-        grpc_edge.set_key(grpc_edges::EdgeKey::from(edge.key));
+        let mut grpc_edge: autogen::Edge = autogen::Edge::new();
+        grpc_edge.set_key(autogen::EdgeKey::from(edge.key));
         grpc_edge.set_created_datetime(timestamp_from_datetime(&edge.created_datetime));
         grpc_edge
     }
 }
 
-impl ReverseFrom<grpc_edges::Edge> for indradb::Edge {
-    fn reverse_from(grpc_edge: &grpc_edges::Edge) -> Result<Self> {
+impl ReverseFrom<autogen::Edge> for indradb::Edge {
+    fn reverse_from(grpc_edge: &autogen::Edge) -> Result<Self> {
         let key = indradb::EdgeKey::reverse_from(grpc_edge.get_key())?;
         let created_datetime = datetime_from_timestamp(grpc_edge.get_created_datetime());
         Ok(indradb::Edge::new(key, created_datetime))
     }
 }
 
-impl From<Vec<indradb::Edge>> for grpc_edges::Edges {
+impl From<Vec<indradb::Edge>> for autogen::Edges {
     fn from(edges: Vec<indradb::Edge>) -> Self {
-        let mapped = edges.into_iter().map(grpc_edges::Edge::from).collect();
-        let mut edges = grpc_edges::Edges::new();
+        let mapped = edges.into_iter().map(autogen::Edge::from).collect();
+        let mut edges = autogen::Edges::new();
         edges.set_edges(protobuf::RepeatedField::from_vec(mapped));
         edges
     }
 }
 
-impl From<indradb::EdgeKey> for grpc_edges::EdgeKey {
+impl From<indradb::EdgeKey> for autogen::EdgeKey {
     fn from(key: indradb::EdgeKey) -> Self {
-        let mut grpc_key: grpc_edges::EdgeKey = grpc_edges::EdgeKey::new();
+        let mut grpc_key: autogen::EdgeKey = autogen::EdgeKey::new();
         grpc_key.set_outbound_id(key.outbound_id.hyphenated().to_string());
         grpc_key.set_field_type(key.t.0);
         grpc_key.set_inbound_id(key.inbound_id.hyphenated().to_string());
@@ -84,8 +81,8 @@ impl From<indradb::EdgeKey> for grpc_edges::EdgeKey {
     }
 }
 
-impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
-    fn reverse_from(grpc_key: &grpc_edges::EdgeKey) -> Result<Self> {
+impl ReverseFrom<autogen::EdgeKey> for indradb::EdgeKey {
+    fn reverse_from(grpc_key: &autogen::EdgeKey) -> Result<Self> {
         Ok(indradb::EdgeKey::new(
             Uuid::from_str(grpc_key.get_outbound_id())?,
             indradb::Type::new(grpc_key.get_field_type().to_string())?,
@@ -94,51 +91,51 @@ impl ReverseFrom<grpc_edges::EdgeKey> for indradb::EdgeKey {
     }
 }
 
-impl From<indradb::VertexMetadata> for grpc_metadata::VertexMetadata {
+impl From<indradb::VertexMetadata> for autogen::VertexMetadata {
     fn from(metadata: indradb::VertexMetadata) -> Self {
         let value = serde_json::to_string(&metadata.value).expect("Expected to be able to serialize JSON");
-        let mut grpc_metadata: grpc_metadata::VertexMetadata = grpc_metadata::VertexMetadata::new();
+        let mut grpc_metadata: autogen::VertexMetadata = autogen::VertexMetadata::new();
         grpc_metadata.set_id(metadata.id.hyphenated().to_string());
         grpc_metadata.set_value(value);
         grpc_metadata
     }
 }
 
-impl From<Vec<indradb::VertexMetadata>> for grpc_metadata::VertexMetadatas {
+impl From<Vec<indradb::VertexMetadata>> for autogen::VertexMetadatas {
     fn from(metadata: Vec<indradb::VertexMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(grpc_metadata::VertexMetadata::from).collect();
-        let mut metadata = grpc_metadata::VertexMetadatas::new();
-        metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
-        metadata
+        let mapped = metadata.into_iter().map(autogen::VertexMetadata::from).collect();
+        let mut grpc_metadata = autogen::VertexMetadatas::new();
+        grpc_metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
+        grpc_metadata
     }
 }
 
-impl From<indradb::EdgeMetadata> for grpc_metadata::EdgeMetadata {
+impl From<indradb::EdgeMetadata> for autogen::EdgeMetadata {
     fn from(metadata: indradb::EdgeMetadata) -> Self {
         let value = serde_json::to_string(&metadata.value).expect("Expected to be able to serialize JSON");
-        let mut grpc_metadata: grpc_metadata::EdgeMetadata = grpc_metadata::EdgeMetadata::new();
-        grpc_metadata.set_key(grpc_edges::EdgeKey::from(metadata.key));
+        let mut grpc_metadata: autogen::EdgeMetadata = autogen::EdgeMetadata::new();
+        grpc_metadata.set_key(autogen::EdgeKey::from(metadata.key));
         grpc_metadata.set_value(value);
         grpc_metadata
     }
 }
 
-impl From<Vec<indradb::EdgeMetadata>> for grpc_metadata::EdgeMetadatas {
+impl From<Vec<indradb::EdgeMetadata>> for autogen::EdgeMetadatas {
     fn from(metadata: Vec<indradb::EdgeMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(grpc_metadata::EdgeMetadata::from).collect();
-        let mut metadata = grpc_metadata::EdgeMetadatas::new();
+        let mapped = metadata.into_iter().map(autogen::EdgeMetadata::from).collect();
+        let mut metadata = autogen::EdgeMetadatas::new();
         metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
         metadata
     }
 }
 
-impl From<indradb::VertexQuery> for grpc_queries::VertexQuery {
+impl From<indradb::VertexQuery> for autogen::VertexQuery {
     fn from(query: indradb::VertexQuery) -> Self {
-        let mut grpc_query = grpc_queries::VertexQuery::new();
+        let mut grpc_query = autogen::VertexQuery::new();
 
         match query {
             indradb::VertexQuery::All { start_id, limit } => {
-                let mut grpc_inner_query = grpc_queries::AllVertexQuery::new();
+                let mut grpc_inner_query = autogen::AllVertexQuery::new();
 
                 if let Some(start_id) = start_id {
                     grpc_inner_query.set_start_id(start_id.hyphenated().to_string());
@@ -148,13 +145,13 @@ impl From<indradb::VertexQuery> for grpc_queries::VertexQuery {
                 grpc_query.set_all(grpc_inner_query);
             },
             indradb::VertexQuery::Vertices { ids } => {
-                let mut grpc_inner_query = grpc_queries::VerticesVertexQuery::new();
+                let mut grpc_inner_query = autogen::VerticesVertexQuery::new();
                 grpc_inner_query.set_ids(ids.iter().map(|id| id.hyphenated().to_string()).collect());
                 grpc_query.set_vertices(grpc_inner_query);
             },
             indradb::VertexQuery::Pipe { edge_query, converter, limit } => {
-                let mut grpc_inner_query = grpc_queries::PipeVertexQuery::new();
-                grpc_inner_query.set_edge_query(grpc_queries::EdgeQuery::from(*edge_query));
+                let mut grpc_inner_query = autogen::PipeVertexQuery::new();
+                grpc_inner_query.set_edge_query(autogen::EdgeQuery::from(*edge_query));
                 grpc_inner_query.set_converter(String::from(converter));
                 grpc_inner_query.set_limit(limit);
                 grpc_query.set_pipe(grpc_inner_query);
@@ -165,8 +162,8 @@ impl From<indradb::VertexQuery> for grpc_queries::VertexQuery {
     }
 }
 
-impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
-    fn reverse_from(grpc_query: &grpc_queries::VertexQuery) -> Result<Self> {
+impl ReverseFrom<autogen::VertexQuery> for indradb::VertexQuery {
+    fn reverse_from(grpc_query: &autogen::VertexQuery) -> Result<Self> {
         if grpc_query.has_all() {
             let query = grpc_query.get_all();
             Ok(indradb::VertexQuery::All {
@@ -192,19 +189,19 @@ impl ReverseFrom<grpc_queries::VertexQuery> for indradb::VertexQuery {
     }
 }
 
-impl From<indradb::EdgeQuery> for grpc_queries::EdgeQuery {
+impl From<indradb::EdgeQuery> for autogen::EdgeQuery {
     fn from(query: indradb::EdgeQuery) -> Self {
-        let mut grpc_query = grpc_queries::EdgeQuery::new();
+        let mut grpc_query = autogen::EdgeQuery::new();
 
         match query {
             indradb::EdgeQuery::Edges { keys } => {
-                let mut grpc_inner_query = grpc_queries::EdgesEdgeQuery::new();
-                grpc_inner_query.set_keys(keys.into_iter().map(grpc_edges::EdgeKey::from).collect());
+                let mut grpc_inner_query = autogen::EdgesEdgeQuery::new();
+                grpc_inner_query.set_keys(keys.into_iter().map(autogen::EdgeKey::from).collect());
                 grpc_query.set_edges(grpc_inner_query);
             },
             indradb::EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
-                let mut grpc_inner_query = grpc_queries::PipeEdgeQuery::new();
-                grpc_inner_query.set_vertex_query(grpc_queries::VertexQuery::from(*vertex_query));
+                let mut grpc_inner_query = autogen::PipeEdgeQuery::new();
+                grpc_inner_query.set_vertex_query(autogen::VertexQuery::from(*vertex_query));
                 grpc_inner_query.set_converter(String::from(converter));
 
                 if let Some(type_filter) = type_filter {
@@ -228,8 +225,8 @@ impl From<indradb::EdgeQuery> for grpc_queries::EdgeQuery {
     }
 }
 
-impl ReverseFrom<grpc_queries::EdgeQuery> for indradb::EdgeQuery {
-    fn reverse_from(grpc_query: &grpc_queries::EdgeQuery) -> Result<Self> {
+impl ReverseFrom<autogen::EdgeQuery> for indradb::EdgeQuery {
+    fn reverse_from(grpc_query: &autogen::EdgeQuery) -> Result<Self> {
         if grpc_query.has_edges() {
             let query = grpc_query.get_edges();
             let ids: Result<Vec<indradb::EdgeKey>> = query.get_keys().iter().map(indradb::EdgeKey::reverse_from).collect();

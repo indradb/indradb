@@ -22,16 +22,10 @@ extern crate futures;
 #[macro_use]
 extern crate lazy_static;
 
+mod autogen;
 mod converters;
-mod edges;
 mod errors;
-mod metadata;
-mod queries;
-mod request;
-mod response;
 mod service;
-mod service_grpc;
-mod vertices;
 
 #[cfg(test)]
 mod tests;
@@ -48,7 +42,7 @@ fn main() {
 
     let env = Arc::new(grpcio::Environment::new(1));
     let instance = service::IndraDbService::new();
-    let service = service_grpc::create_indra_db(instance);
+    let service = autogen::create_indra_db(instance);
     let mut server = grpcio::ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", port)

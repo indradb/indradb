@@ -1,6 +1,7 @@
 pub use indradb::tests;
 pub use regex::Regex;
 use indradb;
+use autogen;
 use serde::Deserialize;
 use serde_json::value::Value as JsonValue;
 use std::collections::HashMap;
@@ -16,12 +17,6 @@ use futures::stream::Wait;
 use futures::sink::Send;
 use std::sync::Mutex;
 
-use request::*;
-use edges::EdgeKey;
-use vertices::Vertex;
-use queries::{EdgeQuery, VertexQuery};
-use response::TransactionResponse;
-use service_grpc::IndraDbClient;
 use converters::ReverseFrom;
 use errors;
 
@@ -34,7 +29,7 @@ lazy_static! {
 pub struct GrpcDatastore {
     port: usize,
     server: Child,
-    client: IndraDbClient
+    client: autogen::IndraDbClient
 }
 
 impl GrpcDatastore {
@@ -51,14 +46,14 @@ impl GrpcDatastore {
 
         let env = Arc::new(Environment::new(1));
         let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
-        let client = IndraDbClient::new(channel);
+        let client = autogen::IndraDbClient::new(channel);
 
         for _ in 0..5 {
             sleep(Duration::from_secs(1));
 
-            let request = PingRequest::new();
+            let request = autogen::PingRequest::new();
 
-            if let Ok(response) = client.ping(&PingRequest::new()) {
+            if let Ok(response) = client.ping(&autogen::PingRequest::new()) {
                 if response.get_ok() {
                     return Self {
                         port: port,
@@ -90,20 +85,20 @@ impl indradb::Datastore<GrpcTransaction> for GrpcDatastore {
 }
 
 struct GrpcTransactionDuplex {
-    sink: Option<ClientDuplexSender<TransactionRequest>>,
-    receiver: Wait<ClientDuplexReceiver<TransactionResponse>>
+    sink: Option<ClientDuplexSender<autogen::TransactionRequest>>,
+    receiver: Wait<ClientDuplexReceiver<autogen::TransactionResponse>>
 }
 
 impl GrpcTransactionDuplex {
-    fn new(sink: ClientDuplexSender<TransactionRequest>, receiver: Wait<ClientDuplexReceiver<TransactionResponse>>) -> Self {
+    fn new(sink: ClientDuplexSender<autogen::TransactionRequest>, receiver: Wait<ClientDuplexReceiver<autogen::TransactionResponse>>) -> Self {
         Self {
             sink: Some(sink),
             receiver: receiver,
         }
     }
 
-    fn request(&mut self, req: TransactionRequest) -> Result<TransactionResponse, indradb::Error> {
-        let sink: ClientDuplexSender<TransactionRequest> = self.sink.take().unwrap();
+    fn request(&mut self, req: autogen::TransactionRequest) -> Result<autogen::TransactionResponse, indradb::Error> {
+        let sink: ClientDuplexSender<autogen::TransactionRequest> = self.sink.take().unwrap();
         self.sink = Some(sink.send((req, WriteFlags::default())).wait().unwrap());
         let response = self.receiver.next().unwrap().unwrap();
 
@@ -129,27 +124,27 @@ impl GrpcTransaction {
 
 impl indradb::Transaction for GrpcTransaction {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        let mut inner = CreateVertexRequest::new();
-        inner.set_vertex(Vertex::from(v.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::CreateVertexRequest::new();
+        inner.set_vertex(autogen::Vertex::from(v.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_vertex(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_ok())
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        let mut inner = CreateVertexFromTypeRequest::new();
+        let mut inner = autogen::CreateVertexFromTypeRequest::new();
         inner.set_field_type(t.0);
-        let mut request = TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_vertex_from_type(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(Uuid::parse_str(response.get_uuid()).unwrap())
     }
 
     fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        let mut inner = GetVerticesRequest::new();
-        inner.set_query(VertexQuery::from(q.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::GetVerticesRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_vertices(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         let vertices: Result<Vec<indradb::Vertex>, errors::Error> = response.get_vertices().get_vertices().into_iter().map(indradb::Vertex::reverse_from).collect();
@@ -157,34 +152,34 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn delete_vertices(&self, q: &indradb::VertexQuery) -> Result<(), indradb::Error> {
-        let mut inner = DeleteVerticesRequest::new();
-        inner.set_query(VertexQuery::from(q.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::DeleteVerticesRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_vertices(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
-        let mut request = TransactionRequest::new();
-        request.set_get_vertex_count(GetVertexCountRequest::new());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_get_vertex_count(autogen::GetVertexCountRequest::new());
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_count())
     }
 
     fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
-        let mut inner = CreateEdgeRequest::new();
-        inner.set_key(EdgeKey::from(e.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::CreateEdgeRequest::new();
+        inner.set_key(autogen::EdgeKey::from(e.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_edge(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_ok())
     }
 
     fn get_edges(&self, q: &indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
-        let mut inner = GetEdgesRequest::new();
-        inner.set_query(EdgeQuery::from(q.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::GetEdgesRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_edges(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         let vertices: Result<Vec<indradb::Edge>, errors::Error> = response.get_edges().get_edges().into_iter().map(indradb::Edge::reverse_from).collect();
@@ -192,16 +187,16 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn delete_edges(&self, q: &indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        let mut inner = DeleteEdgesRequest::new();
-        inner.set_query(EdgeQuery::from(q.clone()));
-        let mut request = TransactionRequest::new();
+        let mut inner = autogen::DeleteEdgesRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_edges(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn get_edge_count(&self, id: Uuid, type_filter: Option<&indradb::Type>, direction: indradb::EdgeDirection) -> Result<u64, indradb::Error> {
-        let mut inner = GetEdgeCountRequest::new();
+        let mut inner = autogen::GetEdgeCountRequest::new();
         inner.set_id(id.hyphenated().to_string());
 
         if let Some(type_filter) = type_filter {
@@ -209,7 +204,7 @@ impl indradb::Transaction for GrpcTransaction {
         }
 
         inner.set_direction(String::from(direction));
-        let mut request = TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_edge_count(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_count())
