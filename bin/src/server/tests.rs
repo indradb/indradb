@@ -49,13 +49,13 @@ impl GrpcDatastore {
             .spawn()
             .expect("Server failed to start");
 
-        let env = Arc::new(Environment::new(4));
+        let env = Arc::new(Environment::new(1));
         let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = IndraDbClient::new(channel);
 
         for _ in 0..5 {
             sleep(Duration::from_secs(1));
-            
+
             let request = PingRequest::new();
 
             if let Ok(response) = client.ping(&PingRequest::new()) {
