@@ -54,6 +54,8 @@ impl GrpcDatastore {
         let client = IndraDbClient::new(channel);
 
         for _ in 0..5 {
+            sleep(Duration::from_secs(1));
+            
             let request = PingRequest::new();
 
             if let Ok(response) = client.ping(&PingRequest::new()) {
@@ -65,8 +67,6 @@ impl GrpcDatastore {
                     };
                 }
             }
-
-            sleep(Duration::from_secs(1));
         }
 
         panic!("Server failed to initialize after a few seconds");
