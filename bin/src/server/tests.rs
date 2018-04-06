@@ -31,16 +31,10 @@ lazy_static! {
     static ref PORT: AtomicUsize = AtomicUsize::new(START_PORT);
 }
 
-fn create_client(port: usize) -> IndraDbClient {
-    let env = Arc::new(Environment::new(4));
-    let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
-    IndraDbClient::new(channel)
-}
-
-#[derive(Debug)]
 pub struct GrpcDatastore {
     port: usize,
     server: Child,
+    client: IndraDbClient
 }
 
 impl GrpcDatastore {
@@ -55,7 +49,9 @@ impl GrpcDatastore {
             .spawn()
             .expect("Server failed to start");
 
-        let client = create_client(port);
+        let env = Arc::new(Environment::new(4));
+        let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = IndraDbClient::new(channel);
 
         for _ in 0..5 {
             let request = PingRequest::new();
@@ -65,6 +61,7 @@ impl GrpcDatastore {
                     return Self {
                         port: port,
                         server: server,
+                        client: client
                     };
                 }
             }
@@ -86,8 +83,9 @@ impl Drop for GrpcDatastore {
 
 impl indradb::Datastore<GrpcTransaction> for GrpcDatastore {
     fn transaction(&self) -> Result<GrpcTransaction, indradb::Error> {
-        let client = create_client(self.port);
-        Ok(GrpcTransaction::new(client))
+        let (sink, receiver) = self.client.transaction().unwrap();
+        let channel = GrpcTransactionDuplex::new(sink, receiver.wait());
+        Ok(GrpcTransaction::new(channel))
     }
 }
 
@@ -118,17 +116,13 @@ impl GrpcTransactionDuplex {
 }
 
 pub struct GrpcTransaction {
-    client: IndraDbClient,
     channel: Mutex<GrpcTransactionDuplex>
 }
 
 impl GrpcTransaction {
-    fn new(client: IndraDbClient) -> Self {
-        let (sink, receiver) = client.transaction().unwrap();
-        
+    fn new(channel: GrpcTransactionDuplex) -> Self {
         GrpcTransaction {
-            client: client,
-            channel: Mutex::new(GrpcTransactionDuplex::new(sink, receiver.wait()))
+            channel: Mutex::new(channel)
         }
     }
 }
