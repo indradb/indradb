@@ -1,4 +1,4 @@
-use indradb::{Vertex, Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, VertexQuery};
+use indradb::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery};
 use test::Bencher;
 
 pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)

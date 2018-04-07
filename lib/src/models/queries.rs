@@ -2,8 +2,8 @@ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::DateTime;
 use chrono::offset::Utc;
-use uuid::Uuid;
 use errors;
+use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -24,7 +24,7 @@ impl EdgeDirection {
         match s {
             "outbound" => Ok(EdgeDirection::Outbound),
             "inbound" => Ok(EdgeDirection::Inbound),
-            _ => Err("invalid value".into())
+            _ => Err("invalid value".into()),
         }
     }
 }
@@ -33,7 +33,7 @@ impl From<EdgeDirection> for String {
     fn from(d: EdgeDirection) -> Self {
         match d {
             EdgeDirection::Outbound => "outbound".to_string(),
-            EdgeDirection::Inbound => "inbound".to_string()
+            EdgeDirection::Inbound => "inbound".to_string(),
         }
     }
 }

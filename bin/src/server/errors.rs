@@ -1,6 +1,6 @@
 use indradb;
-use uuid;
 use serde_json;
+use uuid;
 
 error_chain!{
     types {

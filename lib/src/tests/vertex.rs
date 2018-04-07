@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub fn should_create_vertex_from_type<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
-    T: Transaction
+    T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();

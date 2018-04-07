@@ -6,6 +6,7 @@ extern crate common;
 extern crate core;
 #[macro_use]
 extern crate error_chain;
+extern crate futures;
 extern crate grpcio;
 #[macro_use]
 extern crate indradb;
@@ -15,10 +16,8 @@ extern crate regex;
 extern crate serde;
 extern crate serde_json;
 extern crate uuid;
-extern crate futures;
 
 #[cfg(test)]
-
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
@@ -31,9 +30,9 @@ mod service;
 #[cfg(test)]
 mod tests;
 
-use std::sync::Arc;
 use futures::future::Future;
 use std::env;
+use std::sync::Arc;
 
 fn main() {
     let port_str = env::var("PORT").unwrap_or_else(|_| "27615".to_string());
@@ -51,11 +50,11 @@ fn main() {
         .unwrap();
 
     server.start();
-    
+
     for &(ref host, port) in server.bind_addrs() {
         println!("listening on {}:{}", host, port);
     }
-    
+
     let signal = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
     signal.recv().unwrap();
     let _ = server.shutdown().wait();

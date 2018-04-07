@@ -4,16 +4,16 @@
 //! separate trait for those conversions. Alternatively, we could use
 //! newtypes, but that would introduce its own baggage.
 
-use indradb;
 use autogen;
-use protobuf;
-use serde_json;
-use uuid::Uuid;
-use errors::Result;
-use chrono::TimeZone;
-use std::str::FromStr;
 use chrono::{DateTime, Utc};
+use chrono::TimeZone;
+use errors::Result;
+use indradb;
+use protobuf;
 use protobuf::well_known_types;
+use serde_json;
+use std::str::FromStr;
+use uuid::Uuid;
 
 pub trait ReverseFrom<T>: Sized {
     fn reverse_from(&T) -> Result<Self>;
@@ -86,7 +86,7 @@ impl ReverseFrom<autogen::EdgeKey> for indradb::EdgeKey {
         Ok(indradb::EdgeKey::new(
             Uuid::from_str(grpc_key.get_outbound_id())?,
             indradb::Type::new(grpc_key.get_field_type().to_string())?,
-            Uuid::from_str(grpc_key.get_inbound_id())?
+            Uuid::from_str(grpc_key.get_inbound_id())?,
         ))
     }
 }
@@ -105,14 +105,17 @@ impl ReverseFrom<autogen::VertexMetadata> for indradb::VertexMetadata {
     fn reverse_from(grpc_metadata: &autogen::VertexMetadata) -> Result<Self> {
         Ok(indradb::VertexMetadata::new(
             Uuid::from_str(grpc_metadata.get_id())?,
-            serde_json::from_str(grpc_metadata.get_value())?
+            serde_json::from_str(grpc_metadata.get_value())?,
         ))
     }
 }
 
 impl From<Vec<indradb::VertexMetadata>> for autogen::VertexMetadatas {
     fn from(metadata: Vec<indradb::VertexMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(autogen::VertexMetadata::from).collect();
+        let mapped = metadata
+            .into_iter()
+            .map(autogen::VertexMetadata::from)
+            .collect();
         let mut grpc_metadata = autogen::VertexMetadatas::new();
         grpc_metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
         grpc_metadata
@@ -133,14 +136,17 @@ impl ReverseFrom<autogen::EdgeMetadata> for indradb::EdgeMetadata {
     fn reverse_from(grpc_metadata: &autogen::EdgeMetadata) -> Result<Self> {
         Ok(indradb::EdgeMetadata::new(
             indradb::EdgeKey::reverse_from(grpc_metadata.get_key())?,
-            serde_json::from_str(grpc_metadata.get_value())?
+            serde_json::from_str(grpc_metadata.get_value())?,
         ))
     }
 }
 
 impl From<Vec<indradb::EdgeMetadata>> for autogen::EdgeMetadatas {
     fn from(metadata: Vec<indradb::EdgeMetadata>) -> Self {
-        let mapped = metadata.into_iter().map(autogen::EdgeMetadata::from).collect();
+        let mapped = metadata
+            .into_iter()
+            .map(autogen::EdgeMetadata::from)
+            .collect();
         let mut metadata = autogen::EdgeMetadatas::new();
         metadata.set_values(protobuf::RepeatedField::from_vec(mapped));
         metadata
@@ -161,13 +167,17 @@ impl From<indradb::VertexQuery> for autogen::VertexQuery {
 
                 grpc_inner_query.set_limit(limit);
                 grpc_query.set_all(grpc_inner_query);
-            },
+            }
             indradb::VertexQuery::Vertices { ids } => {
                 let mut grpc_inner_query = autogen::VerticesVertexQuery::new();
                 grpc_inner_query.set_ids(ids.iter().map(|id| id.hyphenated().to_string()).collect());
                 grpc_query.set_vertices(grpc_inner_query);
-            },
-            indradb::VertexQuery::Pipe { edge_query, converter, limit } => {
+            }
+            indradb::VertexQuery::Pipe {
+                edge_query,
+                converter,
+                limit,
+            } => {
                 let mut grpc_inner_query = autogen::PipeVertexQuery::new();
                 grpc_inner_query.set_edge_query(autogen::EdgeQuery::from(*edge_query));
                 grpc_inner_query.set_converter(String::from(converter));
@@ -186,20 +196,22 @@ impl ReverseFrom<autogen::VertexQuery> for indradb::VertexQuery {
             let query = grpc_query.get_all();
             Ok(indradb::VertexQuery::All {
                 start_id: from_defaultable(&query.get_start_id(), |s| Ok(Uuid::from_str(s)?))?,
-                limit: query.get_limit()
+                limit: query.get_limit(),
             })
         } else if grpc_query.has_vertices() {
             let query = grpc_query.get_vertices();
-            let ids: Result<Vec<Uuid>> = query.get_ids().iter().map(|s| Ok(Uuid::from_str(s)?)).collect();
-            Ok(indradb::VertexQuery::Vertices {
-                ids: ids?
-            })
+            let ids: Result<Vec<Uuid>> = query
+                .get_ids()
+                .iter()
+                .map(|s| Ok(Uuid::from_str(s)?))
+                .collect();
+            Ok(indradb::VertexQuery::Vertices { ids: ids? })
         } else if grpc_query.has_pipe() {
             let query = grpc_query.get_pipe();
             Ok(indradb::VertexQuery::Pipe {
                 edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_edge_query())?),
                 converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
-                limit: query.get_limit()
+                limit: query.get_limit(),
             })
         } else {
             unreachable!();
@@ -216,8 +228,15 @@ impl From<indradb::EdgeQuery> for autogen::EdgeQuery {
                 let mut grpc_inner_query = autogen::EdgesEdgeQuery::new();
                 grpc_inner_query.set_keys(keys.into_iter().map(autogen::EdgeKey::from).collect());
                 grpc_query.set_edges(grpc_inner_query);
-            },
-            indradb::EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
+            }
+            indradb::EdgeQuery::Pipe {
+                vertex_query,
+                converter,
+                type_filter,
+                high_filter,
+                low_filter,
+                limit,
+            } => {
                 let mut grpc_inner_query = autogen::PipeEdgeQuery::new();
                 grpc_inner_query.set_vertex_query(autogen::VertexQuery::from(*vertex_query));
                 grpc_inner_query.set_converter(String::from(converter));
@@ -247,16 +266,22 @@ impl ReverseFrom<autogen::EdgeQuery> for indradb::EdgeQuery {
     fn reverse_from(grpc_query: &autogen::EdgeQuery) -> Result<Self> {
         if grpc_query.has_edges() {
             let query = grpc_query.get_edges();
-            let ids: Result<Vec<indradb::EdgeKey>> = query.get_keys().iter().map(indradb::EdgeKey::reverse_from).collect();
-            Ok(indradb::EdgeQuery::Edges {
-                keys: ids?
-            })
+            let ids: Result<Vec<indradb::EdgeKey>> = query
+                .get_keys()
+                .iter()
+                .map(indradb::EdgeKey::reverse_from)
+                .collect();
+            Ok(indradb::EdgeQuery::Edges { keys: ids? })
         } else if grpc_query.has_pipe() {
             let query = grpc_query.get_pipe();
             Ok(indradb::EdgeQuery::Pipe {
-                vertex_query: Box::new(indradb::VertexQuery::reverse_from(query.get_vertex_query())?),
+                vertex_query: Box::new(indradb::VertexQuery::reverse_from(
+                    query.get_vertex_query(),
+                )?),
                 converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
-                type_filter: from_defaultable(&query.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?,
+                type_filter: from_defaultable(&query.get_type_filter(), |t| {
+                    Ok(indradb::Type::new(t.to_string())?)
+                })?,
                 high_filter: if query.has_high_filter() {
                     Some(datetime_from_timestamp(query.get_high_filter()))
                 } else {
@@ -267,7 +292,7 @@ impl ReverseFrom<autogen::EdgeQuery> for indradb::EdgeQuery {
                 } else {
                     None
                 },
-                limit: query.get_limit()
+                limit: query.get_limit(),
             })
         } else {
             unreachable!();
@@ -287,8 +312,10 @@ fn timestamp_from_datetime(dt: &DateTime<Utc>) -> well_known_types::Timestamp {
 }
 
 pub fn from_defaultable<T, U, F>(t: &T, mapper: F) -> Result<Option<U>>
-where T: Default + PartialEq,
-      F: Fn(&T) -> Result<U> {
+where
+    T: Default + PartialEq,
+    F: Fn(&T) -> Result<U>,
+{
     if t == &T::default() {
         Ok(None)
     } else {
