@@ -258,12 +258,12 @@ impl ReverseFrom<autogen::EdgeQuery> for indradb::EdgeQuery {
                 converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
                 type_filter: from_defaultable(&query.get_type_filter(), |t| Ok(indradb::Type::new(t.to_string())?))?,
                 high_filter: if query.has_high_filter() {
-                    Some(datetime_from_timestamp(query.get_low_filter()))
+                    Some(datetime_from_timestamp(query.get_high_filter()))
                 } else {
                     None
                 },
                 low_filter: if query.has_low_filter() {
-                    Some(datetime_from_timestamp(query.get_high_filter()))
+                    Some(datetime_from_timestamp(query.get_low_filter()))
                 } else {
                     None
                 },

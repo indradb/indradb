@@ -18,6 +18,8 @@ extern crate uuid;
 extern crate futures;
 
 #[cfg(test)]
+
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 

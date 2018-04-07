@@ -1,4 +1,4 @@
-use errors::{ErrorKind, Result};
+use errors::Result;
 use models;
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;

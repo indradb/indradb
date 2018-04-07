@@ -32,8 +32,8 @@ impl EdgeDirection {
 impl From<EdgeDirection> for String {
     fn from(d: EdgeDirection) -> Self {
         match d {
-            Outbound => "outbound".to_string(),
-            Inbound => "inbound".to_string()
+            EdgeDirection::Outbound => "outbound".to_string(),
+            EdgeDirection::Inbound => "inbound".to_string()
         }
     }
 }
