@@ -89,7 +89,7 @@ fn build_response(
         let type_filter = converters::from_defaultable(&request.get_type_filter(), |t| {
             Ok(indradb::Type::new(t.to_string())?)
         })?;
-        let direction = indradb::EdgeDirection::from_str(&request.get_direction())?;
+        let direction = indradb::EdgeDirection::from_str(request.get_direction())?;
         let count = trans.get_edge_count(id, type_filter.as_ref(), direction)?;
         response.set_count(count);
     } else if request.has_get_global_metadata() {
@@ -204,7 +204,7 @@ impl autogen::IndraDb for IndraDbService {
         stream: grpcio::RequestStream<autogen::TransactionRequest>,
         mut sink: grpcio::DuplexSink<autogen::TransactionResponse>,
     ) {
-        let datastore = self.datastore.clone();
+        let datastore = Arc::clone(&self.datastore);
 
         // TODO: ensure thread joins
         spawn(move || {

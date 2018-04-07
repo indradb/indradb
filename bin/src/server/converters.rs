@@ -210,7 +210,7 @@ impl ReverseFrom<autogen::VertexQuery> for indradb::VertexQuery {
             let query = grpc_query.get_pipe();
             Ok(indradb::VertexQuery::Pipe {
                 edge_query: Box::new(indradb::EdgeQuery::reverse_from(query.get_edge_query())?),
-                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
+                converter: indradb::EdgeDirection::from_str(query.get_converter())?,
                 limit: query.get_limit(),
             })
         } else {
@@ -278,7 +278,7 @@ impl ReverseFrom<autogen::EdgeQuery> for indradb::EdgeQuery {
                 vertex_query: Box::new(indradb::VertexQuery::reverse_from(
                     query.get_vertex_query(),
                 )?),
-                converter: indradb::EdgeDirection::from_str(&query.get_converter())?,
+                converter: indradb::EdgeDirection::from_str(query.get_converter())?,
                 type_filter: from_defaultable(&query.get_type_filter(), |t| {
                     Ok(indradb::Type::new(t.to_string())?)
                 })?,
