@@ -1,8 +1,4 @@
-use autogen;
 use common::{datastore, ProxyDatastore};
-use converters;
-use converters::ReverseFrom;
-use errors::Result;
 use futures::{Future, Sink, Stream};
 use grpcio;
 use indradb;
@@ -14,6 +10,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::spawn;
 use uuid::Uuid;
+use common;
+use common::{Result, ReverseFrom};
 
 macro_rules! send_sink {
     ($sink:ident, $response:expr) => (
@@ -29,9 +27,9 @@ macro_rules! send_sink {
 
 fn build_response(
     trans: &Transaction,
-    request: &autogen::TransactionRequest,
-) -> Result<(autogen::TransactionResponse, grpcio::WriteFlags)> {
-    let mut response = autogen::TransactionResponse::new();
+    request: &common::TransactionRequest,
+) -> Result<(common::TransactionResponse, grpcio::WriteFlags)> {
+    let mut response = common::TransactionResponse::new();
 
     if request.has_create_vertex() {
         let request = request.get_create_vertex();
@@ -46,11 +44,11 @@ fn build_response(
     } else if request.has_get_vertices() {
         let request = request.get_get_vertices();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
-        let mut vertices = autogen::Vertices::new();
+        let mut vertices = common::Vertices::new();
         let list = trans
             .get_vertices(&query)?
             .into_iter()
-            .map(autogen::Vertex::from)
+            .map(common::Vertex::from)
             .collect();
         vertices.set_vertices(protobuf::RepeatedField::from_vec(list));
         response.set_vertices(vertices);
@@ -70,11 +68,11 @@ fn build_response(
     } else if request.has_get_edges() {
         let request = request.get_get_edges();
         let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
-        let mut edges = autogen::Edges::new();
+        let mut edges = common::Edges::new();
         let list = trans
             .get_edges(&query)?
             .into_iter()
-            .map(autogen::Edge::from)
+            .map(common::Edge::from)
             .collect();
         edges.set_edges(protobuf::RepeatedField::from_vec(list));
         response.set_edges(edges);
@@ -86,7 +84,7 @@ fn build_response(
     } else if request.has_get_edge_count() {
         let request = request.get_get_edge_count();
         let id = Uuid::from_str(request.get_id())?;
-        let type_filter = converters::from_defaultable(&request.get_type_filter(), |t| {
+        let type_filter = common::from_defaultable(&request.get_type_filter(), |t| {
             Ok(indradb::Type::new(t.to_string())?)
         })?;
         let direction = indradb::EdgeDirection::from_str(request.get_direction())?;
@@ -117,11 +115,11 @@ fn build_response(
         let request = request.get_get_vertex_metadata();
         let query = indradb::VertexQuery::reverse_from(request.get_query())?;
         let name = request.get_name();
-        let mut metadatas = autogen::VertexMetadatas::new();
+        let mut metadatas = common::VertexMetadatas::new();
         let list = trans
             .get_vertex_metadata(&query, name)?
             .into_iter()
-            .map(autogen::VertexMetadata::from)
+            .map(common::VertexMetadata::from)
             .collect();
         metadatas.set_values(protobuf::RepeatedField::from_vec(list));
         response.set_vertex_metadatas(metadatas);
@@ -142,11 +140,11 @@ fn build_response(
         let request = request.get_get_edge_metadata();
         let query = indradb::EdgeQuery::reverse_from(request.get_query())?;
         let name = request.get_name();
-        let mut metadatas = autogen::EdgeMetadatas::new();
+        let mut metadatas = common::EdgeMetadatas::new();
         let list = trans
             .get_edge_metadata(&query, name)?
             .into_iter()
-            .map(autogen::EdgeMetadata::from)
+            .map(common::EdgeMetadata::from)
             .collect();
         metadatas.set_values(protobuf::RepeatedField::from_vec(list));
         response.set_edge_metadatas(metadatas);
@@ -170,8 +168,8 @@ fn build_response(
     Ok((response, grpcio::WriteFlags::default()))
 }
 
-fn build_error_response<E: StdError>(err: &E) -> (autogen::TransactionResponse, grpcio::WriteFlags) {
-    let mut response = autogen::TransactionResponse::new();
+fn build_error_response<E: StdError>(err: &E) -> (common::TransactionResponse, grpcio::WriteFlags) {
+    let mut response = common::TransactionResponse::new();
     response.set_error(format!("{}", err));
     (response, grpcio::WriteFlags::default())
 }
@@ -189,9 +187,9 @@ impl IndraDbService {
     }
 }
 
-impl autogen::IndraDb for IndraDbService {
-    fn ping(&self, ctx: grpcio::RpcContext, _: autogen::PingRequest, sink: grpcio::UnarySink<autogen::PingResponse>) {
-        let mut response = autogen::PingResponse::new();
+impl common::IndraDb for IndraDbService {
+    fn ping(&self, ctx: grpcio::RpcContext, _: common::PingRequest, sink: grpcio::UnarySink<common::PingResponse>) {
+        let mut response = common::PingResponse::new();
         response.set_ok(true);
         let f = sink.success(response)
             .map_err(|err| eprintln!("Could not send response: {}", err));
@@ -201,8 +199,8 @@ impl autogen::IndraDb for IndraDbService {
     fn transaction(
         &self,
         _: grpcio::RpcContext,
-        stream: grpcio::RequestStream<autogen::TransactionRequest>,
-        mut sink: grpcio::DuplexSink<autogen::TransactionResponse>,
+        stream: grpcio::RequestStream<common::TransactionRequest>,
+        mut sink: grpcio::DuplexSink<common::TransactionResponse>,
     ) {
         let datastore = Arc::clone(&self.datastore);
 

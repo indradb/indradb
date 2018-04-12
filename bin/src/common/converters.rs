@@ -4,7 +4,6 @@
 //! separate trait for those conversions. Alternatively, we could use
 //! newtypes, but that would introduce its own baggage.
 
-use autogen;
 use chrono::{DateTime, Utc};
 use chrono::TimeZone;
 use errors::Result;
@@ -14,6 +13,7 @@ use protobuf::well_known_types;
 use serde_json;
 use std::str::FromStr;
 use uuid::Uuid;
+use autogen;
 
 pub trait ReverseFrom<T>: Sized {
     fn reverse_from(&T) -> Result<Self>;

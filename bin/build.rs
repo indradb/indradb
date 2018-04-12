@@ -12,6 +12,6 @@ fn main() {
             "vertices.proto",
         ],
         &["proto"],
-        "src/server/autogen"
+        "src/common/autogen"
     ).expect("failed to compile gRPC definitions");
 }

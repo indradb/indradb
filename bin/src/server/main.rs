@@ -4,8 +4,6 @@ extern crate chan_signal;
 extern crate chrono;
 extern crate common;
 extern crate core;
-#[macro_use]
-extern crate error_chain;
 extern crate futures;
 extern crate grpcio;
 #[macro_use]
@@ -22,9 +20,6 @@ extern crate uuid;
 #[macro_use]
 extern crate lazy_static;
 
-mod autogen;
-mod converters;
-mod errors;
 mod service;
 
 #[cfg(test)]
@@ -42,7 +37,7 @@ fn main() {
 
     let env = Arc::new(grpcio::Environment::new(1));
     let instance = service::IndraDbService::new();
-    let service = autogen::create_indra_db(instance);
+    let service = common::create_indra_db(instance);
     let mut server = grpcio::ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", port)
