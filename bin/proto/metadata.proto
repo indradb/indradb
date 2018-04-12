@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "proto/edges.proto";
+import "edges.proto";
 
 message VertexMetadata {
     string id = 1;

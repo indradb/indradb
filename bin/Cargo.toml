@@ -8,6 +8,7 @@ repository = "https://github.com/indradb/indradb"
 keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
+build = "build.rs"
 
 [badges]
 travis-ci = { repository = "indradb/indradb", branch = "master" }
@@ -47,3 +48,6 @@ features = ["postgres-datastore", "rocksdb-datastore"]
 
 [dev-dependencies]
 lazy_static = "1.0.0"
+
+[build-dependencies]
+protoc-grpcio = "0.1.0"

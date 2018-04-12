@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "proto/edges.proto";
-import "proto/queries.proto";
-import "proto/vertices.proto";
+import "edges.proto";
+import "queries.proto";
+import "vertices.proto";
 
 message PingRequest {
 }
