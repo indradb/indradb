@@ -1,12 +1,27 @@
-use common;
+extern crate chan_signal;
+extern crate chrono;
+extern crate common;
+extern crate core;
+extern crate futures;
+extern crate grpcio;
+#[macro_use]
+extern crate indradb;
+extern crate libc;
+extern crate protobuf;
+extern crate regex;
+extern crate serde;
+extern crate serde_json;
+extern crate uuid;
+
+#[macro_use]
+extern crate lazy_static;
+
 use common::ReverseFrom;
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags};
-use indradb;
 pub use indradb::tests;
 pub use regex::Regex;
-use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::collections::HashMap;
 use std::process::{Child, Command};

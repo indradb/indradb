@@ -6,7 +6,6 @@ extern crate common;
 extern crate core;
 extern crate futures;
 extern crate grpcio;
-#[macro_use]
 extern crate indradb;
 extern crate libc;
 extern crate protobuf;
@@ -15,15 +14,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-#[cfg(test)]
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
 mod service;
-
-#[cfg(test)]
-mod tests;
 
 use futures::future::Future;
 use std::env;
