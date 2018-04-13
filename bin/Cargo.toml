@@ -20,9 +20,9 @@ path = "src/admin/main.rs"
 name = "indradb-server"
 path = "src/server/main.rs"
 
-# [lib]
-# name = "common_tests"
-# path = "src/common_tests/lib.rs"
+[lib]
+name = "common_tests"
+path = "src/common_tests/lib.rs"
 
 [dependencies]
 serde = "^1.0.27"
@@ -39,6 +39,7 @@ clap = "^2.29.4"
 router = "~0.6.0"
 rlua = "0.11.0"
 num_cpus = "^1.8.0"
+reqwest = "0.8.4"
 crossbeam-channel = "0.1.2"
 chrono = { version = "0.4.0", features = ["serde"] }
 uuid = { version = "0.5.1", features = ["serde", "v4"] }
@@ -47,9 +48,6 @@ uuid = { version = "0.5.1", features = ["serde", "v4"] }
 path = "../lib"
 version = "0.13.0"
 features = ["postgres-datastore", "rocksdb-datastore"]
-
-[dev-dependencies]
-reqwest = "0.8.4"
 
 [dev-dependencies.indradb-lib]
 path = "../lib"

@@ -5,7 +5,7 @@ macro_rules! define_test {
 		#[test]
 		fn $name() {
 			let mut datastore = $datastore_constructor;
-			::tests::$name(&mut datastore);
+			$crate::tests::$name(&mut datastore);
 		}
 	)
 }
