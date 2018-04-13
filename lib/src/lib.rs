@@ -9,9 +9,9 @@
 // Used for error-chain, which can recurse deeply
 #![recursion_limit = "1024"]
 
-#![cfg_attr(feature = "bench-suite", feature(test))]
+#![cfg_attr(all(feature = "bench-suite", feature = "nightly"), feature(test))]
 
-#[cfg(feature = "bench-suite")]
+#[cfg(all(feature = "bench-suite", feature = "nightly"))]
 extern crate test;
 
 extern crate byteorder;
@@ -48,7 +48,7 @@ extern crate rocksdb;
 #[macro_use]
 pub mod tests;
 
-#[cfg(feature = "bench-suite")]
+#[cfg(all(feature = "bench-suite", feature = "nightly"))]
 #[macro_use]
 pub mod benches;
 

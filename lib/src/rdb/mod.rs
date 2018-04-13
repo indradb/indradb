@@ -11,7 +11,7 @@ mod keys;
 mod managers;
 mod datastore;
 
-#[cfg(feature = "bench-suite")]
+#[cfg(all(feature = "bench-suite", feature = "nightly"))]
 mod benches;
 
 #[cfg(feature = "test-suite")]
