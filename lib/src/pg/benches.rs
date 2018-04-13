@@ -14,4 +14,4 @@ fn datastore() -> PostgresDatastore {
     PostgresDatastore::new(Some(1), connection_string).unwrap()
 }
 
-bench_transaction_impl!(datastore());
+full_bench_impl!(datastore());

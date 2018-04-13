@@ -1,3 +1,5 @@
+// #![cfg_attr(feature = "nightly", feature(test))]
+
 extern crate chrono;
 #[macro_use]
 extern crate indradb;
@@ -9,6 +11,7 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
+// extern crate test;
 extern crate uuid;
 
 pub use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex,
@@ -279,3 +282,6 @@ pub fn datastore() -> BatchDatastore {
 }
 
 full_test_impl!(datastore());
+
+// #[cfg(feature = "nightly")]
+// full_bench_impl!(datastore());

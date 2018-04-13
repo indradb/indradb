@@ -2,7 +2,7 @@
 // Above ignore is there because otherwise the macro is noisy
 
 use super::converters;
-use common::ProxyTransaction;
+use datastore::ProxyTransaction;
 use indradb::{Error, Transaction};
 use serde_json::Value as JsonValue;
 

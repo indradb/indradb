@@ -1,3 +1,3 @@
 use super::MemoryDatastore;
 
-bench_transaction_impl!(MemoryDatastore::default());
+full_bench_impl!(MemoryDatastore::default());

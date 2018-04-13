@@ -1,5 +1,5 @@
 use super::util::*;
-use common::ProxyTransaction;
+use datastore::ProxyTransaction;
 use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;

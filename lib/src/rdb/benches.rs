@@ -18,4 +18,4 @@ fn datastore() -> RocksdbDatastore {
     RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files)).unwrap()
 }
 
-bench_transaction_impl!(datastore());
+full_bench_impl!(datastore());

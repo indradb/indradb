@@ -1,7 +1,6 @@
 #![recursion_limit = "1024"]
 
 extern crate clap;
-extern crate common;
 extern crate indradb;
 extern crate uuid;
 
