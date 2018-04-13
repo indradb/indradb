@@ -1,17 +1,6 @@
-#![feature(test)]
-#![cfg(feature = "postgres-datastore")]
-
-extern crate indradb;
-extern crate test;
-
-#[macro_use]
-mod common;
-
-pub use indradb::PostgresDatastore;
-pub use indradb::tests;
-pub use std::env;
+use super::PostgresDatastore;
+use std::env;
 use std::sync::{Once, ONCE_INIT};
-pub use test::Bencher;
 
 static START: Once = ONCE_INIT;
 
@@ -25,4 +14,4 @@ fn datastore() -> PostgresDatastore {
     PostgresDatastore::new(Some(1), connection_string).unwrap()
 }
 
-bench_transaction_impl!(datastore());
+full_bench_impl!(datastore());

@@ -1,7 +1,6 @@
 #![recursion_limit = "1024"]
 
 extern crate chrono;
-extern crate common;
 extern crate core;
 #[macro_use]
 extern crate crossbeam_channel;
@@ -21,6 +20,7 @@ extern crate serde_json;
 extern crate urlencoded;
 extern crate uuid;
 
+mod datastore;
 mod http;
 mod script;
 mod util;

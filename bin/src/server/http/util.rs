@@ -1,4 +1,4 @@
-use common::ProxyTransaction;
+use datastore::ProxyTransaction;
 use core::str::FromStr;
 use indradb::Datastore;
 use iron::headers::{ContentType, Headers};

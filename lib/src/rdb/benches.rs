@@ -1,18 +1,7 @@
-#![feature(test)]
-#![cfg(feature = "rocksdb-datastore")]
-
-extern crate indradb;
-extern crate test;
-
-#[macro_use]
-mod common;
-
-pub use indradb::RocksdbDatastore;
-pub use indradb::tests;
-pub use indradb::util::generate_random_secret;
-pub use std::env;
+use super::RocksdbDatastore;
+use util::generate_random_secret;
+use std::env;
 use std::path::Path;
-pub use test::Bencher;
 
 fn datastore() -> RocksdbDatastore {
     // RocksDB can only have one connection open to a database at a time.
@@ -29,4 +18,4 @@ fn datastore() -> RocksdbDatastore {
     RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files)).unwrap()
 }
 
-bench_transaction_impl!(datastore());
+full_bench_impl!(datastore());

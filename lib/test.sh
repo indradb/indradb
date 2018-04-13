@@ -33,4 +33,9 @@ trap cleanup EXIT
 dropdb --if-exists indradb_test
 createdb --owner=$PG_USER indradb_test
 cargo update
-cargo $ACTION --all-features $TEST_NAME
+
+if [ "$ACTION" == "test" ]; then
+    cargo test --features=test-suite,default,postgres-datastore,rocksdb-datastore $TEST_NAME
+else
+    cargo bench --features=bench-suite,default,postgres-datastore,rocksdb-datastore $TEST_NAME
+fi

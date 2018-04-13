@@ -1,4 +1,4 @@
-use common::{datastore, ProxyDatastore};
+use datastore::{datastore, ProxyDatastore};
 use num_cpus;
 use std::env;
 use std::path::Path;
