@@ -1,13 +1,6 @@
-#![feature(test)]
-#![cfg(feature = "rocksdb-datastore")]
-#![cfg(feature = "bench-suite")]
-
-#[macro_use]
-extern crate indradb;
-
-pub use indradb::RocksdbDatastore;
-pub use indradb::util::generate_random_secret;
-pub use std::env;
+use super::RocksdbDatastore;
+use util::generate_random_secret;
+use std::env;
 use std::path::Path;
 
 fn datastore() -> RocksdbDatastore {

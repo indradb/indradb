@@ -1,12 +1,5 @@
-#![feature(test)]
-#![cfg(feature = "postgres-datastore")]
-#![cfg(feature = "bench-suite")]
-
-#[macro_use]
-extern crate indradb;
-
-pub use indradb::PostgresDatastore;
-pub use std::env;
+use super::PostgresDatastore;
+use std::env;
 use std::sync::{Once, ONCE_INIT};
 
 static START: Once = ONCE_INIT;

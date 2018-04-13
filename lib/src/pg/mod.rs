@@ -14,6 +14,9 @@ mod datastore;
 mod schema;
 mod util;
 
+#[cfg(feature = "bench-suite")]
+mod benches;
+
 #[cfg(feature = "test-suite")]
 mod tests;
 
