@@ -1,4 +1,6 @@
-use common::{datastore, ProxyDatastore};
+use common;
+use common::{Result, ReverseFrom};
+use datastore::{datastore, ProxyDatastore};
 use futures::{Future, Sink, Stream};
 use grpcio;
 use indradb;
@@ -10,8 +12,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::spawn;
 use uuid::Uuid;
-use common;
-use common::{Result, ReverseFrom};
 
 macro_rules! send_sink {
     ($sink:ident, $response:expr) => (

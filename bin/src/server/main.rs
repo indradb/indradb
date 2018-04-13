@@ -1,5 +1,6 @@
 #![recursion_limit = "1024"]
 
+extern crate common;
 extern crate chan_signal;
 extern crate chrono;
 extern crate core;

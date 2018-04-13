@@ -1,8 +1,8 @@
 #![feature(test)]
 
-extern crate common_tests;
+extern crate common;
 #[macro_use]
 extern crate indradb;
 extern crate test;
 
-full_bench_impl!(common_tests::GrpcDatastore::default());
+full_bench_impl!(common::GrpcDatastore::default());

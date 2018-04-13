@@ -1,27 +1,11 @@
-extern crate chan_signal;
-extern crate chrono;
-extern crate common;
-extern crate core;
-extern crate futures;
-extern crate grpcio;
-#[macro_use]
-extern crate indradb;
-extern crate libc;
-extern crate protobuf;
-extern crate regex;
-extern crate serde;
-extern crate serde_json;
-extern crate uuid;
-
-#[macro_use]
-extern crate lazy_static;
-
-use common::ReverseFrom;
+use converters::ReverseFrom;
+use errors;
+use autogen;
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags};
-pub use indradb::tests;
-pub use regex::Regex;
+use indradb;
+use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::collections::HashMap;
 use std::process::{Child, Command};
@@ -40,11 +24,11 @@ lazy_static! {
 
 pub struct GrpcDatastore {
     server: Child,
-    client: common::IndraDbClient,
+    client: autogen::IndraDbClient,
 }
 
 impl GrpcDatastore {
-    fn default() -> Self {
+    pub fn default() -> Self {
         let port = PORT.fetch_add(1, Ordering::SeqCst);
 
         let mut envs = HashMap::new();
@@ -57,12 +41,12 @@ impl GrpcDatastore {
 
         let env = Arc::new(Environment::new(1));
         let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
-        let client = common::IndraDbClient::new(channel);
+        let client = autogen::IndraDbClient::new(channel);
 
         for _ in 0..5 {
             sleep(Duration::from_secs(1));
 
-            if let Ok(response) = client.ping(&common::PingRequest::new()) {
+            if let Ok(response) = client.ping(&autogen::PingRequest::new()) {
                 if response.get_ok() {
                     return Self {
                         server: server,
@@ -93,14 +77,14 @@ impl indradb::Datastore<GrpcTransaction> for GrpcDatastore {
 }
 
 struct GrpcTransactionDuplex {
-    sink: Option<ClientDuplexSender<common::TransactionRequest>>,
-    receiver: Wait<ClientDuplexReceiver<common::TransactionResponse>>,
+    sink: Option<ClientDuplexSender<autogen::TransactionRequest>>,
+    receiver: Wait<ClientDuplexReceiver<autogen::TransactionResponse>>,
 }
 
 impl GrpcTransactionDuplex {
     fn new(
-        sink: ClientDuplexSender<common::TransactionRequest>,
-        receiver: Wait<ClientDuplexReceiver<common::TransactionResponse>>,
+        sink: ClientDuplexSender<autogen::TransactionRequest>,
+        receiver: Wait<ClientDuplexReceiver<autogen::TransactionResponse>>,
     ) -> Self {
         Self {
             sink: Some(sink),
@@ -108,8 +92,8 @@ impl GrpcTransactionDuplex {
         }
     }
 
-    fn request(&mut self, req: common::TransactionRequest) -> Result<common::TransactionResponse, indradb::Error> {
-        let sink: ClientDuplexSender<common::TransactionRequest> = self.sink.take().unwrap();
+    fn request(&mut self, req: autogen::TransactionRequest) -> Result<autogen::TransactionResponse, indradb::Error> {
+        let sink: ClientDuplexSender<autogen::TransactionRequest> = self.sink.take().unwrap();
         self.sink = Some(sink.send((req, WriteFlags::default())).wait().unwrap());
         let response = self.receiver.next().unwrap().unwrap();
 
@@ -135,30 +119,30 @@ impl GrpcTransaction {
 
 impl indradb::Transaction for GrpcTransaction {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        let mut inner = common::CreateVertexRequest::new();
-        inner.set_vertex(common::Vertex::from(v.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::CreateVertexRequest::new();
+        inner.set_vertex(autogen::Vertex::from(v.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_vertex(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_ok())
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        let mut inner = common::CreateVertexFromTypeRequest::new();
+        let mut inner = autogen::CreateVertexFromTypeRequest::new();
         inner.set_field_type(t.0);
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_vertex_from_type(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(Uuid::parse_str(response.get_uuid()).unwrap())
     }
 
     fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        let mut inner = common::GetVerticesRequest::new();
-        inner.set_query(common::VertexQuery::from(q.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::GetVerticesRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_vertices(inner);
         let response = self.channel.lock().unwrap().request(request)?;
-        let vertices: Result<Vec<indradb::Vertex>, common::Error> = response
+        let vertices: Result<Vec<indradb::Vertex>, errors::Error> = response
             .get_vertices()
             .get_vertices()
             .into_iter()
@@ -168,37 +152,37 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn delete_vertices(&self, q: &indradb::VertexQuery) -> Result<(), indradb::Error> {
-        let mut inner = common::DeleteVerticesRequest::new();
-        inner.set_query(common::VertexQuery::from(q.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::DeleteVerticesRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_vertices(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
-        let mut request = common::TransactionRequest::new();
-        request.set_get_vertex_count(common::GetVertexCountRequest::new());
+        let mut request = autogen::TransactionRequest::new();
+        request.set_get_vertex_count(autogen::GetVertexCountRequest::new());
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_count())
     }
 
     fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
-        let mut inner = common::CreateEdgeRequest::new();
-        inner.set_key(common::EdgeKey::from(e.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::CreateEdgeRequest::new();
+        inner.set_key(autogen::EdgeKey::from(e.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_create_edge(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_ok())
     }
 
     fn get_edges(&self, q: &indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
-        let mut inner = common::GetEdgesRequest::new();
-        inner.set_query(common::EdgeQuery::from(q.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::GetEdgesRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_edges(inner);
         let response = self.channel.lock().unwrap().request(request)?;
-        let vertices: Result<Vec<indradb::Edge>, common::Error> = response
+        let vertices: Result<Vec<indradb::Edge>, errors::Error> = response
             .get_edges()
             .get_edges()
             .into_iter()
@@ -208,9 +192,9 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn delete_edges(&self, q: &indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        let mut inner = common::DeleteEdgesRequest::new();
-        inner.set_query(common::EdgeQuery::from(q.clone()));
-        let mut request = common::TransactionRequest::new();
+        let mut inner = autogen::DeleteEdgesRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_edges(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
@@ -222,7 +206,7 @@ impl indradb::Transaction for GrpcTransaction {
         type_filter: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
-        let mut inner = common::GetEdgeCountRequest::new();
+        let mut inner = autogen::GetEdgeCountRequest::new();
         inner.set_id(id.hyphenated().to_string());
 
         if let Some(type_filter) = type_filter {
@@ -230,16 +214,16 @@ impl indradb::Transaction for GrpcTransaction {
         }
 
         inner.set_direction(String::from(direction));
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_edge_count(inner);
         let response = self.channel.lock().unwrap().request(request)?;
         Ok(response.get_count())
     }
 
     fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, indradb::Error> {
-        let mut inner = common::GetGlobalMetadataRequest::new();
+        let mut inner = autogen::GetGlobalMetadataRequest::new();
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_global_metadata(inner);
         let response = self.channel.lock().unwrap().request(request)?;
 
@@ -251,19 +235,19 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        let mut inner = common::SetGlobalMetadataRequest::new();
+        let mut inner = autogen::SetGlobalMetadataRequest::new();
         inner.set_name(name.to_string());
         inner.set_value(value.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_set_global_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn delete_global_metadata(&self, name: &str) -> Result<(), indradb::Error> {
-        let mut inner = common::DeleteGlobalMetadataRequest::new();
+        let mut inner = autogen::DeleteGlobalMetadataRequest::new();
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_global_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
@@ -274,13 +258,13 @@ impl indradb::Transaction for GrpcTransaction {
         q: &indradb::VertexQuery,
         name: &str,
     ) -> Result<Vec<indradb::VertexMetadata>, indradb::Error> {
-        let mut inner = common::GetVertexMetadataRequest::new();
-        inner.set_query(common::VertexQuery::from(q.clone()));
+        let mut inner = autogen::GetVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_vertex_metadata(inner);
         let response = self.channel.lock().unwrap().request(request)?;
-        let metadata: Result<Vec<indradb::VertexMetadata>, common::Error> = response
+        let metadata: Result<Vec<indradb::VertexMetadata>, errors::Error> = response
             .get_vertex_metadatas()
             .get_values()
             .into_iter()
@@ -295,21 +279,21 @@ impl indradb::Transaction for GrpcTransaction {
         name: &str,
         value: &JsonValue,
     ) -> Result<(), indradb::Error> {
-        let mut inner = common::SetVertexMetadataRequest::new();
-        inner.set_query(common::VertexQuery::from(q.clone()));
+        let mut inner = autogen::SetVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
         inner.set_name(name.to_string());
         inner.set_value(value.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_set_vertex_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn delete_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
-        let mut inner = common::DeleteVertexMetadataRequest::new();
-        inner.set_query(common::VertexQuery::from(q.clone()));
+        let mut inner = autogen::DeleteVertexMetadataRequest::new();
+        inner.set_query(autogen::VertexQuery::from(q.clone()));
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_vertex_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
@@ -320,13 +304,13 @@ impl indradb::Transaction for GrpcTransaction {
         q: &indradb::EdgeQuery,
         name: &str,
     ) -> Result<Vec<indradb::EdgeMetadata>, indradb::Error> {
-        let mut inner = common::GetEdgeMetadataRequest::new();
-        inner.set_query(common::EdgeQuery::from(q.clone()));
+        let mut inner = autogen::GetEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_get_edge_metadata(inner);
         let response = self.channel.lock().unwrap().request(request)?;
-        let metadata: Result<Vec<indradb::EdgeMetadata>, common::Error> = response
+        let metadata: Result<Vec<indradb::EdgeMetadata>, errors::Error> = response
             .get_edge_metadatas()
             .get_values()
             .into_iter()
@@ -336,21 +320,21 @@ impl indradb::Transaction for GrpcTransaction {
     }
 
     fn set_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        let mut inner = common::SetEdgeMetadataRequest::new();
-        inner.set_query(common::EdgeQuery::from(q.clone()));
+        let mut inner = autogen::SetEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
         inner.set_name(name.to_string());
         inner.set_value(value.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_set_edge_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
     }
 
     fn delete_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
-        let mut inner = common::DeleteEdgeMetadataRequest::new();
-        inner.set_query(common::EdgeQuery::from(q.clone()));
+        let mut inner = autogen::DeleteEdgeMetadataRequest::new();
+        inner.set_query(autogen::EdgeQuery::from(q.clone()));
         inner.set_name(name.to_string());
-        let mut request = common::TransactionRequest::new();
+        let mut request = autogen::TransactionRequest::new();
         request.set_delete_edge_metadata(inner);
         self.channel.lock().unwrap().request(request)?;
         Ok(())
