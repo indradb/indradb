@@ -12,7 +12,9 @@
 
 mod datastore;
 mod schema;
-mod tests;
 mod util;
+
+#[cfg(feature = "test-suite")]
+mod tests;
 
 pub use self::datastore::{PostgresDatastore, PostgresTransaction};

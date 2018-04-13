@@ -9,6 +9,10 @@
 // Used for error-chain, which can recurse deeply
 #![recursion_limit = "1024"]
 
+#![cfg_attr(feature = "test-suite", feature(test))]
+#[cfg(feature = "test-suite")]
+extern crate test;
+
 extern crate byteorder;
 extern crate chrono;
 extern crate core;
@@ -39,8 +43,14 @@ extern crate r2d2_postgres;
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 
+#[cfg(feature = "test-suite")]
 #[macro_use]
 pub mod tests;
+
+#[cfg(feature = "bench-suite")]
+#[macro_use]
+pub mod benches;
+
 mod errors;
 mod memory;
 mod models;

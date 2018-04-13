@@ -1,13 +1,9 @@
 #![feature(test)]
-
-extern crate indradb;
-extern crate test;
+#![cfg(feature = "bench-suite")]
 
 #[macro_use]
-mod common;
+extern crate indradb;
 
 pub use indradb::MemoryDatastore;
-pub use indradb::tests;
-pub use test::Bencher;
 
 bench_transaction_impl!(MemoryDatastore::default());

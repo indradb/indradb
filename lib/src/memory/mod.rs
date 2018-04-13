@@ -8,6 +8,8 @@
 //!   concurrent write-heavy workloads.
 
 mod datastore;
+
+#[cfg(feature = "test-suite")]
 mod tests;
 
 pub use self::datastore::{MemoryDatastore, MemoryTransaction};

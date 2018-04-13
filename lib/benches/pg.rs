@@ -1,17 +1,13 @@
 #![feature(test)]
 #![cfg(feature = "postgres-datastore")]
-
-extern crate indradb;
-extern crate test;
+#![cfg(feature = "bench-suite")]
 
 #[macro_use]
-mod common;
+extern crate indradb;
 
 pub use indradb::PostgresDatastore;
-pub use indradb::tests;
 pub use std::env;
 use std::sync::{Once, ONCE_INIT};
-pub use test::Bencher;
 
 static START: Once = ONCE_INIT;
 

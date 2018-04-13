@@ -10,6 +10,8 @@
 mod keys;
 mod managers;
 mod datastore;
+
+#[cfg(feature = "test-suite")]
 mod tests;
 
 pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
