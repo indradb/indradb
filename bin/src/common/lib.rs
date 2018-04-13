@@ -10,10 +10,8 @@ extern crate protobuf;
 
 mod autogen;
 mod converters;
-mod datastore;
 mod errors;
 
 pub use converters::*;
-pub use datastore::*;
 pub use autogen::*;
 pub use errors::*;

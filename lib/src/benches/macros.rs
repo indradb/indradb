@@ -1,18 +1,20 @@
+pub use test::Bencher;
+
 /// Defines a benchmark function.
 #[macro_export]
 macro_rules! define_bench {
     ($name:ident, $datastore_constructor:expr) => (
         #[bench]
-        fn $name(b: &mut Bencher) {
+        fn $name(b: &mut $crate::benches::Bencher) {
             let mut datastore = $datastore_constructor;
-            ::common::$name(b, &mut datastore);
+            $crate::benches::$name(b, &mut datastore);
         }
     )
 }
 
 /// Use this macro to enable the standard benchmarking suite for transactions.
 #[macro_export]
-macro_rules! bench_transaction_impl {
+macro_rules! full_bench_impl {
     ($code:expr) => (
         define_bench!(bench_create_vertex, $code);
         define_bench!(bench_get_vertices, $code);

@@ -2,7 +2,6 @@
 
 extern crate chan_signal;
 extern crate chrono;
-extern crate common;
 extern crate core;
 extern crate futures;
 extern crate grpcio;
@@ -14,6 +13,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
+mod datastore;
 mod service;
 
 use futures::future::Future;
