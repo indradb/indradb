@@ -9,8 +9,8 @@
 // Used for error-chain, which can recurse deeply
 #![recursion_limit = "1024"]
 
-#![cfg_attr(feature = "test-suite", feature(test))]
-#[cfg(feature = "test-suite")]
+#![cfg_attr(feature = "bench-suite", feature(test))]
+#[cfg(feature = "bench-suite")]
 extern crate test;
 
 extern crate byteorder;
