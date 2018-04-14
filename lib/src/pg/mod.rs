@@ -14,7 +14,7 @@ mod datastore;
 mod schema;
 mod util;
 
-#[cfg(all(feature = "bench-suite", feature = "nightly"))]
+#[cfg(feature = "bench-suite")]
 mod benches;
 
 #[cfg(feature = "test-suite")]
