@@ -1,3 +1,7 @@
+// Dead code detection is inaccurate because this module is only used in
+// conditionally compiled macros
+#![allow(dead_code)]
+
 use super::PostgresDatastore;
 use std::env;
 use std::sync::{Once, ONCE_INIT};

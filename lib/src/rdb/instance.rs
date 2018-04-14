@@ -1,3 +1,7 @@
+// Dead code detection is inaccurate because this module is only used in
+// conditionally compiled macros
+#![allow(dead_code)]
+
 use super::RocksdbDatastore;
 use util::generate_random_secret;
 use std::env;
