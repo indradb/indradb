@@ -27,45 +27,45 @@ def get_test_file_name(test_name):
         if re.match(test_file_pattern, file):
             return file
 
-def run(*args, cwd="."):
+def run(args, cwd="."):
     print("=> %s" % args)
     subprocess.check_call(args, cwd=cwd)
 
 def main():
-    run("cargo", "update", cwd="lib")
-    run("cargo", "build", cwd="bin")
+    run(["cargo", "update"], cwd="lib")
+    run(["cargo", "build"], cwd="bin")
 
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run("cargo", "test", FEATURES_FLAG, "--no-run", cwd="lib")
-        run("cargo", "test", FEATURES_FLAG, "--no-run", cwd="bin")
+        run(["cargo", "test", FEATURES_FLAG, "--no-run"], cwd="lib")
+        run(["cargo", "test", FEATURES_FLAG, "--no-run"], cwd="bin")
 
         for lib_test in LIB_TESTS:
-            run(
+            run([
                 "kcov", "--verify",
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(lib_test),
-            , cwd="lib")
+            ], cwd="lib")
 
         for bin_test in BIN_TESTS:
-            run(
+            run([
                 "kcov", "--verify",
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(bin_test),
-            , cwd="bin")
+            ], cwd="bin")
 
-        run(
+        run([
             "kcov", "--merge", "--verify",
             "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
             "--coveralls-id=%s" % os.environ["TRAVIS_JOB_ID"],
             "target/kcov", "target/kcov",
-        )
+        ])
     else:
-        run("cargo", "test", FEATURES_FLAG, cwd="lib")
-        run("cargo", "test", FEATURES_FLAG, cwd="bin")
+        run(["cargo", "test"], FEATURES_FLAG, cwd="lib")
+        run(["cargo", "test"], FEATURES_FLAG, cwd="bin")
 
 if __name__ == "__main__":
     main()
