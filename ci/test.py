@@ -13,9 +13,12 @@ EXCLUDE_PATTERNS = [
     "/.cargo",
     "/usr",
     "lib/src/tests",
+    "lib/src/benches",
     "tests.rs",
     "bin/tests",
 ]
+
+FEATURES_FLAG = "--features=test-suite,postgres-datastore,rocksdb-datastore"
 
 def get_test_file_name(test_name):
     test_file_pattern = TEST_FILE_PATTERN_TEMPLATE % test_name
@@ -24,41 +27,45 @@ def get_test_file_name(test_name):
         if re.match(test_file_pattern, file):
             return file
 
+def run(*args, cwd="."):
+    print("=> %s" % args)
+    subprocess.check_call(args, cwd=cwd)
+
 def main():
-    subprocess.check_call(["cargo", "update"], cwd="lib")
-    subprocess.check_call(["cargo", "build"], cwd="bin")
+    run("cargo", "update", cwd="lib")
+    run("cargo", "build", cwd="bin")
 
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
-        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="bin")
+        run("cargo", "test", FEATURES_FLAG, "--no-run", cwd="lib")
+        run("cargo", "test", FEATURES_FLAG, "--no-run", cwd="bin")
 
         for lib_test in LIB_TESTS:
-            subprocess.check_call([
+            run(
                 "kcov", "--verify",
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(lib_test),
-            ], cwd="lib")
+            , cwd="lib")
 
         for bin_test in BIN_TESTS:
-            subprocess.check_call([
+            run(
                 "kcov", "--verify",
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(bin_test),
-            ], cwd="bin")
+            , cwd="bin")
 
-        subprocess.check_call([
+        run(
             "kcov", "--merge", "--verify",
             "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
             "--coveralls-id=%s" % os.environ["TRAVIS_JOB_ID"],
             "target/kcov", "target/kcov",
-        ])
+        )
     else:
-        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
-        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="bin")
+        run("cargo", "test", FEATURES_FLAG, cwd="lib")
+        run("cargo", "test", FEATURES_FLAG, cwd="bin")
 
 if __name__ == "__main__":
     main()
