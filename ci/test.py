@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server", "batch", "rest"]
+BIN_TESTS = ["indradb_server", "batch"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
@@ -31,8 +31,8 @@ def main():
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        subprocess.check_call(["cargo", "test", "--all-features", "--no-run"], cwd="lib")
-        subprocess.check_call(["cargo", "test", "--all-features", "--no-run"], cwd="bin")
+        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
+        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="bin")
 
         for lib_test in LIB_TESTS:
             subprocess.check_call([
@@ -57,8 +57,8 @@ def main():
             "target/kcov", "target/kcov",
         ])
     else:
-        subprocess.check_call(["cargo", "test", "--all-features"], cwd="lib")
-        subprocess.check_call(["cargo", "test", "--all-features"], cwd="bin")
+        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
+        subprocess.check_call(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="bin")
 
 if __name__ == "__main__":
     main()
