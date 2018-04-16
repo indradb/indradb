@@ -17,7 +17,7 @@ done
 cargo build
 
 if [ "$ACTION" == "test" ]; then
-    cargo test $TEST_NAME
+    cargo test --features=test-suite $TEST_NAME
 else
-    cargo +nightly bench $TEST_NAME
+    cargo +nightly bench --features=bench-suite $TEST_NAME
 fi
