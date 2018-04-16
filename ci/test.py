@@ -28,7 +28,7 @@ def get_test_file_name(test_name):
             return file
 
 def run(args, cwd="."):
-    print("=> %s" % args)
+    print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd)
 
 def main():
