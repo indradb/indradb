@@ -35,7 +35,7 @@ createdb --owner=$PG_USER indradb_test
 cargo update
 
 if [ "$ACTION" == "test" ]; then
-    cargo test --features=test-suite,default,postgres-datastore,rocksdb-datastore $TEST_NAME
+    cargo test --features=test-suite,postgres-datastore,rocksdb-datastore $TEST_NAME
 else
-    cargo bench --features=bench-suite,default,postgres-datastore,rocksdb-datastore $TEST_NAME
+    cargo +nightly bench --features=bench-suite,postgres-datastore,rocksdb-datastore $TEST_NAME
 fi

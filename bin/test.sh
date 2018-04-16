@@ -15,4 +15,9 @@ while true; do
 done
 
 cargo build
-cargo $ACTION $TEST_NAME
+
+if [ "$ACTION" == "test" ]; then
+    cargo test --features=test-suite $TEST_NAME
+else
+    cargo +nightly bench --features=bench-suite $TEST_NAME
+fi

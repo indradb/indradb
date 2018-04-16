@@ -10,10 +10,8 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-pub use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex,
-                  VertexMetadata, VertexQuery};
-pub use indradb::tests;
-pub use regex::Regex;
+use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+use regex::Regex;
 use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use serde::Deserialize;
 use serde_json::value::Value as JsonValue;

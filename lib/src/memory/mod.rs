@@ -9,10 +9,10 @@
 
 mod datastore;
 
-#[cfg(all(feature = "bench-suite", feature = "nightly"))]
-mod benches;
+pub use self::datastore::{MemoryDatastore, MemoryTransaction};
+
+#[cfg(feature = "bench-suite")]
+full_bench_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
-mod tests;
-
-pub use self::datastore::{MemoryDatastore, MemoryTransaction};
+full_test_impl!(MemoryDatastore::default());

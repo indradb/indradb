@@ -8,13 +8,14 @@
 //!   time.
 
 mod keys;
+mod instance;
 mod managers;
 mod datastore;
 
-#[cfg(all(feature = "bench-suite", feature = "nightly"))]
-mod benches;
+pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
+
+#[cfg(feature = "bench-suite")]
+full_bench_impl!(instance::datastore());
 
 #[cfg(feature = "test-suite")]
-mod tests;
-
-pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
+full_test_impl!(instance::datastore());

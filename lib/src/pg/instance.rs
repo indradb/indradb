@@ -1,13 +1,15 @@
-#![cfg(test)]
+// Dead code detection is inaccurate because this module is only used in
+// conditionally compiled macros
+#![allow(dead_code)]
 
-pub use super::datastore::PostgresDatastore;
-pub use super::super::tests;
-pub use std::env;
+use super::PostgresDatastore;
+use std::env;
 use std::sync::{Once, ONCE_INIT};
 
 static START: Once = ONCE_INIT;
 
-full_test_impl!({
+/// Creates an instance of a pg datastore. Used for testing/benchmarking.
+pub fn datastore() -> PostgresDatastore {
     let connection_string = env::var("TEST_POSTGRES_URL").expect("Expected a TEST_POSTGRES_URL");
 
     START.call_once(|| {
@@ -15,4 +17,4 @@ full_test_impl!({
     });
 
     PostgresDatastore::new(Some(1), connection_string).unwrap()
-});
+}

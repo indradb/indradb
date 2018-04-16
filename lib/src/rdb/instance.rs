@@ -1,9 +1,14 @@
+// Dead code detection is inaccurate because this module is only used in
+// conditionally compiled macros
+#![allow(dead_code)]
+
 use super::RocksdbDatastore;
 use util::generate_random_secret;
 use std::env;
 use std::path::Path;
 
-fn datastore() -> RocksdbDatastore {
+/// Gets RocksDB options from env vars. Used for testing/benchmarking.
+pub fn get_options() -> (String, i32) {
     // RocksDB can only have one connection open to a database at a time.
     // Because Rust may run the tests in parallel, we need to add a random
     // secret to the test database directory to ensure we can have multiple
@@ -15,7 +20,11 @@ fn datastore() -> RocksdbDatastore {
     let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
     let max_open_files = max_open_files_str.parse::<i32>().unwrap();
 
-    RocksdbDatastore::new(path.to_str().unwrap(), Some(max_open_files)).unwrap()
+    (path.to_str().unwrap().to_string(), max_open_files)
 }
 
-full_bench_impl!(datastore());
+/// Creates an instance of a pg datastore. Used for testing/benchmarking.
+pub fn datastore() -> RocksdbDatastore {
+    let (path, max_open_files) = get_options();
+    RocksdbDatastore::new(&path[..], Some(max_open_files)).unwrap()
+}

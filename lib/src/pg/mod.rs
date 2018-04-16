@@ -11,13 +11,14 @@
 //!   implementations.
 
 mod datastore;
+mod instance;
 mod schema;
 mod util;
 
-#[cfg(all(feature = "bench-suite", feature = "nightly"))]
-mod benches;
+pub use self::datastore::{PostgresDatastore, PostgresTransaction};
+
+#[cfg(feature = "bench-suite")]
+full_bench_impl!(instance::datastore());
 
 #[cfg(feature = "test-suite")]
-mod tests;
-
-pub use self::datastore::{PostgresDatastore, PostgresTransaction};
+full_test_impl!(instance::datastore());
