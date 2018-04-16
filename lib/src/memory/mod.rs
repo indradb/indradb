@@ -9,10 +9,10 @@
 
 mod datastore;
 
+pub use self::datastore::{MemoryDatastore, MemoryTransaction};
+
 #[cfg(feature = "bench-suite")]
-mod benches;
+full_bench_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
-mod tests;
-
-pub use self::datastore::{MemoryDatastore, MemoryTransaction};
+full_test_impl!(MemoryDatastore::default());
