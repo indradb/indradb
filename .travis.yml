@@ -12,6 +12,7 @@ addons:
       - libdw-dev
       - binutils-dev
       - libiberty-dev
+      - protobuf-compiler
 
 matrix:
   include:
