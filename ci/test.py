@@ -18,8 +18,6 @@ EXCLUDE_PATTERNS = [
     "bin/tests",
 ]
 
-FEATURES_FLAG = "--features=test-suite,postgres-datastore,rocksdb-datastore"
-
 def get_test_file_name(test_name):
     test_file_pattern = TEST_FILE_PATTERN_TEMPLATE % test_name
 
@@ -38,8 +36,8 @@ def main():
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run(["cargo", "test", FEATURES_FLAG, "--no-run"], cwd="lib")
-        run(["cargo", "test", FEATURES_FLAG, "--no-run"], cwd="bin")
+        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
 
         for lib_test in LIB_TESTS:
             run([
@@ -64,8 +62,8 @@ def main():
             "target/kcov", "target/kcov",
         ])
     else:
-        run(["cargo", "test"], FEATURES_FLAG, cwd="lib")
-        run(["cargo", "test"], FEATURES_FLAG, cwd="bin")
+        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite"], cwd="bin")
 
 if __name__ == "__main__":
     main()
