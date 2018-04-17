@@ -52,4 +52,5 @@ version = "0.13.0"
 features = ["postgres-datastore", "rocksdb-datastore"]
 
 [build-dependencies]
-protoc-grpcio = "0.1.0"
+# Currently relying on an unpublished patch for this to workin TravisCI
+protoc-grpcio = { git = "https://github.com/mtp401/protoc-grpcio" }
