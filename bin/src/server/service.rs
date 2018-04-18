@@ -18,7 +18,12 @@ macro_rules! send_sink {
         match $sink.send($response).wait() {
             Ok(value) => value,
             Err(err) => {
-                eprintln!("Could not send response: {}", err);
+                if let grpcio::Error::RemoteStopped = err {
+                    // Client disconnected - do not report the issue
+                } else {
+                    eprintln!("Could not send response: {}", err);
+                }
+
                 return;
             }
         }
