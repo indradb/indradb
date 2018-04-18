@@ -14,7 +14,7 @@ while true; do
 done
 
 if [ "$ACTION" == "test" ]; then
-    cargo test --features=test-suite $TEST_NAME
+    cargo test $TEST_NAME
 else
     cargo +nightly bench --features=bench-suite $TEST_NAME
 fi

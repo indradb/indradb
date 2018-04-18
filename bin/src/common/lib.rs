@@ -31,4 +31,4 @@ pub mod proxy_datastore;
 mod tests;
 
 pub use grpc_client_datastore::GrpcClientDatastore;
-pub use grpc_server::IndraDbService;
+pub use grpc_server::start_server;

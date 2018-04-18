@@ -19,21 +19,14 @@ use std::env;
 use std::sync::Arc;
 
 fn main() {
+    let env = Arc::new(grpcio::Environment::new(1));
+
     let port_str = env::var("PORT").unwrap_or_else(|_| "27615".to_string());
     let port = port_str
         .parse::<u16>()
         .expect("Could not parse environment variable `PORT`");
 
-    let env = Arc::new(grpcio::Environment::new(1));
-    let instance = common::IndraDbService::new();
-    let service = common::autogen::create_indra_db(instance);
-    let mut server = grpcio::ServerBuilder::new(env)
-        .register_service(service)
-        .bind("127.0.0.1", port)
-        .build()
-        .unwrap();
-
-    server.start();
+    let mut server = common::start_server(env, "127.0.0.1", port);
 
     for &(ref host, port) in server.bind_addrs() {
         println!("listening on {}:{}", host, port);

@@ -234,3 +234,16 @@ impl autogen::IndraDb for IndraDbService {
         });
     }
 }
+
+pub fn start_server(env: Arc<grpcio::Environment>, binding: &str, port: u16) -> grpcio::Server {
+    let instance = IndraDbService::new();
+    let service = autogen::create_indra_db(instance);
+    let mut server = grpcio::ServerBuilder::new(env)
+        .register_service(service)
+        .bind(binding, port)
+        .build()
+        .unwrap();
+
+    server.start();
+    server
+}

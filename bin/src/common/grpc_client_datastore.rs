@@ -3,44 +3,22 @@ use errors;
 use autogen;
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
-use grpcio::{Server, ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags, ServerBuilder};
+use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags};
 use indradb;
-use grpc_server;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 use uuid::Uuid;
 
-const START_PORT: usize = 27615;
-
-lazy_static! {
-    static ref PORT: AtomicUsize = AtomicUsize::new(START_PORT);
-}
-
 pub struct GrpcClientDatastore {
-    server: Server,
     client: autogen::IndraDbClient,
 }
 
-impl Default for GrpcClientDatastore {
-    fn default() -> Self {
-        let port = PORT.fetch_add(1, Ordering::SeqCst);
-
-        let env = Arc::new(Environment::new(1));
-        let instance = grpc_server::IndraDbService::new();
-        let service = autogen::create_indra_db(instance);
-        let mut server = ServerBuilder::new(env.clone())
-            .register_service(service)
-            .bind("127.0.0.1", port as u16)
-            .build()
-            .unwrap();
-
-        server.start();
-
+impl GrpcClientDatastore {
+    pub fn new(env: Arc<Environment>, port: u16) -> Self {
         let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = autogen::IndraDbClient::new(channel);
 
@@ -50,7 +28,6 @@ impl Default for GrpcClientDatastore {
             if let Ok(response) = client.ping(&autogen::PingRequest::new()) {
                 if response.get_ok() {
                     return Self {
-                        server: server,
                         client: client,
                     };
                 }
