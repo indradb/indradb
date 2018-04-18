@@ -23,7 +23,9 @@ if [ $TRAVIS_OS_NAME = linux ]; then
     sudo mv protoc/bin/* /usr/local/bin/
     sudo mv protoc/include/* /usr/local/include/
 else
-    brew install protobuf
+    # Ignore errors on this because homebrew is returning exit code 1 on
+    # successful installation
+    brew install protobuf || true
 fi
 
 source ~/.cargo/env || true
