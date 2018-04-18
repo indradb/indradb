@@ -5,7 +5,6 @@ extern crate core;
 extern crate error_chain;
 extern crate futures;
 extern crate grpcio;
-extern crate indradb;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -15,12 +14,21 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-mod autogen;
-mod client;
-mod converters;
-mod errors;
+#[cfg(test)]
+#[macro_use]
+extern crate indradb;
+#[cfg(not(test))]
+extern crate indradb;
 
-pub use converters::*;
-pub use client::*;
-pub use autogen::*;
-pub use errors::*;
+pub mod autogen;
+pub mod converters;
+pub mod errors;
+pub mod grpc_client_datastore;
+pub mod grpc_server;
+pub mod proxy_datastore;
+
+#[cfg(test)]
+mod tests;
+
+pub use grpc_client_datastore::GrpcClientDatastore;
+pub use grpc_server::IndraDbService;

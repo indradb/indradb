@@ -13,8 +13,6 @@ while true; do
     esac
 done
 
-cargo build
-
 if [ "$ACTION" == "test" ]; then
     cargo test --features=test-suite $TEST_NAME
 else

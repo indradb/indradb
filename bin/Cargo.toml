@@ -14,7 +14,6 @@ build = "build.rs"
 travis-ci = { repository = "indradb/indradb", branch = "master" }
 
 [features]
-test-suite = ["indradb-lib/test-suite"]
 bench-suite = ["indradb-lib/bench-suite"]
 
 [[bin]]
@@ -49,7 +48,7 @@ uuid = { version = "0.5.1", features = ["serde", "v4"] }
 [dependencies.indradb-lib]
 path = "../lib"
 version = "0.13.0"
-features = ["postgres-datastore", "rocksdb-datastore"]
+features = ["test-suite", "postgres-datastore", "rocksdb-datastore"]
 
 [build-dependencies]
 # Currently relying on an unpublished patch for this to workin TravisCI

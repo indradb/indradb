@@ -15,6 +15,7 @@ EXCLUDE_PATTERNS = [
     "lib/src/tests",
     "lib/src/benches",
     "tests.rs",
+    "bin/benches",
     "bin/tests",
     "bin/src/common/autogen",
 ]

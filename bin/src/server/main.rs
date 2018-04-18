@@ -14,9 +14,6 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-mod datastore;
-mod service;
-
 use futures::future::Future;
 use std::env;
 use std::sync::Arc;
@@ -28,8 +25,8 @@ fn main() {
         .expect("Could not parse environment variable `PORT`");
 
     let env = Arc::new(grpcio::Environment::new(1));
-    let instance = service::IndraDbService::new();
-    let service = common::create_indra_db(instance);
+    let instance = common::IndraDbService::new();
+    let service = common::autogen::create_indra_db(instance);
     let mut server = grpcio::ServerBuilder::new(env)
         .register_service(service)
         .bind("127.0.0.1", port)

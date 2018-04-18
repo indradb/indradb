@@ -3,12 +3,11 @@ use errors;
 use autogen;
 use futures::{Future, Sink, Stream};
 use futures::stream::Wait;
-use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags};
+use grpcio::{Server, ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment, WriteFlags, ServerBuilder};
 use indradb;
+use grpc_server;
 use serde_json;
 use serde_json::value::Value as JsonValue;
-use std::collections::HashMap;
-use std::process::{Child, Command};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -22,24 +21,26 @@ lazy_static! {
     static ref PORT: AtomicUsize = AtomicUsize::new(START_PORT);
 }
 
-pub struct GrpcDatastore {
-    server: Child,
+pub struct GrpcClientDatastore {
+    server: Server,
     client: autogen::IndraDbClient,
 }
 
-impl GrpcDatastore {
-    pub fn default() -> Self {
+impl Default for GrpcClientDatastore {
+    fn default() -> Self {
         let port = PORT.fetch_add(1, Ordering::SeqCst);
 
-        let mut envs = HashMap::new();
-        envs.insert("PORT", port.to_string());
-
-        let server = Command::new("../target/debug/indradb-server")
-            .envs(envs)
-            .spawn()
-            .expect("Server failed to start");
-
         let env = Arc::new(Environment::new(1));
+        let instance = grpc_server::IndraDbService::new();
+        let service = autogen::create_indra_db(instance);
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", port as u16)
+            .build()
+            .unwrap();
+
+        server.start();
+
         let channel = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = autogen::IndraDbClient::new(channel);
 
@@ -60,15 +61,7 @@ impl GrpcDatastore {
     }
 }
 
-impl Drop for GrpcDatastore {
-    fn drop(&mut self) {
-        if let Err(err) = self.server.kill() {
-            panic!(format!("Could not kill server instance: {}", err))
-        }
-    }
-}
-
-impl indradb::Datastore<GrpcTransaction> for GrpcDatastore {
+impl indradb::Datastore<GrpcTransaction> for GrpcClientDatastore {
     fn transaction(&self) -> Result<GrpcTransaction, indradb::Error> {
         let (sink, receiver) = self.client.transaction().unwrap();
         let channel = GrpcTransactionDuplex::new(sink, receiver.wait());
