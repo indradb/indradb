@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "vertices.proto";
-import "edges.proto";
-import "metadata.proto";
+import "proto/vertices.proto";
+import "proto/edges.proto";
+import "proto/metadata.proto";
 
 message PingResponse {
     bool ok = 1;

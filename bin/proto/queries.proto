@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "edges.proto";
+import "proto/edges.proto";
 import "google/protobuf/timestamp.proto";
 
 message VertexQuery {
