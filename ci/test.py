@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server", "batch"]
+BIN_TESTS = ["indradb_server", "grpc"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
@@ -24,6 +24,8 @@ def get_test_file_name(test_name):
     for file in os.listdir("target/debug"):
         if re.match(test_file_pattern, file):
             return file
+
+    raise Exception("Could not find executable for test `%s`" % test_name)
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
