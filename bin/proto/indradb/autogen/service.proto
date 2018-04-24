@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "proto/request.proto";
-import "proto/response.proto";
+import "indradb/autogen/request.proto";
+import "indradb/autogen/response.proto";
 
 service IndraDB {
     // TODO: We should be able to use google.protobuf.Empty, however it
