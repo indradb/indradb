@@ -1,4 +1,4 @@
-use errors::{ErrorKind, Result};
+use errors::Result;
 use models;
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
@@ -41,9 +41,9 @@ pub trait Transaction {
     /// * `type`: The type of the vertex to create.
     fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
         let v = models::Vertex::new(t);
-        
+
         if !self.create_vertex(&v)? {
-            Err(ErrorKind::UuidConflict.into())
+            Err("UUID already taken".into())
         } else {
             Ok(v.id)
         }

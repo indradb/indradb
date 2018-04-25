@@ -1,3 +1,10 @@
 target
 lib/Cargo.lock
 /Cargo.lock
+bin/src/common/autogen/edges.rs
+bin/src/common/autogen/metadata.rs
+bin/src/common/autogen/queries.rs
+bin/src/common/autogen/request.rs
+bin/src/common/autogen/response.rs
+bin/src/common/autogen/service_grpc.rs
+bin/src/common/autogen/vertices.rs

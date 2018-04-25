@@ -17,6 +17,15 @@ if [ $TRAVIS_OS_NAME = linux ]; then
             popd
         popd
     fi
+
+    curl -OL https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
+    unzip protoc-3.2.0-linux-x86_64.zip -d protoc
+    sudo mv protoc/bin/* /usr/local/bin/
+    sudo mv protoc/include/* /usr/local/include/
+else
+    # Ignore errors on this because homebrew is returning exit code 1 on
+    # successful installation
+    brew install protobuf || true
 fi
 
 source ~/.cargo/env || true

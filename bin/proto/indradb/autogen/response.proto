@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "indradb/autogen/vertices.proto";
+import "indradb/autogen/edges.proto";
+import "indradb/autogen/metadata.proto";
+
+message PingResponse {
+    bool ok = 1;
+}
+
+message TransactionResponse {
+    oneof response {
+        bool ok = 1;
+        Vertices vertices = 2;
+        uint64 count = 3;
+        Edges edges = 4;
+        string json = 5;
+        string uuid = 6;
+        VertexMetadatas vertex_metadatas = 7;
+        EdgeMetadatas edge_metadatas = 8;
+        string error = 9;
+    }
+}

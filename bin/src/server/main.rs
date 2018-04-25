@@ -1,38 +1,38 @@
 #![recursion_limit = "1024"]
 
+extern crate common;
+extern crate chan_signal;
 extern crate chrono;
 extern crate core;
-#[macro_use]
-extern crate crossbeam_channel;
-extern crate hyper;
+extern crate futures;
+extern crate grpcio;
 extern crate indradb;
-extern crate iron;
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
-extern crate num_cpus;
+extern crate protobuf;
 extern crate regex;
-extern crate rlua;
-extern crate router;
 extern crate serde;
-#[macro_use]
 extern crate serde_json;
-extern crate urlencoded;
 extern crate uuid;
 
-mod datastore;
-mod http;
-mod script;
-mod util;
-mod statics;
-
+use futures::future::Future;
 use std::env;
+use std::sync::Arc;
 
-/// App for exposing a `RESTful` API for a datastore
 fn main() {
-    let port_str = env::var("PORT").unwrap_or_else(|_| "8000".to_string());
+    let env = Arc::new(grpcio::Environment::new(1));
+
+    let port_str = env::var("PORT").unwrap_or_else(|_| "27615".to_string());
     let port = port_str
         .parse::<u16>()
         .expect("Could not parse environment variable `PORT`");
-    http::start(port);
+
+    let mut server = common::start_server(env, "127.0.0.1", port);
+
+    for &(ref host, port) in server.bind_addrs() {
+        println!("listening on {}:{}", host, port);
+    }
+
+    let signal = chan_signal::notify(&[chan_signal::Signal::INT, chan_signal::Signal::TERM]);
+    signal.recv().unwrap();
+    let _ = server.shutdown().wait();
 }

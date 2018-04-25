@@ -5,8 +5,9 @@ import re
 import shutil
 import subprocess
 
+LIB_FEATURES = "--features=test-suite,postgres-datastore,rocksdb-datastore"
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server", "batch"]
+BIN_TESTS = ["indradb_server", "grpc"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
@@ -15,7 +16,9 @@ EXCLUDE_PATTERNS = [
     "lib/src/tests",
     "lib/src/benches",
     "tests.rs",
+    "bin/benches",
     "bin/tests",
+    "bin/src/common/autogen",
 ]
 
 def get_test_file_name(test_name):
@@ -24,6 +27,8 @@ def get_test_file_name(test_name):
     for file in os.listdir("target/debug"):
         if re.match(test_file_pattern, file):
             return file
+
+    raise Exception("Could not find executable for test `%s`" % test_name)
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
@@ -36,8 +41,8 @@ def main():
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
+        run(["cargo", "test", LIB_FEATURES, "--no-run"], cwd="lib")
+        run(["cargo", "test", "--no-run"], cwd="bin")
 
         for lib_test in LIB_TESTS:
             run([
@@ -62,8 +67,8 @@ def main():
             "target/kcov", "target/kcov",
         ])
     else:
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite"], cwd="bin")
+        run(["cargo", "test", LIB_FEATURES], cwd="lib")
+        run(["cargo", "test"], cwd="bin")
 
 if __name__ == "__main__":
     main()

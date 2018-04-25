@@ -2,6 +2,7 @@ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::DateTime;
 use chrono::offset::Utc;
+use errors;
 use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -16,6 +17,25 @@ use uuid::Uuid;
 pub enum EdgeDirection {
     #[serde(rename = "outbound")] Outbound,
     #[serde(rename = "inbound")] Inbound,
+}
+
+impl EdgeDirection {
+    pub fn from_str(s: &str) -> errors::ValidationResult<EdgeDirection> {
+        match s {
+            "outbound" => Ok(EdgeDirection::Outbound),
+            "inbound" => Ok(EdgeDirection::Inbound),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+
+impl From<EdgeDirection> for String {
+    fn from(d: EdgeDirection) -> Self {
+        match d {
+            EdgeDirection::Outbound => "outbound".to_string(),
+            EdgeDirection::Inbound => "inbound".to_string(),
+        }
+    }
 }
 
 /// A query for vertices.

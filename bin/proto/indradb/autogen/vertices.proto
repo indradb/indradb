@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message Vertex {
+    string id = 1;
+    string type = 2;
+}
+
+message Vertices {
+    repeated Vertex vertices = 1;
+}

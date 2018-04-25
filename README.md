@@ -6,16 +6,13 @@
 
 A graph database written in rust. This software is in the alpha state.
 
-IndraDB consists of an HTTP server and an underlying library. Most users would use the HTTP server - either communicating with it directly, or using a [client library](https://github.com/indradb/python-client). For convenience, the HTTP server is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+IndraDB consists of a gRPC server and an underlying library. Most users would use the gRPC server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
 ## Features
 
 * Support for directed and typed graphs.
 * A simple, JSON-based query DSL with support for multiple hops.
-* Multiple ways to work with the database:
-    * Via HTTP API, and the clients that build off of it.
-    * Via lua-based scripting.
-    * By embedding IndraDB directly as a library.
+* Cross-language support via gRPC, or direct embedding as a library.
 * Support for metadata: key/value data tied to graph items that can be used for supporting things like caching results from graph processing algorithms executed offline.
 * Pluggable underlying datastores, with built-in support for in-memory-only, [postgres](https://www.postgresql.org/) and [rocksdb](https://github.com/facebook/rocksdb).
 * Written in rust!
@@ -30,34 +27,19 @@ For more details, see the [homepage](https://indradb.github.io).
 * Add the binaries to your `PATH`.
 * Start the app: `indradb-server`
 
-This should start an in-memory-only datastore, where all work will be wiped
-out when the server is shutdown. You can persist your work with one of the
-alternative datastores.
-
-### In-memory
-
-By default, IndraDB starts an in-memory datastore that does not persist to disk. This is useful for kicking the tires.
-
-If you want to use the in-memory datastore, follow these steps:
-
-* Start the server: `PORT=8000 indradb-server`
-* Make a sample HTTP request to `http://localhost:8000`.
-
-### Postgres
-
-If you want to use the postgres-backed datastore, follow these steps:
-
-* Create a database: `createdb indradb`
-* Initialize the database schema: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name indradb-admin init`
-* Start the server: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name PORT=8000 indradb-server`.
-* Make a sample HTTP request to `http://localhost:8000`.
+This should start an in-memory-only datastore, where all work will be wiped out when the server is shutdown. You can persist your work with one of the alternative datastores.
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, follow these steps:
+If you want to persist your work, you can use the rocksdb-backed datastore. This should be possible by setting the `DATABASE_URL` environment variable, like so: `DATABASE_URL=rocksdb://database.rdb indradb-server`.
 
-* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 indradb-server`.
-* Make a sample HTTP request to `http://localhost:8000`.
+### Postgres
+
+If you want to persist your work to a postgresql database, follow these steps:
+
+* Create a database: `createdb indradb`
+* Initialize the database schema: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name indradb-admin init`
+* Start the server: `DATABASE_URL=postgres://user:pass@localhost:5432/database-name indradb-server`.
 
 ## Applications
 
@@ -71,10 +53,7 @@ There's two applications:
 Applications are configured via environment variables:
 
 * `DATABASE_URL`: The connection string to the underlying database.
-* `PORT`: The port to run the server on. Defaults to `8000`.
-* `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
-* `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
-* `MAP_REDUCE_WORKER_POOL_SIZE`: How many worker threads to spawn for mapreduce tasks. Defaults to the number of CPUs.
+* `PORT`: The port to run the server on. Defaults to `27615`.
 
 ## Install from source
 

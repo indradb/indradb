@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+import "indradb/autogen/edges.proto";
+import "indradb/autogen/queries.proto";
+import "indradb/autogen/vertices.proto";
+
+message PingRequest {
+}
+
+message TransactionRequest {
+    oneof request {
+        CreateVertexRequest create_vertex = 1;
+        CreateVertexFromTypeRequest create_vertex_from_type = 2;
+        GetVerticesRequest get_vertices = 3;
+        DeleteVerticesRequest delete_vertices = 4;
+        GetVertexCountRequest get_vertex_count = 5;
+        CreateEdgeRequest create_edge = 6;
+        GetEdgesRequest get_edges = 7;
+        DeleteEdgesRequest delete_edges = 8;
+        GetEdgeCountRequest get_edge_count = 9;
+        GetGlobalMetadataRequest get_global_metadata = 10;
+        SetGlobalMetadataRequest set_global_metadata = 11;
+        DeleteGlobalMetadataRequest delete_global_metadata = 12;
+        GetVertexMetadataRequest get_vertex_metadata = 13;
+        SetVertexMetadataRequest set_vertex_metadata = 14;
+        DeleteVertexMetadataRequest delete_vertex_metadata = 15;
+        GetEdgeMetadataRequest get_edge_metadata = 16;
+        SetEdgeMetadataRequest set_edge_metadata = 17;
+        DeleteEdgeMetadataRequest delete_edge_metadata = 18;
+    }
+}
+
+message CreateVertexRequest {
+    Vertex vertex = 1;
+}
+
+message CreateVertexFromTypeRequest {
+    string type = 1;
+}
+
+message GetVerticesRequest {
+    VertexQuery query = 1;
+}
+
+message DeleteVerticesRequest {
+    VertexQuery query = 1;
+}
+
+message GetVertexCountRequest { }
+
+message CreateEdgeRequest {
+    EdgeKey key = 1;
+}
+
+message GetEdgesRequest {
+    EdgeQuery query = 1;
+}
+
+message DeleteEdgesRequest {
+    EdgeQuery query = 1;
+}
+
+message GetEdgeCountRequest {
+    string id = 1;
+    string type_filter = 2;
+    string direction = 3;
+}
+
+message GetGlobalMetadataRequest {
+    string name = 1;
+}
+
+message SetGlobalMetadataRequest {
+    string name = 1;
+    string value = 2;
+}
+
+message DeleteGlobalMetadataRequest {
+    string name = 1;
+}
+
+message GetVertexMetadataRequest {
+    VertexQuery query = 1;
+    string name = 2;
+}
+
+message SetVertexMetadataRequest {
+    VertexQuery query = 1;
+    string name = 2;
+    string value = 3;
+}
+
+message DeleteVertexMetadataRequest {
+    VertexQuery query = 1;
+    string name = 2;
+}
+
+message GetEdgeMetadataRequest {
+    EdgeQuery query = 1;
+    string name = 2;
+}
+
+message SetEdgeMetadataRequest {
+    EdgeQuery query = 1;
+    string name = 2;
+    string value = 3;
+}
+
+message DeleteEdgeMetadataRequest {
+    EdgeQuery query = 1;
+    string name = 2;
+}

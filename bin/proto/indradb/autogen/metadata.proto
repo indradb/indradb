@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "indradb/autogen/edges.proto";
+
+message VertexMetadata {
+    string id = 1;
+    string value = 2;
+}
+
+message VertexMetadatas {
+    repeated VertexMetadata values = 1;
+}
+
+message EdgeMetadata {
+    EdgeKey key = 1;
+    string value = 2;
+}
+
+message EdgeMetadatas {
+    repeated EdgeMetadata values = 1;
+}

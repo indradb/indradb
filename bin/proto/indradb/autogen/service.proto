@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "indradb/autogen/request.proto";
+import "indradb/autogen/response.proto";
+
+service IndraDB {
+    // TODO: We should be able to use google.protobuf.Empty, however it
+    // doesn't work with gRPC-rs.
+    rpc Ping (PingRequest) returns (PingResponse);
+    rpc Transaction (stream TransactionRequest) returns (stream TransactionResponse);
+}
