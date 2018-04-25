@@ -11,7 +11,7 @@ fn main() {
             "indradb/autogen/service.proto",
             "indradb/autogen/vertices.proto",
         ],
-        &["./proto"],
+        &["proto"],
         "src/common/autogen"
     ).expect("failed to compile gRPC definitions");
 }
