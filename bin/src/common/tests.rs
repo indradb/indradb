@@ -1,16 +1,14 @@
-use grpcio;
-use grpc_client_datastore::GrpcClientDatastore;
-use grpc_server;
-use std::sync::Arc;
+// use client_datastore::ClientDatastore;
+// use std::sync::Arc;
 
-const TEST_PORT: u16 = 27616;
+// const TEST_PORT: u16 = 27616;
 
-lazy_static! {
-    static ref ENVIRONMENT: Arc<grpcio::Environment> = Arc::new(grpcio::Environment::new(1));
-    static ref SERVER: grpcio::Server = grpc_server::start_server((*ENVIRONMENT).clone(), "127.0.0.1", TEST_PORT);
-}
+// lazy_static! {
+//     static ref ENVIRONMENT: Arc<grpcio::Environment> = Arc::new(grpcio::Environment::new(1));
+//     static ref SERVER: grpcio::Server = grpc_server::start_server((*ENVIRONMENT).clone(), "127.0.0.1", TEST_PORT);
+// }
 
-full_test_impl!({
-    println!("Server: {:?}", *SERVER);
-    GrpcClientDatastore::new((*ENVIRONMENT).clone(), TEST_PORT)
-});
+// full_test_impl!({
+//     println!("Server: {:?}", *SERVER);
+//     GrpcClientDatastore::new((*ENVIRONMENT).clone(), TEST_PORT)
+// });

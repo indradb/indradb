@@ -37,11 +37,13 @@ libc = "0.2.26"
 rand = "~0.4.2"
 regex = "~0.2.5"
 clap = "2.29.4"
-chan-signal = "0.3.1"
 grpcio = "0.2.1"
-protobuf = "1.4.4"
-futures = "0.1.18"
 lazy_static = "1.0.0"
+capnp = "0.8.17"
+capnp-rpc = "0.8.3"
+futures = "0.1"
+tokio-core = "0.1"
+tokio-io = "0.1"
 chrono = { version = "0.4.0", features = ["serde"] }
 uuid = { version = "0.5.1", features = ["serde", "v4"] }
 
@@ -51,5 +53,4 @@ version = "0.13.0"
 features = ["test-suite", "postgres-datastore", "rocksdb-datastore"]
 
 [build-dependencies]
-# Currently relying on an unpublished patch for this to workin TravisCI
-protoc-grpcio = { git = "https://github.com/mtp401/protoc-grpcio" }
+capnpc = "0.8.9"

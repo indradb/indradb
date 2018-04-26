@@ -1,6 +1,7 @@
 use indradb;
 use serde_json;
 use uuid;
+use std::io;
 
 error_chain!{
     types {
@@ -15,5 +16,6 @@ error_chain!{
     foreign_links {
         UuidParseError(uuid::ParseError);
         JsonError(serde_json::Error);
+        IoError(io::Error);
     }
 }

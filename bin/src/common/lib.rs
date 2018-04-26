@@ -1,17 +1,18 @@
-extern crate chan_signal;
+extern crate capnp;
+extern crate capnp_rpc;
 extern crate chrono;
 extern crate core;
 #[macro_use]
 extern crate error_chain;
 extern crate futures;
-extern crate grpcio;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
-extern crate protobuf;
 extern crate regex;
 extern crate serde;
 extern crate serde_json;
+extern crate tokio_core;
+extern crate tokio_io;
 extern crate uuid;
 
 #[cfg(test)]
@@ -21,14 +22,12 @@ extern crate indradb;
 extern crate indradb;
 
 pub mod autogen;
-pub mod converters;
 pub mod errors;
-pub mod grpc_client_datastore;
-pub mod grpc_server;
+pub mod client_datastore;
 pub mod proxy_datastore;
+pub mod server;
 
 #[cfg(test)]
 mod tests;
 
-pub use grpc_client_datastore::GrpcClientDatastore;
-pub use grpc_server::start_server;
+pub use client_datastore::ClientDatastore;
