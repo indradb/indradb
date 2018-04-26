@@ -37,7 +37,8 @@ impl autogen::service::Server for Service {
     }
 }
 
-pub fn start(mut core: Core, binding: &str) -> Result<()> {
+pub fn start(binding: &str) -> Result<()> {
+    let mut core = Core::new().unwrap();
     let handle = core.handle();
     let addr = binding.to_socket_addrs()?.next().ok_or_else(|| -> Error { "Could not parse binding".into() })?;
     let socket = TcpListener::bind(&addr, &handle)?;

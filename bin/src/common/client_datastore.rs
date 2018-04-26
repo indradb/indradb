@@ -22,7 +22,8 @@ pub struct ClientDatastore {
 }
 
 impl ClientDatastore {
-    pub fn new(mut core: Core, port: u16) -> Self {
+    pub fn new(port: u16) -> Self {
+        let mut core = Core::new().unwrap();
         let handle = core.handle();
         let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
         let stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();

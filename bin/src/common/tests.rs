@@ -1,14 +1,17 @@
-// use client_datastore::ClientDatastore;
-// use std::sync::Arc;
+use client_datastore::ClientDatastore;
+use server;
+use std::sync::Arc;
+use std::thread::spawn;
+use std::sync::atomic::{Ordering, AtomicUsize};
 
-// const TEST_PORT: u16 = 27616;
+const START_PORT: u16 = 27616;
 
-// lazy_static! {
-//     static ref ENVIRONMENT: Arc<grpcio::Environment> = Arc::new(grpcio::Environment::new(1));
-//     static ref SERVER: grpcio::Server = grpc_server::start_server((*ENVIRONMENT).clone(), "127.0.0.1", TEST_PORT);
-// }
+lazy_static! {
+    static ref CURRENT_PORT: AtomicUsize = AtomicUsize::new(START_PORT as usize);
+}
 
-// full_test_impl!({
-//     println!("Server: {:?}", *SERVER);
-//     GrpcClientDatastore::new((*ENVIRONMENT).clone(), TEST_PORT)
-// });
+full_test_impl!({
+    let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
+    spawn(move || server::start(&format!("127.0.0.1:{}", port)));
+    ClientDatastore::new(port as u16)
+});
