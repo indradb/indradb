@@ -1,6 +1,6 @@
 use tokio_core::reactor::{Core, Handle};
 use autogen;
-use errors::{Error, Result};
+use errors::Error;
 use capnp_rpc::{RpcSystem, Server};
 use capnp_rpc::twoparty::VatNetwork;
 use capnp_rpc::rpc_twoparty_capnp::Side;
@@ -16,7 +16,7 @@ use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction};
 use tokio_io::AsyncRead;
 use converters::ErrorableFrom;
 use std::thread;
-use crossbeam_channel::{Sender, Receiver, bounded};
+use futures_cpupool::CpuPool;
 
 macro_rules! map_user_err {
     ($e:expr) => ($e.map_err(|err| capnp::Error::failed(err.description().to_string())))
@@ -26,18 +26,21 @@ macro_rules! pry_user {
     ($e:expr) => (pry!(map_user_err!($e)))
 }
 
-const WORKER_CHANNEL_SIZE: usize = 10;
+// TODO: make this configurable
+const WORKER_COUNT: usize = 8;
 
 struct Service {
     handle: Handle,
-    datastore: proxy_datastore::ProxyDatastore
+    datastore: proxy_datastore::ProxyDatastore,
+    pool: CpuPool
 }
 
 impl Service {
     fn new(handle: Handle, datastore: proxy_datastore::ProxyDatastore) -> Self {
         Self {
             handle: handle,
-            datastore: datastore
+            datastore: datastore,
+            pool: CpuPool::new(WORKER_COUNT)
         }
     }
 }
@@ -50,7 +53,7 @@ impl autogen::service::Server for Service {
 
     fn transaction(&mut self, _: autogen::service::TransactionParams, res: autogen::service::TransactionResults) -> Promise<(), CapnpError> {
         let trans = pry_user!(self.datastore.transaction());
-        let trans_server = Transaction::new(self.handle.clone(), &self.datastore);
+        let trans_server = Transaction::new(self.pool.clone(), trans);
         let trans_client = autogen::transaction::ToClient::new(trans_server).from_server::<Server>();
         res.get().set_transaction(trans_client);
         Promise::ok(())
@@ -58,53 +61,23 @@ impl autogen::service::Server for Service {
 }
 
 struct Transaction {
-    handle: Handle,
-    trans: proxy_datastore::ProxyTransaction,
-    sender: Sender<TransactionRequest>,
-    worker: thread::JoinHandle<()>
+    pool: CpuPool,
+    trans: proxy_datastore::ProxyTransaction
 }
 
 impl Transaction {
-    fn new(handle: Handle, datastore: &proxy_datastore::ProxyDatastore) -> Self {
-        // TODO: this currently sets up a new thread per transaction, which
-        // may be heavy-weight if the transactions are short-lived. Explore
-        // thread pooling as an alternative.
-        let (sender, receiver) = bounded::<TransactionRequest>(WORKER_CHANNEL_SIZE);
-
-        let worker = thread::spawn(|| {
-            let trans = datastore.transaction();
-
-            loop {
-                match receiver.recv() {
-                    TransactionRequest::CreateVertex(vertex, res) => {
-                        trans.create_vertex(vertex)
-                    },
-                    TransactionRequest::TransactionRequest::Shutdown => return,
-                    _ => unimplemented!()
-                };
-            }
-        });
-
+    fn new(pool: CpuPool, trans: proxy_datastore::ProxyTransaction) -> Self {
         Self {
-            handle: handle,
-            sender: sender,
-            worker: worker
+            pool: pool,
+            trans: trans
         }
-    }
-}
-
-impl Drop for Transaction {
-    fn drop(&mut self) {
-        self.sender.send(TransactionRequest::Shutdown);
-        self.worker.join().unwrap();
     }
 }
 
 impl autogen::transaction::Server for Transaction {
     fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
-        let params = pry!(req.get());
-        let vertex = pry_user!(indradb::Vertex::errorable_from(&pry!(params.get_vertex())));
-        let f = self.pool.spawn_fn(|| {
+        let vertex = pry_user!(indradb::Vertex::errorable_from(&pry!(pry!(req.get()).get_vertex())));
+        let f = self.pool.spawn_fn(|| -> Result<(), capnp::Error> {
             map_user_err!(self.trans.create_vertex(&vertex))?;
             Ok(())
         });
@@ -243,7 +216,7 @@ enum TransactionRequest {
     },
 }
 
-pub fn start(binding: &str) -> Result<()> {
+pub fn start(binding: &str) -> Result<(), Error> {
     let datastore = proxy_datastore::datastore();
     let mut core = Core::new().unwrap();
     let handle = core.handle();

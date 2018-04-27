@@ -3,10 +3,10 @@ extern crate capnp;
 extern crate capnp_rpc;
 extern crate chrono;
 extern crate core;
-extern crate crossbeam_channel;
 #[macro_use]
 extern crate error_chain;
 extern crate futures;
+extern crate futures_cpupool;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
