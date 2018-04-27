@@ -153,69 +153,6 @@ impl autogen::transaction::Server for Transaction {
     }
 }
 
-struct TransactionWorker {
-    //
-}
-
-enum TransactionRequest {
-    Shutdown,
-    CreateVertex {
-        vertex: indradb::Vertex,
-        res: autogen::transaction::CreateVertexFromTypeResults<>
-    },
-    CreateVertexFromType {
-        res: autogen::transaction::CreateVertexFromTypeResults<>
-    },
-    GetVertices {
-        res: autogen::transaction::GetVerticesResults<>
-    },
-    DeleteVertices {
-        res: autogen::transaction::DeleteVerticesResults<>
-    },
-    GetVertexCount {
-        res: autogen::transaction::GetVertexCountResults<>
-    },
-    CreateEdge {
-        res: autogen::transaction::CreateEdgeResults<>
-    },
-    GetEdges {
-        res: autogen::transaction::GetEdgesResults<>
-    },
-    DeleteEdges {
-        res: autogen::transaction::DeleteEdgesResults<>
-    },
-    GetEdgeCount {
-        res: autogen::transaction::GetEdgeCountResults<>
-    },
-    GetGlobalMetadata {
-        res: autogen::transaction::GetGlobalMetadataResults<>
-    },
-    SetGlobalMetadata {
-        res: autogen::transaction::SetGlobalMetadataResults<>
-    },
-    DeleteGlobalMetadata {
-        res: autogen::transaction::DeleteGlobalMetadataResults<>
-    },
-    GetVertexMetadata {
-        res: autogen::transaction::GetVertexMetadataResults<>
-    },
-    SetVertexMetadata {
-        res: autogen::transaction::SetVertexMetadataResults<>
-    },
-    DeleteVertexMetadata {
-        res: autogen::transaction::DeleteVertexMetadataResults<>
-    },
-    GetEdgeMetadata {
-        res: autogen::transaction::GetEdgeMetadataResults<>
-    },
-    SetEdgeMetadata {
-        res: autogen::transaction::SetEdgeMetadataResults<>
-    },
-    DeleteEdgeMetadata {
-        res: autogen::transaction::DeleteEdgeMetadataResults<>
-    },
-}
-
 pub fn start(binding: &str) -> Result<(), Error> {
     let datastore = proxy_datastore::datastore();
     let mut core = Core::new().unwrap();
