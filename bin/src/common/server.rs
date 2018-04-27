@@ -16,6 +16,7 @@ use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction};
 use tokio_io::AsyncRead;
 use converters::ErrorableFrom;
 use std::thread;
+use std::sync::Arc;
 use futures_cpupool::CpuPool;
 
 macro_rules! map_user_err {
@@ -46,12 +47,12 @@ impl Service {
 }
 
 impl autogen::service::Server for Service {
-    fn ping(&mut self, _: autogen::service::PingParams, res: autogen::service::PingResults) -> Promise<(), CapnpError> {
+    fn ping(&mut self, _: autogen::service::PingParams, mut res: autogen::service::PingResults) -> Promise<(), CapnpError> {
         res.get().set_ready(true);
         Promise::ok(())
     }
 
-    fn transaction(&mut self, _: autogen::service::TransactionParams, res: autogen::service::TransactionResults) -> Promise<(), CapnpError> {
+    fn transaction(&mut self, _: autogen::service::TransactionParams, mut res: autogen::service::TransactionResults) -> Promise<(), CapnpError> {
         let trans = pry_user!(self.datastore.transaction());
         let trans_server = Transaction::new(self.pool.clone(), trans);
         let trans_client = autogen::transaction::ToClient::new(trans_server).from_server::<Server>();
@@ -62,23 +63,24 @@ impl autogen::service::Server for Service {
 
 struct Transaction {
     pool: CpuPool,
-    trans: proxy_datastore::ProxyTransaction
+    trans: Arc<proxy_datastore::ProxyTransaction>
 }
 
 impl Transaction {
     fn new(pool: CpuPool, trans: proxy_datastore::ProxyTransaction) -> Self {
         Self {
             pool: pool,
-            trans: trans
+            trans: Arc::new(trans)
         }
     }
 }
 
 impl autogen::transaction::Server for Transaction {
     fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
         let vertex = pry_user!(indradb::Vertex::errorable_from(&pry!(pry!(req.get()).get_vertex())));
-        let f = self.pool.spawn_fn(|| -> Result<(), capnp::Error> {
-            map_user_err!(self.trans.create_vertex(&vertex))?;
+        let f = self.pool.spawn_fn(move || -> Result<(), capnp::Error> {
+            map_user_err!(trans.create_vertex(&vertex))?;
             Ok(())
         });
         Promise::from_future(f)
