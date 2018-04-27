@@ -76,11 +76,13 @@ impl Transaction {
 }
 
 impl autogen::transaction::Server for Transaction {
-    fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
+    fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, mut res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let vertex = pry_user!(indradb::Vertex::errorable_from(&pry!(pry!(req.get()).get_vertex())));
         Promise::from_future(self.pool.spawn_fn(move || {
-            map_user_err!(trans.create_vertex(&vertex))?;
+            Ok(map_user_err!(trans.create_vertex(&vertex))?)
+        }).and_then(move |created| {
+            res.get().set_created(created);
             Ok(())
         }))
     }
