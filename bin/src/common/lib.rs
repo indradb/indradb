@@ -1,7 +1,9 @@
 extern crate capnp;
+#[macro_use]
 extern crate capnp_rpc;
 extern crate chrono;
 extern crate core;
+extern crate crossbeam_channel;
 #[macro_use]
 extern crate error_chain;
 extern crate futures;
@@ -22,6 +24,7 @@ extern crate indradb;
 extern crate indradb;
 
 pub mod autogen;
+pub mod converters;
 pub mod errors;
 pub mod client_datastore;
 pub mod proxy_datastore;

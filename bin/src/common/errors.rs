@@ -2,6 +2,7 @@ use indradb;
 use serde_json;
 use uuid;
 use std::io;
+use capnp;
 
 error_chain!{
     types {
@@ -17,5 +18,6 @@ error_chain!{
         UuidParseError(uuid::ParseError);
         JsonError(serde_json::Error);
         IoError(io::Error);
+        CapnpError(capnp::Error);
     }
 }

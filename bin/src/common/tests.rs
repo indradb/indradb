@@ -1,6 +1,5 @@
 use client_datastore::ClientDatastore;
 use server;
-use std::sync::Arc;
 use std::thread::spawn;
 use std::sync::atomic::{Ordering, AtomicUsize};
 
