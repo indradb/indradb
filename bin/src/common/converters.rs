@@ -6,17 +6,22 @@
 
 use chrono::{DateTime, Utc};
 use chrono::TimeZone;
-use errors::Result;
 use indradb;
 use serde_json;
 use std::str::FromStr;
 use uuid::Uuid;
 use autogen;
 use capnp;
-use errors::Error;
+use std::error::Error;
+use capnp::Error as CapnpError;
+
+#[macro_export]
+macro_rules! map_err {
+    ($e:expr) => ($e.map_err(|err| capnp::Error::failed(err.description().to_string())));
+}
 
 pub trait ErrorableFrom<T>: Sized {
-    fn errorable_from(&T) -> Result<Self>;
+    fn errorable_from(&T) -> Result<Self, CapnpError>;
 }
 
 // impl From<indradb::Vertex> for autogen::vertex::Vertex {
@@ -29,9 +34,9 @@ pub trait ErrorableFrom<T>: Sized {
 // }
 
 impl<'a> ErrorableFrom<autogen::vertex::Reader<'a>> for indradb::Vertex {
-    fn errorable_from(reader: &autogen::vertex::Reader) -> Result<Self> {
-        let id = Uuid::from_bytes(reader.get_id()?)?;
-        let t = indradb::Type::new(reader.get_type()?.to_string())?;
+    fn errorable_from(reader: &autogen::vertex::Reader) -> Result<Self, CapnpError> {
+        let id = map_err!(Uuid::from_bytes(reader.get_id()?))?;
+        let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
         Ok(indradb::Vertex::with_id(id, t))
     }
 }

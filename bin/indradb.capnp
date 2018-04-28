@@ -82,7 +82,7 @@ interface Transaction {
     #
     # Arguments
     # * `vertex`: The vertex to create.
-    createVertex @0 (vertex :Vertex) -> (created :Bool);
+    createVertex @0 (vertex :Vertex) -> (result :Bool);
 
     # Creates a new vertex with just a type specification. As opposed to
     # `createVertex`, this is used when you do not want to manually specify
@@ -90,22 +90,22 @@ interface Transaction {
     #
     # Arguments
     # * `t`: The type of the vertex to create.
-    createVertexFromType @1 (t :Type) -> (id :Uuid);
+    createVertexFromType @1 (t :Type) -> (result :Uuid);
 
     # Gets a range of vertices specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    getVertices @2 (q :VertexQuery) -> (vertices :List(Vertex));
+    getVertices @2 (q :VertexQuery) -> (result :List(Vertex));
 
     # Deletes existing vertices specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    deleteVertices @3 (q :VertexQuery) -> (ok :Void);
+    deleteVertices @3 (q :VertexQuery) -> (result :Void);
 
     # Gets the number of vertices in the datastore..
-    getVertexCount @4 () -> (count :UInt64);
+    getVertexCount @4 () -> (result :UInt64);
 
     # Creates a new edge. If the edge already exists, this will update it
     # with a new update datetime. Returns whether the edge was successfully
@@ -114,19 +114,19 @@ interface Transaction {
     #
     # Arguments
     # * `key`: The edge to create.
-    createEdge @5 (key :EdgeKey) -> (created :Bool);
+    createEdge @5 (key :EdgeKey) -> (result :Bool);
 
     # Gets a range of edges specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    getEdges @6 (q :EdgeQuery) -> (edges :List(Edge));
+    getEdges @6 (q :EdgeQuery) -> (result :List(Edge));
 
     # Deletes a set of edges specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    deleteEdges @7 (q :EdgeQuery) -> (ok :Void);
+    deleteEdges @7 (q :EdgeQuery) -> (result :Void);
 
     # Gets the number of edges associated with a vertex.
     #
@@ -134,7 +134,7 @@ interface Transaction {
     # * `id` - The id of the vertex.
     # * `typeFilter` - Only get the count for a specified edge type.
     # * `direction`: The direction of edges to get.
-    getEdgeCount @8 (id :Uuid, typeFilter :Type, direction :EdgeDirection) -> (count :UInt64);
+    getEdgeCount @8 (id :Uuid, typeFilter :Type, direction :EdgeDirection) -> (result :UInt64);
 
     # Gets a global metadata value.
     #
@@ -143,27 +143,27 @@ interface Transaction {
     #
     # # Errors
     # Returns `Error::MetadataNotFound` if the metadata does not exist.
-    getGlobalMetadata @9 (name :Json) -> (value :Json);
+    getGlobalMetadata @9 (name :Json) -> (result :Json);
 
     # Sets a global metadata value.
     #
     # Arguments
     # * `name` - The metadata name.
     # * `value` - The metadata value.
-    setGlobalMetadata @10 (name :Text, value :Json) -> (ok :Void);
+    setGlobalMetadata @10 (name :Text, value :Json) -> (result :Void);
 
     # Deletes a global metadata value.
     #
     # Arguments
     # * `name` - The metadata name.
-    deleteGlobalMetadata @11 (name :Text) -> (ok :Void);
+    deleteGlobalMetadata @11 (name :Text) -> (result :Void);
 
     # Gets a vertex metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    getVertexMetadata @12 (q :VertexQuery, name :Text) -> (values :List(VertexMetadata));
+    getVertexMetadata @12 (q :VertexQuery, name :Text) -> (result :List(VertexMetadata));
 
     # Sets a vertex metadata value.
     #
@@ -171,21 +171,21 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The metadata name.
     # * `value` - The metadata value.
-    setVertexMetadata @13 (q :VertexQuery, name :Text, value :Json) -> (ok :Void);
+    setVertexMetadata @13 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
 
     # Deletes a vertex metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    deleteVertexMetadata @14 (q :VertexQuery, name :Text) -> (ok :Void);
+    deleteVertexMetadata @14 (q :VertexQuery, name :Text) -> (result :Void);
 
     # Gets an edge metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    getEdgeMetadata @15 (q :EdgeQuery, name :Text) -> (values :List(EdgeMetadata));
+    getEdgeMetadata @15 (q :EdgeQuery, name :Text) -> (result :List(EdgeMetadata));
 
     # Sets an edge metadata value.
     #
@@ -193,12 +193,12 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The metadata name.
     # * `value` - The metadata value.
-    setEdgeMetadata @16 (q :EdgeQuery, name :Text, value :Json) -> (ok :Void);
+    setEdgeMetadata @16 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
 
     # Deletes an edge metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    deleteEdgeMetadata @17 (q :EdgeQuery, name :Text) -> (ok :Void);
+    deleteEdgeMetadata @17 (q :EdgeQuery, name :Text) -> (result :Void);
 }

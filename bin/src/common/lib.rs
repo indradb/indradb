@@ -24,6 +24,7 @@ extern crate indradb;
 extern crate indradb;
 
 pub mod autogen;
+#[macro_use]
 pub mod converters;
 pub mod errors;
 pub mod client_datastore;

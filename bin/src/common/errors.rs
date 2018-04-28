@@ -4,6 +4,7 @@ use uuid;
 use std::io;
 use capnp;
 
+// TODO: remove any unused links
 error_chain!{
     types {
         Error, ErrorKind, ResultExt, Result;
