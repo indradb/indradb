@@ -8,6 +8,9 @@ extern crate hyper;
 extern crate indradb;
 extern crate iron;
 #[macro_use]
+extern crate juniper;
+extern crate juniper_iron;
+#[macro_use]
 extern crate lazy_static;
 extern crate libc;
 extern crate num_cpus;
