@@ -1,5 +1,6 @@
-mod middleware;
+mod context;
 mod endpoints;
+mod middleware;
 mod util;
 
 use iron::prelude::*;
@@ -7,18 +8,14 @@ use router::Router;
 use std::u16;
 use juniper_iron::GraphQLHandler;
 
-pub fn context_factory(_: &mut Request) -> () {
-    ()
-}
-
 /// Starts a new server on the given port.
 pub fn start(port: u16) {
     let mut router = Router::new();
 
     let graphql_endpoint = GraphQLHandler::new(
-        context_factory,
-        endpoints::GraphQLQuery,
-        endpoints::GraphQLMutation,
+        context::factory,
+        endpoints::RootQuery,
+        endpoints::RootMutation,
     );
 
     router.any("/graphql", graphql_endpoint, "graphql");

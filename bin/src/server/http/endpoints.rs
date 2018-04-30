@@ -1,17 +1,17 @@
 use super::util::*;
-use datastore::ProxyTransaction;
-use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Error, Transaction, Type, Vertex, VertexQuery};
+use super::context;
+use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery, Edge, VertexMetadata, EdgeMetadata};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
 use iron::status;
 use iron::typemap::TypeMap;
 use script;
-use serde::ser::Serialize;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
 use juniper;
+use juniper::FieldResult;
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -58,187 +58,95 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
 
 pub struct GraphQLQuery;
 
-graphql_object!(GraphQLQuery: () |&self| {
+graphql_object!(RootQuery: context::Context |&self| {
     field api_version() -> &str {
         "1.0"
     }
+
+    field vertices(&executor, q: VertexQuery) -> FieldResult<Vec<Vertex>> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_vertices(&q)?)
+    }
+
+    field vertex_count(&executor) -> FieldResult<String> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_vertex_count()?.to_string())
+    }
+
+    field edges(&executor, q: EdgeQuery) -> FieldResult<Vec<Edge>> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_edges(&q)?)
+    }
+
+    field edge_count(&executor, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> FieldResult<String> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
+    }
+
+    field vertex_metadata(&executor, q: VertexQuery, name: String) -> FieldResult<Vec<VertexMetadata>> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_vertex_metadata(&q, &name)?)
+    }
+
+    field edge_metadata(&executor, q: EdgeQuery, name: String) -> FieldResult<Vec<EdgeMetadata>> {
+        let trans = &executor.context().trans;
+        Ok(trans.get_edge_metadata(&q, &name)?)
+    }
 });
 
-pub struct GraphQLMutation;
+pub struct RootMutation;
 
-graphql_object!(GraphQLMutation: () |&self| {
+graphql_object!(RootMutation: context::Context |&self| {
+    field create_vertex(&executor, vertex: Vertex) -> FieldResult<bool> {
+        let trans = &executor.context().trans;
+        Ok(trans.create_vertex(&vertex)?)
+    }
+
+    field create_vertex_from_type(&executor, t: Type) -> FieldResult<Uuid> {
+        let trans = &executor.context().trans;
+        Ok(trans.create_vertex_from_type(t)?)
+    }
+
+    field delete_vertices(&executor, q: VertexQuery) -> FieldResult<()> {
+        let trans = &executor.context().trans;
+        trans.delete_vertices(&q)?;
+        Ok(())
+    }
+
+    field create_edge(&executor, key: EdgeKey) -> FieldResult<bool> {
+        let trans = &executor.context().trans;
+        Ok(trans.create_edge(&key)?)
+    }
+
+    field delete_edges(&executor, q: EdgeQuery) -> FieldResult<()> {
+        let trans = &executor.context().trans;
+        trans.delete_edges(&q)?;
+        Ok(())
+    }
+
+    field set_vertex_metadata(&executor, q: VertexQuery, name: String, value: String) -> FieldResult<()> {
+        let value_json: JsonValue = serde_json::from_str(&value)?;
+        let trans = &executor.context().trans;
+        trans.set_vertex_metadata(&q, &name, &value_json)?;
+        Ok(())
+    }
+
+    field delete_vertex_metadata(&executor, q: VertexQuery, name: String) -> FieldResult<()> {
+        let trans = &executor.context().trans;
+        trans.delete_vertex_metadata(&q, &name)?;
+        Ok(())
+    }
+
+    field set_edge_metadata(&executor, q: EdgeQuery, name: String, value: String) -> FieldResult<()> {
+        let value_json: JsonValue = serde_json::from_str(&value)?;
+        let trans = &executor.context().trans;
+        trans.set_edge_metadata(&q, &name, &value_json)?;
+        Ok(())
+    }
+
+    field delete_edge_metadata(&executor, q: EdgeQuery, name: String) -> FieldResult<()> {
+        let trans = &executor.context().trans;
+        trans.delete_edge_metadata(&q, &name)?;
+        Ok(())
+    }
 });
-
-// pub fn transaction(req: &mut Request) -> IronResult<Response> {
-//     let trans = get_transaction()?;
-//     let mut jsonable_res: Vec<JsonValue> = Vec::new();
-//     let body: Vec<JsonValue> = read_json(&mut req.body)?.unwrap_or_else(Vec::new);
-
-//     for (idx, item) in body.into_iter().enumerate() {
-//         if let JsonValue::Object(obj) = item {
-//             let action = get_json_obj_value::<String>(&obj, "action").map_err(|err| {
-//                 let message = format!("Item #{}: {}", idx, err);
-//                 create_iron_error(status::BadRequest, message)
-//             })?;
-
-//             let result: Result<JsonValue, IronError> = match &action[..] {
-//                 "create_vertex" => create_vertex(&trans, &obj),
-//                 "create_vertex_from_type" => create_vertex_from_type(&trans, &obj),
-//                 "get_vertices" => get_vertices(&trans, &obj),
-//                 "delete_vertices" => delete_vertices(&trans, &obj),
-//                 "get_vertex_count" => get_vertex_count(&trans, &obj),
-
-//                 "create_edge" => create_edge(&trans, &obj),
-//                 "get_edges" => get_edges(&trans, &obj),
-//                 "delete_edges" => delete_edges(&trans, &obj),
-//                 "get_edge_count" => get_edge_count(&trans, &obj),
-
-//                 "get_vertex_metadata" => get_vertex_metadata(&trans, &obj),
-//                 "set_vertex_metadata" => set_vertex_metadata(&trans, &obj),
-//                 "delete_vertex_metadata" => delete_vertex_metadata(&trans, &obj),
-
-//                 "get_edge_metadata" => get_edge_metadata(&trans, &obj),
-//                 "set_edge_metadata" => set_edge_metadata(&trans, &obj),
-//                 "delete_edge_metadata" => delete_edge_metadata(&trans, &obj),
-
-//                 _ => Err(create_iron_error(
-//                     status::BadRequest,
-//                     "Unknown action".to_string(),
-//                 )),
-//             };
-
-//             match result {
-//                 Err(err) => {
-//                     let message = format!("Item #{}: {}", idx, err);
-//                     return Err(create_iron_error(status::BadRequest, message));
-//                 }
-//                 Ok(value) => {
-//                     jsonable_res.push(value);
-//                 }
-//             }
-//         } else {
-//             return Err(create_iron_error(
-//                 status::BadRequest,
-//                 format!("Item #{}: Invalid type", idx),
-//             ));
-//         }
-//     }
-
-//     Ok(to_response(status::Ok, &jsonable_res))
-// }
-
-// fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let v = get_json_obj_value::<Vertex>(item, "vertex")?;
-//     execute_item(trans.create_vertex(&v))
-// }
-
-// fn create_vertex_from_type(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let t = get_json_obj_value::<Type>(item, "type")?;
-//     execute_item(trans.create_vertex_from_type(t))
-// }
-
-// fn get_vertices(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-//     execute_item(trans.get_vertices(&q))
-// }
-
-// fn delete_vertices(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-//     execute_item(trans.delete_vertices(&q))
-// }
-
-// fn get_vertex_count(trans: &ProxyTransaction, _: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     execute_item(trans.get_vertex_count())
-// }
-
-// fn create_edge(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let key = get_json_obj_value::<EdgeKey>(item, "key")?;
-//     execute_item(trans.create_edge(&key))
-// }
-
-// fn get_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-//     execute_item(trans.get_edges(&q))
-// }
-
-// fn delete_edges(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-//     execute_item(trans.delete_edges(&q))
-// }
-
-// fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
-//     let id = get_json_obj_value::<Uuid>(item, "id")?;
-//     let type_filter = get_optional_json_obj_value::<Type>(item, "type_filter")?;
-//     let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
-//     execute_item(trans.get_edge_count(id, type_filter.as_ref(), direction))
-// }
-
-// fn get_vertex_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     execute_item(trans.get_vertex_metadata(&q, &name))
-// }
-
-// fn set_vertex_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-//     execute_item(trans.set_vertex_metadata(&q, &name, &value))
-// }
-
-// fn delete_vertex_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<VertexQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     execute_item(trans.delete_vertex_metadata(&q, &name))
-// }
-
-// fn get_edge_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     execute_item(trans.get_edge_metadata(&q, &name))
-// }
-
-// fn set_edge_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     let value = get_json_obj_value::<JsonValue>(item, "value")?;
-//     execute_item(trans.set_edge_metadata(&q, &name, &value))
-// }
-
-// fn delete_edge_metadata(
-//     trans: &ProxyTransaction,
-//     item: &serde_json::Map<String, JsonValue>,
-// ) -> Result<JsonValue, IronError> {
-//     let q = get_json_obj_value::<EdgeQuery>(item, "query")?;
-//     let name = get_json_obj_value::<String>(item, "name")?;
-//     execute_item(trans.delete_edge_metadata(&q, &name))
-// }
-
-// fn execute_item<T: Serialize>(result: Result<T, Error>) -> Result<JsonValue, IronError> {
-//     let value = result.map_err(|err| create_iron_error(status::InternalServerError, format!("{}", err)))?;
-
-//     Ok(serde_json::to_value(value).map_err(|err| {
-//         create_iron_error(
-//             status::InternalServerError,
-//             format!("Could not serialize results: {}", err),
-//         )
-//     })?)
-// }
