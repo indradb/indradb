@@ -1,7 +1,7 @@
 use super::api;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use datastore::ProxyTransaction as ExternalProxyTransaction;
+use proxy_datastore::ProxyTransaction as ExternalProxyTransaction;
 use core::str::FromStr;
 use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection, EdgeKey as ExternalEdgeKey,
               EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery, Type as ExternalType,

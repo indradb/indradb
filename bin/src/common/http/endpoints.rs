@@ -10,8 +10,7 @@ use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
-use juniper;
-use juniper::FieldResult;
+use juniper::{RootNode, FieldResult};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -56,7 +55,7 @@ pub fn mapreduce(req: &mut Request) -> IronResult<Response> {
     })
 }
 
-pub struct GraphQLQuery;
+pub struct RootQuery;
 
 graphql_object!(RootQuery: context::Context |&self| {
     field api_version() -> &str {
@@ -150,3 +149,5 @@ graphql_object!(RootMutation: context::Context |&self| {
         Ok(())
     }
 });
+
+pub type Schema = RootNode<'static, RootQuery, RootMutation>;

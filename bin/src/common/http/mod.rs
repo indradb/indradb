@@ -8,8 +8,11 @@ use router::Router;
 use std::u16;
 use juniper_iron::GraphQLHandler;
 
+pub use self::context::Context;
+pub use self::endpoints::{Schema, RootQuery, RootMutation};
+
 /// Starts a new server on the given port.
-pub fn start(port: u16) {
+pub fn start_server(port: u16) {
     let mut router = Router::new();
 
     let graphql_endpoint = GraphQLHandler::new(

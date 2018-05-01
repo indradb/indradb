@@ -2,7 +2,7 @@
 // Above ignore is there because otherwise the macro is noisy
 
 use super::converters;
-use datastore::ProxyTransaction;
+use proxy_datastore::ProxyTransaction;
 use indradb::{Error, Transaction};
 
 pub fn create_vertex_from_type(trans: &ProxyTransaction, t: converters::Type) -> Result<converters::Uuid, Error> {
