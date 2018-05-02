@@ -407,37 +407,6 @@ impl EdgeRangeManager {
     }
 }
 
-pub struct GlobalMetadataManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
-}
-
-impl GlobalMetadataManager {
-    pub fn new(db: Arc<DB>) -> Self {
-        GlobalMetadataManager {
-            cf: db.cf_handle("global_metadata:v1").unwrap(),
-            db: db,
-        }
-    }
-
-    fn key(&self, name: &str) -> Box<[u8]> {
-        build_key(vec![KeyComponent::UnsizedString(name)])
-    }
-
-    pub fn get(&self, name: &str) -> Result<Option<JsonValue>> {
-        get_json(&self.db, self.cf, self.key(name))
-    }
-
-    pub fn set(&self, name: &str, value: &JsonValue) -> Result<()> {
-        set_json(&self.db, self.cf, self.key(name), value)
-    }
-
-    pub fn delete(&self, batch: &mut WriteBatch, name: &str) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(name))?;
-        Ok(())
-    }
-}
-
 pub struct VertexMetadataManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,

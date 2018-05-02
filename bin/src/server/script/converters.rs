@@ -169,13 +169,6 @@ impl UserData for ProxyTransaction {
         proxy_fn!(methods, "delete_edges", api::delete_edges);
         proxy_fn!(methods, "get_edge_count", api::get_edge_count);
 
-        proxy_fn!(methods, "get_global_metadata", api::get_global_metadata);
-        proxy_fn!(methods, "set_global_metadata", api::set_global_metadata);
-        proxy_fn!(
-            methods,
-            "delete_global_metadata",
-            api::delete_global_metadata
-        );
         proxy_fn!(methods, "get_vertex_metadata", api::get_vertex_metadata);
         proxy_fn!(methods, "set_vertex_metadata", api::set_vertex_metadata);
         proxy_fn!(

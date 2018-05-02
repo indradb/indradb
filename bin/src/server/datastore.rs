@@ -87,18 +87,6 @@ impl Transaction for ProxyTransaction {
         proxy_transaction!(self, get_edge_count, id, type_filter, direction)
     }
 
-    fn get_global_metadata(&self, key: &str) -> Result<Option<JsonValue>, Error> {
-        proxy_transaction!(self, get_global_metadata, key)
-    }
-
-    fn set_global_metadata(&self, key: &str, value: &JsonValue) -> Result<(), Error> {
-        proxy_transaction!(self, set_global_metadata, key, value)
-    }
-
-    fn delete_global_metadata(&self, key: &str) -> Result<(), Error> {
-        proxy_transaction!(self, delete_global_metadata, key)
-    }
-
     fn get_vertex_metadata(&self, q: &VertexQuery, key: &str) -> Result<Vec<VertexMetadata>, Error> {
         proxy_transaction!(self, get_vertex_metadata, q, key)
     }

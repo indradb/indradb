@@ -26,15 +26,6 @@ ALTER TABLE edges
 CREATE INDEX ix_edges_update_timestamp ON edges USING btree (update_timestamp);
 CREATE INDEX ix_edges_inbound_id ON edges USING btree (inbound_id);
 
-/* Global metadata */
-CREATE TABLE global_metadata (
-    name VARCHAR(1024) NOT NULL,
-    value JSONB NOT NULL
-);
-
-ALTER TABLE global_metadata
-    ADD CONSTRAINT global_metadata_pkey PRIMARY KEY (name);
-
 /* Vertex metadata */
 CREATE TABLE vertex_metadata (
     owner_id UUID NOT NULL,

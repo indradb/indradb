@@ -79,10 +79,6 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 "delete_edges" => delete_edges(&trans, &obj),
                 "get_edge_count" => get_edge_count(&trans, &obj),
 
-                "get_global_metadata" => get_global_metadata(&trans, &obj),
-                "set_global_metadata" => set_global_metadata(&trans, &obj),
-                "delete_global_metadata" => delete_global_metadata(&trans, &obj),
-
                 "get_vertex_metadata" => get_vertex_metadata(&trans, &obj),
                 "set_vertex_metadata" => set_vertex_metadata(&trans, &obj),
                 "delete_vertex_metadata" => delete_vertex_metadata(&trans, &obj),
@@ -164,31 +160,6 @@ fn get_edge_count(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonV
     let type_filter = get_optional_json_obj_value::<Type>(item, "type_filter")?;
     let direction = get_json_obj_value::<EdgeDirection>(item, "direction")?;
     execute_item(trans.get_edge_count(id, type_filter.as_ref(), direction))
-}
-
-fn get_global_metadata(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
-    let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.get_global_metadata(&name))
-}
-
-fn set_global_metadata(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
-    let name = get_json_obj_value::<String>(item, "name")?;
-    let value = get_json_obj_value::<JsonValue>(item, "value")?;
-    execute_item(trans.set_global_metadata(&name, &value))
-}
-
-fn delete_global_metadata(
-    trans: &ProxyTransaction,
-    item: &serde_json::Map<String, JsonValue>,
-) -> Result<JsonValue, IronError> {
-    let name = get_json_obj_value::<String>(item, "name")?;
-    execute_item(trans.delete_global_metadata(&name))
 }
 
 fn get_vertex_metadata(

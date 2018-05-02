@@ -376,42 +376,6 @@ impl Transaction for PostgresTransaction {
         unreachable!();
     }
 
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>> {
-        let results = self.trans
-            .query("SELECT value FROM global_metadata WHERE name=$1", &[&name])?;
-
-        for row in &results {
-            let value: JsonValue = row.get(0);
-            return Ok(Some(value));
-        }
-
-        Ok(None)
-    }
-
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
-        self.trans.execute(
-            "
-            INSERT INTO global_metadata (name, value)
-            VALUES ($1, $2)
-            ON CONFLICT ON CONSTRAINT global_metadata_pkey
-            DO UPDATE SET value=$2
-            RETURNING 1
-            ",
-            &[&name, value],
-        )?;
-
-        Ok(())
-    }
-
-    fn delete_global_metadata(&self, name: &str) -> Result<()> {
-        self.trans.execute(
-            "DELETE FROM global_metadata WHERE name=$1 RETURNING 1",
-            &[&name],
-        )?;
-
-        Ok(())
-    }
-
     fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
         let mut sql_query_builder = CTEQueryBuilder::new();
         self.vertex_query_to_sql(q, &mut sql_query_builder);

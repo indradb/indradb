@@ -54,27 +54,6 @@ pub fn get_edge_count(
     Ok(trans.get_edge_count(id.0, type_filter.as_ref().map(|t| &t.0), direction.0)?)
 }
 
-pub fn get_global_metadata(trans: &ProxyTransaction, key: String) -> Result<converters::JsonValue, Error> {
-    Ok(converters::JsonValue::new(
-        trans
-            .get_global_metadata(&key)?
-            .unwrap_or_else(|| JsonValue::Null),
-    ))
-}
-
-pub fn set_global_metadata(
-    trans: &ProxyTransaction,
-    (key, value): (String, converters::JsonValue),
-) -> Result<(), Error> {
-    trans.set_global_metadata(&key, &value.0)?;
-    Ok(())
-}
-
-pub fn delete_global_metadata(trans: &ProxyTransaction, key: String) -> Result<(), Error> {
-    trans.delete_global_metadata(&key)?;
-    Ok(())
-}
-
 pub fn get_vertex_metadata(
     trans: &ProxyTransaction,
     (q, key): (converters::VertexQuery, String),

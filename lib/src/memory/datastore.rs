@@ -16,7 +16,6 @@ use uuid::Uuid;
 struct InternalMemoryDatastore {
     edge_metadata: BTreeMap<(models::EdgeKey, String), JsonValue>,
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
-    global_metadata: BTreeMap<String, JsonValue>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
 }
@@ -261,7 +260,6 @@ impl MemoryDatastore {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
                 edge_metadata: BTreeMap::new(),
                 edges: BTreeMap::new(),
-                global_metadata: BTreeMap::new(),
                 vertex_metadata: BTreeMap::new(),
                 vertices: BTreeMap::new(),
             })),
@@ -394,29 +392,6 @@ impl Transaction for MemoryTransaction {
 
             Ok(range.count() as u64)
         }
-    }
-
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>> {
-        let datastore = self.datastore.read().unwrap();
-
-        match datastore.global_metadata.get(name) {
-            Some(value) => Ok(Some(value.clone())),
-            None => Ok(None),
-        }
-    }
-
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
-        datastore
-            .global_metadata
-            .insert(name.to_string(), value.clone());
-        Ok(())
-    }
-
-    fn delete_global_metadata(&self, name: &str) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
-        datastore.global_metadata.remove(name);
-        Ok(())
     }
 
     fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {

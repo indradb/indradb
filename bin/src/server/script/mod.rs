@@ -93,8 +93,6 @@ mod tests {
     test_script!(get_edges_bad_high);
     test_script!(get_edges_bad_low);
     test_script!(get_edges);
-    test_script!(global_metadata);
-    test_script!(regression_float_serialization);
     test_script!(return_array);
     test_script!(return_boolean);
     test_script!(return_coroutine);
