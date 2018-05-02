@@ -6,7 +6,7 @@
 
 A graph database written in rust. This software is in the alpha state.
 
-IndradB consists of a GraphQL server and an underlying library. Most users would use the GraphQL server, which, for convenience, is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+IndraDB consists of a GraphQL server and an underlying library. Most users would use the GraphQL server, which, for convenience, is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
 ## Features
 
