@@ -198,28 +198,6 @@ impl Transaction for BatchTransaction {
         }))
     }
 
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, Error> {
-        self.request(&json!({
-            "action": "get_global_metadata",
-            "name": name
-        }))
-    }
-
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), Error> {
-        self.request(&json!({
-            "action": "set_global_metadata",
-            "name": name,
-            "value": value
-        }))
-    }
-
-    fn delete_global_metadata(&self, name: &str) -> Result<(), Error> {
-        self.request(&json!({
-            "action": "delete_global_metadata",
-            "name": name
-        }))
-    }
-
     fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<VertexMetadata>, Error> {
         self.request(&json!({
             "action": "get_vertex_metadata",
