@@ -1,5 +1,6 @@
 use super::util::*;
 use super::context;
+use super::models::*;
 use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery, Edge, VertexMetadata, EdgeMetadata};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
@@ -10,7 +11,7 @@ use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
-use juniper::{RootNode, FieldResult};
+use juniper::{RootNode, FieldResult, ID};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -62,91 +63,59 @@ graphql_object!(RootQuery: context::Context |&self| {
         "1.0"
     }
 
-    field vertices(&executor, q: VertexQuery) -> FieldResult<Vec<Vertex>> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_vertices(&q)?)
+    field get(&executor, q: InputRootQuery) -> FieldResult<Vec<OutputItem>> {
+        // let trans = &executor.context().trans;
+        // Ok(trans.get_vertices(&q)?)
+        unimplemented!();
     }
 
     field vertex_count(&executor) -> FieldResult<String> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_vertex_count()?.to_string())
+        // let trans = &executor.context().trans;
+        // Ok(trans.get_vertex_count()?.to_string())
+        unimplemented!();
     }
 
-    field edges(&executor, q: EdgeQuery) -> FieldResult<Vec<Edge>> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_edges(&q)?)
-    }
-
-    field edge_count(&executor, id: Uuid, type_filter: Option<Type>, direction: EdgeDirection) -> FieldResult<String> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
-    }
-
-    field vertex_metadata(&executor, q: VertexQuery, name: String) -> FieldResult<Vec<VertexMetadata>> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_vertex_metadata(&q, &name)?)
-    }
-
-    field edge_metadata(&executor, q: EdgeQuery, name: String) -> FieldResult<Vec<EdgeMetadata>> {
-        let trans = &executor.context().trans;
-        Ok(trans.get_edge_metadata(&q, &name)?)
+    field edge_count(&executor, id: Uuid, type_filter: Option<InputType>, direction: InputEdgeDirection) -> FieldResult<String> {
+        // let trans = &executor.context().trans;
+        // Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
+        unimplemented!();
     }
 });
 
 pub struct RootMutation;
 
 graphql_object!(RootMutation: context::Context |&self| {
-    field create_vertex(&executor, vertex: Vertex) -> FieldResult<bool> {
-        let trans = &executor.context().trans;
-        Ok(trans.create_vertex(&vertex)?)
+    field create_vertex(&executor, vertex: InputVertex) -> FieldResult<bool> {
+        // let trans = &executor.context().trans;
+        // Ok(trans.create_vertex(&vertex)?)
+        unimplemented!();
     }
 
-    field create_vertex_from_type(&executor, t: Type) -> FieldResult<Uuid> {
-        let trans = &executor.context().trans;
-        Ok(trans.create_vertex_from_type(t)?)
+    field create_vertex_from_type(&executor, t: InputType) -> FieldResult<ID> {
+        // let trans = &executor.context().trans;
+        // Ok(trans.create_vertex_from_type(t)?)
+        unimplemented!();
     }
 
-    field delete_vertices(&executor, q: VertexQuery) -> FieldResult<()> {
-        let trans = &executor.context().trans;
-        trans.delete_vertices(&q)?;
-        Ok(())
+    field create_edge(&executor, key: InputEdgeKey) -> FieldResult<bool> {
+        // let trans = &executor.context().trans;
+        // Ok(trans.create_edge(&key)?)
+        unimplemented!();
     }
 
-    field create_edge(&executor, key: EdgeKey) -> FieldResult<bool> {
-        let trans = &executor.context().trans;
-        Ok(trans.create_edge(&key)?)
+    field delete(&executor, q: InputRootQuery) -> FieldResult<()> {
+        // let trans = &executor.context().trans;
+        // trans.delete_vertices(&q)?;
+        // Ok(())
+        unimplemented!();
     }
 
-    field delete_edges(&executor, q: EdgeQuery) -> FieldResult<()> {
-        let trans = &executor.context().trans;
-        trans.delete_edges(&q)?;
-        Ok(())
-    }
-
-    field set_vertex_metadata(&executor, q: VertexQuery, name: String, value: String) -> FieldResult<()> {
-        let value_json: JsonValue = serde_json::from_str(&value)?;
-        let trans = &executor.context().trans;
-        trans.set_vertex_metadata(&q, &name, &value_json)?;
-        Ok(())
-    }
-
-    field delete_vertex_metadata(&executor, q: VertexQuery, name: String) -> FieldResult<()> {
-        let trans = &executor.context().trans;
-        trans.delete_vertex_metadata(&q, &name)?;
-        Ok(())
-    }
-
-    field set_edge_metadata(&executor, q: EdgeQuery, name: String, value: String) -> FieldResult<()> {
-        let value_json: JsonValue = serde_json::from_str(&value)?;
-        let trans = &executor.context().trans;
-        trans.set_edge_metadata(&q, &name, &value_json)?;
-        Ok(())
-    }
-
-    field delete_edge_metadata(&executor, q: EdgeQuery, name: String) -> FieldResult<()> {
-        let trans = &executor.context().trans;
-        trans.delete_edge_metadata(&q, &name)?;
-        Ok(())
+    field set_metadata(&executor, q: InputRootQuery, value: String) -> FieldResult<()> {
+        // let value_json: JsonValue = serde_json::from_str(&value)?;
+        // let trans = &executor.context().trans;
+        // trans.set_vertex_metadata(&q, &name, &value_json)?;
+        // Ok(())
+        unimplemented!();
     }
 });
 

@@ -1,3 +1,6 @@
+#![feature(custom_attribute)]
+#![feature(transpose_result)]
+
 extern crate chrono;
 extern crate core;
 #[macro_use]
