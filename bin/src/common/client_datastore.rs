@@ -289,7 +289,7 @@ impl Transaction for ClientTransaction {
     }
 
     fn delete_edges(&self, q: &EdgeQuery) -> Result<(), Error> {
-        let res = self.request("
+        self.request("
             mutation DeleteEdges($q: InputRootQuery!) {
                 delete(q: $q)
             }

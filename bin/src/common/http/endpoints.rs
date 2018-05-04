@@ -125,7 +125,7 @@ graphql_object!(RootMutation: context::Context |&self| {
         Ok(trans.create_edge(&key)?)
     }
 
-    field delete(&executor, q: InputRootQuery) -> FieldResult<()> {
+    field delete(&executor, q: InputRootQuery) -> FieldResult<bool> {
         let queries = q.queries()?;
 
         // We need to do multiple passes because the query could specify multiple
@@ -156,10 +156,10 @@ graphql_object!(RootMutation: context::Context |&self| {
             }
         }
 
-        Ok(())
+        Ok(true)
     }
 
-    field set_metadata(&executor, q: InputRootQuery, value: String) -> FieldResult<()> {
+    field set_metadata(&executor, q: InputRootQuery, value: String) -> FieldResult<bool> {
         let value_json: JsonValue = serde_json::from_str(&value)?;
         let trans = &executor.context().trans;
 
@@ -177,7 +177,7 @@ graphql_object!(RootMutation: context::Context |&self| {
             }
         }
 
-        Ok(())
+        Ok(true)
     }
 });
 
