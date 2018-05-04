@@ -7,11 +7,10 @@ use iron::prelude::*;
 use iron::status;
 use iron::typemap::TypeMap;
 use script;
-use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
-use juniper::{RootNode, FieldResult, FieldError, ID};
+use juniper::{FieldResult, FieldError, ID, RootNode};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -63,7 +62,7 @@ graphql_object!(RootQuery: context::Context |&self| {
         "1.0"
     }
 
-    field get(&executor, q: InputRootQuery) -> FieldResult<Vec<OutputItem>> {
+    field query(&executor, q: InputRootQuery) -> FieldResult<Vec<OutputItem>> {
         let trans = &executor.context().trans;
 
         let results: FieldResult<Vec<Vec<OutputItem>>> = q.queries()?.into_iter().map(|q| -> FieldResult<Vec<OutputItem>> {
@@ -91,15 +90,15 @@ graphql_object!(RootQuery: context::Context |&self| {
     }
 
     field vertex_count(&executor) -> FieldResult<String> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.get_vertex_count()?.to_string())
-        unimplemented!();
+        let trans = &executor.context().trans;
+        Ok(trans.get_vertex_count()?.to_string())
     }
 
     field edge_count(&executor, id: Uuid, type_filter: Option<InputType>, direction: InputEdgeDirection) -> FieldResult<String> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
-        unimplemented!();
+        let type_filter = type_filter.map(FieldResult::<Type>::from).transpose()?;
+        let direction = EdgeDirection::from(direction);
+        let trans = &executor.context().trans;
+        Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
     }
 });
 
@@ -107,21 +106,22 @@ pub struct RootMutation;
 
 graphql_object!(RootMutation: context::Context |&self| {
     field create_vertex(&executor, vertex: InputVertex) -> FieldResult<bool> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.create_vertex(&vertex)?)
-        unimplemented!();
+        let trans = &executor.context().trans;
+        let vertex = FieldResult::<Vertex>::from(vertex)?;
+        Ok(trans.create_vertex(&vertex)?)
     }
 
     field create_vertex_from_type(&executor, t: InputType) -> FieldResult<ID> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.create_vertex_from_type(t)?)
-        unimplemented!();
+        let trans = &executor.context().trans;
+        let t = FieldResult::<Type>::from(t)?;
+        let id = trans.create_vertex_from_type(t)?;
+        Ok(ID::from(id.hyphenated().to_string()))
     }
 
     field create_edge(&executor, key: InputEdgeKey) -> FieldResult<bool> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.create_edge(&key)?)
-        unimplemented!();
+        let trans = &executor.context().trans;
+        let key = FieldResult::<EdgeKey>::from(key)?;
+        Ok(trans.create_edge(&key)?)
     }
 
     field delete(&executor, q: InputRootQuery) -> FieldResult<()> {

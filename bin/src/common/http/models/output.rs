@@ -1,9 +1,8 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
-use juniper::{ID, Value};
+use juniper::ID;
 use indradb;
 
-#[graphql(description="Represents something that could be returned by a query - a vertex, edge, or metadata.")]
 #[derive(Clone, Debug)]
 pub enum OutputItem {
     Edge(OutputEdge),
