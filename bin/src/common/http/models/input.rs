@@ -1,6 +1,5 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
-use serde_json::Value as JsonValue;
 use juniper::{FieldResult, ID};
 use indradb;
 use uuid::Uuid;
@@ -130,9 +129,9 @@ pub struct InputRootQuery {
     edges: Option<InputEdgesQuery>
 }
 
-impl From<InputRootQuery> for FieldResult<Vec<Query>> {
-    fn from(q: InputRootQuery) -> FieldResult<Vec<Query>> {
-        match (q.vertex_range, q.vertices, q.edges) {
+impl InputRootQuery {
+    pub fn queries(self) -> FieldResult<Vec<Query>> {
+        match (self.vertex_range, self.vertices, self.edges) {
             (Some(vertex_range), None, None) => {
                 if vertex_range.limit < 0 {
                     return Err("limit must be non-negative".into());

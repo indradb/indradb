@@ -11,7 +11,7 @@ use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
-use juniper::{RootNode, FieldResult, ID};
+use juniper::{RootNode, FieldResult, FieldError, ID};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -64,9 +64,30 @@ graphql_object!(RootQuery: context::Context |&self| {
     }
 
     field get(&executor, q: InputRootQuery) -> FieldResult<Vec<OutputItem>> {
-        // let trans = &executor.context().trans;
-        // Ok(trans.get_vertices(&q)?)
-        unimplemented!();
+        let trans = &executor.context().trans;
+
+        let results: FieldResult<Vec<Vec<OutputItem>>> = q.queries()?.into_iter().map(|q| -> FieldResult<Vec<OutputItem>> {
+            match q {
+                Query::Vertex(q) => {
+                    let vertices = trans.get_vertices(&q)?;
+                    Ok(vertices.into_iter().map(OutputItem::from).collect())
+                },
+                Query::Edge(q) => {
+                    let edges = trans.get_edges(&q)?;
+                    Ok(edges.into_iter().map(OutputItem::from).collect())
+                },
+                Query::VertexMetadata(q, name) => {
+                    let vertex_metadata = trans.get_vertex_metadata(&q, &name)?;
+                    Ok(vertex_metadata.into_iter().map(OutputItem::from).collect())
+                },
+                Query::EdgeMetadata(q, name) => {
+                    let edge_metadata = trans.get_edge_metadata(&q, &name)?;
+                    Ok(edge_metadata.into_iter().map(OutputItem::from).collect())
+                }
+            }
+        }).collect();
+
+        Ok(results?.into_iter().flat_map(|v| v).collect())
     }
 
     field vertex_count(&executor) -> FieldResult<String> {
