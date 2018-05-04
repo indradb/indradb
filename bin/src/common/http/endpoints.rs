@@ -1,16 +1,17 @@
 use super::util::*;
 use super::context;
 use super::models::*;
-use indradb::{EdgeDirection, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery, Edge, VertexMetadata, EdgeMetadata};
+use indradb::{EdgeDirection, EdgeKey, Transaction, Type, Vertex};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
 use iron::status;
 use iron::typemap::TypeMap;
 use script;
+use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
 use uuid::Uuid;
-use juniper::{FieldResult, FieldError, ID, RootNode};
+use juniper::{FieldResult, ID, RootNode};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs
@@ -125,18 +126,58 @@ graphql_object!(RootMutation: context::Context |&self| {
     }
 
     field delete(&executor, q: InputRootQuery) -> FieldResult<()> {
-        // let trans = &executor.context().trans;
-        // trans.delete_vertices(&q)?;
-        // Ok(())
-        unimplemented!();
+        let queries = q.queries()?;
+
+        // We need to do multiple passes because the query could specify multiple
+        // overlapping deletes that would otherwise cause an error. e.g. if
+        // the query specifies deleting vertex metadata as well as the vertex,
+        // we want to not create an error by executing the delete in the wrong
+        // order by deleting the vertex first.
+
+        let trans = &executor.context().trans;
+
+        for q in &queries {
+            if let Query::VertexMetadata(q, name) = q {
+                trans.delete_vertex_metadata(&q, &name)?;
+            } else if let Query::EdgeMetadata(q, name) = q {
+                trans.delete_edge_metadata(&q, &name)?;
+            }
+        }
+
+        for q in &queries {
+            if let Query::Edge(q) = q {
+                trans.delete_edges(&q)?;
+            }
+        }
+
+        for q in &queries {
+            if let Query::Vertex(q) = q {
+                trans.delete_vertices(&q)?;
+            }
+        }
+
+        Ok(())
     }
 
     field set_metadata(&executor, q: InputRootQuery, value: String) -> FieldResult<()> {
-        // let value_json: JsonValue = serde_json::from_str(&value)?;
-        // let trans = &executor.context().trans;
-        // trans.set_vertex_metadata(&q, &name, &value_json)?;
-        // Ok(())
-        unimplemented!();
+        let value_json: JsonValue = serde_json::from_str(&value)?;
+        let trans = &executor.context().trans;
+
+        for q in q.queries()? {
+            match q {
+                Query::VertexMetadata(q, name) => {
+                    trans.set_vertex_metadata(&q, &name, &value_json)?;
+                },
+                Query::EdgeMetadata(q, name) => {
+                    trans.set_edge_metadata(&q, &name, &value_json)?;
+                },
+                _ => {
+                    return Err("Not all query leaves lead to metadata queries".into());
+                }
+            }
+        }
+
+        Ok(())
     }
 });
 
