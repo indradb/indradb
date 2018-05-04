@@ -18,6 +18,15 @@ pub enum EdgeDirection {
     #[serde(rename = "inbound")] Inbound,
 }
 
+impl EdgeDirection {
+    pub fn to_string(&self) -> String {
+        match self {
+            EdgeDirection::Outbound => "outbound".to_string(),
+            EdgeDirection::Inbound => "inbound".to_string()
+        }
+    }
+}
+
 /// A query for vertices.
 ///
 /// This is used by transactions to get, set and delete vertices and vertex

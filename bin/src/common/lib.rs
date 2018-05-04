@@ -16,6 +16,7 @@ extern crate juniper_iron;
 extern crate lazy_static;
 extern crate libc;
 extern crate num_cpus;
+extern crate ordermap;
 extern crate rand;
 extern crate regex;
 extern crate rlua;

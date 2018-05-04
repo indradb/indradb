@@ -1,7 +1,7 @@
 mod context;
 mod endpoints;
 mod middleware;
-mod models;
+pub mod models;
 mod util;
 
 use iron::prelude::*;
