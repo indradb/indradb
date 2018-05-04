@@ -76,7 +76,7 @@ fn extract_edge_key(v: &Value) -> EdgeKey {
 fn extract_edge(v: &Value) -> Edge {
     let obj = v.as_object_value().expect("Expected an object");
     let key = extract_edge_key(&obj["key"]);
-    let created_datetime_str = extract_string(&obj["created_datetime"]);
+    let created_datetime_str = extract_string(&obj["createdDatetime"]);
     let created_datetime = DateTime::<FixedOffset>::parse_from_rfc3339(&created_datetime_str);
     let created_datetime = created_datetime.expect("Expected an RFC3339 formatted datetime").with_timezone(&Utc);
     Edge::new(key, created_datetime)
@@ -230,7 +230,14 @@ impl Transaction for ClientTransaction {
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>, Error> {
         let res = self.request("
             query GetVertices($q: InputRootQuery!) {
-                query(q: $q)
+                query(q: $q) {
+                    ... on OutputVertex {
+                        id
+                        t {
+                            value
+                        }
+                    }
+                }
             }
         ", vars!(
             "q" => InputValue::object(create_vertex_query(q))
@@ -278,7 +285,18 @@ impl Transaction for ClientTransaction {
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<Edge>, Error> {
         let res = self.request("
             query GetEdges($q: InputRootQuery!) {
-                query(q: $q)
+                query(q: $q) {
+                    ... on OutputEdge {
+                        key {
+                            outboundId
+                            t {
+                                value
+                            }
+                            inboundId
+                        }
+                        createdDatetime
+                    }
+                }
             }
         ", vars!(
             "q" => InputValue::object(create_edge_query(q))
