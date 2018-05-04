@@ -122,7 +122,7 @@ fn create_edge_query(q: &EdgeQuery) -> OrderMap<String, InputValue> {
             let keys = keys.into_iter().map(|key| {
                 InputValue::object(obj!(
                     "outboundId" => InputValue::string(key.outbound_id.hyphenated().to_string()),
-                    "t" => InputValue::object(obj!("value" => InputValue::string(key.t.0.clone()))),
+                    "t" => InputValue::string(key.t.0.clone()),
                     "inboundId" => InputValue::string(key.inbound_id.hyphenated().to_string())
                 ))
             }).collect();
@@ -133,9 +133,7 @@ fn create_edge_query(q: &EdgeQuery) -> OrderMap<String, InputValue> {
             let mut o = create_vertex_query(vertex_query);
 
             o.insert(converter.to_string(), InputValue::object(obj!(
-                "typeFilter" => create_optional(type_filter, |t| {
-                    InputValue::object(obj!("value" => InputValue::string(t.0.clone())))
-                }),
+                "typeFilter" => create_optional(type_filter, |t| InputValue::string(t.0.clone())),
                 "highFilter" => create_optional(high_filter, |h| InputValue::string(h.to_rfc3339())),
                 "lowFilter" => create_optional(low_filter, |l| InputValue::string(l.to_rfc3339())),
                 "limit" => InputValue::int(*limit as i32)
@@ -202,9 +200,7 @@ impl Transaction for ClientTransaction {
             mutation CreateVertex($id: ID!, $t: String!) {
                 createVertex(vertex: {
                     id: $id,
-                    t: {
-                        value: $t
-                    }
+                    t: $t
                 })
             }
         ", vars!(
@@ -216,9 +212,7 @@ impl Transaction for ClientTransaction {
     fn create_vertex_from_type(&self, t: Type) -> Result<Uuid, Error> {
         let s = extract_string(&self.request("
             mutation CreateVertexFromType($t: String!) {
-                createVertexFromType(t: {
-                    value: $t
-                })
+                createVertexFromType(t: $t)
             }
         ", vars!(
             "t" => InputValue::String(t.0.clone())
@@ -233,9 +227,7 @@ impl Transaction for ClientTransaction {
                 query(q: $q) {
                     ... on OutputVertex {
                         id
-                        t {
-                            value
-                        }
+                        t
                     }
                 }
             }
@@ -269,9 +261,7 @@ impl Transaction for ClientTransaction {
             mutation CreateEdge($outboundId: ID!, $t: String!, $inboundId: ID!) {
                 createEdge(key: {
                     outboundId: $outboundId,
-                    t: {
-                        value: $t
-                    },
+                    t: $t,
                     inboundId: $inboundId
                 })
             }
@@ -289,9 +279,7 @@ impl Transaction for ClientTransaction {
                     ... on OutputEdge {
                         key {
                             outboundId
-                            t {
-                                value
-                            }
+                            t
                             inboundId
                         }
                         createdDatetime

@@ -19,7 +19,7 @@ fn build_from_vertex_query(q: indradb::VertexQuery, metadata: Option<Vec<String>
             return Err("limit must be non-negative".into());
         }
 
-        let type_filter = outbound.type_filter.map(FieldResult::<indradb::Type>::from).transpose()?;
+        let type_filter = outbound.type_filter.map(indradb::Type::new).transpose()?;
         let base_query = q.clone().outbound_edges(type_filter, outbound.high_filter, outbound.low_filter, outbound.limit as u32);
         let inner_outbound = outbound.outbound.map(|o| *o);
         let inner_inbound = outbound.inbound.map(|o| *o);
@@ -31,7 +31,7 @@ fn build_from_vertex_query(q: indradb::VertexQuery, metadata: Option<Vec<String>
             return Err("limit must be non-negative".into());
         }
 
-        let type_filter = inbound.type_filter.map(FieldResult::<indradb::Type>::from).transpose()?;
+        let type_filter = inbound.type_filter.map(indradb::Type::new).transpose()?;
         let base_query = q.clone().inbound_edges(type_filter, inbound.high_filter, inbound.low_filter, inbound.limit as u32);
         let inner_outbound = inbound.outbound.map(|o| *o);
         let inner_inbound = inbound.inbound.map(|o| *o);
@@ -90,7 +90,7 @@ pub struct InputEdgeKey {
     pub outbound_id: ID,
 
     #[graphql(description="The type of the edge.")]
-    pub t: InputType,
+    pub t: String,
 
     #[graphql(description="The id of the inbound vertex.")]
     pub inbound_id: ID,
@@ -99,7 +99,7 @@ pub struct InputEdgeKey {
 impl From<InputEdgeKey> for FieldResult<indradb::EdgeKey> {
     fn from(key: InputEdgeKey) -> FieldResult<indradb::EdgeKey> {
         let outbound_id = Uuid::parse_str(&key.outbound_id)?;
-        let t = FieldResult::<indradb::Type>::from(key.t)?;
+        let t = indradb::Type::new(key.t)?;
         let inbound_id = Uuid::parse_str(&key.inbound_id)?;
         Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
     }
@@ -207,7 +207,7 @@ pub struct InputPipeVertexQuery {
 
 #[derive(Clone, Debug, GraphQLInputObject)]
 pub struct InputPipeEdgeQuery {
-    pub type_filter: Option<InputType>,
+    pub type_filter: Option<String>,
     pub high_filter: Option<DateTime<Utc>>,
     pub low_filter: Option<DateTime<Utc>>,
     pub limit: i32,
@@ -224,18 +224,6 @@ pub enum Query {
     EdgeMetadata(indradb::EdgeQuery, String)
 }
 
-#[graphql(description="An edge or vertex type.")]
-#[derive(Clone, Debug, GraphQLInputObject)]
-pub struct InputType {
-    value: String
-}
-
-impl From<InputType> for FieldResult<indradb::Type> {
-    fn from(t: InputType) -> FieldResult<indradb::Type> {
-        Ok(indradb::Type::new(t.value)?)
-    }
-}
-
 #[graphql(description="A vertex.")]
 #[derive(Clone, Debug, GraphQLInputObject)]
 pub struct InputVertex {
@@ -243,13 +231,13 @@ pub struct InputVertex {
     pub id: ID,
 
     #[graphql(description="The type of the vertex.")]
-    pub t: InputType,
+    pub t: String,
 }
 
 impl From<InputVertex> for FieldResult<indradb::Vertex> {
     fn from(vertex: InputVertex) -> FieldResult<indradb::Vertex> {
         let id = Uuid::parse_str(&vertex.id)?;
-        let t = FieldResult::<indradb::Type>::from(vertex.t)?;
+        let t = indradb::Type::new(vertex.t)?;
         Ok(indradb::Vertex::with_id(id, t))
     }
 }

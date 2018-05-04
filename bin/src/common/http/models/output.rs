@@ -63,7 +63,7 @@ pub struct OutputEdgeKey {
     pub outbound_id: ID,
 
     #[graphql(description="The type of the edge.")]
-    pub t: OutputType,
+    pub t: String,
 
     #[graphql(description="The id of the inbound vertex.")]
     pub inbound_id: ID,
@@ -75,7 +75,7 @@ impl From<indradb::EdgeKey> for OutputEdgeKey {
     fn from(key: indradb::EdgeKey) -> OutputEdgeKey {
         OutputEdgeKey {
             outbound_id: ID::from(key.outbound_id.hyphenated().to_string()),
-            t: OutputType::from(key.t),
+            t: key.t.0,
             inbound_id: ID::from(key.inbound_id.hyphenated().to_string()),
         }
     }
@@ -138,20 +138,6 @@ impl From<indradb::EdgeMetadata> for OutputEdgeMetadata {
     }
 }
 
-#[graphql(description="An edge or vertex type.")]
-#[derive(Clone, Debug, GraphQLObject)]
-pub struct OutputType {
-    value: String
-}
-
-impl From<indradb::Type> for OutputType {
-    fn from(t: indradb::Type) -> OutputType {
-        OutputType {
-            value: t.0
-        }
-    }
-}
-
 #[graphql(description="A vertex.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputVertex {
@@ -159,14 +145,14 @@ pub struct OutputVertex {
     pub id: ID,
 
     #[graphql(description="The type of the vertex.")]
-    pub t: OutputType,
+    pub t: String,
 }
 
 impl From<indradb::Vertex> for OutputVertex {
     fn from(v: indradb::Vertex) -> OutputVertex {
         OutputVertex {
             id: ID::from(v.id.hyphenated().to_string()),
-            t: OutputType::from(v.t)
+            t: v.t.0
         }
     }
 }

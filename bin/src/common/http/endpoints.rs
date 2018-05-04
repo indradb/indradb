@@ -95,8 +95,8 @@ graphql_object!(RootQuery: context::Context |&self| {
         Ok(trans.get_vertex_count()?.to_string())
     }
 
-    field edge_count(&executor, id: Uuid, type_filter: Option<InputType>, direction: InputEdgeDirection) -> FieldResult<String> {
-        let type_filter = type_filter.map(FieldResult::<Type>::from).transpose()?;
+    field edge_count(&executor, id: Uuid, type_filter: Option<String>, direction: InputEdgeDirection) -> FieldResult<String> {
+        let type_filter = type_filter.map(Type::new).transpose()?;
         let direction = EdgeDirection::from(direction);
         let trans = &executor.context().trans;
         Ok(trans.get_edge_count(id, type_filter.as_ref(), direction)?.to_string())
@@ -112,9 +112,9 @@ graphql_object!(RootMutation: context::Context |&self| {
         Ok(trans.create_vertex(&vertex)?)
     }
 
-    field create_vertex_from_type(&executor, t: InputType) -> FieldResult<ID> {
+    field create_vertex_from_type(&executor, t: String) -> FieldResult<ID> {
         let trans = &executor.context().trans;
-        let t = FieldResult::<Type>::from(t)?;
+        let t = Type::new(t)?;
         let id = trans.create_vertex_from_type(t)?;
         Ok(ID::from(id.hyphenated().to_string()))
     }
