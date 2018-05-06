@@ -23,43 +23,23 @@ matrix:
       - PG_USER=postgres
       - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+
+    # Rust nightly
+    - rust: nightly
+      env:
+      - TARGET=x86_64-unknown-linux-gnu
+      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - PG_USER=postgres
+      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
+      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - RUSTFLAGS="-C link-dead-code"
     - os: osx
-      rust: stable
+      rust: nightly
       env:
       - TARGET=x86_64-apple-darwin
       - PG_USER=travis
       - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
       - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-master/build:$PATH
-
-    # Rust beta
-    - rust: beta
-      env:
-      - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
-
-    # Rust nightly
-    - rust: nightly
-      env:
-      - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
-      - RUSTFLAGS="-C link-dead-code"
-
-  allow_failures:
-    # Rust nightly
-    - rust: nightly
-      env:
-      - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
-      - RUSTFLAGS="-C link-dead-code"
 
 env:
   global:
@@ -81,7 +61,7 @@ deploy:
   file_glob: true
   file: indradb-$TRAVIS_TAG-$TARGET.*
   on:
-    condition: $TRAVIS_RUST_VERSION = stable
+    condition: $TRAVIS_RUST_VERSION = nightly
     tags: true
   provider: releases
   skip_cleanup: true
