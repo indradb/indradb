@@ -10,6 +10,7 @@ use script;
 use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::thread::spawn;
+use std::str::FromStr;
 use uuid::Uuid;
 use juniper::{FieldResult, ID, RootNode};
 
@@ -95,7 +96,8 @@ graphql_object!(RootQuery: context::Context |&self| {
         Ok(trans.get_vertex_count()?.to_string())
     }
 
-    field edge_count(&executor, id: Uuid, type_filter: Option<String>, direction: InputEdgeDirection) -> FieldResult<String> {
+    field edge_count(&executor, id: ID, type_filter: Option<String>, direction: InputEdgeDirection) -> FieldResult<String> {
+        let id = Uuid::from_str(&id)?;
         let type_filter = type_filter.map(Type::new).transpose()?;
         let direction = EdgeDirection::from(direction);
         let trans = &executor.context().trans;
