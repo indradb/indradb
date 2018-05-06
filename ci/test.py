@@ -54,13 +54,13 @@ def bin():
         if LINUX:
             run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
 
-            for lib_test in LIB_TESTS:
+            for bin_test in BIN_TESTS:
                 run([
                     "kcov", "--verify",
                     "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                     "../target/kcov",
-                    "../target/debug/%s" % get_test_file_name(lib_test),
-                ], cwd="lib")
+                    "../target/debug/%s" % get_test_file_name(bin_test),
+                ], cwd="bin")
         else:
             run(["cargo", "test", "--features=test-suite"], cwd="bin")
     else:
