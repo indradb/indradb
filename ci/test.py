@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server"]
+# BIN_TESTS = ["indradb_server"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
@@ -43,9 +43,9 @@ def lib():
             run([
                 "kcov", "--verify",
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
-                "../target/kcov",
-                "../target/debug/%s" % get_test_file_name(lib_test),
-            ], cwd="lib")
+                "target/kcov",
+                "target/debug/%s" % get_test_file_name(lib_test),
+            ], cwd=".")
     else:
         run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
 
