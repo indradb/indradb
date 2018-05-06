@@ -4,10 +4,8 @@
 //! the GraphQL interface.
 
 use super::{Context, Schema, RootQuery, RootMutation};
-use super::models;
 use statics;
 use serde_json;
-use indradb;
 use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
@@ -265,7 +263,7 @@ impl Transaction for ClientTransaction {
     }
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<(), Error> {
-        let res = self.request("
+        self.request("
             mutation DeleteVertices($q: InputRootQuery!) {
                 delete(q: $q)
             }

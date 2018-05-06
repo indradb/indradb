@@ -9,8 +9,6 @@ extern crate core;
 #[macro_use]
 extern crate crossbeam_channel;
 extern crate hyper;
-#[macro_use]
-extern crate indradb;
 extern crate iron;
 #[macro_use]
 extern crate juniper;
@@ -29,13 +27,19 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
+#[cfg(feature = "test-suite")]
+#[macro_use]
+extern crate indradb;
+
+#[cfg(not(feature = "test-suite"))]
+extern crate indradb;
+
 mod http;
 mod script;
 mod proxy_datastore;
 mod statics;
 mod util;
 
-pub use http::start_server;
-
+pub use http::{start_server, Schema, RootQuery, RootMutation};
 #[cfg(feature = "test-suite")]
 pub use http::tests::ClientDatastore;
