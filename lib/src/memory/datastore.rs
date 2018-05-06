@@ -5,9 +5,9 @@ use errors::Result;
 use models;
 use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, HashSet};
+use std::collections::btree_map::Entry;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
-use std::collections::btree_map::Entry;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -291,8 +291,8 @@ impl Transaction for MemoryTransaction {
             Entry::Vacant(_) => {
                 entry.or_insert(vertex.t.clone());
                 Ok(true)
-            },
-            Entry::Occupied(_) => Ok(false) 
+            }
+            Entry::Occupied(_) => Ok(false),
         }
     }
 

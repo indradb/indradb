@@ -7,13 +7,12 @@ mod util;
 #[cfg(feature = "test-suite")]
 pub mod tests;
 
+pub use self::context::Context;
+pub use self::endpoints::{RootMutation, RootQuery, Schema};
 use iron::prelude::*;
+use juniper_iron::GraphQLHandler;
 use router::Router;
 use std::u16;
-use juniper_iron::GraphQLHandler;
-
-pub use self::context::Context;
-pub use self::endpoints::{Schema, RootQuery, RootMutation};
 
 /// Starts a new server on the given port.
 pub fn start_server(port: u16) {

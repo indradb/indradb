@@ -40,6 +40,6 @@ mod proxy_datastore;
 mod statics;
 mod util;
 
-pub use http::{start_server, Schema, RootQuery, RootMutation};
+pub use http::{start_server, RootMutation, RootQuery, Schema};
 #[cfg(feature = "test-suite")]
 pub use http::tests::ClientDatastore;

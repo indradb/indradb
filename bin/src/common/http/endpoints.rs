@@ -1,18 +1,18 @@
-use super::util::*;
 use super::context;
 use super::models::*;
+use super::util::*;
 use indradb::{EdgeDirection, EdgeKey, Transaction, Type, Vertex};
 use iron::headers::{ContentType, Encoding, Headers, TransferEncoding};
 use iron::prelude::*;
 use iron::status;
 use iron::typemap::TypeMap;
+use juniper::{FieldResult, RootNode, ID};
 use script;
 use serde_json;
 use serde_json::value::Value as JsonValue;
-use std::thread::spawn;
 use std::str::FromStr;
+use std::thread::spawn;
 use uuid::Uuid;
-use juniper::{FieldResult, ID, RootNode};
 
 pub fn script(req: &mut Request) -> IronResult<Response> {
     // Get the inputs

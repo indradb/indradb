@@ -1,11 +1,11 @@
 use super::api;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use proxy_datastore::ProxyTransaction as ExternalProxyTransaction;
 use core::str::FromStr;
 use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection, EdgeKey as ExternalEdgeKey,
               EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery, Type as ExternalType,
               Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
+use proxy_datastore::ProxyTransaction as ExternalProxyTransaction;
 use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData, UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use std::collections::BTreeMap;
@@ -159,7 +159,11 @@ impl ProxyTransaction {
 
 impl UserData for ProxyTransaction {
     fn add_methods(methods: &mut UserDataMethods<Self>) {
-        proxy_fn!(methods, "create_vertex_from_type", api::create_vertex_from_type);
+        proxy_fn!(
+            methods,
+            "create_vertex_from_type",
+            api::create_vertex_from_type
+        );
         proxy_fn!(methods, "get_vertices", api::get_vertices);
         proxy_fn!(methods, "delete_vertices", api::delete_vertices);
         proxy_fn!(methods, "get_vertex_count", api::get_vertex_count);

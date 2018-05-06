@@ -1,14 +1,14 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
-use juniper::ID;
 use indradb;
+use juniper::ID;
 
 #[derive(Clone, Debug)]
 pub enum OutputItem {
     Edge(OutputEdge),
     Vertex(OutputVertex),
     EdgeMetadata(OutputEdgeMetadata),
-    VertexMetadata(OutputVertexMetadata)
+    VertexMetadata(OutputVertexMetadata),
 }
 
 impl From<indradb::Edge> for OutputItem {
@@ -56,20 +56,18 @@ graphql_union!(OutputItem: () |&self| {
     }
 });
 
-#[graphql(description="Represents a uniquely identifiable key to an edge.")]
+#[graphql(description = "Represents a uniquely identifiable key to an edge.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputEdgeKey {
-    #[graphql(description="The id of the outbound vertex.")]
+    #[graphql(description = "The id of the outbound vertex.")]
     pub outbound_id: ID,
 
-    #[graphql(description="The type of the edge.")]
+    #[graphql(description = "The type of the edge.")]
     pub t: String,
 
-    #[graphql(description="The id of the inbound vertex.")]
+    #[graphql(description = "The id of the inbound vertex.")]
     pub inbound_id: ID,
 }
-
-
 
 impl From<indradb::EdgeKey> for OutputEdgeKey {
     fn from(key: indradb::EdgeKey) -> OutputEdgeKey {
@@ -81,13 +79,13 @@ impl From<indradb::EdgeKey> for OutputEdgeKey {
     }
 }
 
-#[graphql(description="An edge.")]
+#[graphql(description = "An edge.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputEdge {
-    #[graphql(description="The key to the edge.")]
+    #[graphql(description = "The key to the edge.")]
     pub key: OutputEdgeKey,
 
-    #[graphql(description="When the edge was created.")]
+    #[graphql(description = "When the edge was created.")]
     pub created_datetime: DateTime<Utc>,
 }
 
@@ -95,18 +93,18 @@ impl From<indradb::Edge> for OutputEdge {
     fn from(e: indradb::Edge) -> OutputEdge {
         OutputEdge {
             key: OutputEdgeKey::from(e.key),
-            created_datetime: e.created_datetime
+            created_datetime: e.created_datetime,
         }
     }
 }
 
-#[graphql(description="Represents vertex metadata.")]
+#[graphql(description = "Represents vertex metadata.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputVertexMetadata {
-    #[graphql(description="The id of the vertex")]
+    #[graphql(description = "The id of the vertex")]
     pub id: ID,
 
-    #[graphql(description="The metadata value as stringified JSON.")]
+    #[graphql(description = "The metadata value as stringified JSON.")]
     pub value: String,
 }
 
@@ -114,18 +112,18 @@ impl From<indradb::VertexMetadata> for OutputVertexMetadata {
     fn from(v: indradb::VertexMetadata) -> OutputVertexMetadata {
         OutputVertexMetadata {
             id: ID::from(v.id.hyphenated().to_string()),
-            value: v.value.to_string()
+            value: v.value.to_string(),
         }
     }
 }
 
-#[graphql(description="Represents edge metadata.")]
+#[graphql(description = "Represents edge metadata.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputEdgeMetadata {
-    #[graphql(description="The key to the edge.")]
+    #[graphql(description = "The key to the edge.")]
     pub key: OutputEdgeKey,
 
-    #[graphql(description="The metadata value as stringified JSON.")]
+    #[graphql(description = "The metadata value as stringified JSON.")]
     pub value: String,
 }
 
@@ -133,18 +131,18 @@ impl From<indradb::EdgeMetadata> for OutputEdgeMetadata {
     fn from(e: indradb::EdgeMetadata) -> OutputEdgeMetadata {
         OutputEdgeMetadata {
             key: OutputEdgeKey::from(e.key),
-            value: e.value.to_string()
+            value: e.value.to_string(),
         }
     }
 }
 
-#[graphql(description="A vertex.")]
+#[graphql(description = "A vertex.")]
 #[derive(Clone, Debug, GraphQLObject)]
 pub struct OutputVertex {
-    #[graphql(description="The id of the vertex.")]
+    #[graphql(description = "The id of the vertex.")]
     pub id: ID,
 
-    #[graphql(description="The type of the vertex.")]
+    #[graphql(description = "The type of the vertex.")]
     pub t: String,
 }
 
@@ -152,7 +150,7 @@ impl From<indradb::Vertex> for OutputVertex {
     fn from(v: indradb::Vertex) -> OutputVertex {
         OutputVertex {
             id: ID::from(v.id.hyphenated().to_string()),
-            t: v.t.0
+            t: v.t.0,
         }
     }
 }

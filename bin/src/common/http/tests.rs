@@ -3,16 +3,17 @@
 //! To achieve this, we umplement a faux datastore that proxies requests to
 //! the GraphQL interface.
 
-use super::{Context, Schema, RootQuery, RootMutation};
-use statics;
-use serde_json;
-use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
-use serde_json::value::Value as JsonValue;
-use uuid::Uuid;
-use juniper::{InputValue, Variables, Value, execute};
-use std::str::FromStr;
-use ordermap::OrderMap;
+use super::{Context, RootMutation, RootQuery, Schema};
 use chrono::{DateTime, FixedOffset, Utc};
+use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex,
+              VertexMetadata, VertexQuery};
+use juniper::{execute, InputValue, Value, Variables};
+use ordermap::OrderMap;
+use serde_json;
+use serde_json::value::Value as JsonValue;
+use statics;
+use std::str::FromStr;
+use uuid::Uuid;
 
 macro_rules! vars(
     { $($key:expr => $value:expr),* } => {
@@ -55,7 +56,9 @@ fn extract_string(v: &Value) -> String {
 }
 
 fn extract_u64(v: &Value) -> u64 {
-    extract_string(v).parse::<u64>().expect("Expected to be able to parse the string into a u64")
+    extract_string(v)
+        .parse::<u64>()
+        .expect("Expected to be able to parse the string into a u64")
 }
 
 fn extract_uuid(v: &Value) -> Uuid {
@@ -90,55 +93,59 @@ fn extract_edge(v: &Value) -> Edge {
     let key = extract_edge_key(&obj["key"]);
     let created_datetime_str = extract_string(&obj["createdDatetime"]);
     let created_datetime = DateTime::<FixedOffset>::parse_from_rfc3339(&created_datetime_str);
-    let created_datetime = created_datetime.expect("Expected an RFC3339 formatted datetime").with_timezone(&Utc);
+    let created_datetime = created_datetime
+        .expect("Expected an RFC3339 formatted datetime")
+        .with_timezone(&Utc);
     Edge::new(key, created_datetime)
 }
 
 fn create_optional<T, F>(v: &Option<T>, f: F) -> InputValue
-where F: Fn(&T) -> InputValue {
+where
+    F: Fn(&T) -> InputValue,
+{
     match v {
         Some(v) => f(v),
-        None => InputValue::null()
+        None => InputValue::null(),
     }
 }
 
 fn create_vertex_query(q: &VertexQuery) -> InputValue {
     match q {
-        VertexQuery::All { start_id, limit } => {
-            obj!(
+        VertexQuery::All { start_id, limit } => obj!(
                 "vertexRange" => obj!(
                     "startId" => create_optional(start_id, |i| InputValue::string(i.hyphenated().to_string())),
                     "limit" => InputValue::int(*limit as i32)
                 )
-            )
-        },
+            ),
         VertexQuery::Vertices { ids } => {
-            let ids = ids.into_iter().map(|i| InputValue::string(i.hyphenated().to_string())).collect();
+            let ids = ids.into_iter()
+                .map(|i| InputValue::string(i.hyphenated().to_string()))
+                .collect();
             obj!("vertices" => obj!("ids" => InputValue::list(ids)))
-        },
-        _ => unimplemented!()
+        }
+        _ => unimplemented!(),
     }
 }
 
 fn create_vertex_metadata_query(q: &VertexQuery, name: &str) -> InputValue {
     match q {
-        VertexQuery::All { start_id, limit } => {
-            obj!(
+        VertexQuery::All { start_id, limit } => obj!(
                 "vertexRange" => obj!(
                     "startId" => create_optional(start_id, |i| InputValue::string(i.hyphenated().to_string())),
                     "limit" => InputValue::int(*limit as i32),
                     "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
                 )
-            )
-        },
+            ),
         VertexQuery::Vertices { ids } => {
-            let ids = ids.into_iter().map(|i| InputValue::string(i.hyphenated().to_string())).collect();
+            let ids = ids.into_iter()
+                .map(|i| InputValue::string(i.hyphenated().to_string()))
+                .collect();
             obj!("vertices" => obj!(
                 "ids" => InputValue::list(ids),
                 "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
             ))
-        },
-        _ => unimplemented!()
+        }
+        _ => unimplemented!(),
     }
 }
 
@@ -152,24 +159,20 @@ fn create_edge_key(key: &EdgeKey) -> InputValue {
 
 fn create_edge_query(q: &EdgeQuery) -> InputValue {
     match q {
-        EdgeQuery::Edges { keys } => {
-            obj!("edges" => obj!(
+        EdgeQuery::Edges { keys } => obj!("edges" => obj!(
                 "keys" => InputValue::list(keys.into_iter().map(create_edge_key).collect())
-            ))
-        },
-        _ => unimplemented!()
+            )),
+        _ => unimplemented!(),
     }
 }
 
 fn create_edge_metadata_query(q: &EdgeQuery, name: &str) -> InputValue {
     match q {
-        EdgeQuery::Edges { keys } => {
-            obj!("edges" => obj!(
+        EdgeQuery::Edges { keys } => obj!("edges" => obj!(
                 "keys" => InputValue::list(keys.into_iter().map(create_edge_key).collect()),
                 "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
-            ))
-        },
-        _ => unimplemented!()
+            )),
+        _ => unimplemented!(),
     }
 }
 
@@ -178,7 +181,7 @@ pub struct ClientDatastore;
 
 impl ClientDatastore {
     fn default() -> Self {
-        Self{}
+        Self {}
     }
 }
 
@@ -189,7 +192,7 @@ impl Datastore<ClientTransaction> for ClientDatastore {
 }
 
 pub struct ClientTransaction {
-    context: Context
+    context: Context,
 }
 
 impl ClientTransaction {
@@ -197,7 +200,7 @@ impl ClientTransaction {
         let trans = statics::DATASTORE.transaction().unwrap();
 
         Self {
-            context: Context::new(trans)
+            context: Context::new(trans),
         }
     }
 }
@@ -213,63 +216,82 @@ impl ClientTransaction {
         ).map_err(|err| Error::from(format!("{:?}", err)))?;
 
         assert_eq!(errors, vec![]);
-        let obj = value.as_mut_object_value().expect("Response is not an object");
-        let inner_value = obj.remove(key).expect(&format!("Response does not have the expected key `{}`: {:?}", key, variables));
+        let obj = value
+            .as_mut_object_value()
+            .expect("Response is not an object");
+        let inner_value = obj.remove(key).expect(&format!(
+            "Response does not have the expected key `{}`: {:?}",
+            key, variables
+        ));
         Ok(inner_value)
     }
 }
 
 impl Transaction for ClientTransaction {
     fn create_vertex(&self, v: &Vertex) -> Result<bool, Error> {
-        Ok(extract_bool(&self.request("
-            mutation CreateVertex($id: ID!, $t: String!) {
-                createVertex(vertex: {
-                    id: $id,
-                    t: $t
-                })
-            }
-        ", vars!(
-            "id" => InputValue::string(v.id.hyphenated().to_string()),
-            "t" => InputValue::string(v.t.0.clone())
-        ), "createVertex")?))
+        Ok(extract_bool(
+            &self.request(
+                "
+                    mutation CreateVertex($id: ID!, $t: String!) {
+                        createVertex(vertex: {
+                            id: $id,
+                            t: $t
+                        })
+                    }
+                ",
+                vars!(
+                    "id" => InputValue::string(v.id.hyphenated().to_string()),
+                    "t" => InputValue::string(v.t.0.clone())
+                ),
+                "createVertex",
+            )?,
+        ))
     }
 
     fn create_vertex_from_type(&self, t: Type) -> Result<Uuid, Error> {
-        Ok(extract_uuid(&self.request("
-            mutation CreateVertexFromType($t: String!) {
-                createVertexFromType(t: $t)
-            }
-        ", vars!(
-            "t" => InputValue::string(t.0.clone())
-        ), "createVertexFromType")?))
+        Ok(extract_uuid(
+            &self.request(
+                "
+                    mutation CreateVertexFromType($t: String!) {
+                        createVertexFromType(t: $t)
+                    }
+                ",
+                vars!("t" => InputValue::string(t.0.clone())),
+                "createVertexFromType",
+            )?,
+        ))
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>, Error> {
-        let res = self.request("
-            query GetVertices($q: InputRootQuery!) {
-                query(q: $q) {
-                    ... on OutputVertex {
-                        id
-                        t
+        let res = self.request(
+            "
+                query GetVertices($q: InputRootQuery!) {
+                    query(q: $q) {
+                        ... on OutputVertex {
+                            id
+                            t
+                        }
                     }
                 }
-            }
-        ", vars!(
-            "q" => create_vertex_query(q)
-        ), "query")?;
+            ",
+            vars!("q" => create_vertex_query(q)),
+            "query",
+        )?;
 
         let values = res.as_list_value().expect("Expected a list");
         Ok(values.into_iter().map(extract_vertex).collect())
     }
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<(), Error> {
-        self.request("
-            mutation DeleteVertices($q: InputRootQuery!) {
-                delete(q: $q)
-            }
-        ", vars!(
-            "q" => create_vertex_query(q)
-        ), "delete")?;
+        self.request(
+            "
+                mutation DeleteVertices($q: InputRootQuery!) {
+                    delete(q: $q)
+                }
+            ",
+            vars!("q" => create_vertex_query(q)),
+            "delete",
+        )?;
 
         Ok(())
     }
@@ -280,165 +302,202 @@ impl Transaction for ClientTransaction {
     }
 
     fn create_edge(&self, e: &EdgeKey) -> Result<bool, Error> {
-        Ok(extract_bool(&self.request("
-            mutation CreateEdge($outboundId: ID!, $t: String!, $inboundId: ID!) {
-                createEdge(key: {
-                    outboundId: $outboundId,
-                    t: $t,
-                    inboundId: $inboundId
-                })
-            }
-        ", vars!(
-            "outboundId" => InputValue::string(e.outbound_id.hyphenated().to_string()),
-            "t" => InputValue::string(e.t.0.clone()),
-            "inboundId" => InputValue::string(e.inbound_id.hyphenated().to_string())
-        ), "createEdge")?))
+        Ok(extract_bool(
+            &self.request(
+                "
+                mutation CreateEdge($outboundId: ID!, $t: String!, $inboundId: ID!) {
+                    createEdge(key: {
+                        outboundId: $outboundId,
+                        t: $t,
+                        inboundId: $inboundId
+                    })
+                }
+            ",
+                vars!(
+                "outboundId" => InputValue::string(e.outbound_id.hyphenated().to_string()),
+                "t" => InputValue::string(e.t.0.clone()),
+                "inboundId" => InputValue::string(e.inbound_id.hyphenated().to_string())
+            ),
+                "createEdge",
+            )?,
+        ))
     }
 
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<Edge>, Error> {
-        let res = self.request("
-            query GetEdges($q: InputRootQuery!) {
-                query(q: $q) {
-                    ... on OutputEdge {
-                        key {
-                            outboundId
-                            t
-                            inboundId
+        let res = self.request(
+            "
+                query GetEdges($q: InputRootQuery!) {
+                    query(q: $q) {
+                        ... on OutputEdge {
+                            key {
+                                outboundId
+                                t
+                                inboundId
+                            }
+                            createdDatetime
                         }
-                        createdDatetime
                     }
                 }
-            }
-        ", vars!(
-            "q" => create_edge_query(q)
-        ), "query")?;
+            ",
+            vars!("q" => create_edge_query(q)),
+            "query",
+        )?;
 
         let values = res.as_list_value().expect("Expected a list");
         Ok(values.into_iter().map(extract_edge).collect())
     }
 
     fn delete_edges(&self, q: &EdgeQuery) -> Result<(), Error> {
-        self.request("
-            mutation DeleteEdges($q: InputRootQuery!) {
-                delete(q: $q)
-            }
-        ", vars!(
-            "q" => create_edge_query(q)
-        ), "delete")?;
+        self.request(
+            "
+                mutation DeleteEdges($q: InputRootQuery!) {
+                    delete(q: $q)
+                }
+            ",
+            vars!("q" => create_edge_query(q)),
+            "delete",
+        )?;
 
         Ok(())
     }
 
     fn get_edge_count(&self, id: Uuid, type_filter: Option<&Type>, direction: EdgeDirection) -> Result<u64, Error> {
-        let res = self.request("
-            query GetEdgeCount($id: ID!, $typeFilter: String, $direction: InputEdgeDirection!) {
-                edgeCount(id: $id, typeFilter: $typeFilter, direction: $direction)
-            }", vars!(
+        let res = self.request(
+            "
+                query GetEdgeCount($id: ID!, $typeFilter: String, $direction: InputEdgeDirection!) {
+                    edgeCount(id: $id, typeFilter: $typeFilter, direction: $direction)
+                }
+            ",
+            vars!(
                 "id" => InputValue::string(id.hyphenated().to_string()),
                 "typeFilter" => create_optional(&type_filter, |t| InputValue::string(t.0.clone())),
                 "direction" => InputValue::enum_value(direction.to_string().to_uppercase())
-            ), "edgeCount")?;
+            ),
+            "edgeCount",
+        )?;
         Ok(extract_u64(&res))
     }
 
     fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<VertexMetadata>, Error> {
-        let res = self.request("
-            query GetVertexMetadata($q: InputRootQuery!) {
-                query(q: $q) {
-                    ... on OutputVertexMetadata {
-                        id
-                        value
+        let res = self.request(
+            "
+                query GetVertexMetadata($q: InputRootQuery!) {
+                    query(q: $q) {
+                        ... on OutputVertexMetadata {
+                            id
+                            value
+                        }
                     }
                 }
-            }
-        ", vars!(
-            "q" => create_vertex_metadata_query(q, name)
-        ), "query")?;
+            ",
+            vars!("q" => create_vertex_metadata_query(q, name)),
+            "query",
+        )?;
 
         let values = res.as_list_value().expect("Expected a list");
 
-        Ok(values.into_iter().map(|v| {
-            let obj = v.as_object_value().expect("Expected an object");
-            let id = extract_uuid(&obj["id"]);
-            let value = extract_json(&obj["value"]);
-            VertexMetadata::new(id, value)
-        }).collect())
+        Ok(values
+            .into_iter()
+            .map(|v| {
+                let obj = v.as_object_value().expect("Expected an object");
+                let id = extract_uuid(&obj["id"]);
+                let value = extract_json(&obj["value"]);
+                VertexMetadata::new(id, value)
+            })
+            .collect())
     }
 
     fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<(), Error> {
-        self.request("
-            mutation SetVertexMetadata($q: InputRootQuery!, $value: String!) {
-                setMetadata(q: $q, value: $value)
-            }
-        ", vars!(
-            "q" => create_vertex_metadata_query(q, name),
-            "value" => InputValue::string(value.to_string())
-        ), "setMetadata")?;
+        self.request(
+            "
+                mutation SetVertexMetadata($q: InputRootQuery!, $value: String!) {
+                    setMetadata(q: $q, value: $value)
+                }
+            ",
+            vars!(
+                "q" => create_vertex_metadata_query(q, name),
+                "value" => InputValue::string(value.to_string())
+            ),
+            "setMetadata",
+        )?;
 
         Ok(())
     }
 
     fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<(), Error> {
-        self.request("
-            mutation DeleteVertexMetadata($q: InputRootQuery!) {
-                delete(q: $q)
-            }
-        ", vars!(
-            "q" => create_vertex_metadata_query(q, name)
-        ), "delete")?;
+        self.request(
+            "
+                mutation DeleteVertexMetadata($q: InputRootQuery!) {
+                    delete(q: $q)
+                }
+            ",
+            vars!("q" => create_vertex_metadata_query(q, name)),
+            "delete",
+        )?;
 
         Ok(())
     }
 
     fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<EdgeMetadata>, Error> {
-        let res = self.request("
-            query GetEdgeMetadata($q: InputRootQuery!) {
-                query(q: $q) {
-                    ... on OutputEdgeMetadata {
-                        key {
-                            outboundId
-                            t
-                            inboundId
+        let res = self.request(
+            "
+                query GetEdgeMetadata($q: InputRootQuery!) {
+                    query(q: $q) {
+                        ... on OutputEdgeMetadata {
+                            key {
+                                outboundId
+                                t
+                                inboundId
+                            }
+                            value
                         }
-                        value
                     }
                 }
-            }
-        ", vars!(
-            "q" => create_edge_metadata_query(q, name)
-        ), "query")?;
+            ",
+            vars!("q" => create_edge_metadata_query(q, name)),
+            "query",
+        )?;
 
         let values = res.as_list_value().expect("Expected a list");
 
-        Ok(values.into_iter().map(|v| {
-            let obj = v.as_object_value().expect("Expected an object");
-            let key = extract_edge_key(&obj["key"]);
-            let value = extract_json(&obj["value"]);
-            EdgeMetadata::new(key, value)
-        }).collect())
+        Ok(values
+            .into_iter()
+            .map(|v| {
+                let obj = v.as_object_value().expect("Expected an object");
+                let key = extract_edge_key(&obj["key"]);
+                let value = extract_json(&obj["value"]);
+                EdgeMetadata::new(key, value)
+            })
+            .collect())
     }
 
     fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<(), Error> {
-        self.request("
-            mutation SetEdgeMetadata($q: InputRootQuery!, $value: String!) {
-                setMetadata(q: $q, value: $value)
-            }
-        ", vars!(
-            "q" => create_edge_metadata_query(q, name),
-            "value" => InputValue::string(value.to_string())
-        ), "setMetadata")?;
+        self.request(
+            "
+                mutation SetEdgeMetadata($q: InputRootQuery!, $value: String!) {
+                    setMetadata(q: $q, value: $value)
+                }
+            ",
+            vars!(
+                "q" => create_edge_metadata_query(q, name),
+                "value" => InputValue::string(value.to_string())
+            ),
+            "setMetadata",
+        )?;
 
         Ok(())
     }
 
     fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<(), Error> {
-        self.request("
-            mutation DeleteEdgeMetadata($q: InputRootQuery!) {
-                delete(q: $q)
-            }
-        ", vars!(
-            "q" => create_edge_metadata_query(q, name)
-        ), "delete")?;
+        self.request(
+            "
+                mutation DeleteEdgeMetadata($q: InputRootQuery!) {
+                    delete(q: $q)
+                }
+            ",
+            vars!("q" => create_edge_metadata_query(q, name)),
+            "delete",
+        )?;
 
         Ok(())
     }
@@ -454,28 +513,49 @@ impl Transaction for ClientTransaction {
 // Vertex queries
 indradb_test!(should_create_vertex_from_type, ClientDatastore::default());
 // indradb_test!(should_get_all_vertices, ClientDatastore::default());
-indradb_test!(should_get_all_vertices_with_zero_limit, ClientDatastore::default());
+indradb_test!(
+    should_get_all_vertices_with_zero_limit,
+    ClientDatastore::default()
+);
 // indradb_test!(should_get_all_vertices_out_of_range, ClientDatastore::default());
 indradb_test!(should_get_single_vertices, ClientDatastore::default());
-indradb_test!(should_get_single_vertices_nonexisting, ClientDatastore::default());
+indradb_test!(
+    should_get_single_vertices_nonexisting,
+    ClientDatastore::default()
+);
 indradb_test!(should_get_vertices, ClientDatastore::default());
 // indradb_test!(should_get_vertices_piped, ClientDatastore::default());
 indradb_test!(should_get_a_vertex_count, ClientDatastore::default());
 
 // Vertex updates
 indradb_test!(should_delete_a_valid_vertex, ClientDatastore::default());
-indradb_test!(should_not_delete_an_invalid_vertex, ClientDatastore::default());
+indradb_test!(
+    should_not_delete_an_invalid_vertex,
+    ClientDatastore::default()
+);
 
 // Edges
 indradb_test!(should_get_a_valid_edge, ClientDatastore::default());
 indradb_test!(should_not_get_an_invalid_edge, ClientDatastore::default());
 // indradb_test!(should_create_a_valid_edge, ClientDatastore::default());
-indradb_test!(should_not_create_an_invalid_edge, ClientDatastore::default());
+indradb_test!(
+    should_not_create_an_invalid_edge,
+    ClientDatastore::default()
+);
 indradb_test!(should_delete_a_valid_edge, ClientDatastore::default());
-indradb_test!(should_not_delete_an_invalid_edge, ClientDatastore::default());
+indradb_test!(
+    should_not_delete_an_invalid_edge,
+    ClientDatastore::default()
+);
 indradb_test!(should_get_an_edge_count, ClientDatastore::default());
-indradb_test!(should_get_an_edge_count_with_no_type, ClientDatastore::default());
-indradb_test!(should_get_an_edge_count_for_an_invalid_edge, ClientDatastore::default());
+indradb_test!(
+    should_get_an_edge_count_with_no_type,
+    ClientDatastore::default()
+);
+indradb_test!(
+    should_get_an_edge_count_for_an_invalid_edge,
+    ClientDatastore::default()
+);
 indradb_test!(should_get_an_inbound_edge_count, ClientDatastore::default());
 // indradb_test!(should_get_an_edge_range, ClientDatastore::default());
 // indradb_test!(should_get_edges_with_no_type, ClientDatastore::default());
@@ -488,9 +568,20 @@ indradb_test!(should_get_edges, ClientDatastore::default());
 
 // Metadata
 indradb_test!(should_handle_vertex_metadata, ClientDatastore::default());
-indradb_test!(should_not_set_invalid_vertex_metadata, ClientDatastore::default());
-indradb_test!(should_not_delete_invalid_vertex_metadata, ClientDatastore::default());
+indradb_test!(
+    should_not_set_invalid_vertex_metadata,
+    ClientDatastore::default()
+);
+indradb_test!(
+    should_not_delete_invalid_vertex_metadata,
+    ClientDatastore::default()
+);
 indradb_test!(should_handle_edge_metadata, ClientDatastore::default());
-indradb_test!(should_not_set_invalid_edge_metadata, ClientDatastore::default());
-indradb_test!(should_not_delete_invalid_edge_metadata, ClientDatastore::default());
-
+indradb_test!(
+    should_not_set_invalid_edge_metadata,
+    ClientDatastore::default()
+);
+indradb_test!(
+    should_not_delete_invalid_edge_metadata,
+    ClientDatastore::default()
+);

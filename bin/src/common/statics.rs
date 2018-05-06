@@ -1,5 +1,5 @@
-use proxy_datastore::{datastore, ProxyDatastore};
 use num_cpus;
+use proxy_datastore::{datastore, ProxyDatastore};
 use std::env;
 use std::path::Path;
 

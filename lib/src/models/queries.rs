@@ -22,7 +22,7 @@ impl EdgeDirection {
     pub fn to_string(&self) -> String {
         match *self {
             EdgeDirection::Outbound => "outbound".to_string(),
-            EdgeDirection::Inbound => "inbound".to_string()
+            EdgeDirection::Inbound => "inbound".to_string(),
         }
     }
 }
