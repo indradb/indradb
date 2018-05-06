@@ -81,4 +81,4 @@ if __name__ == "__main__":
 
     lib()
     bin()
-    covdrage()
+    coverage()
