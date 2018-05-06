@@ -27,6 +27,8 @@ def get_test_file_name(test_name):
         if re.match(test_file_pattern, file):
             return file
 
+    raise Exception("Could not find a test build matching pattern `%s`" % test_name)
+
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd)
