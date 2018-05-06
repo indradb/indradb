@@ -49,22 +49,31 @@ def lib():
     else:
         run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
 
+# TODO: Coverage analysis of bin is currently skipped because kcov keeps
+# incorrectly spitting out 0% coverage. Fix this.
+# def bin():
+#     if NIGHTLY:
+#         run(["cargo", "build"], cwd="bin")
+
+#         if LINUX:
+#             run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
+
+#             for bin_test in BIN_TESTS:
+#                 run([
+#                     "kcov", "--verify",
+#                     "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
+#                     "../target/kcov",
+#                     "../target/debug/%s" % get_test_file_name(bin_test),
+#                 ], cwd="bin")
+#         else:
+#             run(["cargo", "test", "--features=test-suite"], cwd="bin")
+#     else:
+#         print("Skipping bin tests as the compiler is not nightly")
+
 def bin():
     if NIGHTLY:
         run(["cargo", "build"], cwd="bin")
-
-        if LINUX:
-            run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
-
-            for bin_test in BIN_TESTS:
-                run([
-                    "kcov", "--verify",
-                    "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
-                    "../target/kcov",
-                    "../target/debug/%s" % get_test_file_name(bin_test),
-                ], cwd="bin")
-        else:
-            run(["cargo", "test", "--features=test-suite"], cwd="bin")
+        run(["cargo", "test", "--features=test-suite"], cwd="bin")
     else:
         print("Skipping bin tests as the compiler is not nightly")
 
