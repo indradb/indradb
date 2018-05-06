@@ -34,7 +34,7 @@ macro_rules! obj(
             $(
                 m.insert($key.to_string(), $value);
             )*
-            InputValue::object(m)
+            m
         }
      };
 );
@@ -109,71 +109,83 @@ where
     }
 }
 
-fn create_vertex_query(q: &VertexQuery) -> InputValue {
-    match q {
-        VertexQuery::All { start_id, limit } => obj!(
-                "vertexRange" => obj!(
-                    "startId" => create_optional(start_id, |i| InputValue::string(i.hyphenated().to_string())),
-                    "limit" => InputValue::int(*limit as i32)
-                )
-            ),
-        VertexQuery::Vertices { ids } => {
-            let ids = ids.into_iter()
-                .map(|i| InputValue::string(i.hyphenated().to_string()))
-                .collect();
-            obj!("vertices" => obj!("ids" => InputValue::list(ids)))
-        }
-        _ => unimplemented!(),
-    }
-}
-
-fn create_vertex_metadata_query(q: &VertexQuery, name: &str) -> InputValue {
-    match q {
-        VertexQuery::All { start_id, limit } => obj!(
-                "vertexRange" => obj!(
-                    "startId" => create_optional(start_id, |i| InputValue::string(i.hyphenated().to_string())),
-                    "limit" => InputValue::int(*limit as i32),
-                    "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
-                )
-            ),
-        VertexQuery::Vertices { ids } => {
-            let ids = ids.into_iter()
-                .map(|i| InputValue::string(i.hyphenated().to_string()))
-                .collect();
-            obj!("vertices" => obj!(
-                "ids" => InputValue::list(ids),
-                "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
-            ))
-        }
-        _ => unimplemented!(),
-    }
-}
-
 fn create_edge_key(key: &EdgeKey) -> InputValue {
-    obj!(
+    InputValue::object(obj!(
         "outboundId" => InputValue::string(key.outbound_id.hyphenated().to_string()),
         "t" => InputValue::string(key.t.0.clone()),
         "inboundId" => InputValue::string(key.inbound_id.hyphenated().to_string())
-    )
+    ))
 }
 
-fn create_edge_query(q: &EdgeQuery) -> InputValue {
-    match q {
-        EdgeQuery::Edges { keys } => obj!("edges" => obj!(
-                "keys" => InputValue::list(keys.into_iter().map(create_edge_key).collect())
-            )),
-        _ => unimplemented!(),
-    }
+type Container = OrderMap<String, InputValue>;
+
+enum Query {
+    Vertex(VertexQuery),
+    Edge(EdgeQuery),
 }
 
-fn create_edge_metadata_query(q: &EdgeQuery, name: &str) -> InputValue {
-    match q {
-        EdgeQuery::Edges { keys } => obj!("edges" => obj!(
-                "keys" => InputValue::list(keys.into_iter().map(create_edge_key).collect()),
-                "metadata" => InputValue::list(vec![InputValue::string(name.to_string())])
-            )),
-        _ => unimplemented!(),
+fn create_query(q: Query, mut manipulators: Vec<Box<FnOnce(&mut Container) -> Container>>) -> InputValue {
+    let (root_key, root_obj) = match q {
+        Query::Vertex(q) => {
+            match q {
+                VertexQuery::All { start_id, limit } => ("vertexRange", obj!(
+                    "startId" => create_optional(&start_id, |i| InputValue::string(i.hyphenated().to_string())),
+                    "limit" => InputValue::int(limit as i32)
+                )),
+                VertexQuery::Vertices { ids } => ("vertices", obj!(
+                    "ids" => InputValue::list(ids.into_iter()
+                        .map(|i| InputValue::string(i.hyphenated().to_string()))
+                        .collect())
+                )),
+                VertexQuery::Pipe { edge_query, converter, limit } => {
+                    unimplemented!()
+                }
+            }
+        },
+        Query::Edge(q) => {
+            match q {
+                EdgeQuery::Edges { keys } => ("edges", obj!(
+                    "keys" => InputValue::list(keys.into_iter().map(create_edge_key).collect())
+                )),
+                EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
+                    unimplemented!()
+                }
+            }
+        }
+    };
+
+    let mut container = root_obj;
+
+    while manipulators.len() > 0 {
+        let manipulator = *manipulators.pop();
+        container = manipulator(&mut container);
     }
+
+    InputValue::object(obj!(root_key => InputValue::object(root_obj)))
+}
+
+fn create_vertex_query(q: VertexQuery) -> InputValue {
+    create_query(Query::Vertex(q), vec![])
+}
+
+fn create_vertex_metadata_query(q: VertexQuery, name: &str) -> InputValue {
+    let manipulator = move |mut container| {
+        container.insert("metadata".to_string(), InputValue::list(vec![InputValue::string(name.to_string())]));
+        container
+    };
+    create_query(Query::Vertex(q), vec![Box::new(manipulator)])
+}
+
+fn create_edge_query(q: EdgeQuery) -> InputValue {
+    create_query(Query::Edge(q), vec![])
+}
+
+fn create_edge_metadata_query(q: EdgeQuery, name: &str) -> InputValue {
+    let manipulator = move |mut container| {
+        container.insert("metadata".to_string(), InputValue::list(vec![InputValue::string(name.to_string())]));
+        container
+    };
+    create_query(Query::Edge(q), vec![Box::new(manipulator)])
 }
 
 #[derive(Debug)]
@@ -274,7 +286,7 @@ impl Transaction for ClientTransaction {
                     }
                 }
             ",
-            vars!("q" => create_vertex_query(q)),
+            vars!("q" => create_vertex_query(q.clone())),
             "query",
         )?;
 
@@ -289,7 +301,7 @@ impl Transaction for ClientTransaction {
                     delete(q: $q)
                 }
             ",
-            vars!("q" => create_vertex_query(q)),
+            vars!("q" => create_vertex_query(q.clone())),
             "delete",
         )?;
 
@@ -339,7 +351,7 @@ impl Transaction for ClientTransaction {
                     }
                 }
             ",
-            vars!("q" => create_edge_query(q)),
+            vars!("q" => create_edge_query(q.clone())),
             "query",
         )?;
 
@@ -354,7 +366,7 @@ impl Transaction for ClientTransaction {
                     delete(q: $q)
                 }
             ",
-            vars!("q" => create_edge_query(q)),
+            vars!("q" => create_edge_query(q.clone())),
             "delete",
         )?;
 
@@ -390,7 +402,7 @@ impl Transaction for ClientTransaction {
                     }
                 }
             ",
-            vars!("q" => create_vertex_metadata_query(q, name)),
+            vars!("q" => create_vertex_metadata_query(q.clone(), name)),
             "query",
         )?;
 
@@ -415,7 +427,7 @@ impl Transaction for ClientTransaction {
                 }
             ",
             vars!(
-                "q" => create_vertex_metadata_query(q, name),
+                "q" => create_vertex_metadata_query(q.clone(), name),
                 "value" => InputValue::string(value.to_string())
             ),
             "setMetadata",
@@ -431,7 +443,7 @@ impl Transaction for ClientTransaction {
                     delete(q: $q)
                 }
             ",
-            vars!("q" => create_vertex_metadata_query(q, name)),
+            vars!("q" => create_vertex_metadata_query(q.clone(), name)),
             "delete",
         )?;
 
@@ -454,7 +466,7 @@ impl Transaction for ClientTransaction {
                     }
                 }
             ",
-            vars!("q" => create_edge_metadata_query(q, name)),
+            vars!("q" => create_edge_metadata_query(q.clone(), name)),
             "query",
         )?;
 
@@ -479,7 +491,7 @@ impl Transaction for ClientTransaction {
                 }
             ",
             vars!(
-                "q" => create_edge_metadata_query(q, name),
+                "q" => create_edge_metadata_query(q.clone(), name),
                 "value" => InputValue::string(value.to_string())
             ),
             "setMetadata",
@@ -495,7 +507,7 @@ impl Transaction for ClientTransaction {
                     delete(q: $q)
                 }
             ",
-            vars!("q" => create_edge_metadata_query(q, name)),
+            vars!("q" => create_edge_metadata_query(q.clone(), name)),
             "delete",
         )?;
 
