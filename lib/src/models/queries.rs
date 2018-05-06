@@ -20,9 +20,9 @@ pub enum EdgeDirection {
 
 impl EdgeDirection {
     pub fn to_string(&self) -> String {
-        match self {
-            &EdgeDirection::Outbound => "outbound".to_string(),
-            &EdgeDirection::Inbound => "inbound".to_string()
+        match *self {
+            EdgeDirection::Outbound => "outbound".to_string(),
+            EdgeDirection::Inbound => "inbound".to_string()
         }
     }
 }
@@ -62,7 +62,7 @@ impl VertexQuery {
             type_filter: t,
             high_filter: high,
             low_filter: low,
-            limit: limit,
+            limit,
         }
     }
 
@@ -79,7 +79,7 @@ impl VertexQuery {
             type_filter: t,
             high_filter: high,
             low_filter: low,
-            limit: limit,
+            limit,
         }
     }
 }
@@ -109,7 +109,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Outbound,
-            limit: limit,
+            limit,
         }
     }
 
@@ -117,7 +117,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Inbound,
-            limit: limit,
+            limit,
         }
     }
 }

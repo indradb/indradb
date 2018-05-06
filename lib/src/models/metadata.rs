@@ -21,8 +21,8 @@ impl VertexMetadata {
     /// * `value` - The metadata value.
     pub fn new(id: Uuid, value: JsonValue) -> Self {
         Self {
-            id: id,
-            value: value,
+            id,
+            value,
         }
     }
 }
@@ -46,8 +46,8 @@ impl EdgeMetadata {
     /// * `value` - The metadata value.
     pub fn new(key: EdgeKey, value: JsonValue) -> Self {
         Self {
-            key: key,
-            value: value,
+            key,
+            value,
         }
     }
 }
