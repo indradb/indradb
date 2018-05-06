@@ -180,7 +180,7 @@ fn create_edge_metadata_query(q: &EdgeQuery, name: &str) -> InputValue {
 pub struct ClientDatastore;
 
 impl ClientDatastore {
-    fn default() -> Self {
+    pub fn default() -> Self {
         Self {}
     }
 }

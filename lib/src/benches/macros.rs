@@ -2,7 +2,7 @@ pub use test::Bencher;
 
 /// Defines a benchmark function.
 #[macro_export]
-macro_rules! indradb_define_bench {
+macro_rules! indradb_bench {
     ($name:ident, $datastore_constructor:expr) => (
         #[bench]
         fn $name(b: &mut $crate::benches::Bencher) {
