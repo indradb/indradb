@@ -79,6 +79,6 @@ if __name__ == "__main__":
     if LINUX and NIGHTLY:
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-    lib(LINUX, NIGHTLY)
-    bin(LINUX, NIGHTLY)
-    covdrage(LINUX, NIGHTLY)
+    lib()
+    bin()
+    covdrage()
