@@ -1,7 +1,13 @@
-use super::http;
-use super::http::models;
-use super::statics;
+//! Tests for IndradB's HTTP interface. Most of the tests are implemented by
+//! simply reusing the standard test suite made available by the IndraDB lib.
+//! To achieve this, we umplement a faux datastore that proxies requests to
+//! the GraphQL interface.
+
+use super::{Context, Schema, RootQuery, RootMutation};
+use super::models;
+use statics;
 use serde_json;
+use indradb;
 use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
@@ -185,7 +191,7 @@ impl Datastore<ClientTransaction> for ClientDatastore {
 }
 
 pub struct ClientTransaction {
-    context: http::Context
+    context: Context
 }
 
 impl ClientTransaction {
@@ -193,7 +199,7 @@ impl ClientTransaction {
         let trans = statics::DATASTORE.transaction().unwrap();
 
         Self {
-            context: http::Context::new(trans)
+            context: Context::new(trans)
         }
     }
 }
@@ -203,7 +209,7 @@ impl ClientTransaction {
         let (mut value, errors) = execute(
             body,
             None,
-            &http::Schema::new(http::RootQuery, http::RootMutation),
+            &Schema::new(RootQuery, RootMutation),
             &variables,
             &self.context,
         ).map_err(|err| Error::from(format!("{:?}", err)))?;
@@ -440,49 +446,53 @@ impl Transaction for ClientTransaction {
     }
 }
 
-#[cfg(feature = "test-suite")]
-full_test_impl!(ClientDatastore::default());
+// This is a copy/paste of the tests ued in `indradb_full_test_impl`, with
+// certain tests commented out, either because:
+// 1) It relies on nested queries. Nested query -> GraphQL query serialization
+//    has not yet been implemented.
+// 2) It uses a `limit` value greater than that supported by GraphQL (i.e.
+//    greater than `i32::MAX`.)
 
-// // Vertex queries
-// define_test!(should_create_vertex_from_type, ClientDatastore::default());
-// define_test!(should_get_all_vertices, ClientDatastore::default());
-// define_test!(should_get_all_vertices_with_zero_limit, ClientDatastore::default());
-// define_test!(should_get_all_vertices_out_of_range, ClientDatastore::default());
-// define_test!(should_get_single_vertices, ClientDatastore::default());
-// define_test!(should_get_single_vertices_nonexisting, ClientDatastore::default());
-// define_test!(should_get_vertices, ClientDatastore::default());
-// define_test!(should_get_vertices_piped, ClientDatastore::default());
-// define_test!(should_get_a_vertex_count, ClientDatastore::default());
+// Vertex queries
+indradb_test!(should_create_vertex_from_type, ClientDatastore::default());
+// indradb_test!(should_get_all_vertices, ClientDatastore::default());
+indradb_test!(should_get_all_vertices_with_zero_limit, ClientDatastore::default());
+// indradb_test!(should_get_all_vertices_out_of_range, ClientDatastore::default());
+indradb_test!(should_get_single_vertices, ClientDatastore::default());
+indradb_test!(should_get_single_vertices_nonexisting, ClientDatastore::default());
+indradb_test!(should_get_vertices, ClientDatastore::default());
+// indradb_test!(should_get_vertices_piped, ClientDatastore::default());
+indradb_test!(should_get_a_vertex_count, ClientDatastore::default());
 
-// // Vertex updates
-// define_test!(should_delete_a_valid_vertex, ClientDatastore::default());
-// define_test!(should_not_delete_an_invalid_vertex, ClientDatastore::default());
+// Vertex updates
+indradb_test!(should_delete_a_valid_vertex, ClientDatastore::default());
+indradb_test!(should_not_delete_an_invalid_vertex, ClientDatastore::default());
 
-// // Edges
-// define_test!(should_get_a_valid_edge, ClientDatastore::default());
-// define_test!(should_not_get_an_invalid_edge, ClientDatastore::default());
-// define_test!(should_create_a_valid_edge, ClientDatastore::default());
-// define_test!(should_not_create_an_invalid_edge, ClientDatastore::default());
-// define_test!(should_delete_a_valid_edge, ClientDatastore::default());
-// define_test!(should_not_delete_an_invalid_edge, ClientDatastore::default());
-// define_test!(should_get_an_edge_count, ClientDatastore::default());
-// define_test!(should_get_an_edge_count_with_no_type, ClientDatastore::default());
-// define_test!(should_get_an_edge_count_for_an_invalid_edge, ClientDatastore::default());
-// define_test!(should_get_an_inbound_edge_count, ClientDatastore::default());
-// define_test!(should_get_an_edge_range, ClientDatastore::default());
-// define_test!(should_get_edges_with_no_type, ClientDatastore::default());
-// define_test!(should_get_no_edges_for_an_invalid_range, ClientDatastore::default());
-// define_test!(should_get_edges_with_no_high, ClientDatastore::default());
-// define_test!(should_get_edges_with_no_low, ClientDatastore::default());
-// define_test!(should_get_edges_with_no_time, ClientDatastore::default());
-// define_test!(should_get_no_edges_for_reversed_time, ClientDatastore::default());
-// define_test!(should_get_edges, ClientDatastore::default());
+// Edges
+indradb_test!(should_get_a_valid_edge, ClientDatastore::default());
+indradb_test!(should_not_get_an_invalid_edge, ClientDatastore::default());
+// indradb_test!(should_create_a_valid_edge, ClientDatastore::default());
+indradb_test!(should_not_create_an_invalid_edge, ClientDatastore::default());
+indradb_test!(should_delete_a_valid_edge, ClientDatastore::default());
+indradb_test!(should_not_delete_an_invalid_edge, ClientDatastore::default());
+indradb_test!(should_get_an_edge_count, ClientDatastore::default());
+indradb_test!(should_get_an_edge_count_with_no_type, ClientDatastore::default());
+indradb_test!(should_get_an_edge_count_for_an_invalid_edge, ClientDatastore::default());
+indradb_test!(should_get_an_inbound_edge_count, ClientDatastore::default());
+// indradb_test!(should_get_an_edge_range, ClientDatastore::default());
+// indradb_test!(should_get_edges_with_no_type, ClientDatastore::default());
+// indradb_test!(should_get_no_edges_for_an_invalid_range, ClientDatastore::default());
+// indradb_test!(should_get_edges_with_no_high, ClientDatastore::default());
+// indradb_test!(should_get_edges_with_no_low, ClientDatastore::default());
+// indradb_test!(should_get_edges_with_no_time, ClientDatastore::default());
+// indradb_test!(should_get_no_edges_for_reversed_time, ClientDatastore::default());
+indradb_test!(should_get_edges, ClientDatastore::default());
 
-// // Metadata
-// define_test!(should_handle_vertex_metadata, ClientDatastore::default());
-// define_test!(should_not_set_invalid_vertex_metadata, ClientDatastore::default());
-// define_test!(should_not_delete_invalid_vertex_metadata, ClientDatastore::default());
-// define_test!(should_handle_edge_metadata, ClientDatastore::default());
-// define_test!(should_not_set_invalid_edge_metadata, ClientDatastore::default());
-// define_test!(should_not_delete_invalid_edge_metadata, ClientDatastore::default());
+// Metadata
+indradb_test!(should_handle_vertex_metadata, ClientDatastore::default());
+indradb_test!(should_not_set_invalid_vertex_metadata, ClientDatastore::default());
+indradb_test!(should_not_delete_invalid_vertex_metadata, ClientDatastore::default());
+indradb_test!(should_handle_edge_metadata, ClientDatastore::default());
+indradb_test!(should_not_set_invalid_edge_metadata, ClientDatastore::default());
+indradb_test!(should_not_delete_invalid_edge_metadata, ClientDatastore::default());
 

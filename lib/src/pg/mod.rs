@@ -18,7 +18,7 @@ mod util;
 pub use self::datastore::{PostgresDatastore, PostgresTransaction};
 
 #[cfg(feature = "bench-suite")]
-full_bench_impl!(instance::datastore());
+indradb_full_bench_impl!(instance::datastore());
 
 #[cfg(feature = "test-suite")]
-full_test_impl!(instance::datastore());
+indradb_full_test_impl!(instance::datastore());

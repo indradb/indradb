@@ -12,7 +12,7 @@ mod datastore;
 pub use self::datastore::{MemoryDatastore, MemoryTransaction};
 
 #[cfg(feature = "bench-suite")]
-full_bench_impl!(MemoryDatastore::default());
+indradb_full_bench_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
-full_test_impl!(MemoryDatastore::default());
+indradb_full_test_impl!(MemoryDatastore::default());

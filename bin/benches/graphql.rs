@@ -5,4 +5,4 @@ extern crate common;
 extern crate indradb;
 extern crate test;
 
-full_bench_impl!(common::ClientDatastore::default());
+indradb_full_bench_impl!(common::ClientDatastore::default());

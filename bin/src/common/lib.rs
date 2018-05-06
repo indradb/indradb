@@ -1,3 +1,6 @@
+//! Server logic. This is exposed in a common crate so that benches can use
+//! it.
+
 #![feature(custom_attribute)]
 #![feature(transpose_result)]
 
@@ -26,12 +29,13 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-mod client_datastore;
 mod http;
 mod script;
 mod proxy_datastore;
 mod statics;
 mod util;
 
-pub use client_datastore::{ClientDatastore, ClientTransaction};
 pub use http::start_server;
+
+#[cfg(feature = "test-suite")]
+pub use http::tests::ClientDatastore;

@@ -4,6 +4,9 @@ mod middleware;
 pub mod models;
 mod util;
 
+#[cfg(feature = "test-suite")]
+pub mod tests;
+
 use iron::prelude::*;
 use router::Router;
 use std::u16;

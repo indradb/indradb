@@ -2,7 +2,7 @@
 //!
 //! These are exported so that datastore implementations outside of the
 //! `indradb` crate can reuse them. Generally you can use the convenience macro
-//! `full_test_impl`.
+//! `indradb_full_test_impl`.
 
 mod edge;
 #[macro_use]
