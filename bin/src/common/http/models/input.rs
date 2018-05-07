@@ -7,120 +7,94 @@ use uuid::Uuid;
 
 fn build_from_vertex_query(
     q: indradb::VertexQuery,
-    metadata: Option<Vec<String>>,
+    metadata: Option<String>,
     outbound: Option<InputPipeEdgeQuery>,
     inbound: Option<InputPipeEdgeQuery>,
-) -> FieldResult<Vec<Query>> {
-    let mut queries = vec![];
+) -> FieldResult<Query> {
+    match (metadata, outbound, inbound) {
+        (Some(metadata), None, None) => {
+            Ok(Query::VertexMetadata(q.clone(), metadata.clone()))
+        },
+        (None, Some(outbound), None) => {
+            if outbound.limit < 0 {
+                return Err("limit must be non-negative".into());
+            }
 
-    if let Some(metadata) = metadata {
-        for metadata_name in &metadata {
-            queries.push(Query::VertexMetadata(q.clone(), metadata_name.clone()));
-        }
+            let base_query = q.clone().outbound_edges(
+                outbound.type_filter.map(indradb::Type::new).transpose()?,
+                outbound.high_filter,
+                outbound.low_filter,
+                outbound.limit as u32,
+            );
+
+            build_from_edge_query(
+                base_query,
+                outbound.metadata,
+                outbound.outbound.map(|o| *o),
+                outbound.inbound.map(|o| *o),
+            )
+        },
+        (None, None, Some(inbound)) => {
+            if inbound.limit < 0 {
+                return Err("limit must be non-negative".into());
+            }
+
+            let base_query = q.clone().inbound_edges(
+                inbound.type_filter.map(indradb::Type::new).transpose()?,
+                inbound.high_filter,
+                inbound.low_filter,
+                inbound.limit as u32,
+            );
+
+            build_from_edge_query(
+                base_query,
+                inbound.metadata,
+                inbound.outbound.map(|o| *o),
+                inbound.inbound.map(|o| *o),
+            )
+        },
+        (None, None, None) => Ok(Query::Vertex(q)),
+        _ => Err("Query has multiple leaves".into())
     }
-
-    if let Some(outbound) = outbound {
-        if outbound.limit < 0 {
-            return Err("limit must be non-negative".into());
-        }
-
-        let type_filter = outbound.type_filter.map(indradb::Type::new).transpose()?;
-        let base_query = q.clone().outbound_edges(
-            type_filter,
-            outbound.high_filter,
-            outbound.low_filter,
-            outbound.limit as u32,
-        );
-        let inner_outbound = outbound.outbound.map(|o| *o);
-        let inner_inbound = outbound.inbound.map(|o| *o);
-        queries.extend(build_from_edge_query(
-            base_query,
-            outbound.metadata,
-            inner_outbound,
-            inner_inbound,
-        )?);
-    }
-
-    if let Some(inbound) = inbound {
-        if inbound.limit < 0 {
-            return Err("limit must be non-negative".into());
-        }
-
-        let type_filter = inbound.type_filter.map(indradb::Type::new).transpose()?;
-        let base_query = q.clone().inbound_edges(
-            type_filter,
-            inbound.high_filter,
-            inbound.low_filter,
-            inbound.limit as u32,
-        );
-        let inner_outbound = inbound.outbound.map(|o| *o);
-        let inner_inbound = inbound.inbound.map(|o| *o);
-        queries.extend(build_from_edge_query(
-            base_query,
-            inbound.metadata,
-            inner_outbound,
-            inner_inbound,
-        )?);
-    }
-
-    if queries.len() == 0 {
-        queries.push(Query::Vertex(q));
-    }
-
-    Ok(queries)
 }
 
 fn build_from_edge_query(
     q: indradb::EdgeQuery,
-    metadata: Option<Vec<String>>,
+    metadata: Option<String>,
     outbound: Option<InputPipeVertexQuery>,
     inbound: Option<InputPipeVertexQuery>,
-) -> FieldResult<Vec<Query>> {
-    let mut queries = vec![];
+) -> FieldResult<Query> {
+    match (metadata, outbound, inbound) {
+        (Some(metadata), None, None) => {
+            Ok(Query::EdgeMetadata(q.clone(), metadata))
+        },
+        (None, Some(outbound), None) => {
+            if outbound.limit < 0 {
+                return Err("limit must be non-negative".into());
+            }
 
-    if let Some(metadata) = metadata {
-        for metadata_name in &metadata {
-            queries.push(Query::EdgeMetadata(q.clone(), metadata_name.to_string()));
-        }
+            build_from_vertex_query(
+                q.clone().outbound_vertices(outbound.limit as u32),
+                outbound.metadata,
+                outbound.outbound.map(|o| *o),
+                outbound.inbound.map(|o| *o),
+            )
+        },
+        (None, None, Some(inbound)) => {
+            if inbound.limit < 0 {
+                return Err("limit must be non-negative".into());
+            }
+
+            build_from_vertex_query(
+                q.clone().inbound_vertices(inbound.limit as u32),
+                inbound.metadata,
+                inbound.outbound.map(|o| *o),
+                inbound.inbound.map(|o| *o),
+            )
+        },
+        (None, None, None) => Ok(Query::Edge(q)),
+        _ => Err("Query has multiple leaves".into())
     }
-
-    if let Some(outbound) = outbound {
-        if outbound.limit < 0 {
-            return Err("limit must be non-negative".into());
-        }
-
-        let base_query = q.clone().outbound_vertices(outbound.limit as u32);
-        let inner_outbound = outbound.outbound.map(|o| *o);
-        let inner_inbound = outbound.inbound.map(|o| *o);
-        queries.extend(build_from_vertex_query(
-            base_query,
-            outbound.metadata,
-            inner_outbound,
-            inner_inbound,
-        )?);
-    }
-
-    if let Some(inbound) = inbound {
-        if inbound.limit < 0 {
-            return Err("limit must be non-negative".into());
-        }
-
-        let base_query = q.clone().inbound_vertices(inbound.limit as u32);
-        let inner_outbound = inbound.outbound.map(|o| *o);
-        let inner_inbound = inbound.inbound.map(|o| *o);
-        queries.extend(build_from_vertex_query(
-            base_query,
-            inbound.metadata,
-            inner_outbound,
-            inner_inbound,
-        )?);
-    }
-
-    if queries.len() == 0 {
-        queries.push(Query::Edge(q));
-    }
-
-    Ok(queries)
 }
 
 #[graphql(description = "Represents a uniquely identifiable key to an edge.")]
@@ -170,7 +144,7 @@ pub struct InputRootQuery {
 }
 
 impl InputRootQuery {
-    pub fn queries(self) -> FieldResult<Vec<Query>> {
+    pub fn to_indradb_query(self) -> FieldResult<Query> {
         match (self.vertex_range, self.vertices, self.edges) {
             (Some(vertex_range), None, None) => {
                 if vertex_range.limit < 0 {
@@ -215,8 +189,8 @@ impl InputRootQuery {
 
                 build_from_edge_query(base_query, edges.metadata, edges.outbound, edges.inbound)
             }
-            (None, None, None) => Err("No query".into()),
-            _ => Err("Only one query can be set".into()),
+            (None, None, None) => unreachable!(),
+            _ => Err("Query has multiple leaves".into())
         }
     }
 }
@@ -225,7 +199,7 @@ impl InputRootQuery {
 pub struct InputVertexRangeQuery {
     pub start_id: Option<ID>,
     pub limit: i32,
-    pub metadata: Option<Vec<String>>,
+    pub metadata: Option<String>,
     pub outbound: Option<InputPipeEdgeQuery>,
     pub inbound: Option<InputPipeEdgeQuery>,
 }
@@ -233,7 +207,7 @@ pub struct InputVertexRangeQuery {
 #[derive(Clone, Debug, GraphQLInputObject)]
 pub struct InputVerticesQuery {
     pub ids: Vec<ID>,
-    pub metadata: Option<Vec<String>>,
+    pub metadata: Option<String>,
     pub outbound: Option<InputPipeEdgeQuery>,
     pub inbound: Option<InputPipeEdgeQuery>,
 }
@@ -241,7 +215,7 @@ pub struct InputVerticesQuery {
 #[derive(Clone, Debug, GraphQLInputObject)]
 pub struct InputEdgesQuery {
     pub keys: Vec<InputEdgeKey>,
-    pub metadata: Option<Vec<String>>,
+    pub metadata: Option<String>,
     pub outbound: Option<InputPipeVertexQuery>,
     pub inbound: Option<InputPipeVertexQuery>,
 }
@@ -249,7 +223,7 @@ pub struct InputEdgesQuery {
 #[derive(Clone, Debug, GraphQLInputObject)]
 pub struct InputPipeVertexQuery {
     pub limit: i32,
-    pub metadata: Option<Vec<String>>,
+    pub metadata: Option<String>,
     pub outbound: Option<Box<InputPipeEdgeQuery>>,
     pub inbound: Option<Box<InputPipeEdgeQuery>>,
 }
@@ -260,7 +234,7 @@ pub struct InputPipeEdgeQuery {
     pub high_filter: Option<DateTime<Utc>>,
     pub low_filter: Option<DateTime<Utc>>,
     pub limit: i32,
-    pub metadata: Option<Vec<String>>,
+    pub metadata: Option<String>,
     pub outbound: Option<Box<InputPipeVertexQuery>>,
     pub inbound: Option<Box<InputPipeVertexQuery>>,
 }

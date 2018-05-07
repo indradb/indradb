@@ -1,6 +1,6 @@
 //! Tests for IndradB's HTTP interface. Most of the tests are implemented by
 //! simply reusing the standard test suite made available by the IndraDB lib.
-//! To achieve this, we umplement a faux datastore that proxies requests to
+//! To achieve this, we implement a faux datastore that proxies requests to
 //! the GraphQL interface.
 
 use super::{Context, RootMutation, RootQuery, Schema};
@@ -143,9 +143,7 @@ impl QueryInputValueBuilder {
     }
 
     fn add_metadata(&mut self, name: &str) {
-        self.add_to_innermost_object("metadata", QueryInputValueBuilder::List(vec![
-            QueryInputValueBuilder::String(name.to_string())
-        ]));
+        self.add_to_innermost_object("metadata", QueryInputValueBuilder::String(name.to_string()));
     }
 
     fn from_optional<T, F>(v: &Option<T>, f: F) -> Self
@@ -250,7 +248,7 @@ impl ClientTransaction {
 }
 
 impl ClientTransaction {
-    fn request(&self, body: &str, variables: Variables, key: &str) -> Result<Value, Error> {
+    pub fn request(&self, body: &str, variables: Variables, key: &str) -> Result<Value, Error> {
         let (mut value, errors) = execute(
             body,
             None,
@@ -259,7 +257,10 @@ impl ClientTransaction {
             &self.context,
         ).map_err(|err| Error::from(format!("{:?}", err)))?;
 
-        assert_eq!(errors, vec![]);
+        if errors.len() > 0 {
+            return Err(Error::from(format!("{:?}", errors[0])));
+        }
+
         let obj = value
             .as_mut_object_value()
             .expect("Response is not an object");
@@ -341,7 +342,7 @@ impl Transaction for ClientTransaction {
     }
 
     fn get_vertex_count(&self) -> Result<u64, Error> {
-        let res = self.request("query { vertexCount }", vars!(), "vertexCount")?;
+        let res = self.request("query { vertexCount }", Variables::new(), "vertexCount")?;
         Ok(extract_u64(&res))
     }
 
@@ -570,3 +571,108 @@ impl Transaction for ClientTransaction {
 
 // Standard test suite
 indradb_full_test_impl!(ClientDatastore::default());
+
+// Custom tests for behavior specific to IndraDB's GraphQL implementation
+#[test]
+fn should_not_handle_negative_limits() {
+    let datastore = ClientDatastore::default();
+    let trans = datastore.transaction().unwrap();
+    let res = trans.request(
+        "
+            {
+                query(q: {
+                    vertexRange: {
+                        startId: \"ac6a33be-4fa9-11e8-8000-000000000000\",
+                        limit: -1
+                    }
+                }) {
+                    ... on OutputVertex {
+                        id
+                        t
+                    }
+                }
+            }
+        ",
+        Variables::new(),
+        "query"
+    );
+
+    assert!(res.is_err());
+    assert!(res.unwrap_err().description().contains("limit must be non-negative"));
+}
+
+#[test]
+fn should_not_set_metadata_with_non_metadata_query() {
+    let datastore = ClientDatastore::default();
+    let trans = datastore.transaction().unwrap();
+
+    let res = trans.request(
+        "
+            mutation {
+                setMetadata(value: \"true\", q: {
+                    vertexRange: {
+                        startId: \"ac6a33be-4fa9-11e8-8000-000000000000\",
+                        limit: 1
+                    }
+                })
+            }
+        ",
+        Variables::new(),
+        "setMetadata"
+    );
+
+    assert!(res.is_err());
+    assert!(res.unwrap_err().description().contains("The query is not for metadata"));
+}
+
+#[test]
+fn should_not_query_with_multiple_leaves() {
+    // There is manual validation to ensure that there's only one "leaf" per
+    // query - i.e. each GraphQL query should yield one IndraDB query, and no
+    // more. Test that this validation works.
+    let datastore = ClientDatastore::default();
+    let trans = datastore.transaction().unwrap();
+
+    let res = trans.request(
+        "
+            mutation {
+                delete(q: {
+                    vertexRange: {
+                        startId: \"ac6a33be-4fa9-11e8-8000-000000000000\",
+                        limit: 1,
+                        metadata: \"foo\",
+                        outbound: {
+                            limit: 1
+                        }
+                    }
+                })
+            }
+        ",
+        Variables::new(),
+        "query"
+    );
+
+    assert!(res.is_err());
+    assert!(res.unwrap_err().description().contains("Query has multiple leaves"));
+
+    let res = trans.request(
+        "
+            mutation {
+                delete(q: {
+                    vertexRange: {
+                        startId: \"ac6a33be-4fa9-11e8-8000-000000000000\",
+                        limit: 1,
+                    },
+                    vertices: {
+                        ids: [\"ac6a33be-4fa9-11e8-8000-000000000000\"]
+                    }
+                })
+            }
+        ",
+        Variables::new(),
+        "query"
+    );
+
+    assert!(res.is_err());
+    assert!(res.unwrap_err().description().contains("Query has multiple leaves"));
+}

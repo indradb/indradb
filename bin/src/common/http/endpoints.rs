@@ -67,28 +67,24 @@ graphql_object!(RootQuery: context::Context |&self| {
     field query(&executor, q: InputRootQuery) -> FieldResult<Vec<OutputItem>> {
         let trans = &executor.context().trans;
 
-        let results: FieldResult<Vec<Vec<OutputItem>>> = q.queries()?.into_iter().map(|q| -> FieldResult<Vec<OutputItem>> {
-            match q {
-                Query::Vertex(q) => {
-                    let vertices = trans.get_vertices(&q)?;
-                    Ok(vertices.into_iter().map(OutputItem::from).collect())
-                },
-                Query::Edge(q) => {
-                    let edges = trans.get_edges(&q)?;
-                    Ok(edges.into_iter().map(OutputItem::from).collect())
-                },
-                Query::VertexMetadata(q, name) => {
-                    let vertex_metadata = trans.get_vertex_metadata(&q, &name)?;
-                    Ok(vertex_metadata.into_iter().map(OutputItem::from).collect())
-                },
-                Query::EdgeMetadata(q, name) => {
-                    let edge_metadata = trans.get_edge_metadata(&q, &name)?;
-                    Ok(edge_metadata.into_iter().map(OutputItem::from).collect())
-                }
+        match q.to_indradb_query()? {
+            Query::Vertex(q) => {
+                let vertices = trans.get_vertices(&q)?;
+                Ok(vertices.into_iter().map(OutputItem::from).collect())
+            },
+            Query::Edge(q) => {
+                let edges = trans.get_edges(&q)?;
+                Ok(edges.into_iter().map(OutputItem::from).collect())
+            },
+            Query::VertexMetadata(q, name) => {
+                let vertex_metadata = trans.get_vertex_metadata(&q, &name)?;
+                Ok(vertex_metadata.into_iter().map(OutputItem::from).collect())
+            },
+            Query::EdgeMetadata(q, name) => {
+                let edge_metadata = trans.get_edge_metadata(&q, &name)?;
+                Ok(edge_metadata.into_iter().map(OutputItem::from).collect())
             }
-        }).collect();
-
-        Ok(results?.into_iter().flat_map(|v| v).collect())
+        }
     }
 
     field vertex_count(&executor) -> FieldResult<String> {
@@ -128,33 +124,20 @@ graphql_object!(RootMutation: context::Context |&self| {
     }
 
     field delete(&executor, q: InputRootQuery) -> FieldResult<bool> {
-        let queries = q.queries()?;
-
-        // We need to do multiple passes because the query could specify multiple
-        // overlapping deletes that would otherwise cause an error. e.g. if
-        // the query specifies deleting vertex metadata as well as the vertex,
-        // we want to not create an error by executing the delete in the wrong
-        // order by deleting the vertex first.
-
         let trans = &executor.context().trans;
 
-        for q in &queries {
-            if let Query::VertexMetadata(q, name) = q {
-                trans.delete_vertex_metadata(&q, &name)?;
-            } else if let Query::EdgeMetadata(q, name) = q {
-                trans.delete_edge_metadata(&q, &name)?;
-            }
-        }
-
-        for q in &queries {
-            if let Query::Edge(q) = q {
-                trans.delete_edges(&q)?;
-            }
-        }
-
-        for q in &queries {
-            if let Query::Vertex(q) = q {
+        match q.to_indradb_query()? {
+            Query::Vertex(q) => {
                 trans.delete_vertices(&q)?;
+            },
+            Query::Edge(q) => {
+                trans.delete_edges(&q)?;
+            },
+            Query::VertexMetadata(q, name) => {
+                trans.delete_vertex_metadata(&q, &name)?;
+            },
+            Query::EdgeMetadata(q, name) => {
+                trans.delete_edge_metadata(&q, &name)?;
             }
         }
 
@@ -165,17 +148,15 @@ graphql_object!(RootMutation: context::Context |&self| {
         let value_json: JsonValue = serde_json::from_str(&value)?;
         let trans = &executor.context().trans;
 
-        for q in q.queries()? {
-            match q {
-                Query::VertexMetadata(q, name) => {
-                    trans.set_vertex_metadata(&q, &name, &value_json)?;
-                },
-                Query::EdgeMetadata(q, name) => {
-                    trans.set_edge_metadata(&q, &name, &value_json)?;
-                },
-                _ => {
-                    return Err("Not all query leaves lead to metadata queries".into());
-                }
+        match q.to_indradb_query()? {
+            Query::VertexMetadata(q, name) => {
+                trans.set_vertex_metadata(&q, &name, &value_json)?;
+            },
+            Query::EdgeMetadata(q, name) => {
+                trans.set_edge_metadata(&q, &name, &value_json)?;
+            },
+            _ => {
+                return Err("The query is not for metadata".into());
             }
         }
 
