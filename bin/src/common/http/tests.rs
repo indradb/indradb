@@ -202,13 +202,13 @@ impl QueryInputValueBuilder {
                 let mut builder = Self::from_vertex_query(vertex_query);
 
                 builder.add_to_innermost_object(&converter.to_string(), QueryInputValueBuilder::Object(obj!(
-                    "type_filter" => QueryInputValueBuilder::from_optional(type_filter, |t| {
+                    "typeFilter" => QueryInputValueBuilder::from_optional(type_filter, |t| {
                         QueryInputValueBuilder::String(t.0.clone())
                     }),
-                    "type_filter" => QueryInputValueBuilder::from_optional(high_filter, |h| {
+                    "highFilter" => QueryInputValueBuilder::from_optional(high_filter, |h| {
                         QueryInputValueBuilder::String(h.to_rfc3339())
                     }),
-                    "low_filter" => QueryInputValueBuilder::from_optional(low_filter, |l| {
+                    "lowFilter" => QueryInputValueBuilder::from_optional(low_filter, |l| {
                         QueryInputValueBuilder::String(l.to_rfc3339())
                     }),
                     "limit" => QueryInputValueBuilder::Integer(*limit as i32)
