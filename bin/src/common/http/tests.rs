@@ -570,12 +570,12 @@ impl Transaction for ClientTransaction {
 
 // Vertex queries
 indradb_test!(should_create_vertex_from_type, ClientDatastore::default());
-// indradb_test!(should_get_all_vertices, ClientDatastore::default());
+indradb_test!(should_get_all_vertices, ClientDatastore::default());
 indradb_test!(
     should_get_all_vertices_with_zero_limit,
     ClientDatastore::default()
 );
-// indradb_test!(should_get_all_vertices_out_of_range, ClientDatastore::default());
+indradb_test!(should_get_all_vertices_out_of_range, ClientDatastore::default());
 indradb_test!(should_get_single_vertices, ClientDatastore::default());
 indradb_test!(
     should_get_single_vertices_nonexisting,
