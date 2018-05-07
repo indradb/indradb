@@ -1,0 +1,150 @@
+# source: http://localhost:8000/graphql
+# timestamp: Mon May 07 2018 16:23:17 GMT+0700 (+07)
+
+schema {
+  query: RootQuery
+  mutation: RootMutation
+}
+
+"""DateTime"""
+scalar DateTimeUtc
+
+"""
+Specifies what kind of items should be piped from one type of query to another.
+"""
+enum InputEdgeDirection {
+  OUTBOUND
+  INBOUND
+}
+
+"""Represents a uniquely identifiable key to an edge."""
+input InputEdgeKey {
+  """The id of the outbound vertex."""
+  outboundId: ID!
+
+  """The type of the edge."""
+  t: String!
+
+  """The id of the inbound vertex."""
+  inboundId: ID!
+}
+
+input InputEdgesQuery {
+  keys: [InputEdgeKey!]!
+  metadata: String
+  outbound: InputPipeVertexQuery
+  inbound: InputPipeVertexQuery
+}
+
+input InputPipeEdgeQuery {
+  typeFilter: String
+  highFilter: DateTimeUtc
+  lowFilter: DateTimeUtc
+  limit: Int!
+  metadata: String
+  outbound: InputPipeVertexQuery
+  inbound: InputPipeVertexQuery
+}
+
+input InputPipeVertexQuery {
+  limit: Int!
+  metadata: String
+  outbound: InputPipeEdgeQuery
+  inbound: InputPipeEdgeQuery
+}
+
+"""A query for vertices, edges, vertex metadata, and edge metadata."""
+input InputRootQuery {
+  vertexRange: InputVertexRangeQuery
+  vertices: InputVerticesQuery
+  edges: InputEdgesQuery
+}
+
+"""A vertex."""
+input InputVertex {
+  """The id of the vertex."""
+  id: ID!
+
+  """The type of the vertex."""
+  t: String!
+}
+
+input InputVertexRangeQuery {
+  startId: ID
+  limit: Int!
+  metadata: String
+  outbound: InputPipeEdgeQuery
+  inbound: InputPipeEdgeQuery
+}
+
+input InputVerticesQuery {
+  ids: [ID!]!
+  metadata: String
+  outbound: InputPipeEdgeQuery
+  inbound: InputPipeEdgeQuery
+}
+
+"""An edge."""
+type OutputEdge {
+  """The key to the edge."""
+  key: OutputEdgeKey!
+
+  """When the edge was created."""
+  createdDatetime: DateTimeUtc!
+}
+
+"""Represents a uniquely identifiable key to an edge."""
+type OutputEdgeKey {
+  """The id of the outbound vertex."""
+  outboundId: ID!
+
+  """The type of the edge."""
+  t: String!
+
+  """The id of the inbound vertex."""
+  inboundId: ID!
+}
+
+"""Represents edge metadata."""
+type OutputEdgeMetadata {
+  """The key to the edge."""
+  key: OutputEdgeKey!
+
+  """The metadata value as stringified JSON."""
+  value: String!
+}
+
+union OutputItem = OutputEdge | OutputVertex | OutputEdgeMetadata | OutputVertexMetadata
+
+"""A vertex."""
+type OutputVertex {
+  """The id of the vertex."""
+  id: ID!
+
+  """The type of the vertex."""
+  t: String!
+}
+
+"""Represents vertex metadata."""
+type OutputVertexMetadata {
+  """The id of the vertex"""
+  id: ID!
+
+  """The metadata value as stringified JSON."""
+  value: String!
+}
+
+type RootMutation {
+  createVertex(vertex: InputVertex!): Boolean!
+  createVertexFromType(t: String!): ID!
+  createEdge(key: InputEdgeKey!): Boolean!
+  delete(q: InputRootQuery!): Boolean!
+  setMetadata(q: InputRootQuery!, value: String!): Boolean!
+}
+
+type RootQuery {
+  apiVersion: String!
+  query(q: InputRootQuery!): [OutputItem!]!
+  vertexCount: String!
+  edgeCount(id: ID!, typeFilter: String, direction: InputEdgeDirection!): String!
+}
