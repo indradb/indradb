@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server"]
+BIN_TESTS = ["common"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
