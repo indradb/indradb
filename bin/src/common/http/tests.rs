@@ -148,14 +148,21 @@ impl QueryInputValueBuilder {
         ]));
     }
 
+    fn from_optional<T, F>(v: &Option<T>, f: F) -> Self
+    where F: Fn(&T) -> Self {
+        match v {
+            Some(v) => f(v),
+            None => QueryInputValueBuilder::Null
+        }
+    }
+
     fn from_vertex_query(q: &VertexQuery) -> Self {
         match q {
             VertexQuery::All { start_id, limit } => QueryInputValueBuilder::Object(obj!(
                 "vertexRange" => QueryInputValueBuilder::Object(obj!(
-                    "startId" => match start_id {
-                        Some(v) => QueryInputValueBuilder::String(v.hyphenated().to_string()),
-                        None => QueryInputValueBuilder::Null
-                    },
+                    "startId" => QueryInputValueBuilder::from_optional(start_id, |i| {
+                        QueryInputValueBuilder::String(i.hyphenated().to_string())
+                    }),
                     "limit" => QueryInputValueBuilder::Integer(*limit as i32)
                 ))
             )),
@@ -167,7 +174,13 @@ impl QueryInputValueBuilder {
                 ))
             )),
             VertexQuery::Pipe { edge_query, converter, limit } => {
-                unimplemented!()
+                let mut builder = Self::from_edge_query(edge_query);
+
+                builder.add_to_innermost_object(&converter.to_string(), QueryInputValueBuilder::Object(obj!(
+                    "limit" => QueryInputValueBuilder::Integer(*limit as i32)
+                )));
+
+                builder
             }
         }
     }
@@ -186,7 +199,22 @@ impl QueryInputValueBuilder {
                 ))
             )),
             EdgeQuery::Pipe { vertex_query, converter, type_filter, high_filter, low_filter, limit } => {
-                unimplemented!()
+                let mut builder = Self::from_vertex_query(vertex_query);
+
+                builder.add_to_innermost_object(&converter.to_string(), QueryInputValueBuilder::Object(obj!(
+                    "type_filter" => QueryInputValueBuilder::from_optional(type_filter, |t| {
+                        QueryInputValueBuilder::String(t.0.clone())
+                    }),
+                    "type_filter" => QueryInputValueBuilder::from_optional(high_filter, |h| {
+                        QueryInputValueBuilder::String(h.to_rfc3339())
+                    }),
+                    "low_filter" => QueryInputValueBuilder::from_optional(low_filter, |l| {
+                        QueryInputValueBuilder::String(l.to_rfc3339())
+                    }),
+                    "limit" => QueryInputValueBuilder::Integer(*limit as i32)
+                )));
+
+                builder
             }
         }
     }
@@ -540,13 +568,6 @@ impl Transaction for ClientTransaction {
     }
 }
 
-// This is a copy/paste of the tests ued in `indradb_full_test_impl`, with
-// certain tests commented out, either because:
-// 1) It relies on nested queries. Nested query -> GraphQL query serialization
-//    has not yet been implemented.
-// 2) It uses a `limit` value greater than that supported by GraphQL (i.e.
-//    greater than `i32::MAX`.)
-
 // Vertex queries
 indradb_test!(should_create_vertex_from_type, ClientDatastore::default());
 // indradb_test!(should_get_all_vertices, ClientDatastore::default());
@@ -561,7 +582,7 @@ indradb_test!(
     ClientDatastore::default()
 );
 indradb_test!(should_get_vertices, ClientDatastore::default());
-// indradb_test!(should_get_vertices_piped, ClientDatastore::default());
+indradb_test!(should_get_vertices_piped, ClientDatastore::default());
 indradb_test!(should_get_a_vertex_count, ClientDatastore::default());
 
 // Vertex updates
@@ -574,7 +595,7 @@ indradb_test!(
 // Edges
 indradb_test!(should_get_a_valid_edge, ClientDatastore::default());
 indradb_test!(should_not_get_an_invalid_edge, ClientDatastore::default());
-// indradb_test!(should_create_a_valid_edge, ClientDatastore::default());
+indradb_test!(should_create_a_valid_edge, ClientDatastore::default());
 indradb_test!(
     should_not_create_an_invalid_edge,
     ClientDatastore::default()
@@ -594,13 +615,13 @@ indradb_test!(
     ClientDatastore::default()
 );
 indradb_test!(should_get_an_inbound_edge_count, ClientDatastore::default());
-// indradb_test!(should_get_an_edge_range, ClientDatastore::default());
-// indradb_test!(should_get_edges_with_no_type, ClientDatastore::default());
-// indradb_test!(should_get_no_edges_for_an_invalid_range, ClientDatastore::default());
-// indradb_test!(should_get_edges_with_no_high, ClientDatastore::default());
-// indradb_test!(should_get_edges_with_no_low, ClientDatastore::default());
-// indradb_test!(should_get_edges_with_no_time, ClientDatastore::default());
-// indradb_test!(should_get_no_edges_for_reversed_time, ClientDatastore::default());
+indradb_test!(should_get_an_edge_range, ClientDatastore::default());
+indradb_test!(should_get_edges_with_no_type, ClientDatastore::default());
+indradb_test!(should_get_no_edges_for_an_invalid_range, ClientDatastore::default());
+indradb_test!(should_get_edges_with_no_high, ClientDatastore::default());
+indradb_test!(should_get_edges_with_no_low, ClientDatastore::default());
+indradb_test!(should_get_edges_with_no_time, ClientDatastore::default());
+indradb_test!(should_get_no_edges_for_reversed_time, ClientDatastore::default());
 indradb_test!(should_get_edges, ClientDatastore::default());
 
 // Metadata
