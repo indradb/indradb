@@ -37,4 +37,16 @@ lazy_static! {
         },
         Err(_) => num_cpus::get() as u16
     };
+
+    /// The size of the web wroker pool.
+    pub static ref WEB_WORKER_POOL_SIZE: u16 = match env::var("WEB_WORKER_POOL_SIZE") {
+        Ok(s) => {
+            let value = s.parse::<u16>().expect("The `WEB_WORKER_POOL_SIZE` environment variable is not a valid `u16`.");
+            if value < 1 {
+                panic!("The `WEB_WORKER_POOL_SIZE` environment variable must be greater than or equal to 1.");
+            }
+            value
+        },
+        Err(_) => num_cpus::get() as u16
+    };
 }

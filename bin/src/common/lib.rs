@@ -4,15 +4,19 @@
 #![feature(custom_attribute)]
 #![feature(transpose_result)]
 
+extern crate actix;
+extern crate actix_web;
+extern crate bytes;
+extern crate env_logger;
 extern crate chrono;
 extern crate core;
 #[macro_use]
 extern crate crossbeam_channel;
+extern crate futures;
 extern crate hyper;
 extern crate iron;
 #[macro_use]
 extern crate juniper;
-extern crate juniper_iron;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -21,8 +25,9 @@ extern crate ordermap;
 extern crate rand;
 extern crate regex;
 extern crate rlua;
-extern crate router;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate uuid;
@@ -34,12 +39,14 @@ extern crate indradb;
 #[cfg(not(feature = "test-suite"))]
 extern crate indradb;
 
+mod graphql;
 mod http;
 mod script;
 mod proxy_datastore;
 mod statics;
 mod util;
 
-pub use http::{start_server, RootMutation, RootQuery, Schema};
+pub use graphql::{RootMutation, RootQuery, Schema, Context};
+pub use http::start_server;
 #[cfg(feature = "test-suite")]
-pub use http::tests::ClientDatastore;
+pub use graphql::tests::ClientDatastore;

@@ -1,116 +1,24 @@
-use core::str::FromStr;
-use iron::headers::{ContentType, Headers};
-use iron::mime::{Attr, Mime, SubLevel, TopLevel, Value};
-use iron::modifiers::Header as HeaderModifier;
-use iron::prelude::*;
-use iron::request::Body;
-use iron::status;
-use iron::typemap::TypeMap;
 use regex;
-use router::Router;
-use serde::{Deserialize, Serialize};
-use serde_json;
+use actix_web::{error, Error};
 use statics;
-use std::error::Error as StdError;
 use std::fs::File;
-use std::io;
 use std::io::Read;
 use std::path::Path;
-use util::SimpleError;
 
 lazy_static! {
     static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[a-zA-Z0-9_-]+(\.lua)?$").unwrap();
 }
 
-/// Constructs an `IronError`
-pub fn create_iron_error(status_code: status::Status, err: String) -> IronError {
-    let body = serde_json::to_string(&json!({ "error": err })).unwrap();
-    let json_content_type_modifier = HeaderModifier(ContentType(get_json_mime()));
-    let modifiers = (status_code, json_content_type_modifier, body);
-    IronError::new(SimpleError::new(err), modifiers)
-}
-
-/// Returns a JSON content type specification
-pub fn get_json_mime() -> Mime {
-    Mime(
-        TopLevel::Application,
-        SubLevel::Json,
-        vec![(Attr::Charset, Value::Utf8)],
-    )
-}
-
-/// Serializes a given body and status code into a response
-pub fn to_response<T: Serialize>(status_code: status::Status, body: &T) -> Response {
-    let mut hs = Headers::new();
-    hs.set(ContentType(get_json_mime()));
-
-    Response {
-        status: Some(status_code),
-        headers: hs,
-        extensions: TypeMap::new(),
-        body: Some(Box::new(serde_json::to_string(&body).unwrap())),
-    }
-}
-
-/// Converts a URL parameter to a given type
-///
-/// # Errors
-/// Returns an error if the parameter could not be serialized to the given type
-pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronError> {
-    let s = req.extensions.get::<Router>().unwrap().find(name).unwrap();
-
-    T::from_str(s).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            format!("Invalid value for URL param {}", name),
-        )
-    })
-}
-
-// Reads the JSON request body.
-///
-/// # Errors
-/// Returns an `IronError` if the body could not be read, or if a body was
-/// specified but is not valid JSON.
-pub fn read_json<T>(body: &mut Body) -> Result<Option<T>, IronError>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    let mut payload = String::new();
-    let read_result: Result<usize, io::Error> = body.read_to_string(&mut payload);
-
-    if let Err(err) = read_result {
-        return Err(create_iron_error(
-            status::BadRequest,
-            format!("Could not read JSON body: {}", err),
-        ));
-    }
-
-    if payload.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(
-            |err| {
-                create_iron_error(
-                    status::BadRequest,
-                    format!("Could not parse JSON payload: {}", err.description()),
-                )
-            },
-        )?))
-    }
-}
+// TODO: use async file i/o
 
 /// Gets the path to and the contents of a script by its name.
 ///
 /// # Errors
-/// Returns an `IronError` if the script has an invalid name, does not exist,
+/// Returns an error if the script has an invalid name, does not exist,
 /// or could not be read.
-pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
+pub fn get_script_file(name: String) -> Result<(String, String), Error> {
     if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
-        return Err(create_iron_error(
-            status::BadRequest,
-            "Invalid script name".to_string(),
-        ));
+        return Err(error::ErrorBadRequest("Invalid script name"));
     }
 
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
@@ -118,10 +26,7 @@ pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
     let path_str = match path.to_str() {
         Some(path_str) => path_str,
         None => {
-            return Err(create_iron_error(
-                status::InternalServerError,
-                "Could not stringify script path".to_string(),
-            ))
+            return Err(error::ErrorInternalServerError("Could not stringify script path"));
         }
     };
 
@@ -131,15 +36,9 @@ pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
 
             match file.read_to_string(&mut contents) {
                 Ok(_) => Ok((path_str.to_string(), contents)),
-                Err(_) => Err(create_iron_error(
-                    status::NotFound,
-                    "Could not read script".to_string(),
-                )),
+                Err(_) => Err(error::ErrorNotFound("Could not read script"))
             }
         }
-        Err(_) => Err(create_iron_error(
-            status::NotFound,
-            "Could not load script".to_string(),
-        )),
+        Err(_) => Err(error::ErrorNotFound("Could not load script"))
     }
 }

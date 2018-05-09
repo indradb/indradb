@@ -1,37 +1,33 @@
-mod context;
 mod endpoints;
-mod middleware;
-pub mod models;
 mod util;
 
-#[cfg(feature = "test-suite")]
-pub mod tests;
-
-pub use self::context::Context;
-pub use self::endpoints::{RootMutation, RootQuery, Schema};
-use iron::prelude::*;
-use juniper_iron::GraphQLHandler;
-use router::Router;
+use graphql;
 use std::u16;
+use actix::{System, SyncArbiter};
+use std::sync::Arc;
+use statics;
+use actix_web::{middleware, http, server, App};
 
 /// Starts a new server on the given port.
 pub fn start_server(port: u16) {
-    let mut router = Router::new();
+    let sys = System::new("indradb");
+    let schema = Arc::new(graphql::Schema::new(graphql::RootQuery, graphql::RootMutation));
 
-    let graphql_endpoint = GraphQLHandler::new(
-        context::factory,
-        endpoints::RootQuery,
-        endpoints::RootMutation,
-    );
+    let addr = SyncArbiter::start(*statics::WEB_WORKER_POOL_SIZE as usize, move || {
+        graphql::Executor::new(schema.clone())
+    });
 
-    router.any("/graphql", graphql_endpoint, "graphql");
-    router.post("/script/:name", endpoints::script, "script");
-    router.post("/mapreduce/:name", endpoints::mapreduce, "mapreduce");
+    let s = server::new(move || {
+        App::with_state(endpoints::AppState { executor: addr.clone() })
+            // enable logger
+            .middleware(middleware::Logger::default())
+            .resource("/graphql", |r| r.method(http::Method::POST).with2(endpoints::graphql_handler))
+            .resource("/script/{name}", |r| r.method(http::Method::POST).h(endpoints::script_handler))
+            .resource("/mapreduce/{name}", |r| r.method(http::Method::POST).h(endpoints::mapreduce_handler))
+            .default_resource(|r| r.f(endpoints::not_found_handler))
+    });
 
-    let binding = format!("0.0.0.0:{}", port);
-    println!("Listening on {}", binding);
+    s.bind(&format!("0.0.0.0:{}", port)).expect("Expected to be able to bind to server").start();
 
-    let mut chain = Chain::new(router);
-    chain.link_after(middleware::ErrorMiddleware::new());
-    Iron::new(chain).http(&*binding).unwrap();
+    let _ = sys.run();
 }
