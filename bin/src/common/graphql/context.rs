@@ -1,4 +1,3 @@
-use indradb::Datastore;
 use juniper;
 use proxy_datastore;
 

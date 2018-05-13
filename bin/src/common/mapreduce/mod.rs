@@ -1,3 +1,4 @@
+mod actors;
 mod counter;
 mod master;
 mod response_chan;

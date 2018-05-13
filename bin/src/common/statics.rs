@@ -25,25 +25,14 @@ lazy_static! {
         Err(_) => 10_000
     };
 
-    /// The size of the mapreduce worker pool. "u16 ought to be enough for
-    /// anybody..."
-    pub static ref MAP_REDUCE_WORKER_POOL_SIZE: u16 = match env::var("MAP_REDUCE_WORKER_POOL_SIZE") {
+    /// The number of threads used for various thread pools. Note that the
+    /// total number of threads maintained by the application will ultimately
+    /// be some multiple of this number, plus a few fixed threads.
+    pub static ref POOL_SIZE: u16 = match env::var("POOL_SIZE") {
         Ok(s) => {
             let value = s.parse::<u16>().expect("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable is not a valid `u16`.");
             if value < 1 {
                 panic!("The `MAP_REDUCE_WORKER_POOL_SIZE` environment variable must be greater than or equal to 1.");
-            }
-            value
-        },
-        Err(_) => num_cpus::get() as u16
-    };
-
-    /// The size of the web wroker pool.
-    pub static ref WEB_WORKER_POOL_SIZE: u16 = match env::var("WEB_WORKER_POOL_SIZE") {
-        Ok(s) => {
-            let value = s.parse::<u16>().expect("The `WEB_WORKER_POOL_SIZE` environment variable is not a valid `u16`.");
-            if value < 1 {
-                panic!("The `WEB_WORKER_POOL_SIZE` environment variable must be greater than or equal to 1.");
             }
             value
         },

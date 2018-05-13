@@ -41,10 +41,10 @@ extern crate indradb;
 
 mod graphql;
 mod http;
+//mod mapreduce;
 mod script;
 mod proxy_datastore;
 mod statics;
-mod util;
 
 pub use graphql::{RootMutation, RootQuery, Schema, Context};
 pub use http::start_server;

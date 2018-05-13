@@ -59,8 +59,7 @@ Applications are configured via environment variables:
 * `PORT`: The port to run the server on. Defaults to `8000`.
 * `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
 * `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
-* `MAP_REDUCE_WORKER_POOL_SIZE`: How many worker threads to spawn for mapreduce tasks. Defaults to the number of CPUs.
-* `WEB_WORKER_POOL_SIZE`: How many worker threads to spawn for handling web requests. Defaults to the number of CPUs.
+* `POOL_SIZE`: The number of threads used for various thread pools
 
 ## Install from source
 

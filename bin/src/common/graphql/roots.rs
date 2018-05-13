@@ -6,7 +6,6 @@ use serde_json;
 use serde_json::value::Value as JsonValue;
 use std::str::FromStr;
 use uuid::Uuid;
-use futures::{Future, Stream};
 
 pub struct RootQuery;
 
