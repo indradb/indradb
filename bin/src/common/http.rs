@@ -1,18 +1,18 @@
 use actix::prelude::*;
 use graphql;
 use script;
-//use mapreduce;
+use mapreduce;
 use serde_json::value::Value as JsonValue;
-use actix_web::{middleware, http, server, App, AsyncResponder, HttpRequest, HttpResponse, HttpMessage, Json, State, FutureResponse, Path, ws};
+use actix_web::{middleware, http, server, App, AsyncResponder, HttpRequest, HttpResponse, HttpMessage, Json, State, FutureResponse, Path, ws, Error};
 use futures::{Future, Stream};
 use std::u16;
 use actix::{System, SyncArbiter};
 use std::sync::Arc;
 use statics;
 
-struct AppState {
-    pub graphql: Addr<Syn, graphql::Executor>,
-    pub script: Addr<Syn, script::Executor>
+pub struct AppState {
+    graphql: Addr<Syn, graphql::Executor>,
+    script: Addr<Syn, script::Executor>
 }
 
 fn graphql_handler(state: State<AppState>, data: Json<graphql::Request>) -> FutureResponse<HttpResponse> {
@@ -27,9 +27,8 @@ fn script_handler(state: State<AppState>, path: Path<String>, data: Json<JsonVal
     }).responder()
 }
 
-fn mapreduce_handler(state: State<AppState>, path: Path<String>, data: Json<JsonValue>) -> FutureResponse<HttpResponse> {
-    //ws::start(req, mapreduce::Executor::new(path.0, data))
-    unimplemented!();
+fn mapreduce_handler(req: HttpRequest<AppState>, path: Path<String>, data: Json<JsonValue>) -> Result<HttpResponse, Error> {
+    ws::start(req, mapreduce::Executor::new(script::Request::new(path.to_string(), data.0)))
 }
 
 fn not_found_handler(_: HttpRequest<AppState>) -> HttpResponse {

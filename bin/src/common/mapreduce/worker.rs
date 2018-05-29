@@ -1,131 +1,99 @@
+use actix::prelude::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use indradb::Vertex;
-use rlua::{Error as LuaError, Function, Table};
-use script::context;
-use script::converters;
+use rlua::{Error as LuaError, Function, Table, Lua, RegistryKey};
+use script::{converters, Reader, Request, create as create_context};
 use serde_json::value::Value as JsonValue;
 use std::thread::{spawn, JoinHandle};
 
-#[derive(Debug)]
-pub enum WorkerError {
-    Setup {
-        description: String,
-        cause: LuaError,
-    },
-    MapCall(LuaError),
-    ReduceCall(LuaError),
+// TODO: `payload` currently copied for each request when it doesn't need to
+// be. switch this to references, or find a better way to initialize the lua
+// context.
+pub struct MapRequest {
+    req: Request,
+    vertex: Vertex
 }
 
-macro_rules! try_or_send {
-    ($expr:expr, $error_mapper:expr, $error_sender:expr) => {
-        match $expr {
-            Ok(value) => value,
-            Err(err) => {
-                $error_sender.send($error_mapper(err)).expect("Expected error channel to be open");
-                return;
-            }
-        }
+impl MapRequest {
+    pub fn new(req: Request, vertex: Vertex) -> Self {
+        Self { req, vertex }
     }
 }
 
-pub enum WorkerTask {
-    Map(Vertex),
-    Reduce((converters::JsonValue, converters::JsonValue)),
+impl Message for MapRequest {
+    type Result = Result<converters::JsonValue, LuaError>;
+}
+
+pub struct ReduceRequest {
+    req: Request,
+    first: converters::JsonValue,
+    second: converters::JsonValue
+}
+
+impl ReduceRequest {
+    pub fn new(req: Request, first: converters::JsonValue, second: converters::JsonValue) -> Self {
+        Self { req, first, second }
+    }
+}
+
+impl Message for ReduceRequest {
+    type Result = Result<converters::JsonValue, LuaError>;
 }
 
 pub struct Worker {
-    thread: JoinHandle<()>,
-    shutdown_sender: Sender<()>,
+    context: Option<Lua>,
+    mapper: Option<RegistryKey>,
+    reducer: Option<RegistryKey>,
+}
+
+impl Default for Worker {
+    fn default() -> Self {
+        Worker {
+            context: None,
+            mapper: None,
+            reducer: None
+        }
+    }
 }
 
 impl Worker {
-    pub fn start(
-        contents: String,
-        path: String,
-        arg: JsonValue,
-        in_receiver: Receiver<WorkerTask>,
-        out_sender: Sender<converters::JsonValue>,
-        error_sender: Sender<WorkerError>,
-    ) -> Self {
-        let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
-
-        let thread = spawn(move || {
-            let l = try_or_send!(
-                context::create(arg),
-                |err| WorkerError::Setup {
-                    description: "Error occurred trying to to create a lua context".to_string(),
-                    cause: err,
-                },
-                error_sender
-            );
-
-            let table: Table = try_or_send!(
-                l.exec(&contents, Some(&path)),
-                |err| WorkerError::Setup {
-                    description: "Error occurred trying to get a table from the mapreduce script".to_string(),
-                    cause: err,
-                },
-                error_sender
-            );
-
-            let mapper: Function = try_or_send!(
-                table.get("map"),
-                |err| WorkerError::Setup {
-                    description: "Error occurred trying to get the `map` function from the returned table".to_string(),
-                    cause: err,
-                },
-                error_sender
-            );
-
-            let reducer: Function = try_or_send!(
-                table.get("reduce"),
-                |err| WorkerError::Setup {
-                    description: "Error occurred trying to get the `reduce` function from the returned table"
-                        .to_string(),
-                    cause: err,
-                },
-                error_sender
-            );
-
-            loop {
-                select_loop! {
-                    recv(in_receiver, task) => {
-                        let value = match task {
-                            WorkerTask::Map(vertex) => {
-                                try_or_send!(
-                                    mapper.call(converters::Vertex::new(vertex)),
-                                    |err| WorkerError::MapCall(err),
-                                    error_sender
-                                )
-                            },
-                            WorkerTask::Reduce((first, second)) => {
-                                try_or_send!(
-                                    reducer.call((first, second)),
-                                    |err| WorkerError::ReduceCall(err),
-                                    error_sender
-                                )
-                            }
-                        };
-
-                        out_sender.send(value).expect("Expected worker output channel to be open");
-                    },
-                    recv(shutdown_receiver, _) => {
-                        return;
-                    }
-                }
-            }
-        });
-
-        Self {
-            thread: thread,
-            shutdown_sender: shutdown_sender,
+    fn initialize(&mut self, req: Request) -> Result<(), LuaError> {
+        if self.context.is_some() {
+            return Ok(());
         }
-    }
 
-    pub fn join(self) {
-        self.shutdown_sender.send(()).ok();
-        self.thread
-            .join()
-            .expect("Expected worker thread to not panic")
+        let value = Reader::new().get(&req.name)?;
+        let context = create_context(req.payload)?;
+        let table: Table = context.exec(&value.contents, Some(value.path))?;
+        self.context = Some(context);
+        self.mapper = Some(context.create_registry_value(table.get("map")?)?);
+        self.reducer = Some(context.create_registry_value(table.get("reduce")?)?);
+        Ok(())
+    }
+}
+
+impl Actor for Worker {
+    type Context = SyncContext<Self>;
+}
+
+impl Handler<MapRequest> for Worker {
+    type Result = Result<converters::JsonValue, LuaError>;
+
+    fn handle(&mut self, req: MapRequest, _: &mut Self::Context) -> Self::Result {
+        self.initialize(req.req)?;
+        let mapper: Function = self.context.unwrap().registry_value(&self.mapper.unwrap())?;
+        let value: converters::JsonValue = mapper.call(converters::Vertex::new(req.vertex))?;
+        Ok(value)
+    }
+}
+
+impl Handler<ReduceRequest> for Worker {
+    type Result = Result<converters::JsonValue, LuaError>;
+
+    fn handle(&mut self, req: ReduceRequest, _: &mut Self::Context) -> Self::Result {
+        self.initialize(req.req)?;
+        let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
+        let value: converters::JsonValue = reducer.call((req.first, req.second))?;
+        Ok(value)
     }
 }

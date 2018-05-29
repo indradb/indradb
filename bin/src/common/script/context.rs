@@ -6,14 +6,8 @@ use serde_json::value::Value as JsonValue;
 use statics;
 use std::path::Path;
 
-/// Runs a script.
-///
-/// # Errors
-/// Returns an error if the script produced an error.
-///
-/// # Panics
-/// We try to avoid panics, but there is a lot of unsafe code here.
-pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, LuaError> {
+/// Creates a Lua context.
+pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
     let l = Lua::new();
 
     {
@@ -46,7 +40,16 @@ pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, 
     }
 
     let _: () = l.eval(globals::GLOBALS, Some("globals.lua"))?;
-    let value: converters::JsonValue = l.exec(contents, Some(path))?;
+    Ok(l)
+}
+
+/// Runs a script.
+///
+/// # Errors
+/// Returns an error if the script produced an error.
+pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, LuaError> {
+    let context = create(arg)?;
+    let value: converters::JsonValue = context.exec(contents, Some(path))?;
     Ok(value.0)
 }
 

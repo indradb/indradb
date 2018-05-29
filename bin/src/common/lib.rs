@@ -41,7 +41,7 @@ extern crate indradb;
 
 mod graphql;
 mod http;
-//mod mapreduce;
+mod mapreduce;
 mod script;
 mod proxy_datastore;
 mod statics;

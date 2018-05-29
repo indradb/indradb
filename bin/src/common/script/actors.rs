@@ -8,15 +8,12 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use super::context;
+use super::reader::{Reader, ReaderError};
 
-lazy_static! {
-    static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[a-zA-Z0-9_-]+(\.lua)?$").unwrap();
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
-    name: String,
-    payload: JsonValue
+    pub name: String,
+    pub payload: JsonValue
 }
 
 impl Request {
@@ -30,13 +27,13 @@ impl Message for Request {
 }
 
 pub struct Executor {
-    cache: BTreeMap<String, String>
+    reader: Reader
 }
 
 impl Executor {
     pub fn new() -> Self {
         Self {
-            cache: BTreeMap::new()
+            reader: Reader::new()
         }
     }
 }
@@ -49,33 +46,15 @@ impl Handler<Request> for Executor {
     type Result = Result<JsonValue, Error>;
 
     fn handle(&mut self, req: Request, _: &mut Self::Context) -> Self::Result {
-        if !SCRIPT_NAME_VALIDATOR.is_match(&req.name) {
-            return Err(error::ErrorBadRequest("Invalid script name"));
-        }
+        let value = self.reader.get(&req.name).map_err(|err| {
+            match err {
+                ReaderError::InvalidName => error::ErrorBadRequest("Invalid script name"),
+                ReaderError::InvalidPath => error::ErrorInternalServerError("Could not stringify path. The script root config might be invalid."),
+                ReaderError::Read => error::ErrorNotFound("Script not found")
+            }
+        })?;
 
-        let path = Path::new(&*statics::SCRIPT_ROOT).join(&req.name);
-        let path_str = path.to_str().ok_or_else(|| error::ErrorInternalServerError("Could not stringify script path"))?;
-
-        // TODO: this could probably be optimized a bit with the entry API,
-        // though it's complicated by the fact that reading the file contents
-        // may yield an error
-        if !self.cache.contains_key(&req.name) {
-            match File::open(&req.name) {
-                Ok(mut file) => {
-                    let mut contents = String::new();
-
-                    match file.read_to_string(&mut contents) {
-                        Ok(_) => self.cache.insert(req.name.clone(), contents.clone()),
-                        Err(_) => return Err(error::ErrorNotFound("Could not read script"))
-                    }
-                }
-                Err(_) => {
-                    return Err(error::ErrorNotFound("Could not load script"))
-                }
-            };
-        }
-
-        Ok(context::execute(&self.cache[&req.name], &path_str, req.payload).map_err(|err| {
+        Ok(context::execute(value.contents, value.path, req.payload).map_err(|err| {
             error::ErrorInternalServerError(err)
         })?)
     }
