@@ -1,6 +1,6 @@
 use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
-              MemoryTransaction, PostgresDatastore, PostgresTransaction, RocksdbDatastore, RocksdbTransaction,
-              Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+              MemoryTransaction, RocksdbDatastore, RocksdbTransaction, Transaction, Type, Vertex,
+              VertexMetadata, VertexQuery};
 use serde_json::Value as JsonValue;
 /// This module exposes a proxy datastore and transaction that in turn call
 /// actual datastore/transaction implementations. Ideally this would not be
@@ -11,7 +11,6 @@ use uuid::Uuid;
 
 #[derive(Debug)]
 pub enum ProxyDatastore {
-    Postgres(PostgresDatastore),
     Rocksdb(RocksdbDatastore),
     Memory(MemoryDatastore),
 }
@@ -19,10 +18,6 @@ pub enum ProxyDatastore {
 impl Datastore<ProxyTransaction> for ProxyDatastore {
     fn transaction(&self) -> Result<ProxyTransaction, Error> {
         match *self {
-            ProxyDatastore::Postgres(ref pg) => {
-                let transaction = pg.transaction()?;
-                Ok(ProxyTransaction::Postgres(transaction))
-            }
             ProxyDatastore::Rocksdb(ref r) => {
                 let transaction = r.transaction()?;
                 Ok(ProxyTransaction::Rocksdb(transaction))
@@ -39,7 +34,6 @@ macro_rules! proxy_transaction {
     ($this: expr, $name:ident, $($arg:tt)*) => (
         {
             match *$this {
-                ProxyTransaction::Postgres(ref pg) => pg.$name($($arg)*),
                 ProxyTransaction::Rocksdb(ref r) => r.$name($($arg)*),
                 ProxyTransaction::Memory(ref mem) => mem.$name($($arg)*)
             }
@@ -49,7 +43,6 @@ macro_rules! proxy_transaction {
 
 #[derive(Debug)]
 pub enum ProxyTransaction {
-    Postgres(PostgresTransaction),
     Rocksdb(RocksdbTransaction),
     Memory(MemoryTransaction),
 }
@@ -116,8 +109,7 @@ impl Transaction for ProxyTransaction {
 ///
 /// This looks at the `DATABASE_URL` environment variable to figure out which
 /// datastore to use. If it starts with `rocksdb://`, the rocksdb
-/// implementation is used. If it starts with `postgres://`, the postgres
-/// implementation is used.
+/// implementation is used; otherwise, the in-memory-only datastore is used.
 ///
 /// # Errors
 /// Returns an error if we are unable to figure out what kind of datastore to
@@ -138,18 +130,6 @@ pub fn datastore() -> ProxyDatastore {
             .expect("Expected to be able to create the RocksDB datastore");
 
         ProxyDatastore::Rocksdb(datastore)
-    } else if connection_string.starts_with("postgres://") {
-        let pool_size = match env::var("DATABASE_POOL_SIZE") {
-            Ok(str_val) => Some(str_val.parse().expect(
-                "Could not parse environment variable `DATABASE_POOL_SIZE`: must be \
-                 a u32",
-            )),
-            Err(_) => None,
-        };
-
-        let datastore = PostgresDatastore::new(pool_size, connection_string)
-            .expect("Expected to be able to create the postgres datastore");
-        ProxyDatastore::Postgres(datastore)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
         ProxyDatastore::Memory(datastore)
