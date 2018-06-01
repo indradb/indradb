@@ -1,15 +1,11 @@
 use actix::prelude::*;
-use actix_web::{Error as ActixError, ws};
-use rlua::Error as LuaError;
 use uuid::Uuid;
-use super::worker::{Worker, MapRequest, ReduceRequest};
-use indradb::{Vertex, Error, VertexQuery};
+use super::worker::{Worker, WorkerError, MapRequest, ReduceRequest};
+use indradb::{Error, VertexQuery};
 use script::{Request, converters};
 use serde_json::value::Value as JsonValue;
 use statics;
-use std::thread::{spawn, JoinHandle};
-use std::time::Duration;
-use futures::{Stream, stream};
+use futures::{Stream, stream, future, Future};
 use indradb::{Datastore, Transaction};
 
 pub struct GetStatus;
@@ -26,7 +22,8 @@ impl Message for ProcessNextBatch {
 
 pub enum RouterError {
     Query(Error),
-    Worker(LuaError)
+    Worker(WorkerError),
+    Mailbox(MailboxError)
 }
 
 impl From<Error> for RouterError {
@@ -35,9 +32,15 @@ impl From<Error> for RouterError {
     }
 }
 
-impl From<LuaError> for RouterError {
-    fn from(err: LuaError) -> Self {
+impl From<WorkerError> for RouterError {
+    fn from(err: WorkerError) -> Self {
         RouterError::Worker(err)
+    }
+}
+
+impl From<MailboxError> for RouterError {
+    fn from(err: MailboxError) -> Self {
+        RouterError::Mailbox(err)
     }
 }
 
@@ -107,15 +110,19 @@ impl Handler<ProcessNextBatch> for Router {
                 self.workers.send(MapRequest::new(self.req.clone(), v))
             });
 
-            let reduced_value = self.status.reduced_value.map(|v| converters::JsonValue::new(v));
+            let reduced_value = match self.status.reduced_value {
+                Some(value) => converters::JsonValue::new(value),
+                None => converters::JsonValue::new(JsonValue::Null)
+            };
 
-            let s = stream::futures_unordered(fs).fold(reduced_value, |first, second| {
-                self.workers.send(ReduceRequest::new(
-                    self.req.clone(),
-                    first.or(converters::JsonValue::new(JsonValue::Null)),
-                    second
-                ))
-            });
+            let s = stream::futures_unordered(fs)
+                .map_err(|err| RouterError::Mailbox(err))
+                .fold(reduced_value, |first, second| {
+                    match second {
+                        Ok(second) => future::ok(self.workers.send(ReduceRequest::new(self.req.clone(), first, second))),
+                        Err(err) => future::err(RouterError::Worker(err))
+                    }
+                });
 
             match s.wait() {
                 Ok(value) => self.status.reduced_value = value.0,

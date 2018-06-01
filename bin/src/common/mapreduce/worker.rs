@@ -1,10 +1,7 @@
 use actix::prelude::*;
-use crossbeam_channel::{bounded, Receiver, Sender};
 use indradb::Vertex;
 use rlua::{Error as LuaError, Function, Table, Lua, RegistryKey};
-use script::{converters, Reader, Request, create as create_context};
-use serde_json::value::Value as JsonValue;
-use std::thread::{spawn, JoinHandle};
+use script::{converters, Reader, Request, ReaderError, create as create_context};
 
 // TODO: `payload` currently copied for each request when it doesn't need to
 // be. switch this to references, or find a better way to initialize the lua
@@ -21,7 +18,7 @@ impl MapRequest {
 }
 
 impl Message for MapRequest {
-    type Result = Result<converters::JsonValue, LuaError>;
+    type Result = Result<converters::JsonValue, WorkerError>;
 }
 
 pub struct ReduceRequest {
@@ -37,7 +34,24 @@ impl ReduceRequest {
 }
 
 impl Message for ReduceRequest {
-    type Result = Result<converters::JsonValue, LuaError>;
+    type Result = Result<converters::JsonValue, WorkerError>;
+}
+
+pub enum WorkerError {
+    Reader(ReaderError),
+    Lua(LuaError)
+}
+
+impl From<ReaderError> for WorkerError {
+    fn from(err: ReaderError) -> Self {
+        WorkerError::Reader(err)
+    }
+}
+
+impl From<LuaError> for WorkerError {
+    fn from(err: LuaError) -> Self {
+        WorkerError::Lua(err)
+    }
 }
 
 pub struct Worker {
@@ -57,17 +71,20 @@ impl Default for Worker {
 }
 
 impl Worker {
-    fn initialize(&mut self, req: Request) -> Result<(), LuaError> {
+    fn initialize(&mut self, req: Request) -> Result<(), WorkerError> {
         if self.context.is_some() {
             return Ok(());
         }
 
         let value = Reader::new().get(&req.name)?;
         let context = create_context(req.payload)?;
-        let table: Table = context.exec(&value.contents, Some(value.path))?;
         self.context = Some(context);
-        self.mapper = Some(context.create_registry_value(table.get("map")?)?);
-        self.reducer = Some(context.create_registry_value(table.get("reduce")?)?);
+
+        let table: Table = context.exec(&value.contents, Some(value.path))?;
+        let mapper: Function = table.get("map")?;
+        let reducer: Function = table.get("reduce")?;
+        self.mapper = Some(context.create_registry_value(mapper)?);
+        self.reducer = Some(context.create_registry_value(reducer)?);
         Ok(())
     }
 }
@@ -77,7 +94,7 @@ impl Actor for Worker {
 }
 
 impl Handler<MapRequest> for Worker {
-    type Result = Result<converters::JsonValue, LuaError>;
+    type Result = Result<converters::JsonValue, WorkerError>;
 
     fn handle(&mut self, req: MapRequest, _: &mut Self::Context) -> Self::Result {
         self.initialize(req.req)?;
@@ -88,7 +105,7 @@ impl Handler<MapRequest> for Worker {
 }
 
 impl Handler<ReduceRequest> for Worker {
-    type Result = Result<converters::JsonValue, LuaError>;
+    type Result = Result<converters::JsonValue, WorkerError>;
 
     fn handle(&mut self, req: ReduceRequest, _: &mut Self::Context) -> Self::Result {
         self.initialize(req.req)?;

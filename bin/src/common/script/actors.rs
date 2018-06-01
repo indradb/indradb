@@ -1,12 +1,6 @@
 use actix::prelude::*;
 use actix_web::{error, Error};
 use serde_json::Value as JsonValue;
-use statics;
-use std::collections::BTreeMap;
-use regex;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
 use super::context;
 use super::reader::{Reader, ReaderError};
 
