@@ -28,7 +28,7 @@ enum JsonMapKey {
     Number(u64),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct JsonValue(pub ExternalJsonValue);
 
 impl JsonValue {

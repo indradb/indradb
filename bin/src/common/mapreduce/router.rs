@@ -44,11 +44,11 @@ impl From<MailboxError> for RouterError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct RouterStatus {
     done: bool,
     processed: u64,
-    reduced_value: Option<JsonValue>
+    reduced_value: Result<converters::JsonValue, WorkerError>
 }
 
 pub struct Router {
@@ -69,7 +69,7 @@ impl Router {
             status: RouterStatus {
                 done: false,
                 processed: 0,
-                reduced_value: None,
+                reduced_value: Ok(converters::JsonValue::new(JsonValue::Null)),
             }
         }
     }
@@ -110,24 +110,13 @@ impl Handler<ProcessNextBatch> for Router {
                 self.workers.send(MapRequest::new(self.req.clone(), v))
             });
 
-            let reduced_value = match self.status.reduced_value {
-                Some(value) => converters::JsonValue::new(value),
-                None => converters::JsonValue::new(JsonValue::Null)
-            };
-
             let s = stream::futures_unordered(fs)
                 .map_err(|err| RouterError::Mailbox(err))
-                .fold(reduced_value, |first, second| {
-                    match second {
-                        Ok(second) => future::ok(self.workers.send(ReduceRequest::new(self.req.clone(), first, second))),
-                        Err(err) => future::err(RouterError::Worker(err))
-                    }
+                .fold(self.status.reduced_value, |accumulator, value| {
+                    self.workers.send(ReduceRequest::new(self.req.clone(), accumulator, value))
                 });
 
-            match s.wait() {
-                Ok(value) => self.status.reduced_value = value.0,
-                Err(err) => return Err(err)
-            };
+            self.status.reduced_value = s.wait()?;
         }
 
         Ok(done)

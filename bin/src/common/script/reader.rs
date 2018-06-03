@@ -9,6 +9,7 @@ lazy_static! {
     static ref SCRIPT_NAME_VALIDATOR: regex::Regex = regex::Regex::new(r"^[a-zA-Z0-9_-]+(\.lua)?$").unwrap();
 }
 
+#[derive(Clone, Debug)]
 pub enum ReaderError {
     InvalidName,
     InvalidPath,

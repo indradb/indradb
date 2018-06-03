@@ -23,13 +23,13 @@ impl Message for MapRequest {
 
 pub struct ReduceRequest {
     req: Request,
-    first: converters::JsonValue,
-    second: converters::JsonValue
+    accumulator: Result<converters::JsonValue, WorkerError>,
+    value: Result<converters::JsonValue, WorkerError>
 }
 
 impl ReduceRequest {
-    pub fn new(req: Request, first: converters::JsonValue, second: converters::JsonValue) -> Self {
-        Self { req, first, second }
+    pub fn new(req: Request, accumulator: Result<converters::JsonValue, WorkerError>, value: Result<converters::JsonValue, WorkerError>) -> Self {
+        Self { req, accumulator, value }
     }
 }
 
@@ -37,6 +37,7 @@ impl Message for ReduceRequest {
     type Result = Result<converters::JsonValue, WorkerError>;
 }
 
+#[derive(Debug, Clone)]
 pub enum WorkerError {
     Reader(ReaderError),
     Lua(LuaError)
@@ -108,9 +109,25 @@ impl Handler<ReduceRequest> for Worker {
     type Result = Result<converters::JsonValue, WorkerError>;
 
     fn handle(&mut self, req: ReduceRequest, _: &mut Self::Context) -> Self::Result {
-        self.initialize(req.req)?;
-        let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
-        let value: converters::JsonValue = reducer.call((req.first, req.second))?;
-        Ok(value)
+        match (req.accumulator, req.value) {
+            (Err(_), _) => return req.accumulator,
+            (_, Err(_)) => return req.value,
+            (Ok(accumulator), Ok(value)) => {
+                self.initialize(req.req)?;
+                let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
+                let value: converters::JsonValue = reducer.call((accumulator, value))?;
+                Ok(value)
+            }
+        }
+        // if req.accumulator.is_err() {
+        //     return req.accumulator;
+        // } else if req.value.is_err() {
+        //     return req.value;
+        // }
+
+        // self.initialize(req.req)?;
+        // let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
+        // let value: converters::JsonValue = reducer.call((req.accumulator, req.value))?;
+        // Ok(value)
     }
 }
