@@ -51,7 +51,7 @@ impl BatchDatastore {
         let mut envs = HashMap::new();
         envs.insert("PORT", port.to_string());
 
-        let server = Command::new("../target/debug/indradb-server")
+        let server = Command::new("../target/debug/indradb")
             .envs(envs)
             .spawn()
             .expect("Server failed to start");

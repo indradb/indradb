@@ -22,8 +22,7 @@ main() {
 	    cargo build --release
 	popd
 
-	cp target/release/indradb-admin $stage/
-	cp target/release/indradb-server $stage/
+	cp target/release/indradb $stage/
 
 	pushd $stage
 	    tar czf $src/indradb-$TRAVIS_TAG-$TARGET.tar.gz *

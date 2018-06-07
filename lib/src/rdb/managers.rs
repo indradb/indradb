@@ -53,11 +53,6 @@ fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValu
     }
 }
 
-fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<()> {
-    db.put_cf(cf, &key, &json_serialize_value(value)?)?;
-    Ok(())
-}
-
 fn take_while_prefixed<'a>(iterator: DBIterator, prefix: Box<[u8]>) -> Box<Iterator<Item = DBIteratorItem> + 'a> {
     let filtered = iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;

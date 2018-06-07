@@ -30,13 +30,12 @@ def run(args, cwd="."):
     subprocess.check_call(args, cwd=cwd)
 
 def main():
-    run(["cargo", "update"], cwd="lib")
     run(["cargo", "build"], cwd="bin")
 
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
         run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
 
         for lib_test in LIB_TESTS:
@@ -62,7 +61,7 @@ def main():
             "target/kcov", "target/kcov",
         ])
     else:
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib")
         run(["cargo", "test", "--features=test-suite"], cwd="bin")
 
 if __name__ == "__main__":
