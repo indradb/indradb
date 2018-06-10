@@ -117,9 +117,17 @@ impl Handler<MapRequest> for Worker {
 
     fn handle(&mut self, req: MapRequest, _: &mut Self::Context) -> Self::Result {
         self.initialize(req.req)?;
-        let context = self.context.unwrap();
-        let mapper: Function = context.registry_value(&self.mapper.unwrap())?;
-        let value: converters::JsonValue = mapper.call(converters::Vertex::new(req.vertex))?;
+        let context = self.context.take().unwrap();
+        let mapper_key = self.mapper.take().unwrap();
+
+        let value = {
+            let mapper: Function = context.registry_value(&mapper_key)?;
+            let value: converters::JsonValue = mapper.call(converters::Vertex::new(req.vertex))?;
+            value
+        };
+
+        self.mapper = Some(mapper_key);
+        self.context = Some(context);
         Ok(value)
     }
 }
@@ -133,8 +141,17 @@ impl Handler<ReduceRequest> for Worker {
             (_, Err(err)) => Err(err),
             (Ok(accumulator), Ok(value)) => {
                 self.initialize(req.req)?;
-                let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
-                let value: converters::JsonValue = reducer.call((accumulator, value))?;
+                let context = self.context.take().unwrap();
+                let reducer_key = self.reducer.take().unwrap();
+
+                let value = {
+                    let reducer: Function = context.registry_value(&reducer_key)?;
+                    let value: converters::JsonValue = reducer.call((accumulator, value))?;
+                    value
+                };
+
+                self.reducer = Some(reducer_key);
+                self.context = Some(context);
                 Ok(value)
             }
         }
