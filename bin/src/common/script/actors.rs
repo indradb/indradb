@@ -48,7 +48,7 @@ impl Handler<Request> for Executor {
             }
         })?;
 
-        Ok(context::execute(value.contents, value.path, req.payload).map_err(|err| {
+        Ok(context::execute(&value.contents, &value.path, req.payload).map_err(|err| {
             error::ErrorInternalServerError(err)
         })?)
     }

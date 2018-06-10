@@ -30,7 +30,7 @@ path = "src/common/lib.rs"
 
 [dependencies]
 actix = "0.5"
-actix-web = "^0.5"
+actix-web = "^0.6"
 bytes = "0.4.7"
 env_logger = "0.5"
 futures = "0.1"

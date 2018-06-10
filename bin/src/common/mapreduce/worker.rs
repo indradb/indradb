@@ -76,16 +76,34 @@ impl Worker {
         if self.context.is_some() {
             return Ok(());
         }
-
-        let value = Reader::new().get(&req.name)?;
+        
         let context = create_context(req.payload)?;
-        self.context = Some(context);
 
-        let table: Table = context.exec(&value.contents, Some(value.path))?;
-        let mapper: Function = table.get("map")?;
-        let reducer: Function = table.get("reduce")?;
-        self.mapper = Some(context.create_registry_value(mapper)?);
-        self.reducer = Some(context.create_registry_value(reducer)?);
+        let (mapper, reducer) = {
+            let mut reader = Reader::new();
+            let value = reader.get(&req.name)?;
+
+            let table = {
+                let t: Table = context.exec(&value.contents, Some(&value.path))?;
+                t
+            };
+
+            let mapper = {
+                let f: Function = table.get("map")?;
+                context.create_registry_value(f)?
+            };
+
+            let reducer = {
+                let f: Function = table.get("reduce")?;
+                context.create_registry_value(f)?
+            };
+
+            (mapper, reducer)
+        };
+
+        self.context = Some(context);
+        self.mapper = Some(mapper);
+        self.reducer = Some(reducer);
         Ok(())
     }
 }
@@ -99,7 +117,8 @@ impl Handler<MapRequest> for Worker {
 
     fn handle(&mut self, req: MapRequest, _: &mut Self::Context) -> Self::Result {
         self.initialize(req.req)?;
-        let mapper: Function = self.context.unwrap().registry_value(&self.mapper.unwrap())?;
+        let context = self.context.unwrap();
+        let mapper: Function = context.registry_value(&self.mapper.unwrap())?;
         let value: converters::JsonValue = mapper.call(converters::Vertex::new(req.vertex))?;
         Ok(value)
     }
@@ -110,8 +129,8 @@ impl Handler<ReduceRequest> for Worker {
 
     fn handle(&mut self, req: ReduceRequest, _: &mut Self::Context) -> Self::Result {
         match (req.accumulator, req.value) {
-            (Err(_), _) => return req.accumulator,
-            (_, Err(_)) => return req.value,
+            (Err(err), _) => Err(err),
+            (_, Err(err)) => Err(err),
             (Ok(accumulator), Ok(value)) => {
                 self.initialize(req.req)?;
                 let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
@@ -119,15 +138,5 @@ impl Handler<ReduceRequest> for Worker {
                 Ok(value)
             }
         }
-        // if req.accumulator.is_err() {
-        //     return req.accumulator;
-        // } else if req.value.is_err() {
-        //     return req.value;
-        // }
-
-        // self.initialize(req.req)?;
-        // let reducer: Function = self.context.unwrap().registry_value(&self.reducer.unwrap())?;
-        // let value: converters::JsonValue = reducer.call((req.accumulator, req.value))?;
-        // Ok(value)
     }
 }

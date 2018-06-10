@@ -1,9 +1,9 @@
+use actix::*;
 use actix::prelude::*;
 use actix_web::ws;
 use http;
 use script::Request;
 use serde_json;
-use futures::future;
 use super::router::{ProcessNextBatch, GetStatus, Router};
 
 pub struct Executor {
@@ -12,7 +12,7 @@ pub struct Executor {
 
 impl Executor {
     pub fn new(req: Request) -> Self {
-        let router = SyncArbiter::start(1, move || Router::new(req));
+        let router = SyncArbiter::start(1, move || Router::new(req.clone()));
         Self { router }
         // TODO: spawn thread
     }
@@ -29,12 +29,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for Executor {
             ws::Message::Close(_) => context.stop(),
             ws::Message::Text(text) => {
                 if text.trim() == "update" {
-                    context.state().router.send(GetStatus)
+                    self.router.send(GetStatus)
                         .into_actor(self)
                         .then(|status, _, context| {
-                            let contents = serde_json::to_string(&status.unwrap()).expect("Expected to be able to serialize status to JSON");
+                            let contents = serde_json::to_string(&status.unwrap().unwrap().to_json()).unwrap();
                             context.text(contents);
-                            future::ok(())
+                            fut::ok(())
                         })
                         .wait(context);
                 }

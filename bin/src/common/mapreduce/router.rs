@@ -51,6 +51,26 @@ pub struct RouterStatus {
     reduced_value: Result<converters::JsonValue, WorkerError>
 }
 
+impl RouterStatus {
+    pub fn to_json(self) -> JsonValue {
+        if self.done {
+            json!({
+                "done": self.done,
+                "processed": self.processed,
+                "value": match self.reduced_value {
+                    Ok(value) => json!({"value": value.0}),
+                    Err(err) => json!({"error": format!("{:?}", err)})
+                }
+            })
+        } else {
+            json!({
+                "done": self.done,
+                "processed": self.processed
+            })
+        }
+    }
+}
+
 pub struct Router {
     req: Request,
     workers: Addr<Syn, Worker>,
@@ -106,17 +126,22 @@ impl Handler<ProcessNextBatch> for Router {
             self.status.processed += vertices.len() as u64;
             self.last_id = Some(vertices.last().unwrap().id);
 
-            let fs = vertices.into_iter().map(|v| {
-                self.workers.send(MapRequest::new(self.req.clone(), v))
-            });
-
-            let s = stream::futures_unordered(fs)
-                .map_err(|err| RouterError::Mailbox(err))
-                .fold(self.status.reduced_value, |accumulator, value| {
-                    self.workers.send(ReduceRequest::new(self.req.clone(), accumulator, value))
+            let reduced_value = {
+                let fs = vertices.into_iter().map(|v| {
+                    self.workers.send(MapRequest::new(self.req.clone(), v))
                 });
 
-            self.status.reduced_value = s.wait()?;
+                let reduced_value = self.status.reduced_value.clone();
+
+                stream::futures_unordered(fs)
+                    .map_err(|err| RouterError::Mailbox(err))
+                    .fold(reduced_value, |accumulator, value| {
+                        self.workers.send(ReduceRequest::new(self.req.clone(), accumulator, value))
+                    })
+                    .wait()?
+            };
+
+            self.status.reduced_value = reduced_value;
         }
 
         Ok(done)

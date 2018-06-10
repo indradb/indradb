@@ -16,9 +16,9 @@ pub enum ReaderError {
     Read
 }
 
-pub struct ReaderValue<'a> {
-    pub path: &'a str,
-    pub contents: &'a str
+pub struct ReaderValue {
+    pub path: String,
+    pub contents: String
 }
 
 pub struct Reader {
@@ -30,7 +30,7 @@ impl Reader {
         Self { cache: BTreeMap::new() }
     }
 
-    pub fn get(&self, name: &str) -> Result<ReaderValue, ReaderError> {
+    pub fn get(&mut self, name: &str) -> Result<ReaderValue, ReaderError> {
         if !SCRIPT_NAME_VALIDATOR.is_match(name) {
             return Err(ReaderError::InvalidName);
         }
@@ -56,8 +56,8 @@ impl Reader {
         }
 
         Ok(ReaderValue {
-            path: path_str,
-            contents: &self.cache[name]
+            path: path_str.to_string(),
+            contents: self.cache[name].clone()
         })
     }
 }
