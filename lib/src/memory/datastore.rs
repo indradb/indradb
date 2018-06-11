@@ -5,6 +5,7 @@ use errors::Result;
 use models;
 use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, HashSet};
+use std::collections::btree_map::Entry;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
@@ -131,13 +132,13 @@ impl InternalMemoryDatastore {
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if update_datetime > &high_filter {
+                                if *update_datetime > high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if update_datetime < &low_filter {
+                                if *update_datetime < low_filter {
                                     continue;
                                 }
                             }
@@ -167,13 +168,13 @@ impl InternalMemoryDatastore {
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if update_datetime > &high_filter {
+                                if *update_datetime > high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if update_datetime < &low_filter {
+                                if *update_datetime < low_filter {
                                     continue;
                                 }
                             }
@@ -284,12 +285,14 @@ pub struct MemoryTransaction {
 impl Transaction for MemoryTransaction {
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
+        let entry = datastore.vertices.entry(vertex.id);
 
-        if datastore.vertices.contains_key(&vertex.id) {
-            Ok(false)
-        } else {
-            datastore.vertices.insert(vertex.id, vertex.t.clone());
-            Ok(true)
+        match entry {
+            Entry::Vacant(_) => {
+                entry.or_insert(vertex.t.clone());
+                Ok(true)
+            }
+            Entry::Occupied(_) => Ok(false),
         }
     }
 

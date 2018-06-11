@@ -1,6 +1,4 @@
-use datastore::ProxyTransaction;
 use core::str::FromStr;
-use indradb::Datastore;
 use iron::headers::{ContentType, Headers};
 use iron::mime::{Attr, Mime, SubLevel, TopLevel, Value};
 use iron::modifiers::Header as HeaderModifier;
@@ -12,7 +10,6 @@ use regex;
 use router::Router;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use serde_json::value::Value as JsonValue;
 use statics;
 use std::error::Error as StdError;
 use std::fs::File;
@@ -68,60 +65,6 @@ pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronErr
             format!("Invalid value for URL param {}", name),
         )
     })
-}
-
-/// Gets an optional JSON object value.
-///
-/// # Errors
-/// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_obj_value<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<T>, IronError>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    if let Some(obj) = json.get(name) {
-        if obj.is_null() {
-            Ok(None)
-        } else {
-            let val = serde_json::from_value::<T>(obj.clone())
-                .map_err(|_| create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))?;
-            Ok(Some(val))
-        }
-    } else {
-        Ok(None)
-    }
-}
-
-/// Gets a JSON object value.
-///
-/// # Errors
-/// Returns an `IronError` if the value is missing from the JSON object, or
-/// has an unexpected type.
-pub fn get_json_obj_value<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<T, IronError>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    if let Some(obj) = json.get(name) {
-        Ok(serde_json::from_value::<T>(obj.clone())
-            .map_err(|_| create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))?)
-    } else {
-        Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        ))
-    }
-}
-
-/// Gets a new transaction.
-///
-/// # Errors
-/// Returns an `IronError` if it was not possible to create a transaction.
-pub fn get_transaction() -> Result<ProxyTransaction, IronError> {
-    Ok(statics::DATASTORE.transaction().map_err(|err| {
-        create_iron_error(
-            status::InternalServerError,
-            format!("Could not create datastore transaction: {}", err),
-        )
-    })?)
 }
 
 // Reads the JSON request body.

@@ -8,7 +8,6 @@
 
 // Used for error-chain, which can recurse deeply
 #![recursion_limit = "1024"]
-
 #![cfg_attr(feature = "bench-suite", feature(test))]
 
 #[cfg(feature = "bench-suite")]

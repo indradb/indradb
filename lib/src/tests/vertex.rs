@@ -2,13 +2,12 @@ use super::super::{Datastore, Transaction, VertexQuery};
 use super::util::{create_edge_from, create_edges};
 use models;
 use std::collections::HashSet;
-use std::u32;
 use uuid::Uuid;
 
 pub fn should_create_vertex_from_type<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
-    T: Transaction
+    T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -26,7 +25,7 @@ where
     let range = trans
         .get_vertices(&VertexQuery::All {
             start_id: None,
-            limit: u32::MAX,
+            limit: 100,
         })
         .unwrap();
 
@@ -77,7 +76,7 @@ where
     let range = trans
         .get_vertices(&VertexQuery::All {
             start_id: Some(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
-            limit: u32::MAX,
+            limit: 100,
         })
         .unwrap();
 

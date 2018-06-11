@@ -3,9 +3,9 @@
 #![allow(dead_code)]
 
 use super::RocksdbDatastore;
-use util::generate_random_secret;
 use std::env;
 use std::path::Path;
+use util::generate_random_secret;
 
 /// Gets RocksDB options from env vars. Used for testing/benchmarking.
 pub fn get_options() -> (String, i32) {

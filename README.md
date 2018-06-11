@@ -6,21 +6,17 @@
 
 A graph database written in rust. This software is in the alpha state.
 
-IndraDB consists of an HTTP server and an underlying library. Most users would use the HTTP server - either communicating with it directly, or using a [client library](https://github.com/indradb/python-client). For convenience, the HTTP server is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+IndraDB consists of a GraphQL server and an underlying library. Most users would use the GraphQL server, which, for convenience, is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
 ## Features
 
 * Support for directed and typed graphs.
-* A simple, JSON-based query DSL with support for multiple hops.
-* Multiple ways to work with the database:
-    * Via HTTP API, and the clients that build off of it.
-    * Via lua-based scripting.
-    * By embedding IndraDB directly as a library.
+* GraphQL support.
 * Support for metadata: key/value data tied to graph items that can be used for supporting things like caching results from graph processing algorithms executed offline.
 * Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for metadata.
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for metadata.
 
 For more details, see the [homepage](https://indradb.github.io).
 
@@ -30,21 +26,21 @@ For more details, see the [homepage](https://indradb.github.io).
 * Add the binaries to your `PATH`.
 * Start the app: `indradb`
 
-This should start an in-memory-only datastore, where all work will be wiped
-out when the server is shutdown. You can persist your work with one of the
-alternative datastores.
-
-### In-memory
-
-By default, IndraDB starts an in-memory datastore that does not persist to
-disk. This is useful for kicking the tires. If you want to use the in-memory
-datastore, do not set the `DATABASE_URL`, or just set it to `memory://`. e.g.:
-`DATABASE_URL=memory:// indradb`
+This should start an in-memory-only datastore, where all work will be wiped out when the server is shutdown. You can persist your work with one of the alternative datastores.
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, set the `DATABASE_URL`
-environment variable; e.g.: `DATABASE_URL=rocksdb://database.rdb indradb`.
+If you want to use the rocksdb-backed datastore, follow these steps:
+
+* Start the server: `DATABASE_URL=rocksdb://database.rdb PORT=8000 indradb-server`.
+* Make a sample GraphQL request to `http://localhost:8000`.
+
+## Applications
+
+There's two applications:
+
+* `indradb-server`: For running the GraphQL server.
+* `indradb-admin`: For managing databases.
 
 ## Environment variables
 
