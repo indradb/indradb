@@ -37,7 +37,7 @@ def lib():
     run(["cargo", "update"], cwd="lib")
 
     if LINUX and NIGHTLY:
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore", "--no-run"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
 
         for lib_test in LIB_TESTS:
             run([
@@ -47,7 +47,7 @@ def lib():
                 "target/debug/%s" % get_test_file_name(lib_test),
             ], cwd=".")
     else:
-        run(["cargo", "test", "--features=test-suite,postgres-datastore,rocksdb-datastore"], cwd="lib")
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib")
 
 # TODO: Coverage analysis of bin is currently skipped because kcov keeps
 # incorrectly spitting out 0% coverage. Fix this.
