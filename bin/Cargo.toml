@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "0.13.0"
+version = "0.14.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -17,11 +17,7 @@ test-suite = ["indradb-lib/test-suite"]
 bench-suite = ["indradb-lib/bench-suite"]
 
 [[bin]]
-name = "indradb-admin"
-path = "src/admin/main.rs"
-
-[[bin]]
-name = "indradb-server"
+name = "indradb"
 path = "src/server/main.rs"
 
 [lib]
@@ -55,5 +51,5 @@ uuid = { version = "0.5.1", features = ["serde", "v4"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "0.13.0"
-features = ["postgres-datastore", "rocksdb-datastore"]
+version = "0.14.0"
+features = ["rocksdb-datastore"]

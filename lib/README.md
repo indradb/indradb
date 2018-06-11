@@ -4,7 +4,7 @@ This is the IndraDB library. Most users can use the [server](https://github.com/
 
 ## Pluggable datastores
 
-IndraDB stores graph data in datastores. Datastores are pluggable: there is built in support for in-memory-only, postgres, and rocksdb, but you can implement a new custom datastore.
+IndraDB stores graph data in datastores. Datastores are pluggable: there is built in support for in-memory-only and rocksdb, but you can implement a new custom datastore.
 
 ### In-Memory
 
@@ -13,16 +13,6 @@ To use the in-memory datastore, add this to your `Cargo.toml`:
 ```toml
 [dependencies.indradb-lib]
 git = "https://github.com/indradb/indradb"
-```
-
-### Postgres
-
-To use the postgres datastore, add this to your `Cargo.toml`:
-
-```toml
-[dependencies.indradb-lib]
-git = "https://github.com/indradb/indradb"
-features = ["postgres-datastore"]
 ```
 
 ### RocksDB

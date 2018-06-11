@@ -1,6 +1,6 @@
 use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, MemoryDatastore,
-              MemoryTransaction, RocksdbDatastore, RocksdbTransaction, Transaction, Type, Vertex,
-              VertexMetadata, VertexQuery};
+              MemoryTransaction, RocksdbDatastore, RocksdbTransaction,
+              Transaction, Type, Vertex, VertexMetadata, VertexQuery};
 use serde_json::Value as JsonValue;
 /// This module exposes a proxy datastore and transaction that in turn call
 /// actual datastore/transaction implementations. Ideally this would not be
@@ -109,7 +109,7 @@ impl Transaction for ProxyTransaction {
 ///
 /// This looks at the `DATABASE_URL` environment variable to figure out which
 /// datastore to use. If it starts with `rocksdb://`, the rocksdb
-/// implementation is used; otherwise, the in-memory-only datastore is used.
+/// implementation is used.
 ///
 /// # Errors
 /// Returns an error if we are unable to figure out what kind of datastore to

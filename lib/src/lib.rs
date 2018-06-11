@@ -32,14 +32,6 @@ extern crate uuid;
 
 #[cfg(feature = "rocksdb-datastore")]
 extern crate bincode;
-#[cfg(feature = "postgres-datastore")]
-extern crate num_cpus;
-#[cfg(feature = "postgres-datastore")]
-extern crate postgres;
-#[cfg(feature = "postgres-datastore")]
-extern crate r2d2;
-#[cfg(feature = "postgres-datastore")]
-extern crate r2d2_postgres;
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 
@@ -61,11 +53,6 @@ pub use errors::*;
 pub use memory::{MemoryDatastore, MemoryTransaction};
 pub use models::*;
 pub use traits::*;
-
-#[cfg(feature = "postgres-datastore")]
-mod pg;
-#[cfg(feature = "postgres-datastore")]
-pub use pg::{PostgresDatastore, PostgresTransaction};
 
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
