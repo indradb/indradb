@@ -20,25 +20,15 @@ macro_rules! map_err {
     ($e:expr) => ($e.map_err(|err| capnp::Error::failed(err.description().to_string())));
 }
 
-pub trait ErrorableFrom<T>: Sized {
-    fn errorable_from(&T) -> Result<Self, CapnpError>;
+pub fn from_vertex<'a>(vertex: indradb::Vertex, builder: &mut autogen::vertex::Builder<'a>) {
+    builder.set_id(vertex.id.as_bytes());
+    builder.set_type(&vertex.t.0);
 }
 
-// impl From<indradb::Vertex> for autogen::vertex::Vertex {
-//     fn from(vertex: indradb::Vertex) -> Self {
-//         let mut cnp_vertex: autogen::Vertex = autogen::Vertex::new();
-//         cnp_vertex.id = vertex.id.hyphenated().to_string();
-//         cnp_vertex.field_type = vertex.t.0;
-//         cnp_vertex
-//     }
-// }
-
-impl<'a> ErrorableFrom<autogen::vertex::Reader<'a>> for indradb::Vertex {
-    fn errorable_from(reader: &autogen::vertex::Reader) -> Result<Self, CapnpError> {
-        let id = map_err!(Uuid::from_bytes(reader.get_id()?))?;
-        let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
-        Ok(indradb::Vertex::with_id(id, t))
-    }
+pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
+    let id = map_err!(Uuid::from_bytes(reader.get_id()?))?;
+    let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
+    Ok(indradb::Vertex::with_id(id, t))
 }
 
 // impl From<indradb::Edge> for autogen::edge::Edge {
@@ -153,34 +143,23 @@ impl<'a> ErrorableFrom<autogen::vertex::Reader<'a>> for indradb::Vertex {
 //     }
 // }
 
-// impl ErrorableFrom<autogen::vertex_query::VertexQuery> for indradb::VertexQuery {
-//     fn errorable_from(cnp_query: &autogen::VertexQuery) -> Result<Self> {
-//         if cnp_query.has_all() {
-//             let query = cnp_query.get_all();
-//             Ok(indradb::VertexQuery::All {
-//                 start_id: from_defaultable(&query.get_start_id(), |s| Ok(Uuid::from_str(s)?))?,
-//                 limit: query.get_limit(),
-//             })
-//         } else if cnp_query.has_vertices() {
-//             let query = cnp_query.get_vertices();
-//             let ids: Result<Vec<Uuid>> = query
-//                 .get_ids()
-//                 .iter()
-//                 .map(|s| Ok(Uuid::from_str(s)?))
-//                 .collect();
-//             Ok(indradb::VertexQuery::Vertices { ids: ids? })
-//         } else if cnp_query.has_pipe() {
-//             let query = cnp_query.get_pipe();
-//             Ok(indradb::VertexQuery::Pipe {
-//                 edge_query: Box::new(indradb::EdgeQuery::errorable_from(query.get_edge_query())?),
-//                 converter: indradb::EdgeDirection::from_str(query.get_converter())?,
-//                 limit: query.get_limit(),
-//             })
-//         } else {
-//             unreachable!();
-//         }
-//     }
-// }
+pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
+    match reader.which() {
+        Ok(autogen::vertex_query::All(params)) => {
+            let start_id_bytes = params.get_start_id()?;
+
+            Ok(indradb::VertexQuery::All {
+                start_id: if start_id_bytes.len() == 0 {
+                    None
+                } else {
+                    Some(map_err!(Uuid::from_bytes(start_id_bytes))?)
+                },
+                limit: params.get_limit(),
+            })
+        },
+        _ => unimplemented!()
+    }
+}
 
 // impl From<indradb::EdgeQuery> for autogen::edge_query::EdgeQuery {
 //     fn from(query: indradb::EdgeQuery) -> Self {

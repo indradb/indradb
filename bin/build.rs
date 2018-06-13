@@ -1,6 +1,6 @@
 extern crate capnpc;
 
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::path::PathBuf;
 use std::io::{Read, Write};
 use std::env::set_var;

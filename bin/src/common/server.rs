@@ -16,7 +16,6 @@ use tokio_io::AsyncRead;
 use errors;
 #[macro_use]
 use converters;
-use converters::ErrorableFrom;
 use std::thread;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -99,8 +98,8 @@ impl autogen::transaction::Server for Transaction {
     proxy!(
         create_vertex(CreateVertexParams, CreateVertexResults, bool)
         => |params: autogen::transaction::create_vertex_params::Reader| {
-            let vertex = params.get_vertex()?;
-            map_err!(indradb::Vertex::errorable_from(&vertex))
+            let cnp_vertex = params.get_vertex()?;
+            converters::to_vertex(&cnp_vertex)
         }
         => |trans: Arc<proxy_datastore::ProxyTransaction>, vertex: indradb::Vertex| -> Result<bool, CapnpError> {
             map_err!(trans.create_vertex(&vertex))
@@ -113,7 +112,7 @@ impl autogen::transaction::Server for Transaction {
     proxy!(
         create_vertex_from_type(CreateVertexFromTypeParams, CreateVertexFromTypeResults, Uuid)
         => |params: autogen::transaction::create_vertex_from_type_params::Reader| {
-            map_err!(indradb::Type::new(params.get_t()?.to_string()))
+            indradb::Type::new(map_err!(params.get_t())?.to_string())
         }
         => |trans: Arc<proxy_datastore::ProxyTransaction>, t: indradb::Type| -> Result<Uuid, CapnpError> {
             map_err!(trans.create_vertex_from_type(t))
@@ -123,9 +122,43 @@ impl autogen::transaction::Server for Transaction {
         }
     );
 
-    fn get_vertices(&mut self, req: autogen::transaction::GetVerticesParams<>, res: autogen::transaction::GetVerticesResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
-    }
+    proxy!(
+        get_vertices(GetVerticesParams, GetVerticesResults, Vec<indradb::Vertex>)
+        => |params: autogen::transaction::get_vertices_params::Reader| {
+            let cnp_q = params.get_q()?;
+            converters::to_vertex_query(&cnp_q)
+        }
+        => |trans: Arc<proxy_datastore::ProxyTransaction>, q: indradb::VertexQuery| -> Result<Vec<indradb::Vertex>, CapnpError> {
+            map_err!(trans.get_vertices(&q))
+        }
+        => |mut res: autogen::transaction::GetVerticesResults, vertices: Vec<indradb::Vertex>| {
+            let mut list = res.get().init_result(vertices.len() as u32);
+            
+            for (i, vertex) in vertices.into_iter().enumerate() {
+                let mut cnp_vertex = list.reborrow().get(i as u32);
+                converters::from_vertex(vertex, &mut cnp_vertex);
+            }
+        }
+    );
+
+    // proxy!(
+    //     get_vertices(DeleteVerticesParams, DeleteVerticesResults, ())
+    //     => |params: autogen::transaction::delete_vertices_params::Reader| {
+    //         let cnp_q = params.get_q()?;
+    //         map_err!(converters::to_vertex_query(&cnp_q))
+    //     }
+    //     => |trans: Arc<proxy_datastore::ProxyTransaction>, q: indradb::VertexQuery| -> Result<Vec<indradb::Vertex>, CapnpError> {
+    //         map_err!(trans.get_vertices(&q))
+    //     }
+    //     => |mut res: autogen::transaction::GetVerticesResults, vertices: Vec<indradb::Vertex>| {
+    //         let mut list = res.get().init_result(vertices.len() as u32);
+            
+    //         for (i, vertex) in vertices.into_iter().enumerate() {
+    //             let mut cnp_vertex = list.reborrow().get(i as u32);
+    //             converters::from_vertex(vertex, &mut cnp_vertex);
+    //         }
+    //     }
+    // );
 
     fn delete_vertices(&mut self, req: autogen::transaction::DeleteVerticesParams<>, res: autogen::transaction::DeleteVerticesResults<>) -> Promise<(), CapnpError> {
         unimplemented!();
