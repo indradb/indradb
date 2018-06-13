@@ -50,7 +50,6 @@ macro_rules! full_test_impl {
 		define_test!(should_get_edges, $code);
 
 		// Metadata
-		define_test!(should_handle_global_metadata, $code);
 		define_test!(should_handle_vertex_metadata, $code);
 		define_test!(should_not_set_invalid_vertex_metadata, $code);
 		define_test!(should_not_delete_invalid_vertex_metadata, $code);

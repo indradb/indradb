@@ -183,42 +183,6 @@ impl indradb::Transaction for ClientTransaction {
         unimplemented!();
     }
 
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>, indradb::Error> {
-        // let mut inner = autogen::GetGlobalMetadataRequest::new();
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_get_global_metadata(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-
-        // if response.get_json() == "" {
-        //     Ok(None)
-        // } else {
-        //     Ok(Some(serde_json::from_str(response.get_json()).unwrap()))
-        // }
-        unimplemented!();
-    }
-
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::SetGlobalMetadataRequest::new();
-        // inner.set_name(name.to_string());
-        // inner.set_value(value.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_set_global_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
-    }
-
-    fn delete_global_metadata(&self, name: &str) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::DeleteGlobalMetadataRequest::new();
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_delete_global_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
-    }
-
     fn get_vertex_metadata(
         &self,
         q: &indradb::VertexQuery,

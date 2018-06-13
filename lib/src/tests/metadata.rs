@@ -3,41 +3,6 @@ use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
 
-pub fn should_handle_global_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
-    let name = format!("global-metadata-{}", generate_random_secret(8));
-    let trans = datastore.transaction().unwrap();
-
-    // Check to make sure there's no initial value
-    let result = trans.get_global_metadata(&name);
-    assert_eq!(result.unwrap(), None);
-
-    // Set and get the value as true
-    trans
-        .set_global_metadata(&name, &JsonValue::Bool(true))
-        .unwrap();
-
-    let result = trans.get_global_metadata(&name);
-    assert_eq!(result.unwrap(), Some(JsonValue::Bool(true)));
-
-    // Set and get the value as false
-    trans
-        .set_global_metadata(&name, &JsonValue::Bool(false))
-        .unwrap();
-
-    let result = trans.get_global_metadata(&name);
-    assert_eq!(result.unwrap(), Some(JsonValue::Bool(false)));
-
-    // Delete & check that it's deleted
-    trans.delete_global_metadata(&name).unwrap();
-
-    let result = trans.get_global_metadata(&name);
-    assert_eq!(result.unwrap(), None);
-}
-
 pub fn should_handle_vertex_metadata<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,

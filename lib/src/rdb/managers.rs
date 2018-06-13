@@ -53,11 +53,6 @@ fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValu
     }
 }
 
-fn set_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &JsonValue) -> Result<()> {
-    db.put_cf(cf, &key, &json_serialize_value(value)?)?;
-    Ok(())
-}
-
 fn take_while_prefixed<'a>(iterator: DBIterator, prefix: Box<[u8]>) -> Box<Iterator<Item = DBIteratorItem> + 'a> {
     let filtered = iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;
@@ -403,37 +398,6 @@ impl EdgeRangeManager {
         second_id: Uuid,
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
-        Ok(())
-    }
-}
-
-pub struct GlobalMetadataManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
-}
-
-impl GlobalMetadataManager {
-    pub fn new(db: Arc<DB>) -> Self {
-        GlobalMetadataManager {
-            cf: db.cf_handle("global_metadata:v1").unwrap(),
-            db: db,
-        }
-    }
-
-    fn key(&self, name: &str) -> Box<[u8]> {
-        build_key(vec![KeyComponent::UnsizedString(name)])
-    }
-
-    pub fn get(&self, name: &str) -> Result<Option<JsonValue>> {
-        get_json(&self.db, self.cf, self.key(name))
-    }
-
-    pub fn set(&self, name: &str, value: &JsonValue) -> Result<()> {
-        set_json(&self.db, self.cf, self.key(name), value)
-    }
-
-    pub fn delete(&self, batch: &mut WriteBatch, name: &str) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(name))?;
         Ok(())
     }
 }

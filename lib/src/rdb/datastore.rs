@@ -14,12 +14,11 @@ use std::usize;
 use util::next_uuid;
 use uuid::Uuid;
 
-const CF_NAMES: [&'static str; 7] = [
+const CF_NAMES: [&'static str; 6] = [
     "vertices:v1",
     "edges:v1",
     "edge_ranges:v1",
     "reversed_edge_ranges:v1",
-    "global_metadata:v1",
     "vertex_metadata:v1",
     "edge_metadata:v1",
 ];
@@ -441,23 +440,6 @@ impl Transaction for RocksdbTransaction {
             .count();
 
         Ok(count as u64)
-    }
-
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>> {
-        let manager = GlobalMetadataManager::new(self.db.clone());
-        manager.get(&name[..])
-    }
-
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()> {
-        let manager = GlobalMetadataManager::new(self.db.clone());
-        manager.set(&name[..], value)
-    }
-
-    fn delete_global_metadata(&self, name: &str) -> Result<()> {
-        let mut batch = WriteBatch::default();
-        GlobalMetadataManager::new(self.db.clone()).delete(&mut batch, &name[..])?;
-        self.db.write(batch)?;
-        Ok(())
     }
 
     fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
