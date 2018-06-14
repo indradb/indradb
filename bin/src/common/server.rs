@@ -11,7 +11,7 @@ use futures::{Future, Stream};
 use proxy_datastore;
 use capnp;
 use indradb;
-use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex};
+use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex, Edge, Type};
 use tokio_io::AsyncRead;
 use errors;
 use converters;
@@ -86,6 +86,7 @@ impl autogen::transaction::Server for Transaction {
             res.get().set_result(created);
             Ok(())
         });
+
         Promise::from_future(f)
     }
 
@@ -100,6 +101,7 @@ impl autogen::transaction::Server for Transaction {
             res.get().set_result(id.as_bytes());
             Ok(())
         });
+
         Promise::from_future(f)
     }
 
@@ -120,6 +122,7 @@ impl autogen::transaction::Server for Transaction {
 
             Ok(())
         });
+
         Promise::from_future(f)
     }
 
@@ -135,27 +138,93 @@ impl autogen::transaction::Server for Transaction {
             res.get().set_result(());
             Ok(())
         });
+
         Promise::from_future(f)
     }
 
-    fn get_vertex_count(&mut self, req: autogen::transaction::GetVertexCountParams<>, res: autogen::transaction::GetVertexCountResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn get_vertex_count(&mut self, req: autogen::transaction::GetVertexCountParams<>, mut res: autogen::transaction::GetVertexCountResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        
+        let f = self.pool.spawn_fn(move || -> Result<u64, CapnpError> {
+            map_err!(trans.get_vertex_count())
+        }).and_then(move |count| -> Result<(), CapnpError> {
+            res.get().set_result(count);
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn create_edge(&mut self, req: autogen::transaction::CreateEdgeParams<>, res: autogen::transaction::CreateEdgeResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn create_edge(&mut self, req: autogen::transaction::CreateEdgeParams<>, mut res: autogen::transaction::CreateEdgeResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_edge_key = pry!(pry!(req.get()).get_key());
+        let edge_key = pry!(converters::to_edge_key(&cnp_edge_key));
+        
+        let f = self.pool.spawn_fn(move || -> Result<bool, CapnpError> {
+            map_err!(trans.create_edge(&edge_key))
+        }).and_then(move |created| -> Result<(), CapnpError> {
+            res.get().set_result(created);
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn get_edges(&mut self, req: autogen::transaction::GetEdgesParams<>, res: autogen::transaction::GetEdgesResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn get_edges(&mut self, req: autogen::transaction::GetEdgesParams<>, mut res: autogen::transaction::GetEdgesResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+        
+        let f = self.pool.spawn_fn(move || -> Result<Vec<Edge>, CapnpError> {
+            map_err!(trans.get_edges(&q))
+        }).and_then(move |edges| -> Result<(), CapnpError> {
+            let mut res = res.get().init_result(edges.len() as u32);
+
+            for (i, edge) in edges.into_iter().enumerate() {
+                let mut cnp_edge = res.reborrow().get(i as u32);
+                converters::from_edge(edge, &mut cnp_edge);
+            }
+
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn delete_edges(&mut self, req: autogen::transaction::DeleteEdgesParams<>, res: autogen::transaction::DeleteEdgesResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn delete_edges(&mut self, req: autogen::transaction::DeleteEdgesParams<>, mut res: autogen::transaction::DeleteEdgesResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+        
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.delete_edges(&q))?;
+            Ok(())
+        }).and_then(move |_| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn get_edge_count(&mut self, req: autogen::transaction::GetEdgeCountParams<>, res: autogen::transaction::GetEdgeCountResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn get_edge_count(&mut self, req: autogen::transaction::GetEdgeCountParams<>, mut res: autogen::transaction::GetEdgeCountResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let id = pry!(map_err!(Uuid::from_bytes(pry!(params.get_id()))));
+        let type_filter = match pry!(params.get_type_filter()) {
+            "" => None,
+            value => Some(pry!(map_err!(Type::new(value.to_string()))))
+        };
+        let converter = converters::to_edge_direction(pry!(params.get_direction()));
+        
+        let f = self.pool.spawn_fn(move || -> Result<u64, CapnpError> {
+            map_err!(trans.get_edge_count(id, type_filter.as_ref(), converter))
+        }).and_then(move |count| -> Result<(), CapnpError> {
+            res.get().set_result(count);
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
     fn get_global_metadata(&mut self, req: autogen::transaction::GetGlobalMetadataParams<>, res: autogen::transaction::GetGlobalMetadataResults<>) -> Promise<(), CapnpError> {
