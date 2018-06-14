@@ -26,26 +26,28 @@ impl ClientDatastore {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
         let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
-        let stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        stream.set_nodelay(true).unwrap();
-        let (reader, writer) = stream.split();
-        let rpc_network = Box::new(twoparty::VatNetwork::new(reader, writer, Side::Client, Default::default()));
-        let mut rpc_system = RpcSystem::new(rpc_network, None);
-        let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
-        handle.spawn(rpc_system.map_err(|_e| ()));
 
         for _ in 0..5 {
-            sleep(Duration::from_secs(1));
+            if let Ok(stream) = core.run(TcpStream::connect(&addr, &handle)) {
+                stream.set_nodelay(true).unwrap();
+                let (reader, writer) = stream.split();
+                let rpc_network = Box::new(twoparty::VatNetwork::new(reader, writer, Side::Client, Default::default()));
+                let mut rpc_system = RpcSystem::new(rpc_network, None);
+                let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
+                handle.spawn(rpc_system.map_err(|_e| ()));
 
-            let req = client.ping_request();
-            let res = core.run(req.send().promise).unwrap();
-            let ready = res.get().unwrap().get_ready();
+                let req = client.ping_request();
+                let res = core.run(req.send().promise).unwrap();
+                let ready = res.get().unwrap().get_ready();
 
-            if ready {
-                return Self {
-                    client: client,
+                if ready {
+                    return Self {
+                        client: client,
+                    }
                 }
             }
+
+            sleep(Duration::from_secs(1));
         }
 
         panic!("Server failed to initialize after a few seconds");
