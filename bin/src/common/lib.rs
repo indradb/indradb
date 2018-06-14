@@ -7,6 +7,7 @@ extern crate core;
 extern crate error_chain;
 extern crate futures;
 extern crate futures_cpupool;
+#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;

@@ -1,3 +1,6 @@
+// TODO: remove this once error-chain fixes it
+#![allow(renamed_and_removed_lints)]
+
 use indradb;
 use serde_json;
 use uuid;

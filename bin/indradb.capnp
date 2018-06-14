@@ -136,34 +136,12 @@ interface Transaction {
     # * `direction`: The direction of edges to get.
     getEdgeCount @8 (id :Uuid, typeFilter :Type, direction :EdgeDirection) -> (result :UInt64);
 
-    # Gets a global metadata value.
-    #
-    # Arguments
-    # * `name` - The metadata name.
-    #
-    # # Errors
-    # Returns `Error::MetadataNotFound` if the metadata does not exist.
-    getGlobalMetadata @9 (name :Json) -> (result :Json);
-
-    # Sets a global metadata value.
-    #
-    # Arguments
-    # * `name` - The metadata name.
-    # * `value` - The metadata value.
-    setGlobalMetadata @10 (name :Text, value :Json) -> (result :Void);
-
-    # Deletes a global metadata value.
-    #
-    # Arguments
-    # * `name` - The metadata name.
-    deleteGlobalMetadata @11 (name :Text) -> (result :Void);
-
     # Gets a vertex metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    getVertexMetadata @12 (q :VertexQuery, name :Text) -> (result :List(VertexMetadata));
+    getVertexMetadata @9 (q :VertexQuery, name :Text) -> (result :List(VertexMetadata));
 
     # Sets a vertex metadata value.
     #
@@ -171,21 +149,21 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The metadata name.
     # * `value` - The metadata value.
-    setVertexMetadata @13 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
+    setVertexMetadata @10 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
 
     # Deletes a vertex metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    deleteVertexMetadata @14 (q :VertexQuery, name :Text) -> (result :Void);
+    deleteVertexMetadata @11 (q :VertexQuery, name :Text) -> (result :Void);
 
     # Gets an edge metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    getEdgeMetadata @15 (q :EdgeQuery, name :Text) -> (result :List(EdgeMetadata));
+    getEdgeMetadata @12 (q :EdgeQuery, name :Text) -> (result :List(EdgeMetadata));
 
     # Sets an edge metadata value.
     #
@@ -193,12 +171,12 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The metadata name.
     # * `value` - The metadata value.
-    setEdgeMetadata @16 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
+    setEdgeMetadata @13 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
 
     # Deletes an edge metadata value.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The metadata name.
-    deleteEdgeMetadata @17 (q :EdgeQuery, name :Text) -> (result :Void);
+    deleteEdgeMetadata @14 (q :EdgeQuery, name :Text) -> (result :Void);
 }

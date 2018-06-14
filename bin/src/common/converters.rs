@@ -1,10 +1,7 @@
 //! Converts between cnp and native IndraDB models
 
-use chrono::{DateTime, Utc, NaiveDateTime};
-use chrono::TimeZone;
+use chrono::{Utc, TimeZone};
 use indradb;
-use serde_json;
-use std::str::FromStr;
 use uuid::Uuid;
 use autogen;
 use capnp;

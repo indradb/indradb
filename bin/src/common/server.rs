@@ -15,12 +15,10 @@ use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, 
 use tokio_io::AsyncRead;
 use errors;
 use converters;
-use std::thread;
 use std::sync::Arc;
 use uuid::Uuid;
 use futures_cpupool::CpuPool;
 use std::error::Error;
-use std::sync::mpsc;
 
 macro_rules! pry_user {
     ($e:expr) => (pry!(map_err!($e)))
@@ -225,18 +223,6 @@ impl autogen::transaction::Server for Transaction {
         });
 
         Promise::from_future(f)
-    }
-
-    fn get_global_metadata(&mut self, req: autogen::transaction::GetGlobalMetadataParams<>, res: autogen::transaction::GetGlobalMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
-    }
-
-    fn set_global_metadata(&mut self, req: autogen::transaction::SetGlobalMetadataParams<>, res: autogen::transaction::SetGlobalMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
-    }
-
-    fn delete_global_metadata(&mut self, req: autogen::transaction::DeleteGlobalMetadataParams<>, res: autogen::transaction::DeleteGlobalMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
     }
 
     fn get_vertex_metadata(&mut self, req: autogen::transaction::GetVertexMetadataParams<>, res: autogen::transaction::GetVertexMetadataResults<>) -> Promise<(), CapnpError> {
