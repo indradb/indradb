@@ -11,10 +11,9 @@ use futures::{Future, Stream};
 use proxy_datastore;
 use capnp;
 use indradb;
-use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction};
+use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex};
 use tokio_io::AsyncRead;
 use errors;
-#[macro_use]
 use converters;
 use std::thread;
 use std::sync::Arc;
@@ -75,76 +74,59 @@ impl Transaction {
     }
 }
 
-macro_rules! proxy {
-    ($name:ident ( $req_typ:ident, $res_typ:ident, $ch_typ:ty ) => $arg_code:expr => $trans_code:expr => $serializer_code:expr) => (
-        fn $name(&mut self, req: autogen::transaction::$req_typ<>, mut res: autogen::transaction::$res_typ<>) -> Promise<(), CapnpError> {
-            let trans = self.trans.clone();
-            let args = pry!($arg_code(pry!(req.get())));
-            let (sender, receiver) = mpsc::sync_channel::<$ch_typ>(1);
-            let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
-                let result: $ch_typ = $trans_code(trans, args)?;
-                map_err!(sender.send(result))
-            }).and_then(move |_| -> Result<(), CapnpError> {
-                let result = map_err!(receiver.recv())?;
-                $serializer_code(res, result);
-                Ok(())
-            });
-            Promise::from_future(f)
-        }
-    )
-}
-
 impl autogen::transaction::Server for Transaction {
-    proxy!(
-        create_vertex(CreateVertexParams, CreateVertexResults, bool)
-        => |params: autogen::transaction::create_vertex_params::Reader| {
-            let cnp_vertex = params.get_vertex()?;
-            converters::to_vertex(&cnp_vertex)
-        }
-        => |trans: Arc<proxy_datastore::ProxyTransaction>, vertex: indradb::Vertex| -> Result<bool, CapnpError> {
+    fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, mut res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_vertex = pry!(pry!(req.get()).get_vertex());
+        let vertex = pry!(converters::to_vertex(&cnp_vertex));
+        
+        let f = self.pool.spawn_fn(move || -> Result<bool, CapnpError> {
             map_err!(trans.create_vertex(&vertex))
-        }
-        => |mut res: autogen::transaction::CreateVertexResults, value: bool| {
-            res.get().set_result(value);
-        }
-    );
+        }).and_then(move |created| -> Result<(), CapnpError> {
+            res.get().set_result(created);
+            Ok(())
+        });
+        Promise::from_future(f)
+    }
 
-    proxy!(
-        create_vertex_from_type(CreateVertexFromTypeParams, CreateVertexFromTypeResults, Uuid)
-        => |params: autogen::transaction::create_vertex_from_type_params::Reader| {
-            map_err!(indradb::Type::new(params.get_t()?.to_string()))
-        }
-        => |trans: Arc<proxy_datastore::ProxyTransaction>, t: indradb::Type| -> Result<Uuid, CapnpError> {
+    fn create_vertex_from_type(&mut self, req: autogen::transaction::CreateVertexFromTypeParams<>, mut res: autogen::transaction::CreateVertexFromTypeResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_t = pry!(pry!(req.get()).get_t());
+        let t = pry!(map_err!(indradb::Type::new(cnp_t.to_string())));
+        
+        let f = self.pool.spawn_fn(move || -> Result<Uuid, CapnpError> {
             map_err!(trans.create_vertex_from_type(t))
-        }
-        => |mut res: autogen::transaction::CreateVertexFromTypeResults, value: Uuid| {
-            res.get().set_result(value.as_bytes().as_ref());
-        }
-    );
+        }).and_then(move |id| -> Result<(), CapnpError> {
+            res.get().set_result(id.as_bytes());
+            Ok(())
+        });
+        Promise::from_future(f)
+    }
 
-    proxy!(
-        get_vertices(GetVerticesParams, GetVerticesResults, Vec<indradb::Vertex>)
-        => |params: autogen::transaction::get_vertices_params::Reader| {
-            let cnp_q = params.get_q()?;
-            converters::to_vertex_query(&cnp_q)
-        }
-        => |trans: Arc<proxy_datastore::ProxyTransaction>, q: indradb::VertexQuery| -> Result<Vec<indradb::Vertex>, CapnpError> {
+    fn get_vertices(&mut self, req: autogen::transaction::GetVerticesParams<>, mut res: autogen::transaction::GetVerticesResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q));
+        
+        let f = self.pool.spawn_fn(move || -> Result<Vec<Vertex>, CapnpError> {
             map_err!(trans.get_vertices(&q))
-        }
-        => |mut res: autogen::transaction::GetVerticesResults, vertices: Vec<indradb::Vertex>| {
-            let mut list = res.get().init_result(vertices.len() as u32);
-            
+        }).and_then(move |vertices| -> Result<(), CapnpError> {
+            let mut res = res.get().init_result(vertices.len() as u32);
+
             for (i, vertex) in vertices.into_iter().enumerate() {
-                let mut cnp_vertex = list.reborrow().get(i as u32);
+                let mut cnp_vertex = res.reborrow().get(i as u32);
                 converters::from_vertex(vertex, &mut cnp_vertex);
             }
-        }
-    );
+
+            Ok(())
+        });
+        Promise::from_future(f)
+    }
 
     fn delete_vertices(&mut self, req: autogen::transaction::DeleteVerticesParams<>, mut res: autogen::transaction::DeleteVerticesResults<>) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
-        let q = pry!(converters::to_vertex_query(&cnp_q)); //TODO: is map_err needed?
+        let q = pry!(converters::to_vertex_query(&cnp_q));
         
         let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
             map_err!(trans.delete_vertices(&q))?;

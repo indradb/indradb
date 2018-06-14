@@ -11,9 +11,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-use futures::future::Future;
 use std::env;
-use std::sync::Arc;
 
 fn main() {
     let port_str = env::var("PORT").unwrap_or_else(|_| "27615".to_string());
