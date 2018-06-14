@@ -112,7 +112,7 @@ impl autogen::transaction::Server for Transaction {
     proxy!(
         create_vertex_from_type(CreateVertexFromTypeParams, CreateVertexFromTypeResults, Uuid)
         => |params: autogen::transaction::create_vertex_from_type_params::Reader| {
-            indradb::Type::new(map_err!(params.get_t())?.to_string())
+            map_err!(indradb::Type::new(params.get_t()?.to_string()))
         }
         => |trans: Arc<proxy_datastore::ProxyTransaction>, t: indradb::Type| -> Result<Uuid, CapnpError> {
             map_err!(trans.create_vertex_from_type(t))
@@ -141,27 +141,19 @@ impl autogen::transaction::Server for Transaction {
         }
     );
 
-    // proxy!(
-    //     get_vertices(DeleteVerticesParams, DeleteVerticesResults, ())
-    //     => |params: autogen::transaction::delete_vertices_params::Reader| {
-    //         let cnp_q = params.get_q()?;
-    //         map_err!(converters::to_vertex_query(&cnp_q))
-    //     }
-    //     => |trans: Arc<proxy_datastore::ProxyTransaction>, q: indradb::VertexQuery| -> Result<Vec<indradb::Vertex>, CapnpError> {
-    //         map_err!(trans.get_vertices(&q))
-    //     }
-    //     => |mut res: autogen::transaction::GetVerticesResults, vertices: Vec<indradb::Vertex>| {
-    //         let mut list = res.get().init_result(vertices.len() as u32);
-            
-    //         for (i, vertex) in vertices.into_iter().enumerate() {
-    //             let mut cnp_vertex = list.reborrow().get(i as u32);
-    //             converters::from_vertex(vertex, &mut cnp_vertex);
-    //         }
-    //     }
-    // );
-
-    fn delete_vertices(&mut self, req: autogen::transaction::DeleteVerticesParams<>, res: autogen::transaction::DeleteVerticesResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn delete_vertices(&mut self, req: autogen::transaction::DeleteVerticesParams<>, mut res: autogen::transaction::DeleteVerticesResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q)); //TODO: is map_err needed?
+        
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.delete_vertices(&q))?;
+            Ok(())
+        }).and_then(move |_| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+        Promise::from_future(f)
     }
 
     fn get_vertex_count(&mut self, req: autogen::transaction::GetVertexCountParams<>, res: autogen::transaction::GetVertexCountResults<>) -> Promise<(), CapnpError> {
