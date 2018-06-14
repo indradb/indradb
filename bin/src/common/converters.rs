@@ -5,6 +5,7 @@ use indradb;
 use uuid::Uuid;
 use autogen;
 use capnp;
+use serde_json;
 use std::error::Error;
 use capnp::Error as CapnpError;
 
@@ -43,43 +44,15 @@ pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
-// impl From<indradb::VertexMetadata> for autogen::vertex_metadata::VertexMetadata {
-//     fn from(metadata: indradb::VertexMetadata) -> Self {
-//         let value = serde_json::to_string(&metadata.value).expect("Expected to be able to serialize JSON");
-//         let mut cnp_metadata: autogen::VertexMetadata = autogen::VertexMetadata::new();
-//         cnp_metadata.set_id(metadata.id.hyphenated().to_string());
-//         cnp_metadata.set_value(value);
-//         cnp_metadata
-//     }
-// }
+pub fn from_vertex_metadata<'a>(metadata: indradb::VertexMetadata, builder: &mut autogen::vertex_metadata::Builder<'a>) {
+    builder.set_id(metadata.id.as_bytes());
+    builder.set_value(&metadata.value.to_string());
+}
 
-// impl ErrorableFrom<autogen::vertex_metadata::VertexMetadata> for indradb::VertexMetadata {
-//     fn errorable_from(cnp_metadata: &autogen::VertexMetadata) -> Result<Self> {
-//         Ok(indradb::VertexMetadata::new(
-//             Uuid::from_str(cnp_metadata.get_id())?,
-//             serde_json::from_str(cnp_metadata.get_value())?,
-//         ))
-//     }
-// }
-
-// impl From<indradb::EdgeMetadata> for autogen::edge_metadata::EdgeMetadata {
-//     fn from(metadata: indradb::EdgeMetadata) -> Self {
-//         let value = serde_json::to_string(&metadata.value).expect("Expected to be able to serialize JSON");
-//         let mut cnp_metadata: autogen::EdgeMetadata = autogen::EdgeMetadata::new();
-//         cnp_metadata.set_key(autogen::EdgeKey::from(metadata.key));
-//         cnp_metadata.set_value(value);
-//         cnp_metadata
-//     }
-// }
-
-// impl ErrorableFrom<autogen::edge_metadata::EdgeMetadata> for indradb::EdgeMetadata {
-//     fn errorable_from(cnp_metadata: &autogen::EdgeMetadata) -> Result<Self> {
-//         Ok(indradb::EdgeMetadata::new(
-//             indradb::EdgeKey::errorable_from(cnp_metadata.get_key())?,
-//             serde_json::from_str(cnp_metadata.get_value())?,
-//         ))
-//     }
-// }
+pub fn from_edge_metadata<'a>(metadata: indradb::EdgeMetadata, builder: &mut autogen::edge_metadata::Builder<'a>) {
+    from_edge_key(metadata.key, &mut builder.reborrow().init_key());
+    builder.set_value(&metadata.value.to_string());
+}
 
 pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
     match reader.which()? {

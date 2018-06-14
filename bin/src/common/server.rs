@@ -11,7 +11,7 @@ use futures::{Future, Stream};
 use proxy_datastore;
 use capnp;
 use indradb;
-use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex, Edge, Type};
+use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex, Edge, Type, VertexMetadata, EdgeMetadata};
 use tokio_io::AsyncRead;
 use errors;
 use converters;
@@ -19,6 +19,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use futures_cpupool::CpuPool;
 use std::error::Error;
+use serde_json;
 
 macro_rules! pry_user {
     ($e:expr) => (pry!(map_err!($e)))
@@ -225,28 +226,122 @@ impl autogen::transaction::Server for Transaction {
         Promise::from_future(f)
     }
 
-    fn get_vertex_metadata(&mut self, req: autogen::transaction::GetVertexMetadataParams<>, res: autogen::transaction::GetVertexMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn get_vertex_metadata(&mut self, req: autogen::transaction::GetVertexMetadataParams<>, mut res: autogen::transaction::GetVertexMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+
+        let f = self.pool.spawn_fn(move || -> Result<Vec<VertexMetadata>, CapnpError> {
+            map_err!(trans.get_vertex_metadata(&q, &name))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            let mut res = res.get().init_result(metadatas.len() as u32);
+
+            for (i, metadata) in metadatas.into_iter().enumerate() {
+                let mut cnp_metadata = res.reborrow().get(i as u32);
+                converters::from_vertex_metadata(metadata, &mut cnp_metadata);
+            }
+
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn set_vertex_metadata(&mut self, req: autogen::transaction::SetVertexMetadataParams<>, res: autogen::transaction::SetVertexMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn set_vertex_metadata(&mut self, req: autogen::transaction::SetVertexMetadataParams<>, mut res: autogen::transaction::SetVertexMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+        let cnp_value = pry!(params.get_value());
+        let value = pry!(map_err!(serde_json::from_str(cnp_value)));
+
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.set_vertex_metadata(&q, &name, &value))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn delete_vertex_metadata(&mut self, req: autogen::transaction::DeleteVertexMetadataParams<>, res: autogen::transaction::DeleteVertexMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn delete_vertex_metadata(&mut self, req: autogen::transaction::DeleteVertexMetadataParams<>, mut res: autogen::transaction::DeleteVertexMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.delete_vertex_metadata(&q, &name))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn get_edge_metadata(&mut self, req: autogen::transaction::GetEdgeMetadataParams<>, res: autogen::transaction::GetEdgeMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn get_edge_metadata(&mut self, req: autogen::transaction::GetEdgeMetadataParams<>, mut res: autogen::transaction::GetEdgeMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+
+        let f = self.pool.spawn_fn(move || -> Result<Vec<EdgeMetadata>, CapnpError> {
+            map_err!(trans.get_edge_metadata(&q, &name))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            let mut res = res.get().init_result(metadatas.len() as u32);
+
+            for (i, metadata) in metadatas.into_iter().enumerate() {
+                let mut cnp_metadata = res.reborrow().get(i as u32);
+                converters::from_edge_metadata(metadata, &mut cnp_metadata);
+            }
+
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn set_edge_metadata(&mut self, req: autogen::transaction::SetEdgeMetadataParams<>, res: autogen::transaction::SetEdgeMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn set_edge_metadata(&mut self, req: autogen::transaction::SetEdgeMetadataParams<>, mut res: autogen::transaction::SetEdgeMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+        let cnp_value = pry!(params.get_value());
+        let value = pry!(map_err!(serde_json::from_str(cnp_value)));
+
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.set_edge_metadata(&q, &name, &value))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 
-    fn delete_edge_metadata(&mut self, req: autogen::transaction::DeleteEdgeMetadataParams<>, res: autogen::transaction::DeleteEdgeMetadataResults<>) -> Promise<(), CapnpError> {
-        unimplemented!();
+    fn delete_edge_metadata(&mut self, req: autogen::transaction::DeleteEdgeMetadataParams<>, mut res: autogen::transaction::DeleteEdgeMetadataResults<>) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let params = pry!(req.get());
+        let cnp_q = pry!(params.get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+        let name = pry!(params.get_name()).to_string();
+
+        let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
+            map_err!(trans.delete_edge_metadata(&q, &name))
+        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+            res.get().set_result(());
+            Ok(())
+        });
+
+        Promise::from_future(f)
     }
 }
 
