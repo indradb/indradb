@@ -141,7 +141,7 @@ impl autogen::transaction::Server for Transaction {
         Promise::from_future(f)
     }
 
-    fn get_vertex_count(&mut self, req: autogen::transaction::GetVertexCountParams<>, mut res: autogen::transaction::GetVertexCountResults<>) -> Promise<(), CapnpError> {
+    fn get_vertex_count(&mut self, _: autogen::transaction::GetVertexCountParams<>, mut res: autogen::transaction::GetVertexCountResults<>) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         
         let f = self.pool.spawn_fn(move || -> Result<u64, CapnpError> {
@@ -181,7 +181,7 @@ impl autogen::transaction::Server for Transaction {
 
             for (i, edge) in edges.into_iter().enumerate() {
                 let mut cnp_edge = res.reborrow().get(i as u32);
-                converters::from_edge(edge, &mut cnp_edge);
+                converters::from_edge(edge, &mut cnp_edge)?;
             }
 
             Ok(())
@@ -260,7 +260,7 @@ impl autogen::transaction::Server for Transaction {
 
         let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
             map_err!(trans.set_vertex_metadata(&q, &name, &value))
-        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+        }).and_then(move |_| -> Result<(), CapnpError> {
             res.get().set_result(());
             Ok(())
         });
@@ -277,7 +277,7 @@ impl autogen::transaction::Server for Transaction {
 
         let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
             map_err!(trans.delete_vertex_metadata(&q, &name))
-        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+        }).and_then(move |_| -> Result<(), CapnpError> {
             res.get().set_result(());
             Ok(())
         });
@@ -319,7 +319,7 @@ impl autogen::transaction::Server for Transaction {
 
         let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
             map_err!(trans.set_edge_metadata(&q, &name, &value))
-        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+        }).and_then(move |_| -> Result<(), CapnpError> {
             res.get().set_result(());
             Ok(())
         });
@@ -336,7 +336,7 @@ impl autogen::transaction::Server for Transaction {
 
         let f = self.pool.spawn_fn(move || -> Result<(), CapnpError> {
             map_err!(trans.delete_edge_metadata(&q, &name))
-        }).and_then(move |metadatas| -> Result<(), CapnpError> {
+        }).and_then(move |_| -> Result<(), CapnpError> {
             res.get().set_result(());
             Ok(())
         });

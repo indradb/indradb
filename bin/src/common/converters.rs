@@ -5,7 +5,6 @@ use indradb;
 use uuid::Uuid;
 use autogen;
 use capnp;
-use serde_json;
 use std::error::Error;
 use capnp::Error as CapnpError;
 
