@@ -1,5 +1,6 @@
 use capnp_rpc::{RpcSystem, twoparty};
 use capnp_rpc::rpc_twoparty_capnp::Side;
+use capnp::Error as CapnpError;
 use errors;
 use autogen;
 use futures::{Future, Sink, Stream};
@@ -13,12 +14,27 @@ use std::thread::sleep;
 use std::time::Duration;
 use uuid::Uuid;
 use std::net::ToSocketAddrs;
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Core, Handle, Remote};
 use tokio_core::net::TcpStream;
 use tokio_io::AsyncRead;
+use futures::future;
+use std::sync::mpsc::sync_channel;
+
+macro_rules! try_or_send {
+    ($tx:ident, $expr:expr) => (
+        match $expr {
+            Ok(value) => value,
+            Err(err) => {
+                $tx.send(Err(err)).unwrap();
+                return Ok(());
+            }
+        }
+    )
+}
 
 pub struct ClientDatastore {
     client: autogen::service::Client,
+    remote: Remote
 }
 
 impl ClientDatastore {
@@ -43,6 +59,7 @@ impl ClientDatastore {
                 if ready {
                     return Self {
                         client: client,
+                        remote: core.remote()
                     }
                 }
             }
@@ -57,31 +74,39 @@ impl ClientDatastore {
 impl indradb::Datastore<ClientTransaction> for ClientDatastore {
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        Ok(ClientTransaction::new(trans))
+        let remote = self.remote.clone();
+        Ok(ClientTransaction::new(trans, remote))
     }
 }
 
 pub struct ClientTransaction {
-    trans: autogen::transaction::Client
+    trans: autogen::transaction::Client,
+    remote: Remote
 }
 
 impl ClientTransaction {
-    fn new(trans: autogen::transaction::Client) -> Self {
+    fn new(trans: autogen::transaction::Client, remote: Remote) -> Self {
         ClientTransaction {
             trans: trans,
+            remote: remote,
         }
     }
 }
 
 impl indradb::Transaction for ClientTransaction {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        // let mut inner = autogen::CreateVertexRequest::new();
-        // inner.set_vertex(autogen::Vertex::from(v.clone()));
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_create_vertex(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // Ok(response.get_ok())
-        unimplemented!();
+        let mut req = self.trans.create_vertex_request();
+        let (tx, rx) = sync_channel::<Result<bool, CapnpError>>(1);
+
+        let f = req.send().promise.then(move |res| -> Result<(), ()> {
+            let res = try_or_send!(tx, res);
+            let value = try_or_send!(tx, res.get());
+            tx.send(Ok(value.get_result())).unwrap();
+            Ok(())
+        });
+
+        self.remote.spawn(f);
+        Ok(rx.recv().unwrap().unwrap())
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
