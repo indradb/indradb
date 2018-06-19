@@ -52,12 +52,20 @@ pub fn from_vertex_metadata<'a>(metadata: &indradb::VertexMetadata, mut builder:
     builder.set_value(&metadata.value.to_string());
 }
 
+pub fn to_vertex_metadata<'a>(reader: &autogen::vertex_metadata::Reader<'a>) -> Result<indradb::VertexMetadata, CapnpError> {
+    unimplemented!();
+}
+
 pub fn from_edge_metadata<'a>(metadata: &indradb::EdgeMetadata, mut builder: autogen::edge_metadata::Builder<'a>) {
     builder.set_value(&metadata.value.to_string());
     from_edge_key(&metadata.key, builder.init_key());
 }
 
-pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, mut builder: autogen::vertex_query::Builder<'a>) {
+pub fn to_edge_metadata<'a>(reader: &autogen::edge_metadata::Reader<'a>) -> Result<indradb::EdgeMetadata, CapnpError> {
+    unimplemented!();
+}
+
+pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {
     match q {
         indradb::VertexQuery::All { start_id, limit } => {
             let mut builder = builder.init_all();
@@ -113,7 +121,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
     }
 }
 
-pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, mut builder: autogen::edge_query::Builder<'a>) {
+pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query::Builder<'a>) {
     match q {
         indradb::EdgeQuery::Edges { keys } => {
             let mut builder = builder.init_edges().init_keys(keys.len() as u32);

@@ -1,24 +1,17 @@
 use capnp_rpc::{RpcSystem, twoparty};
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp::Error as CapnpError;
-use errors;
 use autogen;
 use futures::{Future, Sink, Stream};
-use futures::stream::Wait;
 use indradb;
-use serde_json;
 use serde_json::value::Value as JsonValue;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread::sleep;
 use std::time::Duration;
 use uuid::Uuid;
 use std::net::ToSocketAddrs;
-use tokio_core::reactor::{Core, Handle, Remote};
+use tokio_core::reactor::Core;
 use tokio_core::net::TcpStream;
 use tokio_io::AsyncRead;
-use futures::future;
-use std::sync::mpsc::sync_channel;
 use converters;
 
 pub struct ClientDatastore {
@@ -84,10 +77,7 @@ impl indradb::Transaction for ClientTransaction {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.create_vertex_request();
-            {
-                let mut builder = req.get().init_vertex();
-                converters::from_vertex(v, builder);
-            }
+            converters::from_vertex(v, req.get().init_vertex());
 
             let f = req.send().promise.and_then(move |res| {
                 Ok(res.get()?.get_result())
@@ -142,7 +132,7 @@ impl indradb::Transaction for ClientTransaction {
 
     fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.get_vertex_count_request();
+            let req = trans.get_vertex_count_request();
 
             let f = req.send().promise.and_then(move |res| {
                 Ok(res.get()?.get_result())
@@ -155,10 +145,7 @@ impl indradb::Transaction for ClientTransaction {
     fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.create_edge_request();
-            {
-                let mut builder = req.get().init_key();
-                converters::from_edge_key(e, builder);
-            }
+            converters::from_edge_key(e, req.get().init_key());
 
             let f = req.send().promise.and_then(move |res| {
                 Ok(res.get()?.get_result())
@@ -171,9 +158,7 @@ impl indradb::Transaction for ClientTransaction {
     fn get_edges(&self, q: &indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_edges_request();
-            {
-                converters::from_edge_query(&q, req.get().init_q());
-            }
+            converters::from_edge_query(&q, req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
@@ -186,13 +171,17 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn delete_edges(&self, q: &indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::DeleteEdgesRequest::new();
-        // inner.set_query(autogen::EdgeQuery::from(q.clone()));
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_delete_edges(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.delete_edges_request();
+            converters::from_edge_query(&q, req.get().init_q());
+
+            let f = req.send().promise.and_then(move |res| {
+                res.get()?;
+                Ok(())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn get_edge_count(
@@ -201,19 +190,22 @@ impl indradb::Transaction for ClientTransaction {
         type_filter: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
-        // let mut inner = autogen::GetEdgeCountRequest::new();
-        // inner.set_id(id.hyphenated().to_string());
+        self.execute(move |trans| {
+            let mut req = trans.get_edge_count_request();
+            req.get().set_id(id.as_bytes());
+            
+            if let Some(type_filter) = type_filter {
+                req.get().set_type_filter(&type_filter.0);
+            }
 
-        // if let Some(type_filter) = type_filter {
-        //     inner.set_type_filter(type_filter.0.clone());
-        // }
+            req.get().set_direction(converters::from_edge_direction(direction));
 
-        // inner.set_direction(String::from(direction));
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_get_edge_count(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // Ok(response.get_count())
-        unimplemented!();
+            let f = req.send().promise.and_then(move |res| {
+                Ok(res.get()?.get_result())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn get_vertex_metadata(
@@ -221,20 +213,19 @@ impl indradb::Transaction for ClientTransaction {
         q: &indradb::VertexQuery,
         name: &str,
     ) -> Result<Vec<indradb::VertexMetadata>, indradb::Error> {
-        // let mut inner = autogen::GetVertexMetadataRequest::new();
-        // inner.set_query(autogen::VertexQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_get_vertex_metadata(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // let metadata: Result<Vec<indradb::VertexMetadata>, errors::Error> = response
-        //     .get_vertex_metadatas()
-        //     .get_values()
-        //     .into_iter()
-        //     .map(indradb::VertexMetadata::reverse_from)
-        //     .collect();
-        // Ok(metadata.unwrap())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.get_vertex_metadata_request();
+            converters::from_vertex_query(&q, req.get().init_q());
+            req.get().set_name(name);
+
+            let f = req.send().promise.and_then(move |res| {
+                let list = res.get()?.get_result()?;
+                let list: Result<Vec<indradb::VertexMetadata>, CapnpError> = list.into_iter().map(|reader| converters::to_vertex_metadata(&reader)).collect();
+                list
+            });
+
+            Box::new(f)
+        })
     }
 
     fn set_vertex_metadata(
@@ -243,26 +234,34 @@ impl indradb::Transaction for ClientTransaction {
         name: &str,
         value: &JsonValue,
     ) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::SetVertexMetadataRequest::new();
-        // inner.set_query(autogen::VertexQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // inner.set_value(value.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_set_vertex_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.set_vertex_metadata_request();
+            converters::from_vertex_query(&q, req.get().init_q());
+            req.get().set_name(name);
+            req.get().set_value(&value.to_string());
+
+            let f = req.send().promise.and_then(move |res| {
+                res.get()?;
+                Ok(())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn delete_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::DeleteVertexMetadataRequest::new();
-        // inner.set_query(autogen::VertexQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_delete_vertex_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.set_vertex_metadata_request();
+            converters::from_vertex_query(&q, req.get().init_q());
+            req.get().set_name(name);
+
+            let f = req.send().promise.and_then(move |res| {
+                res.get()?;
+                Ok(())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn get_edge_metadata(
@@ -270,42 +269,49 @@ impl indradb::Transaction for ClientTransaction {
         q: &indradb::EdgeQuery,
         name: &str,
     ) -> Result<Vec<indradb::EdgeMetadata>, indradb::Error> {
-        // let mut inner = autogen::GetEdgeMetadataRequest::new();
-        // inner.set_query(autogen::EdgeQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_get_edge_metadata(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // let metadata: Result<Vec<indradb::EdgeMetadata>, errors::Error> = response
-        //     .get_edge_metadatas()
-        //     .get_values()
-        //     .into_iter()
-        //     .map(indradb::EdgeMetadata::reverse_from)
-        //     .collect();
-        // Ok(metadata.unwrap())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.get_edge_metadata_request();
+            converters::from_edge_query(&q, req.get().init_q());
+            req.get().set_name(name);
+
+            let f = req.send().promise.and_then(move |res| {
+                let list = res.get()?.get_result()?;
+                let list: Result<Vec<indradb::EdgeMetadata>, CapnpError> = list.into_iter().map(|reader| converters::to_edge_metadata(&reader)).collect();
+                list
+            });
+
+            Box::new(f)
+        })
     }
 
     fn set_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::SetEdgeMetadataRequest::new();
-        // inner.set_query(autogen::EdgeQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // inner.set_value(value.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_set_edge_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.set_edge_metadata_request();
+            converters::from_edge_query(&q, req.get().init_q());
+            req.get().set_name(name);
+            req.get().set_value(&value.to_string());
+
+            let f = req.send().promise.and_then(move |res| {
+                res.get()?;
+                Ok(())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn delete_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
-        // let mut inner = autogen::DeleteEdgeMetadataRequest::new();
-        // inner.set_query(autogen::EdgeQuery::from(q.clone()));
-        // inner.set_name(name.to_string());
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_delete_edge_metadata(inner);
-        // self.channel.lock().unwrap().request(request)?;
-        // Ok(())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.set_edge_metadata_request();
+            converters::from_edge_query(&q, req.get().init_q());
+            req.get().set_name(name);
+
+            let f = req.send().promise.and_then(move |res| {
+                res.get()?;
+                Ok(())
+            });
+
+            Box::new(f)
+        })
     }
 }
