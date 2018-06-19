@@ -2,7 +2,7 @@ use capnp_rpc::{RpcSystem, twoparty};
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp::Error as CapnpError;
 use autogen;
-use futures::{Future, Sink, Stream};
+use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
 use std::thread::sleep;

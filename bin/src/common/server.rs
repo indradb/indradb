@@ -1,4 +1,4 @@
-use tokio_core::reactor::{Core, Handle};
+use tokio_core::reactor::Core;
 use autogen;
 use capnp_rpc::{RpcSystem, Server};
 use capnp_rpc::twoparty::VatNetwork;
@@ -29,15 +29,13 @@ macro_rules! pry_user {
 const WORKER_COUNT: usize = 8;
 
 struct Service {
-    handle: Handle,
     datastore: proxy_datastore::ProxyDatastore,
     pool: CpuPool
 }
 
 impl Service {
-    fn new(handle: Handle, datastore: proxy_datastore::ProxyDatastore) -> Self {
+    fn new(datastore: proxy_datastore::ProxyDatastore) -> Self {
         Self {
-            handle: handle,
             datastore: datastore,
             pool: CpuPool::new(WORKER_COUNT)
         }
@@ -347,15 +345,12 @@ pub fn start(binding: &str) -> Result<(), errors::Error> {
     let handle = core.handle();
     let addr = binding.to_socket_addrs()?.next().ok_or_else(|| -> errors::Error { "Could not parse binding".into() })?;
     let socket = TcpListener::bind(&addr, &handle)?;
-    let service = autogen::service::ToClient::new(Service::new(handle.clone(), datastore)).from_server::<Server>();
+    let service = autogen::service::ToClient::new(Service::new(datastore)).from_server::<Server>();
 
     let done = {
-        let handle = handle.clone();
-
         socket.incoming().for_each(move |(socket, _)| {
             socket.set_nodelay(true)?;
             let (reader, writer) = socket.split();
-            let handle = handle.clone();
             let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
             let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(service.clone().client));
             handle.spawn(rpc_system.map_err(|_| ()));

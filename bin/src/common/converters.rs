@@ -6,6 +6,7 @@ use uuid::Uuid;
 use autogen;
 use capnp;
 use std::error::Error;
+use serde_json;
 use capnp::Error as CapnpError;
 
 #[macro_export]
@@ -31,7 +32,9 @@ pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: autogen::edge::Builder<'
 }
 
 pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, CapnpError> {
-    unimplemented!();
+    let key = to_edge_key(&reader.get_key()?)?;
+    let created_datetime = Utc.timestamp(reader.get_created_datetime() as i64, 0);
+    Ok(indradb::Edge::new(key, created_datetime))
 }
 
 pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
@@ -53,7 +56,9 @@ pub fn from_vertex_metadata<'a>(metadata: &indradb::VertexMetadata, mut builder:
 }
 
 pub fn to_vertex_metadata<'a>(reader: &autogen::vertex_metadata::Reader<'a>) -> Result<indradb::VertexMetadata, CapnpError> {
-    unimplemented!();
+    let id = map_err!(Uuid::from_bytes(reader.get_id()?))?;
+    let value = map_err!(serde_json::from_str(reader.get_value()?))?;
+    Ok(indradb::VertexMetadata::new(id, value))
 }
 
 pub fn from_edge_metadata<'a>(metadata: &indradb::EdgeMetadata, mut builder: autogen::edge_metadata::Builder<'a>) {
@@ -62,7 +67,9 @@ pub fn from_edge_metadata<'a>(metadata: &indradb::EdgeMetadata, mut builder: aut
 }
 
 pub fn to_edge_metadata<'a>(reader: &autogen::edge_metadata::Reader<'a>) -> Result<indradb::EdgeMetadata, CapnpError> {
-    unimplemented!();
+    let key = to_edge_key(&reader.get_key()?)?;
+    let value = map_err!(serde_json::from_str(reader.get_value()?))?;
+    Ok(indradb::EdgeMetadata::new(key, value))
 }
 
 pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {
