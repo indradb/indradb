@@ -46,7 +46,7 @@ pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key:
 pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
     let outbound_id = map_err!(Uuid::from_bytes(reader.get_outbound_id()?))?;
     let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
-    let inbound_id = map_err!(Uuid::from_bytes(reader.get_outbound_id()?))?;
+    let inbound_id = map_err!(Uuid::from_bytes(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
