@@ -251,7 +251,7 @@ impl indradb::Transaction for ClientTransaction {
 
     fn delete_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.set_vertex_metadata_request();
+            let mut req = trans.delete_vertex_metadata_request();
             converters::from_vertex_query(&q, req.get().init_q());
             req.get().set_name(name);
 
@@ -302,7 +302,7 @@ impl indradb::Transaction for ClientTransaction {
 
     fn delete_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.set_edge_metadata_request();
+            let mut req = trans.delete_edge_metadata_request();
             converters::from_edge_query(&q, req.get().init_q());
             req.get().set_name(name);
 
