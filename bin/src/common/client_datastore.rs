@@ -13,39 +13,19 @@ use tokio_core::reactor::Core;
 use tokio_core::net::TcpStream;
 use tokio_io::AsyncRead;
 use converters;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub struct ClientDatastore {
-    port: u16
+    core: Rc<RefCell<Core>>,
+    client: autogen::service::Client
 }
 
 impl ClientDatastore {
     pub fn new(port: u16) -> Self {
-        Self { port }
-    }
-}
-
-impl indradb::Datastore<ClientTransaction> for ClientDatastore {
-    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
-        Ok(ClientTransaction::new(self.port))
-    }
-}
-
-pub struct ClientTransaction {
-    port: u16
-}
-
-impl ClientTransaction {
-    fn new(port: u16) -> Self {
-        ClientTransaction { port }
-    }
-}
-
-impl ClientTransaction {
-    fn execute<F, G>(&self, f: F) -> Result<G, indradb::Error>
-    where F: FnOnce(autogen::transaction::Client) -> Box<Future<Item=G, Error=CapnpError>> {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
-        let addr = format!("127.0.0.1:{}", self.port).to_socket_addrs().unwrap().next().unwrap();
+        let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
 
         for _ in 0..5 {
             if let Ok(stream) = core.run(TcpStream::connect(&addr, &handle)) {
@@ -60,9 +40,10 @@ impl ClientTransaction {
                 let res = core.run(req.send().promise).unwrap();
                 
                 if res.get().unwrap().get_ready() {
-                    let trans = client.transaction_request().send().pipeline.get_transaction();
-                    let future = f(trans);
-                    return core.run(future).map_err(|err| format!("{:?}", err).into());
+                    return Self { 
+                        core: Rc::new(RefCell::new(core)),
+                        client: client
+                    };
                 }
             }
 
@@ -70,6 +51,35 @@ impl ClientTransaction {
         }
 
         panic!("Could not connect to the server after a few seconds");
+    }
+}
+
+impl indradb::Datastore<ClientTransaction> for ClientDatastore {
+    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        Ok(ClientTransaction::new(self.core.clone(), trans))
+    }
+}
+
+pub struct ClientTransaction {
+    core: Rc<RefCell<Core>>,
+    trans: RefCell<autogen::transaction::Client>
+}
+
+impl ClientTransaction {
+    fn new(core: Rc<RefCell<Core>>, trans: autogen::transaction::Client) -> Self {
+        ClientTransaction {
+            core: core,
+            trans: RefCell::new(trans)
+        }
+    }
+}
+
+impl ClientTransaction {
+    fn execute<F, G>(&self, f: F) -> Result<G, indradb::Error>
+    where F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item=G, Error=CapnpError>> {
+        let future = f(&mut self.trans.borrow_mut());
+        return self.core.borrow_mut().run(future).map_err(|err| format!("{:?}", err).into());
     }
 }
 
