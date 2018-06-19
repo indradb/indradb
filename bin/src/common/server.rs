@@ -115,8 +115,7 @@ impl autogen::transaction::Server for Transaction {
             let mut res = res.get().init_result(vertices.len() as u32);
 
             for (i, vertex) in vertices.into_iter().enumerate() {
-                let mut cnp_vertex = res.reborrow().get(i as u32);
-                converters::from_vertex(vertex, &mut cnp_vertex);
+                converters::from_vertex(&vertex, res.reborrow().get(i as u32));
             }
 
             Ok(())
@@ -180,8 +179,7 @@ impl autogen::transaction::Server for Transaction {
             let mut res = res.get().init_result(edges.len() as u32);
 
             for (i, edge) in edges.into_iter().enumerate() {
-                let mut cnp_edge = res.reborrow().get(i as u32);
-                converters::from_edge(edge, &mut cnp_edge)?;
+                converters::from_edge(&edge, res.reborrow().get(i as u32))?;
             }
 
             Ok(())
@@ -239,8 +237,7 @@ impl autogen::transaction::Server for Transaction {
             let mut res = res.get().init_result(metadatas.len() as u32);
 
             for (i, metadata) in metadatas.into_iter().enumerate() {
-                let mut cnp_metadata = res.reborrow().get(i as u32);
-                converters::from_vertex_metadata(metadata, &mut cnp_metadata);
+                converters::from_vertex_metadata(&metadata, res.reborrow().get(i as u32));
             }
 
             Ok(())
@@ -298,8 +295,7 @@ impl autogen::transaction::Server for Transaction {
             let mut res = res.get().init_result(metadatas.len() as u32);
 
             for (i, metadata) in metadatas.into_iter().enumerate() {
-                let mut cnp_metadata = res.reborrow().get(i as u32);
-                converters::from_edge_metadata(metadata, &mut cnp_metadata);
+                converters::from_edge_metadata(&metadata, res.reborrow().get(i as u32));
             }
 
             Ok(())

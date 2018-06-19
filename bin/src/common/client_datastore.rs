@@ -19,29 +19,40 @@ use tokio_core::net::TcpStream;
 use tokio_io::AsyncRead;
 use futures::future;
 use std::sync::mpsc::sync_channel;
-
-macro_rules! try_or_send {
-    ($tx:ident, $expr:expr) => (
-        match $expr {
-            Ok(value) => value,
-            Err(err) => {
-                $tx.send(Err(err)).unwrap();
-                return Ok(());
-            }
-        }
-    )
-}
+use converters;
 
 pub struct ClientDatastore {
-    client: autogen::service::Client,
-    remote: Remote
+    port: u16
 }
 
 impl ClientDatastore {
     pub fn new(port: u16) -> Self {
+        Self { port }
+    }
+}
+
+impl indradb::Datastore<ClientTransaction> for ClientDatastore {
+    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
+        Ok(ClientTransaction::new(self.port))
+    }
+}
+
+pub struct ClientTransaction {
+    port: u16
+}
+
+impl ClientTransaction {
+    fn new(port: u16) -> Self {
+        ClientTransaction { port }
+    }
+}
+
+impl ClientTransaction {
+    fn execute<F, G>(&self, f: F) -> Result<G, indradb::Error>
+    where F: FnOnce(autogen::transaction::Client) -> Box<Future<Item=G, Error=CapnpError>> {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
-        let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
+        let addr = format!("127.0.0.1:{}", self.port).to_socket_addrs().unwrap().next().unwrap();
 
         for _ in 0..5 {
             if let Ok(stream) = core.run(TcpStream::connect(&addr, &handle)) {
@@ -54,85 +65,69 @@ impl ClientDatastore {
 
                 let req = client.ping_request();
                 let res = core.run(req.send().promise).unwrap();
-                let ready = res.get().unwrap().get_ready();
-
-                if ready {
-                    return Self {
-                        client: client,
-                        remote: core.remote()
-                    }
+                
+                if res.get().unwrap().get_ready() {
+                    let trans = client.transaction_request().send().pipeline.get_transaction();
+                    let future = f(trans);
+                    return core.run(future).map_err(|err| format!("{:?}", err).into());
                 }
             }
 
             sleep(Duration::from_secs(1));
         }
 
-        panic!("Server failed to initialize after a few seconds");
-    }
-}
-
-impl indradb::Datastore<ClientTransaction> for ClientDatastore {
-    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let remote = self.remote.clone();
-        Ok(ClientTransaction::new(trans, remote))
-    }
-}
-
-pub struct ClientTransaction {
-    trans: autogen::transaction::Client,
-    remote: Remote
-}
-
-impl ClientTransaction {
-    fn new(trans: autogen::transaction::Client, remote: Remote) -> Self {
-        ClientTransaction {
-            trans: trans,
-            remote: remote,
-        }
+        panic!("Could not connect to the server after a few seconds");
     }
 }
 
 impl indradb::Transaction for ClientTransaction {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        let mut req = self.trans.create_vertex_request();
-        let (tx, rx) = sync_channel::<Result<bool, CapnpError>>(1);
+        self.execute(move |trans| {
+            let mut req = trans.create_vertex_request();
+            {
+                let mut builder = req.get().init_vertex();
+                converters::from_vertex(v, builder);
+            }
 
-        let f = req.send().promise.then(move |res| -> Result<(), ()> {
-            let res = try_or_send!(tx, res);
-            let value = try_or_send!(tx, res.get());
-            tx.send(Ok(value.get_result())).unwrap();
-            Ok(())
-        });
+            let f = req.send().promise.then(move |res| {
+                Ok(res?.get()?.get_result())
+            });
 
-        self.remote.spawn(f);
-        Ok(rx.recv().unwrap().unwrap())
+            Box::new(f)
+        })
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        // let mut inner = autogen::CreateVertexFromTypeRequest::new();
-        // inner.set_field_type(t.0);
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_create_vertex_from_type(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // Ok(Uuid::parse_str(response.get_uuid()).unwrap())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.create_vertex_from_type_request();
+            req.get().set_t(&t.0);
+
+            let f = req.send().promise.then(move |res| {
+                let res = res?;
+                let bytes = res.get()?.get_result()?;
+                Ok(Uuid::from_bytes(bytes).unwrap())
+            });
+
+            Box::new(f)
+        })
     }
 
     fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        // let mut inner = autogen::GetVerticesRequest::new();
-        // inner.set_query(autogen::VertexQuery::from(q.clone()));
-        // let mut request = autogen::TransactionRequest::new();
-        // request.set_get_vertices(inner);
-        // let response = self.channel.lock().unwrap().request(request)?;
-        // let vertices: Result<Vec<indradb::Vertex>, errors::Error> = response
-        //     .get_vertices()
-        //     .get_vertices()
-        //     .into_iter()
-        //     .map(indradb::Vertex::reverse_from)
-        //     .collect();
-        // Ok(vertices.unwrap())
-        unimplemented!();
+        self.execute(move |trans| {
+            let mut req = trans.get_vertices_request();
+            {
+                converters::from_vertex_query(&q, req.get().init_q());
+            }
+
+            let f = req.send().promise.then(move |res| {
+                let res = res?;
+                let list = res.get()?.get_result()?;
+                let list: Result<Vec<indradb::Vertex>, CapnpError> = list.into_iter().map(|reader| converters::to_vertex(&reader)).collect();
+                list
+            });
+
+            Box::new(f)
+        })
     }
 
     fn delete_vertices(&self, q: &indradb::VertexQuery) -> Result<(), indradb::Error> {
