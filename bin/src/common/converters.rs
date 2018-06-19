@@ -26,8 +26,12 @@ pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Ve
 
 pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: autogen::edge::Builder<'a>) -> Result<(), CapnpError> {
     builder.set_created_datetime(edge.created_datetime.timestamp() as u64);
-    from_edge_key(&edge.key, builder.reborrow().init_key());
+    from_edge_key(&edge.key, builder.init_key());
     Ok(())
+}
+
+pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, CapnpError> {
+    unimplemented!();
 }
 
 pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
@@ -50,7 +54,7 @@ pub fn from_vertex_metadata<'a>(metadata: &indradb::VertexMetadata, mut builder:
 
 pub fn from_edge_metadata<'a>(metadata: &indradb::EdgeMetadata, mut builder: autogen::edge_metadata::Builder<'a>) {
     builder.set_value(&metadata.value.to_string());
-    from_edge_key(&metadata.key, builder.reborrow().init_key());
+    from_edge_key(&metadata.key, builder.init_key());
 }
 
 pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, mut builder: autogen::vertex_query::Builder<'a>) {
@@ -68,7 +72,7 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, mut builder: autogen::ver
             let mut builder = builder.init_vertices().init_ids(ids.len() as u32);
 
             for (i, id) in ids.iter().enumerate() {
-                builder.reborrow().set(i as u32, id.as_bytes());
+                builder.set(i as u32, id.as_bytes());
             }
         },
         indradb::VertexQuery::Pipe { edge_query, converter, limit } => {
