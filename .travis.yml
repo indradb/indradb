@@ -11,7 +11,6 @@ addons:
       - libdw-dev
       - binutils-dev
       - libiberty-dev
-      - capnproto
 
 matrix:
   include:

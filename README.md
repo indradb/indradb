@@ -6,13 +6,13 @@
 
 A graph database written in rust. This software is in the alpha state.
 
-IndraDB consists of a gRPC server and an underlying library. Most users would use the gRPC server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
 ## Features
 
 * Support for directed and typed graphs.
 * A simple, JSON-based query DSL with support for multiple hops.
-* Cross-language support via gRPC, or direct embedding as a library.
+* Cross-language support via Cap'n Proto, or direct embedding as a library.
 * Support for metadata: key/value data tied to graph items that can be used for supporting things like caching results from graph processing algorithms executed offline.
 * Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!

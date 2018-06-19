@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate common;
-extern crate grpcio;
 #[macro_use]
 extern crate indradb;
 extern crate test;
