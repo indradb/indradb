@@ -2,6 +2,23 @@
 
 set -ex
 
+if [ $TRAVIS_OS_NAME = linux ]; then
+    if ! type kcov &> /dev/null; then
+        pushd $HOME
+            wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
+            tar xzf master.tar.gz
+            pushd kcov-master
+                mkdir -p build
+                pushd build
+                    cmake ..
+                    make
+                    sudo make install
+                popd
+            popd
+        popd
+    fi
+fi
+
 curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
 tar zxf capnproto-c++-0.6.1.tar.gz
 cd capnproto-c++-0.6.1
