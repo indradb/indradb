@@ -42,7 +42,7 @@ futures = "0.1"
 tokio-core = "0.1"
 tokio-io = "0.1"
 futures-cpupool = "0.1"
-chrono = { version = "0.4.0", features = ["serde"] }
+chrono = { version = "0.4.3", features = ["serde"] }
 uuid = { version = "0.5.1", features = ["serde", "v4"] }
 
 [dependencies.indradb-lib]

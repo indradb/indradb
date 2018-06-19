@@ -1,6 +1,6 @@
 //! Converts between cnp and native IndraDB models
 
-use chrono::{Utc, TimeZone};
+use chrono::{Utc, TimeZone, DateTime};
 use indradb;
 use uuid::Uuid;
 use autogen;
@@ -8,6 +8,8 @@ use capnp;
 use std::error::Error;
 use serde_json;
 use capnp::Error as CapnpError;
+
+const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 #[macro_export]
 macro_rules! map_err {
@@ -146,11 +148,11 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query:
             }
 
             if let Some(high_filter) = high_filter {
-                builder.set_high_filter(high_filter.timestamp() as u64);
+                builder.set_high_filter(high_filter.timestamp_nanos() as u64);
             }
 
             if let Some(low_filter) = low_filter {
-                builder.set_low_filter(low_filter.timestamp() as u64);
+                builder.set_low_filter(low_filter.timestamp_nanos() as u64);
             }
             
             builder.set_limit(*limit);
@@ -172,14 +174,8 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
                 "" => None,
                 value => Some(map_err!(indradb::Type::new(value.to_string()))?)
             };
-            let high_filter = match params.get_high_filter() {
-                0 => None,
-                value => Some(Utc.timestamp(value as i64, 0))
-            };
-            let low_filter = match params.get_low_filter() {
-                0 => None,
-                value => Some(Utc.timestamp(value as i64, 0))
-            };
+            let high_filter = to_optional_datetime(params.get_high_filter());
+            let low_filter = to_optional_datetime(params.get_low_filter());
             let limit = params.get_limit();
             
             Ok(indradb::EdgeQuery::Pipe {
@@ -205,5 +201,15 @@ pub fn to_edge_direction(direction: autogen::EdgeDirection) -> indradb::EdgeDire
     match direction {
         autogen::EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
         autogen::EdgeDirection::Inbound => indradb::EdgeDirection::Inbound
+    }
+}
+
+pub fn to_optional_datetime(timestamp: u64) -> Option<DateTime<Utc>> {
+    if timestamp == 0 {
+        None
+    } else {
+        let secs = timestamp / (NANOS_PER_SEC as u64);
+        let nanos = timestamp % (NANOS_PER_SEC as u64);
+        Some(Utc.timestamp(secs as i64, nanos as u32))
     }
 }
