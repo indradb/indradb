@@ -3,7 +3,6 @@
 using Timestamp = UInt64;
 using Uuid = Data;
 using Type = Text;
-using Error = Text;
 using Json = Text;
 
 struct Edge {
