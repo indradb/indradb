@@ -14,10 +14,10 @@ use std::u8;
 use uuid::Uuid;
 
 pub type DBIteratorItem = (Box<[u8]>, Box<[u8]>);
-pub type OwnedMetadataItem = Result<((Uuid, String), JsonValue)>;
-pub type VertexItem = Result<(Uuid, models::Type)>;
-pub type EdgeRangeItem = Result<(Uuid, models::Type, DateTime<Utc>, Uuid)>;
-pub type EdgeMetadataItem = Result<((Uuid, models::Type, Uuid, String), JsonValue)>;
+pub type OwnedMetadataItem = ((Uuid, String), JsonValue);
+pub type VertexItem = (Uuid, models::Type);
+pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
+pub type EdgeMetadataItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>> {
     let result = bincode::serialize(value, bincode::Infinite)?;
@@ -59,7 +59,7 @@ fn iterate_metadata_for_owner<'a>(
     db: &DB,
     cf: ColumnFamily,
     id: Uuid,
-) -> Result<Box<Iterator<Item = OwnedMetadataItem> + 'a>> {
+) -> Result<Box<Iterator<Item = Result<OwnedMetadataItem>> + 'a>> {
     let prefix = build_key(&[KeyComponent::Uuid(id)]);
     let iterator = db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward))?;
     let filtered = take_while_prefixed(iterator, prefix);
@@ -105,8 +105,8 @@ impl VertexManager {
         }
     }
 
-    fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
-        let mapped = iterator.map(|item| -> VertexItem {
+    fn iterate<'a>(&self, iterator: DBIterator) -> Result<Box<Iterator<Item = Result<VertexItem>> + 'a>> {
+        let mapped = iterator.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
             let id = parse_uuid_key(k);
             let value: models::Type = bincode::deserialize(&v.to_owned()[..])?;
@@ -116,7 +116,7 @@ impl VertexManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
+    pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<VertexItem>> + 'a>> {
         let low_key = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
@@ -300,10 +300,10 @@ impl EdgeRangeManager {
         ])
     }
 
-    fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
+    fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
-        let mapped = filtered.map(move |item| -> EdgeRangeItem {
+        let mapped = filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
@@ -321,7 +321,7 @@ impl EdgeRangeManager {
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
+    ) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -361,7 +361,7 @@ impl EdgeRangeManager {
         }
     }
 
-    pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
+    pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         let prefix = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -415,7 +415,7 @@ impl VertexMetadataManager {
         ])
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<Box<Iterator<Item = OwnedMetadataItem>>> {
+    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<Box<Iterator<Item = Result<OwnedMetadataItem>>>> {
         iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
     }
 
@@ -463,7 +463,7 @@ impl EdgeMetadataManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<Iterator<Item = EdgeMetadataItem> + 'a>> {
+    ) -> Result<Box<Iterator<Item = Result<EdgeMetadataItem>> + 'a>> {
         let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
@@ -474,7 +474,7 @@ impl EdgeMetadataManager {
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
-        let mapped = filtered.map(move |item| -> EdgeMetadataItem {
+        let mapped = filtered.map(move |item| -> Result<EdgeMetadataItem> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
 

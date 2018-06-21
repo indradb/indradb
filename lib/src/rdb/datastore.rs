@@ -1,6 +1,5 @@
 use super::managers::*;
 use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
-use chrono::DateTime;
 use chrono::offset::Utc;
 use core::fmt::Debug;
 use errors::Result;
@@ -107,7 +106,7 @@ impl RocksdbTransaction {
         Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {
+    fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = Result<VertexItem>>>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         match *q {
@@ -159,12 +158,12 @@ impl RocksdbTransaction {
         }
     }
 
-    fn edge_query_to_iterator(&self, q: &EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>> {
+    fn edge_query_to_iterator(&self, q: &EdgeQuery) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>>>> {
         match *q {
             EdgeQuery::Edges { ref keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges: Vec<Result<Option<(Uuid, models::Type, DateTime<Utc>, Uuid)>>> = keys.into_iter()
+                let edges: Vec<Result<Option<EdgeRangeItem>>> = keys.into_iter()
                     .map(
                         move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
                             Some(update_datetime) => Ok(Some((
@@ -201,7 +200,7 @@ impl RocksdbTransaction {
                 // returning the same type signature, issues with `Result`s
                 // and some of the iterators, etc. So at this point, we'll
                 // just resort to building a vector.
-                let mut edges: Vec<EdgeRangeItem> = Vec::new();
+                let mut edges: Vec<Result<EdgeRangeItem>> = Vec::new();
 
                 if let Some(low_filter) = low_filter {
                     for item in vertex_iterator {
@@ -313,7 +312,7 @@ impl RocksdbTransaction {
     fn handle_vertex_id_iterator(
         &self,
         iterator: Box<Iterator<Item = Result<Uuid>>>,
-    ) -> Box<Iterator<Item = VertexItem>> {
+    ) -> Box<Iterator<Item = Result<VertexItem>>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         let mapped = iterator.map(move |item| {
