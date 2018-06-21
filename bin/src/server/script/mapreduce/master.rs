@@ -1,3 +1,7 @@
+// Ignored because of warnings in crossbeam that we cannot control.
+// TODO: remove after crossbeam fixes this.
+#![cfg_attr(feature = "cargo-clippy", allow(deref_addrof, never_loop))]
+
 use super::counter::Counter;
 use super::worker::{Worker, WorkerError, WorkerTask};
 use crossbeam_channel::{bounded, unbounded, Sender};
@@ -123,10 +127,10 @@ impl Master {
         };
 
         Self {
-            router_thread: router_thread,
+            router_thread,
             in_sender: master_in_sender,
-            shutdown_sender: shutdown_sender,
-            sent: sent,
+            shutdown_sender,
+            sent,
         }
     }
 

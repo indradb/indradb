@@ -482,11 +482,7 @@ impl<'lua> FromLua<'lua> for EdgeDirection {
 }
 
 fn new_from_lua_error(from: &'static str, to: &'static str, message: Option<String>) -> LuaError {
-    LuaError::FromLuaConversionError {
-        from: from,
-        to: to,
-        message: message,
-    }
+    LuaError::FromLuaConversionError { from, to, message }
 }
 
 fn optional_datetime_from_value(value: &Value) -> LuaResult<Option<DateTime<Utc>>> {

@@ -68,7 +68,8 @@ pub fn set_vertex_metadata(
     trans: &ProxyTransaction,
     (q, key, value): (converters::VertexQuery, String, converters::JsonValue),
 ) -> Result<(), Error> {
-    Ok(trans.set_vertex_metadata(&q.0, &key, &value.0)?)
+    trans.set_vertex_metadata(&q.0, &key, &value.0)?;
+    Ok(())
 }
 
 pub fn delete_vertex_metadata(

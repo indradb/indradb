@@ -131,13 +131,13 @@ impl InternalMemoryDatastore {
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if update_datetime > &high_filter {
+                                if *update_datetime > high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if update_datetime < &low_filter {
+                                if *update_datetime < low_filter {
                                     continue;
                                 }
                             }
@@ -167,13 +167,13 @@ impl InternalMemoryDatastore {
                             }
 
                             if let Some(high_filter) = high_filter {
-                                if update_datetime > &high_filter {
+                                if *update_datetime > high_filter {
                                     continue;
                                 }
                             }
 
                             if let Some(low_filter) = low_filter {
-                                if update_datetime < &low_filter {
+                                if *update_datetime < low_filter {
                                     continue;
                                 }
                             }
@@ -284,13 +284,14 @@ pub struct MemoryTransaction {
 impl Transaction for MemoryTransaction {
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
+        let mut inserted = false;
 
-        if datastore.vertices.contains_key(&vertex.id) {
-            Ok(false)
-        } else {
-            datastore.vertices.insert(vertex.id, vertex.t.clone());
-            Ok(true)
-        }
+        datastore.vertices.entry(vertex.id).or_insert_with(|| {
+            inserted = true;
+            vertex.t.clone()
+        });
+
+        Ok(inserted)
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {

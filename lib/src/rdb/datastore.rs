@@ -14,7 +14,7 @@ use std::usize;
 use util::next_uuid;
 use uuid::Uuid;
 
-const CF_NAMES: [&'static str; 6] = [
+const CF_NAMES: [&str; 6] = [
     "vertices:v1",
     "edges:v1",
     "edge_ranges:v1",
@@ -31,9 +31,9 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.set_compaction_style(DBCompactionStyle::Level);
-    opts.set_write_buffer_size(67108864); //64mb
+    opts.set_write_buffer_size(67_108_864); //64mb
     opts.set_max_write_buffer_number(3);
-    opts.set_target_file_size_base(67108864); //64mb
+    opts.set_target_file_size_base(67_108_864); //64mb
     opts.set_max_background_compactions(4);
     opts.set_level_zero_slowdown_writes_trigger(17);
     opts.set_level_zero_stop_writes_trigger(24);
@@ -104,7 +104,7 @@ pub struct RocksdbTransaction {
 
 impl RocksdbTransaction {
     fn new(db: Arc<DB>) -> Result<Self> {
-        Ok(RocksdbTransaction { db: db })
+        Ok(RocksdbTransaction { db })
     }
 
     fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {

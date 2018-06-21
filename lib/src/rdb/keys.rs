@@ -14,7 +14,7 @@ use util::nanos_since_epoch;
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();
+    pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i64::from(i32::MAX), 0), Utc).with_nanosecond(1_999_999_999u32).unwrap();
 }
 
 pub enum KeyComponent<'a> {

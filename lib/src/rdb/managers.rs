@@ -93,7 +93,7 @@ impl VertexManager {
     pub fn new(db: Arc<DB>) -> Self {
         VertexManager {
             cf: db.cf_handle("vertices:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 
@@ -198,7 +198,7 @@ impl EdgeManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeManager {
             cf: db.cf_handle("edges:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 
@@ -287,14 +287,14 @@ impl EdgeRangeManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("edge_ranges:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 
     pub fn new_reversed(db: Arc<DB>) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("reversed_edge_ranges:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 
@@ -411,7 +411,7 @@ impl VertexMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         VertexMetadataManager {
             cf: db.cf_handle("vertex_metadata:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 
@@ -452,7 +452,7 @@ impl EdgeMetadataManager {
     pub fn new(db: Arc<DB>) -> Self {
         EdgeMetadataManager {
             cf: db.cf_handle("edge_metadata:v1").unwrap(),
-            db: db,
+            db,
         }
     }
 

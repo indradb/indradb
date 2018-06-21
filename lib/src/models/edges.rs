@@ -27,9 +27,9 @@ impl EdgeKey {
     /// * `inbound_id` - The id of the inbound vertex.
     pub fn new(outbound_id: Uuid, t: Type, inbound_id: Uuid) -> EdgeKey {
         EdgeKey {
-            outbound_id: outbound_id,
-            t: t,
-            inbound_id: inbound_id,
+            outbound_id,
+            t,
+            inbound_id,
         }
     }
 }
@@ -64,8 +64,8 @@ impl Edge {
     /// * `created_datetime` - When the edge was created.
     pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
         Edge {
-            key: key,
-            created_datetime: created_datetime,
+            key,
+            created_datetime,
         }
     }
 }

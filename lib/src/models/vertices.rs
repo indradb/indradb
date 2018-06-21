@@ -36,7 +36,7 @@ impl Vertex {
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
     pub fn with_id(id: Uuid, t: Type) -> Self {
-        Vertex { id: id, t: t }
+        Vertex { id, t }
     }
 }
 

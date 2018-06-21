@@ -9,9 +9,7 @@ pub struct SimpleError {
 
 impl SimpleError {
     pub fn new(description: String) -> SimpleError {
-        SimpleError {
-            description: description,
-        }
+        SimpleError { description }
     }
 }
 

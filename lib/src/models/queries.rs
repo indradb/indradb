@@ -42,35 +42,35 @@ pub enum VertexQuery {
 impl VertexQuery {
     pub fn outbound_edges(
         self,
-        t: Option<Type>,
-        high: Option<DateTime<Utc>>,
-        low: Option<DateTime<Utc>>,
+        type_filter: Option<Type>,
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: EdgeDirection::Outbound,
-            type_filter: t,
-            high_filter: high,
-            low_filter: low,
-            limit: limit,
+            type_filter,
+            high_filter,
+            low_filter,
+            limit,
         }
     }
 
     pub fn inbound_edges(
         self,
-        t: Option<Type>,
-        high: Option<DateTime<Utc>>,
-        low: Option<DateTime<Utc>>,
+        type_filter: Option<Type>,
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: EdgeDirection::Inbound,
-            type_filter: t,
-            high_filter: high,
-            low_filter: low,
-            limit: limit,
+            type_filter,
+            high_filter,
+            low_filter,
+            limit,
         }
     }
 }
@@ -100,7 +100,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Outbound,
-            limit: limit,
+            limit,
         }
     }
 
@@ -108,7 +108,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Inbound,
-            limit: limit,
+            limit,
         }
     }
 }

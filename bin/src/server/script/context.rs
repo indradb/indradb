@@ -38,6 +38,6 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
         )?;
     }
 
-    let _: () = l.eval(globals::GLOBALS, Some("globals.lua"))?;
+    l.eval(globals::GLOBALS, Some("globals.lua"))?;
     Ok(l)
 }

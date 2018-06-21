@@ -1,3 +1,7 @@
+// Ignored because of warnings in crossbeam that we cannot control.
+// TODO: remove after crossbeam fixes this.
+#![cfg_attr(feature = "cargo-clippy", allow(deref_addrof, never_loop))]
+
 use crossbeam_channel::{bounded, Receiver, Sender};
 use indradb::Vertex;
 use rlua::{Error as LuaError, Function, Table};
@@ -116,10 +120,7 @@ impl Worker {
             }
         });
 
-        Self {
-            thread: thread,
-            shutdown_sender: shutdown_sender,
-        }
+        Self { thread, shutdown_sender }
     }
 
     pub fn join(self) {
