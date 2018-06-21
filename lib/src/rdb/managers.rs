@@ -34,20 +34,13 @@ fn json_deserialize_value(value: &[u8]) -> Result<JsonValue> {
     Ok(result)
 }
 
-fn exists(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<bool> {
-    match db.get_cf(cf, &key)? {
-        Some(_) => Ok(true),
-        None => Ok(false),
-    }
-}
-
-fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: Box<[u8]>, value: &T) -> Result<()> {
-    db.put_cf(cf, &key, &bincode_serialize_value(value)?)?;
+fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: &[u8], value: &T) -> Result<()> {
+    db.put_cf(cf, key, &bincode_serialize_value(value)?)?;
     Ok(())
 }
 
-fn get_json(db: &DB, cf: ColumnFamily, key: Box<[u8]>) -> Result<Option<JsonValue>> {
-    match db.get_cf(cf, &key)? {
+fn get_json(db: &DB, cf: ColumnFamily, key: &[u8]) -> Result<Option<JsonValue>> {
+    match db.get_cf(cf, key)? {
         Some(value_bytes) => Ok(Some(json_deserialize_value(&value_bytes)?)),
         None => Ok(None),
     }
@@ -67,7 +60,7 @@ fn iterate_metadata_for_owner<'a>(
     cf: ColumnFamily,
     id: Uuid,
 ) -> Result<Box<Iterator<Item = OwnedMetadataItem> + 'a>> {
-    let prefix = build_key(vec![KeyComponent::Uuid(id)]);
+    let prefix = build_key(&[KeyComponent::Uuid(id)]);
     let iterator = db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward))?;
     let filtered = take_while_prefixed(iterator, prefix);
 
@@ -98,11 +91,11 @@ impl VertexManager {
     }
 
     fn key(&self, id: Uuid) -> Box<[u8]> {
-        build_key(vec![KeyComponent::Uuid(id)])
+        build_key(&[KeyComponent::Uuid(id)])
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
-        exists(&self.db, self.cf, self.key(id))
+        Ok(self.db.get_cf(self.cf, &self.key(id))?.is_some())
     }
 
     pub fn get(&self, id: Uuid) -> Result<Option<models::Type>> {
@@ -124,14 +117,14 @@ impl VertexManager {
     }
 
     pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = VertexItem> + 'a>> {
-        let low_key = build_key(vec![KeyComponent::Uuid(id)]);
+        let low_key = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
         self.iterate(iterator)
     }
 
     pub fn create(&self, vertex: &models::Vertex) -> Result<()> {
-        set_bincode(&self.db, self.cf, self.key(vertex.id), &vertex.t)?;
+        set_bincode(&self.db, self.cf, &self.key(vertex.id), &vertex.t)?;
         Ok(())
     }
 
@@ -203,7 +196,7 @@ impl EdgeManager {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Box<[u8]> {
-        build_key(vec![
+        build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id),
@@ -238,7 +231,7 @@ impl EdgeManager {
         set_bincode(
             &self.db,
             self.cf,
-            self.key(outbound_id, t, inbound_id),
+            &self.key(outbound_id, t, inbound_id),
             &new_update_datetime,
         )?;
         edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
@@ -299,7 +292,7 @@ impl EdgeRangeManager {
     }
 
     fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Box<[u8]> {
-        build_key(vec![
+        build_key(&[
             KeyComponent::Uuid(first_id),
             KeyComponent::Type(t),
             KeyComponent::DateTime(update_datetime),
@@ -332,8 +325,8 @@ impl EdgeRangeManager {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build_key(vec![KeyComponent::Uuid(id), KeyComponent::Type(t)]);
-                let low_key = build_key(vec![
+                let prefix = build_key(&[KeyComponent::Uuid(id), KeyComponent::Type(t)]);
+                let low_key = build_key(&[
                     KeyComponent::Uuid(id),
                     KeyComponent::Type(t),
                     KeyComponent::DateTime(high),
@@ -343,7 +336,7 @@ impl EdgeRangeManager {
                 self.iterate(iterator, prefix)
             }
             None => {
-                let prefix = build_key(vec![KeyComponent::Uuid(id)]);
+                let prefix = build_key(&[KeyComponent::Uuid(id)]);
                 let iterator = self.db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
                 let mapped = self.iterate(iterator, prefix)?;
@@ -369,7 +362,7 @@ impl EdgeRangeManager {
     }
 
     pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = EdgeRangeItem> + 'a>> {
-        let prefix = build_key(vec![KeyComponent::Uuid(id)]);
+        let prefix = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self.db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         self.iterate(iterator, prefix)
@@ -416,7 +409,7 @@ impl VertexMetadataManager {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Box<[u8]> {
-        build_key(vec![
+        build_key(&[
             KeyComponent::Uuid(vertex_id),
             KeyComponent::UnsizedString(name),
         ])
@@ -427,7 +420,7 @@ impl VertexMetadataManager {
     }
 
     pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
-        get_json(&self.db, self.cf, self.key(vertex_id, name))
+        get_json(&self.db, self.cf, &self.key(vertex_id, name))
     }
 
     pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
@@ -457,7 +450,7 @@ impl EdgeMetadataManager {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Box<[u8]> {
-        build_key(vec![
+        build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id),
@@ -471,7 +464,7 @@ impl EdgeMetadataManager {
         t: &'a models::Type,
         inbound_id: Uuid,
     ) -> Result<Box<Iterator<Item = EdgeMetadataItem> + 'a>> {
-        let prefix = build_key(vec![
+        let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
             KeyComponent::Uuid(inbound_id),
@@ -515,7 +508,7 @@ impl EdgeMetadataManager {
         get_json(
             &self.db,
             self.cf,
-            self.key(outbound_id, t, inbound_id, name),
+            &self.key(outbound_id, t, inbound_id, name),
         )
     }
 

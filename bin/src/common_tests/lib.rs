@@ -60,8 +60,8 @@ impl BatchDatastore {
             if let Ok(response) = request(port, &json!([])) {
                 if response.status() == StatusCode::Ok {
                     return Self {
-                        port: port,
-                        server: server,
+                        port,
+                        server,
                     };
                 }
             }
@@ -93,7 +93,7 @@ pub struct BatchTransaction {
 
 impl BatchTransaction {
     fn new(port: usize) -> Self {
-        BatchTransaction { port: port }
+        BatchTransaction { port }
     }
 
     fn request<T>(&self, body: &JsonValue) -> Result<T, Error>

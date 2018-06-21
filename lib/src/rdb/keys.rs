@@ -56,13 +56,13 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
+pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
     let len = components
         .iter()
         .fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
-    for component in &components {
+    for component in components {
         if let Err(err) = component.write(&mut cursor) {
             panic!("Could not build key: {}", err);
         }
