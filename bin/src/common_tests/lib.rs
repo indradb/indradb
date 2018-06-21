@@ -10,7 +10,10 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-use indradb::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata, VertexQuery};
+use indradb::{
+    Datastore, Edge, EdgeDirection, EdgeKey, EdgeMetadata, EdgeQuery, Error, Transaction, Type, Vertex, VertexMetadata,
+    VertexQuery,
+};
 use regex::Regex;
 use reqwest::{Client, Error as ReqwestError, Method, Response, StatusCode, Url};
 use serde::Deserialize;
@@ -59,10 +62,7 @@ impl BatchDatastore {
         for _ in 0..5 {
             if let Ok(response) = request(port, &json!([])) {
                 if response.status() == StatusCode::Ok {
-                    return Self {
-                        port,
-                        server,
-                    };
+                    return Self { port, server };
                 }
             }
 
@@ -103,14 +103,10 @@ impl BatchTransaction {
         let mut parts = match request(self.port, &json!([body])) {
             Ok(mut response) => {
                 if response.status() == StatusCode::Ok {
-                    let v: Vec<T> = response
-                        .json()
-                        .expect("Could not deserialize response to custom type");
+                    let v: Vec<T> = response.json().expect("Could not deserialize response to custom type");
                     v
                 } else {
-                    let v: JsonValue = response
-                        .json()
-                        .expect("Could not deserialize response to object");
+                    let v: JsonValue = response.json().expect("Could not deserialize response to object");
 
                     if let JsonValue::Object(ref obj) = v {
                         if let Some(&JsonValue::String(ref err)) = obj.get("error") {

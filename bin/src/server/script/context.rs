@@ -1,7 +1,7 @@
 use super::{converters, globals};
 use indradb::Datastore;
-use rlua::Table;
 use rlua::prelude::*;
+use rlua::Table;
 use serde_json::value::Value as JsonValue;
 use statics;
 use std::path::Path;

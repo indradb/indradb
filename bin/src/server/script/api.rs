@@ -30,11 +30,7 @@ pub fn create_edge(trans: &ProxyTransaction, key: converters::EdgeKey) -> Result
 }
 
 pub fn get_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Result<Vec<converters::Edge>, Error> {
-    Ok(trans
-        .get_edges(&q.0)?
-        .into_iter()
-        .map(converters::Edge::new)
-        .collect())
+    Ok(trans.get_edges(&q.0)?.into_iter().map(converters::Edge::new).collect())
 }
 
 pub fn delete_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Result<(), Error> {
@@ -44,11 +40,7 @@ pub fn delete_edges(trans: &ProxyTransaction, q: converters::EdgeQuery) -> Resul
 
 pub fn get_edge_count(
     trans: &ProxyTransaction,
-    (id, type_filter, direction): (
-        converters::Uuid,
-        Option<converters::Type>,
-        converters::EdgeDirection,
-    ),
+    (id, type_filter, direction): (converters::Uuid, Option<converters::Type>, converters::EdgeDirection),
 ) -> Result<u64, Error> {
     Ok(trans.get_edge_count(id.0, type_filter.as_ref().map(|t| &t.0), direction.0)?)
 }

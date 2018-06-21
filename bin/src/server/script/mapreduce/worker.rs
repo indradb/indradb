@@ -12,10 +12,7 @@ use std::thread::{spawn, JoinHandle};
 
 #[derive(Debug)]
 pub enum WorkerError {
-    Setup {
-        description: String,
-        cause: LuaError,
-    },
+    Setup { description: String, cause: LuaError },
     MapCall(LuaError),
     ReduceCall(LuaError),
 }
@@ -25,11 +22,13 @@ macro_rules! try_or_send {
         match $expr {
             Ok(value) => value,
             Err(err) => {
-                $error_sender.send($error_mapper(err)).expect("Expected error channel to be open");
+                $error_sender
+                    .send($error_mapper(err))
+                    .expect("Expected error channel to be open");
                 return;
             }
         }
-    }
+    };
 }
 
 pub enum WorkerTask {
@@ -120,13 +119,14 @@ impl Worker {
             }
         });
 
-        Self { thread, shutdown_sender }
+        Self {
+            thread,
+            shutdown_sender,
+        }
     }
 
     pub fn join(self) {
         self.shutdown_sender.send(()).ok();
-        self.thread
-            .join()
-            .expect("Expected worker thread to not panic")
+        self.thread.join().expect("Expected worker thread to not panic")
     }
 }

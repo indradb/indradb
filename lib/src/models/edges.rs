@@ -1,6 +1,6 @@
 use super::types::Type;
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
@@ -63,9 +63,6 @@ impl Edge {
     /// * `key` - The key to the edge.
     /// * `created_datetime` - When the edge was created.
     pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
-        Edge {
-            key,
-            created_datetime,
-        }
+        Edge { key, created_datetime }
     }
 }

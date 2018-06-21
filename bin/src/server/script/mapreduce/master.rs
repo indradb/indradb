@@ -142,16 +142,14 @@ impl Master {
 
     pub fn join(self) -> Result<JsonValue, WorkerError> {
         self.shutdown_sender.send(()).ok();
-        self.router_thread
-            .join()
-            .expect("Expected router thread to not panic")
+        self.router_thread.join().expect("Expected router thread to not panic")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Master;
     use super::super::Counter;
+    use super::Master;
     use indradb::{Type, Vertex};
     use serde_json::Value as JsonValue;
     use std::fs::File;

@@ -1,7 +1,7 @@
 use super::edges::EdgeKey;
 use super::types::Type;
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -14,8 +14,10 @@ use uuid::Uuid;
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Copy)]
 pub enum EdgeDirection {
-    #[serde(rename = "outbound")] Outbound,
-    #[serde(rename = "inbound")] Inbound,
+    #[serde(rename = "outbound")]
+    Outbound,
+    #[serde(rename = "inbound")]
+    Inbound,
 }
 
 /// A query for vertices.

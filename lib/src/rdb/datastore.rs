@@ -1,5 +1,5 @@
-use super::managers::*;
 use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
+use super::managers::*;
 use chrono::offset::Utc;
 use core::fmt::Debug;
 use errors::Result;
@@ -151,8 +151,7 @@ impl RocksdbTransaction {
                 }));
 
                 Ok(Box::new(
-                    self.handle_vertex_id_iterator(vertex_id_iterator)
-                        .take(limit as usize),
+                    self.handle_vertex_id_iterator(vertex_id_iterator).take(limit as usize),
                 ))
             }
         }
@@ -163,15 +162,13 @@ impl RocksdbTransaction {
             EdgeQuery::Edges { ref keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges: Vec<Result<Option<EdgeRangeItem>>> = keys.into_iter()
+                let edges: Vec<Result<Option<EdgeRangeItem>>> = keys
+                    .into_iter()
                     .map(
                         move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                            Some(update_datetime) => Ok(Some((
-                                key.outbound_id,
-                                key.t.clone(),
-                                update_datetime,
-                                key.inbound_id,
-                            ))),
+                            Some(update_datetime) => {
+                                Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                            }
                             None => Ok(None),
                         },
                     )
@@ -434,9 +431,7 @@ impl Transaction for RocksdbTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
         };
 
-        let count = edge_range_manager
-            .iterate_for_range(id, type_filter, None)?
-            .count();
+        let count = edge_range_manager.iterate_for_range(id, type_filter, None)?.count();
 
         Ok(count as u64)
     }

@@ -1,5 +1,5 @@
-use datastore::ProxyTransaction;
 use core::str::FromStr;
+use datastore::ProxyTransaction;
 use indradb::Datastore;
 use iron::headers::{ContentType, Headers};
 use iron::mime::{Attr, Mime, SubLevel, TopLevel, Value};
@@ -62,19 +62,17 @@ pub fn to_response<T: Serialize>(status_code: status::Status, body: &T) -> Respo
 pub fn get_url_param<T: FromStr>(req: &Request, name: &str) -> Result<T, IronError> {
     let s = req.extensions.get::<Router>().unwrap().find(name).unwrap();
 
-    T::from_str(s).map_err(|_| {
-        create_iron_error(
-            status::BadRequest,
-            format!("Invalid value for URL param {}", name),
-        )
-    })
+    T::from_str(s).map_err(|_| create_iron_error(status::BadRequest, format!("Invalid value for URL param {}", name)))
 }
 
 /// Gets an optional JSON object value.
 ///
 /// # Errors
 /// Returns an `IronError` if the value has an unexpected type.
-pub fn get_optional_json_obj_value<T>(json: &serde_json::Map<String, JsonValue>, name: &str) -> Result<Option<T>, IronError>
+pub fn get_optional_json_obj_value<T>(
+    json: &serde_json::Map<String, JsonValue>,
+    name: &str,
+) -> Result<Option<T>, IronError>
 where
     for<'a> T: Deserialize<'a>,
 {
@@ -104,10 +102,7 @@ where
         Ok(serde_json::from_value::<T>(obj.clone())
             .map_err(|_| create_iron_error(status::BadRequest, format!("Invalid type for `{}`", name)))?)
     } else {
-        Err(create_iron_error(
-            status::BadRequest,
-            format!("Missing `{}`", name),
-        ))
+        Err(create_iron_error(status::BadRequest, format!("Missing `{}`", name)))
     }
 }
 
@@ -146,14 +141,12 @@ where
     if payload.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(
-            |err| {
-                create_iron_error(
-                    status::BadRequest,
-                    format!("Could not parse JSON payload: {}", err.description()),
-                )
-            },
-        )?))
+        Ok(Some(serde_json::from_str::<T>(&payload[..]).map_err(|err| {
+            create_iron_error(
+                status::BadRequest,
+                format!("Could not parse JSON payload: {}", err.description()),
+            )
+        })?))
     }
 }
 
@@ -164,10 +157,7 @@ where
 /// or could not be read.
 pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
     if !SCRIPT_NAME_VALIDATOR.is_match(&name[..]) {
-        return Err(create_iron_error(
-            status::BadRequest,
-            "Invalid script name".to_string(),
-        ));
+        return Err(create_iron_error(status::BadRequest, "Invalid script name".to_string()));
     }
 
     let path = Path::new(&statics::SCRIPT_ROOT[..]).join(name);
@@ -188,15 +178,9 @@ pub fn get_script_file(name: String) -> Result<(String, String), IronError> {
 
             match file.read_to_string(&mut contents) {
                 Ok(_) => Ok((path_str.to_string(), contents)),
-                Err(_) => Err(create_iron_error(
-                    status::NotFound,
-                    "Could not read script".to_string(),
-                )),
+                Err(_) => Err(create_iron_error(status::NotFound, "Could not read script".to_string())),
             }
         }
-        Err(_) => Err(create_iron_error(
-            status::NotFound,
-            "Could not load script".to_string(),
-        )),
+        Err(_) => Err(create_iron_error(status::NotFound, "Could not load script".to_string())),
     }
 }

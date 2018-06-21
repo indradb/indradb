@@ -1,5 +1,5 @@
-mod middleware;
 mod endpoints;
+mod middleware;
 mod util;
 
 use iron::prelude::*;

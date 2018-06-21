@@ -1,7 +1,7 @@
 use super::keys::*;
 use bincode;
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use errors::Result;
 use models;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
@@ -118,7 +118,8 @@ impl VertexManager {
 
     pub fn iterate_for_range<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<VertexItem>> + 'a>> {
         let low_key = build_key(&[KeyComponent::Uuid(id)]);
-        let iterator = self.db
+        let iterator = self
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
         self.iterate(iterator)
     }
@@ -134,11 +135,7 @@ impl VertexManager {
         let vertex_metadata_manager = VertexMetadataManager::new(self.db.clone());
         for item in vertex_metadata_manager.iterate_for_owner(id)? {
             let ((vertex_metadata_owner_id, vertex_metadata_name), _) = item?;
-            vertex_metadata_manager.delete(
-                &mut batch,
-                vertex_metadata_owner_id,
-                &vertex_metadata_name[..],
-            )?;
+            vertex_metadata_manager.delete(&mut batch, vertex_metadata_owner_id, &vertex_metadata_name[..])?;
         }
 
         let edge_manager = EdgeManager::new(self.db.clone());
@@ -204,9 +201,7 @@ impl EdgeManager {
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<Option<DateTime<Utc>>> {
-        match self.db
-            .get_cf(self.cf, &self.key(outbound_id, t, inbound_id))?
-        {
+        match self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
             Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
             None => Ok(None),
         }
@@ -300,7 +295,11 @@ impl EdgeRangeManager {
         ])
     }
 
-    fn iterate<'a>(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
+    fn iterate<'a>(
+        &self,
+        iterator: DBIterator,
+        prefix: Box<[u8]>,
+    ) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> Result<EdgeRangeItem> {
@@ -331,13 +330,15 @@ impl EdgeRangeManager {
                     KeyComponent::Type(t),
                     KeyComponent::DateTime(high),
                 ]);
-                let iterator = self.db
+                let iterator = self
+                    .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
                 self.iterate(iterator, prefix)
             }
             None => {
                 let prefix = build_key(&[KeyComponent::Uuid(id)]);
-                let iterator = self.db
+                let iterator = self
+                    .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
                 let mapped = self.iterate(iterator, prefix)?;
 
@@ -363,7 +364,8 @@ impl EdgeRangeManager {
 
     pub fn iterate_for_owner<'a>(&self, id: Uuid) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         let prefix = build_key(&[KeyComponent::Uuid(id)]);
-        let iterator = self.db
+        let iterator = self
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         self.iterate(iterator, prefix)
     }
@@ -409,10 +411,7 @@ impl VertexMetadataManager {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Box<[u8]> {
-        build_key(&[
-            KeyComponent::Uuid(vertex_id),
-            KeyComponent::UnsizedString(name),
-        ])
+        build_key(&[KeyComponent::Uuid(vertex_id), KeyComponent::UnsizedString(name)])
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<Box<Iterator<Item = Result<OwnedMetadataItem>>>> {
@@ -470,7 +469,8 @@ impl EdgeMetadataManager {
             KeyComponent::Uuid(inbound_id),
         ]);
 
-        let iterator = self.db
+        let iterator = self
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
@@ -505,11 +505,7 @@ impl EdgeMetadataManager {
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
-        get_json(
-            &self.db,
-            self.cf,
-            &self.key(outbound_id, t, inbound_id, name),
-        )
+        get_json(&self.db, self.cf, &self.key(outbound_id, t, inbound_id, name))
     }
 
     pub fn set(

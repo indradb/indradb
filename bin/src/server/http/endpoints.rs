@@ -22,10 +22,7 @@ pub fn script(req: &mut Request) -> IronResult<Response> {
         Ok(value) => Ok(to_response(status::Ok, &value)),
         Err(err) => {
             let error_message = format!("Script failed: {:?}", err);
-            Err(create_iron_error(
-                status::InternalServerError,
-                error_message,
-            ))
+            Err(create_iron_error(status::InternalServerError, error_message))
         }
     }
 }
@@ -87,10 +84,7 @@ pub fn transaction(req: &mut Request) -> IronResult<Response> {
                 "set_edge_metadata" => set_edge_metadata(&trans, &obj),
                 "delete_edge_metadata" => delete_edge_metadata(&trans, &obj),
 
-                _ => Err(create_iron_error(
-                    status::BadRequest,
-                    "Unknown action".to_string(),
-                )),
+                _ => Err(create_iron_error(status::BadRequest, "Unknown action".to_string())),
             };
 
             match result {
@@ -118,7 +112,10 @@ fn create_vertex(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonVa
     execute_item(trans.create_vertex(&v))
 }
 
-fn create_vertex_from_type(trans: &ProxyTransaction, item: &serde_json::Map<String, JsonValue>) -> Result<JsonValue, IronError> {
+fn create_vertex_from_type(
+    trans: &ProxyTransaction,
+    item: &serde_json::Map<String, JsonValue>,
+) -> Result<JsonValue, IronError> {
     let t = get_json_obj_value::<Type>(item, "type")?;
     execute_item(trans.create_vertex_from_type(t))
 }

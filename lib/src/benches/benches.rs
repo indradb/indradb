@@ -1,6 +1,6 @@
-use models::{Vertex, EdgeDirection, EdgeKey, EdgeQuery, Type, VertexQuery};
-use traits::{Datastore, Transaction};
+use models::{EdgeDirection, EdgeKey, EdgeQuery, Type, Vertex, VertexQuery};
 use test::Bencher;
+use traits::{Datastore, Transaction};
 
 pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)
 where

@@ -1,11 +1,13 @@
 use super::api;
-use chrono::{DateTime, NaiveDateTime};
 use chrono::offset::Utc;
-use datastore::ProxyTransaction as ExternalProxyTransaction;
+use chrono::{DateTime, NaiveDateTime};
 use core::str::FromStr;
-use indradb::{Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection, EdgeKey as ExternalEdgeKey,
-              EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery, Type as ExternalType,
-              Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery};
+use datastore::ProxyTransaction as ExternalProxyTransaction;
+use indradb::{
+    Edge as ExternalEdge, EdgeDirection as ExternalEdgeDirection, EdgeKey as ExternalEdgeKey,
+    EdgeMetadata as ExternalEdgeMetadata, EdgeQuery as ExternalEdgeQuery, Type as ExternalType,
+    Vertex as ExternalVertex, VertexMetadata as ExternalVertexMetadata, VertexQuery as ExternalVertexQuery,
+};
 use rlua::{Error as LuaError, FromLua, Lua, Result as LuaResult, Table, ToLua, UserData, UserDataMethods, Value};
 use serde_json::{Map, Number as JsonNumber, Value as ExternalJsonValue};
 use std::collections::BTreeMap;
@@ -13,13 +15,13 @@ use uuid::Uuid as ExternalUuid;
 
 macro_rules! proxy_fn {
     ($methods:expr, $name:expr, $func:expr) => {
-        $methods.add_method($name, |_, this, args| {
-            match this.0.as_ref() {
-                Some(trans) => $func(trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err))),
-                None => Err(LuaError::RuntimeError("The transaction has already finished".to_string()))
-            }
+        $methods.add_method($name, |_, this, args| match this.0.as_ref() {
+            Some(trans) => $func(trans, args).map_err(|err| LuaError::RuntimeError(format!("{}", err))),
+            None => Err(LuaError::RuntimeError(
+                "The transaction has already finished".to_string(),
+            )),
         });
-    }
+    };
 }
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -42,9 +44,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
         match value {
             Value::Nil => Ok(Self::new(ExternalJsonValue::Null)),
             Value::Boolean(value) => Ok(Self::new(ExternalJsonValue::Bool(value))),
-            Value::Integer(value) => Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(
-                value,
-            )))),
+            Value::Integer(value) => Ok(Self::new(ExternalJsonValue::Number(JsonNumber::from(value)))),
             Value::Number(value) => {
                 let num =
                     JsonNumber::from_f64(value).expect("Expected to be able to create a JSON number from a float");
@@ -66,10 +66,7 @@ impl<'lua> FromLua<'lua> for JsonValue {
                             map.insert(JsonMapKey::String(key_string), value_json.0);
                         }
                         JsonValue(ExternalJsonValue::Number(ref key_number)) if key_number.is_u64() => {
-                            map.insert(
-                                JsonMapKey::Number(key_number.as_u64().unwrap()),
-                                value_json.0,
-                            );
+                            map.insert(JsonMapKey::Number(key_number.as_u64().unwrap()), value_json.0);
                         }
                         _ => {
                             return Err(new_from_lua_error(
@@ -171,11 +168,7 @@ impl UserData for ProxyTransaction {
 
         proxy_fn!(methods, "get_vertex_metadata", api::get_vertex_metadata);
         proxy_fn!(methods, "set_vertex_metadata", api::set_vertex_metadata);
-        proxy_fn!(
-            methods,
-            "delete_vertex_metadata",
-            api::delete_vertex_metadata
-        );
+        proxy_fn!(methods, "delete_vertex_metadata", api::delete_vertex_metadata);
         proxy_fn!(methods, "get_edge_metadata", api::get_edge_metadata);
         proxy_fn!(methods, "set_edge_metadata", api::set_edge_metadata);
         proxy_fn!(methods, "delete_edge_metadata", api::delete_edge_metadata);
@@ -222,11 +215,7 @@ impl<'lua> FromLua<'lua> for EdgeKey {
         let outbound_id = Uuid::from_lua(table.get("outbound_id")?, l)?.0;
         let t = Type::from_lua(table.get("type")?, l)?.0;
         let inbound_id = Uuid::from_lua(table.get("inbound_id")?, l)?.0;
-        Ok(EdgeKey::new(ExternalEdgeKey::new(
-            outbound_id,
-            t,
-            inbound_id,
-        )))
+        Ok(EdgeKey::new(ExternalEdgeKey::new(outbound_id, t, inbound_id)))
     }
 }
 
@@ -267,10 +256,7 @@ impl<'lua> FromLua<'lua> for Vertex {
 impl<'lua> ToLua<'lua> for Vertex {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let table = l.create_table()?;
-        table.set(
-            "id",
-            l.create_string(&self.0.id.hyphenated().to_string()[..])?,
-        )?;
+        table.set("id", l.create_string(&self.0.id.hyphenated().to_string()[..])?)?;
         table.set("type", self.0.t.0)?;
         Ok(Value::Table(table))
     }
@@ -338,17 +324,16 @@ impl<'lua> FromLua<'lua> for VertexQuery {
 
         if t == "all" {
             let start_id = match Option::<String>::from_lua(table.get("start_id")?, l)? {
-                Some(s) => Some(ExternalUuid::from_str(&s)
-                    .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?),
+                Some(s) => Some(
+                    ExternalUuid::from_str(&s)
+                        .map_err(|e| new_from_lua_error("string", "uuid", Some(format!("{}", e))))?,
+                ),
                 None => None,
             };
 
             let limit = u32::from_lua(table.get("limit")?, l)?;
 
-            Ok(VertexQuery::new(ExternalVertexQuery::All {
-                start_id,
-                limit,
-            }))
+            Ok(VertexQuery::new(ExternalVertexQuery::All { start_id, limit }))
         } else if t == "vertices" {
             let ids: Vec<Uuid> = Vec::<Uuid>::from_lua(table.get("ids")?, l)?;
             let ids: Vec<ExternalUuid> = ids.into_iter().map(|id| id.0).collect();
@@ -395,9 +380,9 @@ impl<'lua> FromLua<'lua> for EdgeQuery {
             let converter = EdgeDirection::from_lua(table.get("converter")?, l)?.0;
 
             let type_filter = match Option::<String>::from_lua(table.get("type_filter")?, l)? {
-                Some(s) => {
-                    Some(ExternalType::new(s).map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?)
-                }
+                Some(s) => Some(
+                    ExternalType::new(s).map_err(|e| new_from_lua_error("string", "type", Some(format!("{}", e))))?,
+                ),
                 None => None,
             };
 
