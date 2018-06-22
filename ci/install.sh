@@ -4,8 +4,7 @@ set -ex
 
 ls /usr/include/x86_64-linux-gnu
 ls /usr/include/sys
-cc1 -v
-cpp -v
+clang -x c -v -E /dev/null
 
 if [ $TRAVIS_OS_NAME = linux ]; then
     if ! type kcov &> /dev/null; then
