@@ -2,6 +2,8 @@
 
 set -ex
 
+ls /usr/include
+
 if [ $TRAVIS_OS_NAME = linux ]; then
     if ! type kcov &> /dev/null; then
         pushd $HOME

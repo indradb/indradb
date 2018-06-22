@@ -12,6 +12,7 @@ addons:
       - binutils-dev
       - libiberty-dev
       - build-essential
+      - libc6-dev-amd64
 
 matrix:
   include:
