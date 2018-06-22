@@ -13,6 +13,7 @@ addons:
       - libiberty-dev
       - build-essential
       - libc6-dev-amd64
+      - zlib1g-dev
 
 matrix:
   include:
