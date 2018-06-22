@@ -11,6 +11,7 @@ addons:
       - libdw-dev
       - binutils-dev
       - libiberty-dev
+      - libc6-dev
 
 matrix:
   include:
