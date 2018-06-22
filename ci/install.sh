@@ -2,10 +2,10 @@
 
 set -ex
 
-echo *** x86_64-linux-gnu
 ls /usr/include/x86_64-linux-gnu
-echo *** sys
 ls /usr/include/sys
+cc1 -v
+cpp -v
 
 if [ $TRAVIS_OS_NAME = linux ]; then
     if ! type kcov &> /dev/null; then
