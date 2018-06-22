@@ -3,9 +3,9 @@
 #![allow(dead_code)]
 
 use super::RocksdbDatastore;
-use util::generate_random_secret;
 use std::env;
 use std::path::Path;
+use util::generate_random_secret;
 
 /// Gets RocksDB options from env vars. Used for testing/benchmarking.
 pub fn get_options() -> (String, i32) {
@@ -18,7 +18,7 @@ pub fn get_options() -> (String, i32) {
     let unique = generate_random_secret(8);
     let path = Path::new("/tmp/test-rdb").join(unique);
 
-    let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or("512".to_string());
+    let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
     let max_open_files = max_open_files_str.parse::<i32>().unwrap();
 
     (path.to_str().unwrap().to_string(), max_open_files)

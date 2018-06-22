@@ -1,7 +1,7 @@
 use super::{converters, globals};
 use indradb::Datastore;
-use rlua::Table;
 use rlua::prelude::*;
+use rlua::Table;
 use serde_json::value::Value as JsonValue;
 use statics;
 use std::path::Path;
@@ -38,6 +38,6 @@ pub fn create(arg: JsonValue) -> Result<Lua, LuaError> {
         )?;
     }
 
-    let _: () = l.eval(globals::GLOBALS, Some("globals.lua"))?;
+    l.eval(globals::GLOBALS, Some("globals.lua"))?;
     Ok(l)
 }

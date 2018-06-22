@@ -1,7 +1,7 @@
 use super::super::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, VertexQuery};
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
-use chrono::Timelike;
 use chrono::offset::Utc;
+use chrono::Timelike;
 use models;
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -109,9 +109,11 @@ where
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
     let e = trans
-        .get_edges(&VertexQuery::Vertices {
-            ids: vec![outbound_v.id],
-        }.outbound_edges(None, None, None, 10))
+        .get_edges(
+            &VertexQuery::Vertices {
+                ids: vec![outbound_v.id],
+            }.outbound_edges(None, None, None, 10),
+        )
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
@@ -152,9 +154,7 @@ where
             keys: vec![key.clone()],
         })
         .unwrap();
-    let e = trans
-        .get_edges(&EdgeQuery::Edges { keys: vec![key] })
-        .unwrap();
+    let e = trans.get_edges(&EdgeQuery::Edges { keys: vec![key] }).unwrap();
     assert_eq!(e.len(), 0);
 }
 
@@ -236,9 +236,8 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
+    let q =
+        VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
@@ -250,9 +249,7 @@ where
 {
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(None, Some(end_time), Some(start_time), 10);
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(None, Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
@@ -265,9 +262,8 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("foo".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
+    let q =
+        VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), Some(end_time), Some(start_time), 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 0);
 }
@@ -280,9 +276,7 @@ where
     let (outbound_id, start_time, _, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), None, Some(start_time), 10);
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), None, Some(start_time), 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 10);
 }
@@ -295,9 +289,7 @@ where
     let (outbound_id, _, end_time, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), Some(end_time), None, 10);
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), Some(end_time), None, 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 10);
 }
@@ -310,9 +302,7 @@ where
     let (outbound_id, _, _, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), None, None, 100);
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), None, None, 100);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 15);
 }
@@ -325,9 +315,8 @@ where
     let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type".to_string()).unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    }.outbound_edges(Some(t), Some(start_time), Some(end_time), 10);
+    let q =
+        VertexQuery::Vertices { ids: vec![outbound_id] }.outbound_edges(Some(t), Some(start_time), Some(end_time), 10);
     let range = trans.get_edges(&q).unwrap();
     check_edge_range(&range, outbound_id, 0);
 }

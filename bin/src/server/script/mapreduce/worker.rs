@@ -1,3 +1,7 @@
+// Ignored because of warnings in crossbeam that we cannot control.
+// TODO: remove after crossbeam fixes this.
+#![cfg_attr(feature = "cargo-clippy", allow(deref_addrof, never_loop))]
+
 use crossbeam_channel::{bounded, Receiver, Sender};
 use indradb::Vertex;
 use rlua::{Error as LuaError, Function, Table};
@@ -8,10 +12,7 @@ use std::thread::{spawn, JoinHandle};
 
 #[derive(Debug)]
 pub enum WorkerError {
-    Setup {
-        description: String,
-        cause: LuaError,
-    },
+    Setup { description: String, cause: LuaError },
     MapCall(LuaError),
     ReduceCall(LuaError),
 }
@@ -21,11 +22,13 @@ macro_rules! try_or_send {
         match $expr {
             Ok(value) => value,
             Err(err) => {
-                $error_sender.send($error_mapper(err)).expect("Expected error channel to be open");
+                $error_sender
+                    .send($error_mapper(err))
+                    .expect("Expected error channel to be open");
                 return;
             }
         }
-    }
+    };
 }
 
 pub enum WorkerTask {
@@ -117,15 +120,13 @@ impl Worker {
         });
 
         Self {
-            thread: thread,
-            shutdown_sender: shutdown_sender,
+            thread,
+            shutdown_sender,
         }
     }
 
     pub fn join(self) {
         self.shutdown_sender.send(()).ok();
-        self.thread
-            .join()
-            .expect("Expected worker thread to not panic")
+        self.thread.join().expect("Expected worker thread to not panic")
     }
 }

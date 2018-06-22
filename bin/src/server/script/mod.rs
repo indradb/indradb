@@ -52,10 +52,10 @@ mod tests {
     }
 
     macro_rules! test_script {
-        ($name:ident) => (
+        ($name:ident) => {
             #[test]
             fn $name() {
-               let (contents, file_path_str) = get_test_script(stringify!($name));
+                let (contents, file_path_str) = get_test_script(stringify!($name));
 
                 // NOTE: we construct a new datastore for each test, and tests are
                 // run in parallel by default, but not all datastores support
@@ -67,10 +67,11 @@ mod tests {
                     Ok(actual_result) => {
                         if let Some(cap) = OK_EXPECTED_PATTERN.captures(&contents) {
                             let s = cap.get(1).unwrap().as_str();
-                            let expected_result: JsonValue = serde_json::from_str(s).expect("Could not parse expected JSON response");
+                            let expected_result: JsonValue =
+                                serde_json::from_str(s).expect("Could not parse expected JSON response");
                             assert_eq!(expected_result, actual_result);
                         }
-                    },
+                    }
                     Err(err) => {
                         if let Some(cap) = ERR_EXPECTED_PATTERN.captures(&contents) {
                             let s = cap.get(1).unwrap().as_str();
@@ -81,7 +82,7 @@ mod tests {
                     }
                 }
             }
-        )
+        };
     }
 
     test_script!(get_vertices);

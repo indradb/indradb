@@ -19,26 +19,26 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
     - os: osx
       rust: stable
       env:
       - TARGET=x86_64-apple-darwin
-      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-35/build:$PATH
 
     # Rust beta
     - rust: beta
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
 
     # Rust nightly
     - rust: nightly
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
   allow_failures:
@@ -47,7 +47,7 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
 env:

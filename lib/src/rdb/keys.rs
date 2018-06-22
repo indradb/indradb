@@ -1,20 +1,23 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{Duration, Timelike};
-use chrono::offset::Utc;
 use models;
 use std::i32;
 use std::i64;
-use std::io::{Cursor, Error as IoError};
 use std::io::Read;
 use std::io::Write;
+use std::io::{Cursor, Error as IoError};
 use std::str;
 use std::u8;
 use util::nanos_since_epoch;
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();
+    pub static ref MAX_DATETIME: DateTime<Utc> =
+        DateTime::from_utc(NaiveDateTime::from_timestamp(i64::from(i32::MAX), 0), Utc)
+            .with_nanosecond(1_999_999_999u32)
+            .unwrap();
 }
 
 pub enum KeyComponent<'a> {
@@ -56,13 +59,11 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
-    let len = components
-        .iter()
-        .fold(0, |len, component| len + component.len());
+pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
+    let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
-    for component in &components {
+    for component in components {
         if let Err(err) = component.write(&mut cursor) {
             panic!("Could not build key: {}", err);
         }

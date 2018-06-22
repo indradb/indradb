@@ -41,7 +41,7 @@ pub trait Transaction {
     /// * `type`: The type of the vertex to create.
     fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
         let v = models::Vertex::new(t);
-        
+
         if !self.create_vertex(&v)? {
             Err(ErrorKind::UuidConflict.into())
         } else {

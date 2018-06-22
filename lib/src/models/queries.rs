@@ -1,7 +1,7 @@
 use super::edges::EdgeKey;
 use super::types::Type;
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -14,8 +14,10 @@ use uuid::Uuid;
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Copy)]
 pub enum EdgeDirection {
-    #[serde(rename = "outbound")] Outbound,
-    #[serde(rename = "inbound")] Inbound,
+    #[serde(rename = "outbound")]
+    Outbound,
+    #[serde(rename = "inbound")]
+    Inbound,
 }
 
 /// A query for vertices.
@@ -42,35 +44,35 @@ pub enum VertexQuery {
 impl VertexQuery {
     pub fn outbound_edges(
         self,
-        t: Option<Type>,
-        high: Option<DateTime<Utc>>,
-        low: Option<DateTime<Utc>>,
+        type_filter: Option<Type>,
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: EdgeDirection::Outbound,
-            type_filter: t,
-            high_filter: high,
-            low_filter: low,
-            limit: limit,
+            type_filter,
+            high_filter,
+            low_filter,
+            limit,
         }
     }
 
     pub fn inbound_edges(
         self,
-        t: Option<Type>,
-        high: Option<DateTime<Utc>>,
-        low: Option<DateTime<Utc>>,
+        type_filter: Option<Type>,
+        high_filter: Option<DateTime<Utc>>,
+        low_filter: Option<DateTime<Utc>>,
         limit: u32,
     ) -> EdgeQuery {
         EdgeQuery::Pipe {
             vertex_query: Box::new(self),
             converter: EdgeDirection::Inbound,
-            type_filter: t,
-            high_filter: high,
-            low_filter: low,
-            limit: limit,
+            type_filter,
+            high_filter,
+            low_filter,
+            limit,
         }
     }
 }
@@ -100,7 +102,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Outbound,
-            limit: limit,
+            limit,
         }
     }
 
@@ -108,7 +110,7 @@ impl EdgeQuery {
         VertexQuery::Pipe {
             edge_query: Box::new(self),
             converter: EdgeDirection::Inbound,
-            limit: limit,
+            limit,
         }
     }
 }

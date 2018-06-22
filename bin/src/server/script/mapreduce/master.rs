@@ -1,3 +1,7 @@
+// Ignored because of warnings in crossbeam that we cannot control.
+// TODO: remove after crossbeam fixes this.
+#![cfg_attr(feature = "cargo-clippy", allow(deref_addrof, never_loop))]
+
 use super::counter::Counter;
 use super::worker::{Worker, WorkerError, WorkerTask};
 use crossbeam_channel::{bounded, unbounded, Sender};
@@ -123,10 +127,10 @@ impl Master {
         };
 
         Self {
-            router_thread: router_thread,
+            router_thread,
             in_sender: master_in_sender,
-            shutdown_sender: shutdown_sender,
-            sent: sent,
+            shutdown_sender,
+            sent,
         }
     }
 
@@ -138,16 +142,14 @@ impl Master {
 
     pub fn join(self) -> Result<JsonValue, WorkerError> {
         self.shutdown_sender.send(()).ok();
-        self.router_thread
-            .join()
-            .expect("Expected router thread to not panic")
+        self.router_thread.join().expect("Expected router thread to not panic")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Master;
     use super::super::Counter;
+    use super::Master;
     use indradb::{Type, Vertex};
     use serde_json::Value as JsonValue;
     use std::fs::File;

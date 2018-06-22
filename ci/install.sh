@@ -5,9 +5,9 @@ set -ex
 if [ $TRAVIS_OS_NAME = linux ]; then
     if ! type kcov &> /dev/null; then
         pushd $HOME
-            wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
-            tar xzf master.tar.gz
-            pushd kcov-master
+            wget https://github.com/SimonKagstrom/kcov/archive/v35.tar.gz
+            tar xzf v35.tar.gz
+            pushd kcov-35
                 mkdir -p build
                 pushd build
                     cmake ..

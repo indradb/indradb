@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub fn should_create_vertex_from_type<D, T>(datastore: &mut D)
 where
     D: Datastore<T>,
-    T: Transaction
+    T: Transaction,
 {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_vertex_type".to_string()).unwrap();
@@ -36,10 +36,7 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(
-                vertex.t,
-                models::Type::new("test_vertex_type".to_string()).unwrap()
-            );
+            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
             inserted_ids.remove(index);
         }
 
@@ -94,9 +91,7 @@ where
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
     let range = trans
-        .get_vertices(&VertexQuery::Vertices {
-            ids: vec![vertex.id],
-        })
+        .get_vertices(&VertexQuery::Vertices { ids: vec![vertex.id] })
         .unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, vertex.id);
@@ -130,12 +125,7 @@ where
 
     let range = trans
         .get_vertices(&VertexQuery::Vertices {
-            ids: vec![
-                inserted_ids[0],
-                inserted_ids[1],
-                inserted_ids[2],
-                Uuid::default(),
-            ],
+            ids: vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()],
         })
         .unwrap();
 
@@ -145,10 +135,7 @@ where
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(
-                vertex.t,
-                models::Type::new("test_vertex_type".to_string()).unwrap()
-            );
+            assert_eq!(vertex.t, models::Type::new("test_vertex_type".to_string()).unwrap());
             inserted_ids.remove(index);
         }
 
@@ -203,9 +190,7 @@ where
 {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let q = VertexQuery::Vertices {
-        ids: vec![outbound_id],
-    };
+    let q = VertexQuery::Vertices { ids: vec![outbound_id] };
     trans.delete_vertices(&q).unwrap();
     let v = trans.get_vertices(&q).unwrap();
     assert_eq!(v.len(), 0);

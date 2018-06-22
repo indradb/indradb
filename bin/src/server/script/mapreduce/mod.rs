@@ -6,8 +6,8 @@ mod worker;
 use self::counter::Counter;
 pub use self::master::Master;
 pub use self::response_chan::{bounded, ResponseReceiver, ResponseSender, Update};
-use indradb::{Datastore, Transaction};
 use indradb::VertexQuery;
+use indradb::{Datastore, Transaction};
 use serde_json::Value as JsonValue;
 use statics;
 use std::thread::{sleep, spawn};
@@ -114,8 +114,8 @@ pub fn execute_mapreduce(contents: String, path: String, arg: JsonValue, sender:
 mod tests {
     use super::execute_mapreduce;
     use super::response_chan::Update;
-    use indradb::{Datastore, Transaction, Vertex};
     use indradb::Type;
+    use indradb::{Datastore, Transaction, Vertex};
     use script;
     use serde_json::Value as JsonValue;
     use statics;

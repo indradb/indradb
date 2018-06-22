@@ -1,7 +1,7 @@
 //! Utility functions.
 
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use errors::ValidationResult;
 use rand::{OsRng, Rng};
 use uuid::{Uuid, UuidV1Context};
@@ -17,12 +17,8 @@ lazy_static! {
 pub fn generate_uuid_v1() -> Uuid {
     let now = Utc::now();
 
-    Uuid::new_v1(
-        &CONTEXT,
-        now.timestamp() as u64,
-        now.timestamp_subsec_nanos(),
-        &NODE_ID,
-    ).expect("Expected to be able to generate a UUID")
+    Uuid::new_v1(&CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos(), &NODE_ID)
+        .expect("Expected to be able to generate a UUID")
 }
 
 /// Generates a securely random string consisting of letters (uppercase and
@@ -76,7 +72,7 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, nanos_since_epoch, next_uuid, generate_uuid_v1};
+    use super::{generate_random_secret, generate_uuid_v1, nanos_since_epoch, next_uuid};
     use chrono::{DateTime, NaiveDateTime, Utc};
     use core::str::FromStr;
     use regex::Regex;
