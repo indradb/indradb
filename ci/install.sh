@@ -2,11 +2,9 @@
 
 set -ex
 
-ls /usr/include/x86_64-linux-gnu
-ls /usr/include/sys
-clang -x c -v -E /dev/null
-
 if [ $TRAVIS_OS_NAME = linux ]; then
+    ln -s /usr/include/zconf.h /usr/include/x86_64-linux-gnu/zconf.h
+
     if ! type kcov &> /dev/null; then
         pushd $HOME
             wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
