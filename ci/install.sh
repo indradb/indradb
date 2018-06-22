@@ -3,7 +3,7 @@
 set -ex
 
 if [ $TRAVIS_OS_NAME = linux ]; then
-    ln -s /usr/include/zconf.h /usr/include/x86_64-linux-gnu/zconf.h
+    ln -s /usr/include/x86_64-linux-gnu/zconf.h /usr/include/zconf.h
 
     if ! type kcov &> /dev/null; then
         pushd $HOME
