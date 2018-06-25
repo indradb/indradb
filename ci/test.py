@@ -15,7 +15,7 @@ EXCLUDE_PATTERNS = [
     "lib/src/tests",
     "lib/src/benches",
     "tests.rs",
-    "bin/tests",
+    "bin",
 ]
 
 def get_test_file_name(test_name):
