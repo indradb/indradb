@@ -121,7 +121,7 @@ impl BatchTransaction {
                     panic!("Unexpected error response object: {}", v)
                 }
             }
-            Err(err) => return Err(format!("Request error: {}", err).into())
+            Err(err) => panic!("Request error: {}", err),
         };
 
         assert!(parts.len() == 1, "Invalid number of items returned");
