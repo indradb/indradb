@@ -18,6 +18,9 @@ if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = nightly ]; then
             sudo make install
         popd
     popd
+else
+    # Just make an empty directory so that caching doesn't fail
+    mkdir -p $HOME/kcov-35
 fi
 
 source ~/.cargo/env || true
