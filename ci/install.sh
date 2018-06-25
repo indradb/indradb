@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ $TRAVIS_OS_NAME = linux ]; then
+if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = nightly ]; then
     if ! type kcov &> /dev/null; then
         pushd $HOME
             wget https://github.com/SimonKagstrom/kcov/archive/v35.tar.gz
