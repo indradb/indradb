@@ -70,14 +70,16 @@ deploy:
   provider: releases
   skip_cleanup: true
 
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+  - chmod -R a+r $TRAVIS_BUILD_DIR/target
+  - chmod -R a+r $HOME/kcov-35
 cache:
   directories:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
-  - /usr/local/bin/kcov
-before_cache:
-  # Travis can't cache files that are not readable by "others"
-  - chmod -R a+r $HOME/.cargo
+  - $HOME/kcov-35
 
 notifications:
   email:

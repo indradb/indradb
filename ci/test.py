@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 LIB_TESTS = ["indradb"]
-BIN_TESTS = ["indradb_server", "batch"]
+BIN_TESTS = ["indradb", "batch"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
@@ -15,7 +15,7 @@ EXCLUDE_PATTERNS = [
     "lib/src/tests",
     "lib/src/benches",
     "tests.rs",
-    "bin/tests",
+    "bin",
 ]
 
 def get_test_file_name(test_name):
@@ -24,6 +24,8 @@ def get_test_file_name(test_name):
     for file in os.listdir("target/debug"):
         if re.match(test_file_pattern, file):
             return file
+
+    raise Exception("No file matching the pattern `%s` in `target/debug`" % test_file_pattern)
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
