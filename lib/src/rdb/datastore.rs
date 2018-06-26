@@ -105,7 +105,7 @@ impl RocksdbTransaction {
         Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item=Result<VertexItem>>>> {
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         match q {
@@ -156,16 +156,18 @@ impl RocksdbTransaction {
         }
     }
 
-    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item=Result<EdgeRangeItem>>>> {
+    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
         match q {
             EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges = keys.into_iter().map(move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                    Some(update_datetime) => {
-                        Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                let edges = keys.into_iter().map(move |key| {
+                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                        Some(update_datetime) => {
+                            Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                        }
+                        None => Ok(None),
                     }
-                    None => Ok(None),
                 });
 
                 let iterator = self.remove_nones_from_iterator(edges);
@@ -240,8 +242,9 @@ impl RocksdbTransaction {
         }
     }
 
-    fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item=Result<T>>
-    where I: Iterator<Item=Result<Option<T>>>
+    fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item = Result<T>>
+    where
+        I: Iterator<Item = Result<Option<T>>>,
     {
         let filtered = iterator.filter(|item| match *item {
             Err(_) | Ok(Some(_)) => true,
@@ -257,10 +260,10 @@ impl RocksdbTransaction {
         Box::new(mapped)
     }
 
-    fn handle_vertex_id_iterator<T: Iterator<Item=Result<Uuid>>>(
+    fn handle_vertex_id_iterator<T: Iterator<Item = Result<Uuid>>>(
         &self,
         iterator: T,
-    ) -> impl Iterator<Item=Result<VertexItem>> {
+    ) -> impl Iterator<Item = Result<VertexItem>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         let mapped = iterator.map(move |item| {
