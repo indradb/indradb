@@ -109,7 +109,7 @@ impl VertexManager {
         }))
     }
 
-    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>>> {
+    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item=Result<VertexItem>>> {
         let low_key = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self
             .db
@@ -453,7 +453,7 @@ impl EdgeMetadataManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeMetadataItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item=Result<EdgeMetadataItem>> + 'a>> {
         let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
