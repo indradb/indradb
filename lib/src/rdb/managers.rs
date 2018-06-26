@@ -306,12 +306,12 @@ impl EdgeRangeManager {
         }))
     }
 
-    pub fn iterate_for_range<'a>(
+    pub fn iterate_for_range(
         &self,
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item=Result<EdgeRangeItem>>>> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -453,7 +453,7 @@ impl EdgeMetadataManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<Iterator<Item = Result<EdgeMetadataItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgeMetadataItem>> + 'a>> {
         let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
