@@ -105,10 +105,10 @@ impl RocksdbTransaction {
         Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<dyn Iterator<Item=Result<VertexItem>>>> {
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item=Result<VertexItem>>>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
-        match *q {
+        match q {
             VertexQuery::All { start_id, limit } => {
                 let next_uuid = match start_id {
                     Some(start_id) => {
@@ -134,11 +134,11 @@ impl RocksdbTransaction {
                 Ok(Box::new(self.handle_vertex_id_iterator(iterator)))
             }
             VertexQuery::Pipe {
-                ref edge_query,
+                edge_query,
                 converter,
                 limit,
             } => {
-                let edge_iterator = self.edge_query_to_iterator(edge_query)?;
+                let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
 
                 let vertex_id_iterator = edge_iterator.map(move |item| {
                     let (outbound_id, _, _, inbound_id) = item?;
@@ -156,35 +156,30 @@ impl RocksdbTransaction {
         }
     }
 
-    fn edge_query_to_iterator(&self, q: &EdgeQuery) -> Result<Box<Iterator<Item=Result<EdgeRangeItem>>>> {
-        match *q {
-            EdgeQuery::Edges { ref keys } => {
+    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item=Result<EdgeRangeItem>>>> {
+        match q {
+            EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges: Vec<Result<Option<EdgeRangeItem>>> = keys
-                    .into_iter()
-                    .map(
-                        move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                            Some(update_datetime) => {
-                                Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
-                            }
-                            None => Ok(None),
-                        },
-                    )
-                    .collect();
+                let edges = keys.into_iter().map(move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                    Some(update_datetime) => {
+                        Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                    }
+                    None => Ok(None),
+                });
 
-                let iterator = self.remove_nones_from_iterator(edges.into_iter());
+                let iterator = self.remove_nones_from_iterator(edges);
                 Ok(Box::new(iterator))
             }
             EdgeQuery::Pipe {
-                ref vertex_query,
+                vertex_query,
                 converter,
-                ref type_filter,
+                type_filter,
                 high_filter,
                 low_filter,
                 limit,
             } => {
-                let vertex_iterator = self.vertex_query_to_iterator(&*vertex_query)?;
+                let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
 
                 let edge_range_manager = match converter {
                     EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
@@ -337,7 +332,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
-        let iterator = self.vertex_query_to_iterator(q)?;
+        let iterator = self.vertex_query_to_iterator(q.clone())?;
 
         let mapped = iterator.map(move |item| {
             let (id, t) = item?;
@@ -349,7 +344,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
-        let iterator = self.vertex_query_to_iterator(q)?;
+        let iterator = self.vertex_query_to_iterator(q.clone())?;
         let vertex_manager = VertexManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -388,7 +383,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
-        let iterator = self.edge_query_to_iterator(q)?;
+        let iterator = self.edge_query_to_iterator(q.clone())?;
 
         let mapped = iterator.map(move |item| {
             let (outbound_id, t, update_datetime, inbound_id) = item?;
@@ -403,7 +398,7 @@ impl Transaction for RocksdbTransaction {
     fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let edge_manager = EdgeManager::new(self.db.clone());
         let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = self.edge_query_to_iterator(q)?;
+        let iterator = self.edge_query_to_iterator(q.clone())?;
         let mut batch = WriteBatch::default();
 
         for item in iterator {
@@ -438,7 +433,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             let value = manager.get(id, &name[..])?;
 
@@ -454,7 +449,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             manager.set(&mut batch, id, &name[..], value)?;
         }
@@ -467,7 +462,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             manager.delete(&mut batch, id, &name[..])?;
         }
@@ -480,7 +475,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
 
@@ -497,7 +492,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], value)?;
         }
@@ -510,7 +505,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
         }
