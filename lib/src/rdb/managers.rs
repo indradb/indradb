@@ -103,7 +103,13 @@ impl VertexManager {
     fn iterate(&self, iterator: DBIterator) -> Result<impl Iterator<Item = Result<VertexItem>>> {
         Ok(iterator.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
-            let id = parse_uuid_key(k);
+
+            let id = {
+                debug_assert_eq!(k.len(), 16);
+                let mut cursor = Cursor::new(k);
+                read_uuid(&mut cursor)
+            };
+
             let value: models::Type = bincode::deserialize(&v.to_owned()[..])?;
             Ok((id, value))
         }))

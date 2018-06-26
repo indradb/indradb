@@ -72,19 +72,13 @@ pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
     cursor.into_inner().into_boxed_slice()
 }
 
-pub fn parse_uuid_key(key: Box<[u8]>) -> Uuid {
-    debug_assert_eq!(key.len(), 16);
-    let mut cursor = Cursor::new(key);
-    read_uuid(&mut cursor)
-}
-
 pub fn read_uuid(cursor: &mut Cursor<Box<[u8]>>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
     Uuid::from_bytes(&buf).unwrap()
 }
 
-pub fn read_short_sized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
+pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -93,11 +87,8 @@ pub fn read_short_sized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-    str::from_utf8(&buf).unwrap().to_string()
-}
-
-pub fn read_type(mut cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
-    models::Type::new(read_short_sized_string(&mut cursor)).unwrap()
+    let s = str::from_utf8(&buf).unwrap().to_string();
+    models::Type::new(s).unwrap()
 }
 
 pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
