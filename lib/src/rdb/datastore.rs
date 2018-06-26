@@ -193,82 +193,40 @@ impl RocksdbTransaction {
                 // just resort to building a vector.
                 let mut edges: Vec<Result<EdgeRangeItem>> = Vec::new();
 
-                if let Some(low_filter) = low_filter {
-                    for item in vertex_iterator {
-                        let (id, _) = item?;
-                        let edge_iterator =
-                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
+                for item in vertex_iterator {
+                    let (id, _) = item?;
+                    let edge_iterator = edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
 
-                        for item in edge_iterator {
-                            match item {
-                                Ok((
-                                    edge_range_first_id,
-                                    edge_range_t,
-                                    edge_range_update_datetime,
-                                    edge_range_second_id,
-                                )) => {
-                                    if edge_range_update_datetime >= low_filter {
-                                        edges.push(match converter {
-                                            EdgeDirection::Outbound => Ok((
-                                                edge_range_first_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_second_id,
-                                            )),
-                                            EdgeDirection::Inbound => Ok((
-                                                edge_range_second_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_first_id,
-                                            )),
-                                        });
-                                    } else {
+                    for item in edge_iterator {
+                        match item {
+                            Ok((
+                                edge_range_first_id,
+                                edge_range_t,
+                                edge_range_update_datetime,
+                                edge_range_second_id,
+                            )) => {
+                                if let Some(low_filter) = low_filter {
+                                    if edge_range_update_datetime < low_filter {
                                         break;
                                     }
                                 }
-                                Err(_) => edges.push(item),
-                            }
 
-                            if edges.len() == limit as usize {
-                                break;
+                                edges.push(match converter {
+                                    EdgeDirection::Outbound => Ok((
+                                        edge_range_first_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_second_id,
+                                    )),
+                                    EdgeDirection::Inbound => Ok((
+                                        edge_range_second_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_first_id,
+                                    )),
+                                })
                             }
-                        }
-                    }
-                } else {
-                    for item in vertex_iterator {
-                        let (id, _) = item?;
-                        let edge_iterator =
-                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
-
-                        for item in edge_iterator {
-                            match item {
-                                Ok((
-                                    edge_range_first_id,
-                                    edge_range_t,
-                                    edge_range_update_datetime,
-                                    edge_range_second_id,
-                                )) => {
-                                    edges.push(match converter {
-                                        EdgeDirection::Outbound => Ok((
-                                            edge_range_first_id,
-                                            edge_range_t,
-                                            edge_range_update_datetime,
-                                            edge_range_second_id,
-                                        )),
-                                        EdgeDirection::Inbound => Ok((
-                                            edge_range_second_id,
-                                            edge_range_t,
-                                            edge_range_update_datetime,
-                                            edge_range_first_id,
-                                        )),
-                                    });
-                                }
-                                Err(_) => edges.push(item),
-                            }
-
-                            if edges.len() == limit as usize {
-                                break;
-                            }
+                            Err(_) => edges.push(item),
                         }
 
                         if edges.len() == limit as usize {
