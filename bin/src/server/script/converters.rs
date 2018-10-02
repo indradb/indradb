@@ -155,7 +155,7 @@ impl ProxyTransaction {
 }
 
 impl UserData for ProxyTransaction {
-    fn add_methods(methods: &mut UserDataMethods<Self>) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         proxy_fn!(methods, "create_vertex_from_type", api::create_vertex_from_type);
         proxy_fn!(methods, "get_vertices", api::get_vertices);
         proxy_fn!(methods, "delete_vertices", api::delete_vertices);
@@ -224,12 +224,12 @@ impl<'lua> ToLua<'lua> for EdgeKey {
         let table = l.create_table()?;
         table.set(
             "outbound_id",
-            l.create_string(&self.0.outbound_id.hyphenated().to_string()[..])?,
+            l.create_string(&self.0.outbound_id.to_hyphenated().to_string()[..])?,
         )?;
         table.set("type", self.0.t.0)?;
         table.set(
             "inbound_id",
-            l.create_string(&self.0.inbound_id.hyphenated().to_string()[..])?,
+            l.create_string(&self.0.inbound_id.to_hyphenated().to_string()[..])?,
         )?;
         Ok(Value::Table(table))
     }
@@ -256,7 +256,7 @@ impl<'lua> FromLua<'lua> for Vertex {
 impl<'lua> ToLua<'lua> for Vertex {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
         let table = l.create_table()?;
-        table.set("id", l.create_string(&self.0.id.hyphenated().to_string()[..])?)?;
+        table.set("id", l.create_string(&self.0.id.to_hyphenated().to_string()[..])?)?;
         table.set("type", self.0.t.0)?;
         Ok(Value::Table(table))
     }
@@ -303,7 +303,7 @@ impl<'lua> FromLua<'lua> for Uuid {
 
 impl<'lua> ToLua<'lua> for Uuid {
     fn to_lua(self, l: &'lua Lua) -> LuaResult<Value<'lua>> {
-        let s = self.0.hyphenated().to_string();
+        let s = self.0.to_hyphenated().to_string();
         Ok(Value::String(l.create_string(&s[..])?))
     }
 }

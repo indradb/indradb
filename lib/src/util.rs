@@ -4,12 +4,13 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::ValidationResult;
 use rand::{OsRng, Rng};
-use uuid::{Uuid, UuidV1Context};
+use uuid::Uuid;
+use uuid::v1::Context;
 
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
 lazy_static! {
-    static ref CONTEXT: UuidV1Context = UuidV1Context::new(0);
+    static ref CONTEXT: Context = Context::new(0);
 }
 
 /// Generates a UUID v1. this utility method uses a shared context and node ID
@@ -17,7 +18,7 @@ lazy_static! {
 pub fn generate_uuid_v1() -> Uuid {
     let now = Utc::now();
 
-    Uuid::new_v1(&CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos(), &NODE_ID)
+    Uuid::new_v1(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos(), &NODE_ID)
         .expect("Expected to be able to generate a UUID")
 }
 
@@ -51,7 +52,7 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     for i in (0..16).rev() {
         if bytes[i] < 255 {
             bytes[i] += 1;
-            return Ok(Uuid::from_bytes(&bytes[..]).unwrap());
+            return Ok(Uuid::from_slice(&bytes[..]).unwrap());
         } else {
             bytes[i] = 0;
         }
