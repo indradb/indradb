@@ -75,7 +75,7 @@ pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
 pub fn read_uuid(cursor: &mut Cursor<Box<[u8]>>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
-    Uuid::from_bytes(&buf).unwrap()
+    Uuid::from_slice(&buf).unwrap()
 }
 
 pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {

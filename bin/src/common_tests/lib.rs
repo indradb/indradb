@@ -36,8 +36,8 @@ fn request(port: usize, body: &JsonValue) -> Result<Response, ReqwestError> {
     let client = Client::new();
     let url =
         Url::parse(&format!("http://localhost:{}/transaction", port)).expect("Expected to be able to construct a URL");
-    let mut request = client.request(Method::Post, url);
-    request.json(body);
+    let request = client.request(Method::POST, url);
+    let request = request.json(body);
     request.send()
 }
 
@@ -61,7 +61,7 @@ impl BatchDatastore {
 
         for _ in 0..5 {
             if let Ok(response) = request(port, &json!([])) {
-                if response.status() == StatusCode::Ok {
+                if response.status() == StatusCode::OK {
                     return Self { port, server };
                 }
             }
@@ -102,7 +102,7 @@ impl BatchTransaction {
     {
         let mut parts = match request(self.port, &json!([body])) {
             Ok(mut response) => {
-                if response.status() == StatusCode::Ok {
+                if response.status() == StatusCode::OK {
                     let v: Vec<T> = response.json().expect("Could not deserialize response to custom type");
                     v
                 } else {
