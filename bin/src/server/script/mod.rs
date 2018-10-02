@@ -12,9 +12,6 @@ use serde_json::value::Value as JsonValue;
 ///
 /// # Errors
 /// Returns an error if the script produced an error.
-///
-/// # Panics
-/// We try to avoid panics, but there is a lot of unsafe code here.
 pub fn execute(contents: &str, path: &str, arg: JsonValue) -> Result<JsonValue, LuaError> {
     let l = context::create(arg)?;
     let value: converters::JsonValue = l.exec(contents, Some(path))?;
