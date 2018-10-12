@@ -1,20 +1,23 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{Duration, Timelike};
-use chrono::offset::Utc;
 use models;
 use std::i32;
 use std::i64;
-use std::io::{Cursor, Error as IoError};
 use std::io::Read;
 use std::io::Write;
+use std::io::{Cursor, Error as IoError};
 use std::str;
 use std::u8;
 use util::nanos_since_epoch;
 use uuid::Uuid;
 
 lazy_static! {
-    pub static ref MAX_DATETIME: DateTime<Utc> = DateTime::from_utc(NaiveDateTime::from_timestamp(i32::MAX as i64, 0), Utc).with_nanosecond(1999999999u32).unwrap();
+    pub static ref MAX_DATETIME: DateTime<Utc> =
+        DateTime::from_utc(NaiveDateTime::from_timestamp(i64::from(i32::MAX), 0), Utc)
+            .with_nanosecond(1_999_999_999u32)
+            .unwrap();
 }
 
 pub enum KeyComponent<'a> {
@@ -56,13 +59,11 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
-    let len = components
-        .iter()
-        .fold(0, |len, component| len + component.len());
+pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
+    let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
-    for component in &components {
+    for component in components {
         if let Err(err) = component.write(&mut cursor) {
             panic!("Could not build key: {}", err);
         }
@@ -71,19 +72,13 @@ pub fn build_key(components: Vec<KeyComponent>) -> Box<[u8]> {
     cursor.into_inner().into_boxed_slice()
 }
 
-pub fn parse_uuid_key(key: Box<[u8]>) -> Uuid {
-    debug_assert_eq!(key.len(), 16);
-    let mut cursor = Cursor::new(key);
-    read_uuid(&mut cursor)
-}
-
 pub fn read_uuid(cursor: &mut Cursor<Box<[u8]>>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
-    Uuid::from_bytes(&buf).unwrap()
+    Uuid::from_slice(&buf).unwrap()
 }
 
-pub fn read_short_sized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
+pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -92,11 +87,8 @@ pub fn read_short_sized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-    str::from_utf8(&buf).unwrap().to_string()
-}
-
-pub fn read_type(mut cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
-    models::Type::new(read_short_sized_string(&mut cursor)).unwrap()
+    let s = str::from_utf8(&buf).unwrap().to_string();
+    models::Type::new(s).unwrap()
 }
 
 pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {

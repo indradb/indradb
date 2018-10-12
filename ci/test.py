@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 
-LIB_FEATURES = "--features=test-suite,postgres-datastore,rocksdb-datastore"
+LIB_FEATURES = "--features=test-suite,rocksdb-datastore"
 LIB_TESTS = ["indradb"]
 BIN_TESTS = ["indradb_server", "grpc"]
 TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
@@ -28,14 +28,13 @@ def get_test_file_name(test_name):
         if re.match(test_file_pattern, file):
             return file
 
-    raise Exception("Could not find executable for test `%s`" % test_name)
+    raise Exception("No file matching the pattern `%s` in `target/debug`" % test_file_pattern)
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd)
 
 def main():
-    run(["cargo", "update"], cwd="lib")
     run(["cargo", "build"], cwd="bin")
 
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":

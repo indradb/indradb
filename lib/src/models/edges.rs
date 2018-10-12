@@ -1,6 +1,6 @@
 use super::types::Type;
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
@@ -27,9 +27,9 @@ impl EdgeKey {
     /// * `inbound_id` - The id of the inbound vertex.
     pub fn new(outbound_id: Uuid, t: Type, inbound_id: Uuid) -> EdgeKey {
         EdgeKey {
-            outbound_id: outbound_id,
-            t: t,
-            inbound_id: inbound_id,
+            outbound_id,
+            t,
+            inbound_id,
         }
     }
 }
@@ -63,9 +63,6 @@ impl Edge {
     /// * `key` - The key to the edge.
     /// * `created_datetime` - When the edge was created.
     pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
-        Edge {
-            key: key,
-            created_datetime: created_datetime,
-        }
+        Edge { key, created_datetime }
     }
 }

@@ -4,7 +4,6 @@ services: docker
 sudo: required
 
 addons:
-  postgresql: "9.5"
   apt:
     packages:
       - libcurl4-openssl-dev
@@ -20,34 +19,26 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
     - os: osx
       rust: stable
       env:
       - TARGET=x86_64-apple-darwin
-      - PG_USER=travis
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-35/build:$PATH
 
     # Rust beta
     - rust: beta
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
 
     # Rust nightly
     - rust: nightly
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
   allow_failures:
@@ -56,23 +47,16 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PG_USER=postgres
-      - TEST_POSTGRES_URL="postgres://$PG_USER@localhost:5432/indradb_test"
-      - PATH=$HOME/.local/bin:$HOME/kcov-master/build:$PATH
+      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
       - RUSTFLAGS="-C link-dead-code"
 
 env:
   global:
-    - TEST_RDB_DIRECTORY=/tmp/indradb
     - RUST_BACKTRACE=1
-    - SECRET=QkrDxgVJCT
     - INDRADB_SCRIPT_ROOT=~/build/indradb/indradb/bin/test_scripts
 
 install: ./ci/install.sh
-
-before_script: ./ci/before_script.sh
 script: ./ci/test.py
-
 before_deploy: ./ci/before_deploy.sh
 
 deploy:
@@ -86,14 +70,16 @@ deploy:
   provider: releases
   skip_cleanup: true
 
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
+  - chmod -R a+r $TRAVIS_BUILD_DIR/target
+  - chmod -R a+r $HOME/kcov-35
 cache:
   directories:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
-  - /usr/local/bin/kcov
-before_cache:
-  # Travis can't cache files that are not readable by "others"
-  - chmod -R a+r $HOME/.cargo
+  - $HOME/kcov-35
 
 notifications:
   email:

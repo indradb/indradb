@@ -15,6 +15,7 @@ extern crate serde_json;
 extern crate uuid;
 
 use futures::future::Future;
+
 use std::env;
 use std::sync::Arc;
 

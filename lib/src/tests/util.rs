@@ -1,6 +1,6 @@
 use super::super::{Datastore, Transaction};
-use chrono::DateTime;
 use chrono::offset::Utc;
+use chrono::DateTime;
 use models;
 use uuid::Uuid;
 

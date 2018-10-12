@@ -98,28 +98,6 @@ pub trait Transaction {
         direction: models::EdgeDirection,
     ) -> Result<u64>;
 
-    /// Gets a global metadata value.
-    ///
-    /// # Arguments
-    /// * `name` - The metadata name.
-    ///
-    /// # Errors
-    /// Returns `Error::MetadataNotFound` if the metadata does not exist.
-    fn get_global_metadata(&self, name: &str) -> Result<Option<JsonValue>>;
-
-    /// Sets a global metadata value.
-    ///
-    /// # Arguments
-    /// * `name` - The metadata name.
-    /// * `value` - The metadata value.
-    fn set_global_metadata(&self, name: &str, value: &JsonValue) -> Result<()>;
-
-    /// Deletes a global metadata value.
-    ///
-    /// # Arguments
-    /// * `name` - The metadata name.
-    fn delete_global_metadata(&self, name: &str) -> Result<()>;
-
     /// Gets a vertex metadata value.
     ///
     /// # Arguments
