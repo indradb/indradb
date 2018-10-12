@@ -24,7 +24,7 @@ def get_test_file_name(test_name):
         if re.match(test_file_pattern, file):
             return file
 
-    raise Exception("Could not find target `%s`" % test_name)
+    raise Exception("No file matching the pattern `%s` in `target/debug`" % test_file_pattern)
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))

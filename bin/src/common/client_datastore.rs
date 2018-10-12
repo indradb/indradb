@@ -104,7 +104,7 @@ impl indradb::Transaction for ClientTransaction {
 
             let f = req.send().promise.and_then(move |res| {
                 let bytes = res.get()?.get_result()?;
-                Ok(Uuid::from_bytes(bytes).unwrap())
+                Ok(Uuid::from_slice(bytes).unwrap())
             });
 
             Box::new(f)

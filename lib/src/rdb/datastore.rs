@@ -1,8 +1,6 @@
-use super::managers::*;
 use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
-use chrono::DateTime;
+use super::managers::*;
 use chrono::offset::Utc;
-use core::fmt::Debug;
 use errors::Result;
 use models;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
@@ -14,7 +12,7 @@ use std::usize;
 use util::next_uuid;
 use uuid::Uuid;
 
-const CF_NAMES: [&'static str; 6] = [
+const CF_NAMES: [&str; 6] = [
     "vertices:v1",
     "edges:v1",
     "edge_ranges:v1",
@@ -31,9 +29,9 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.set_compaction_style(DBCompactionStyle::Level);
-    opts.set_write_buffer_size(67108864); //64mb
+    opts.set_write_buffer_size(67_108_864); //64mb
     opts.set_max_write_buffer_number(3);
-    opts.set_target_file_size_base(67108864); //64mb
+    opts.set_target_file_size_base(67_108_864); //64mb
     opts.set_max_background_compactions(4);
     opts.set_level_zero_slowdown_writes_trigger(17);
     opts.set_level_zero_stop_writes_trigger(24);
@@ -104,14 +102,14 @@ pub struct RocksdbTransaction {
 
 impl RocksdbTransaction {
     fn new(db: Arc<DB>) -> Result<Self> {
-        Ok(RocksdbTransaction { db: db })
+        Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: &VertexQuery) -> Result<Box<Iterator<Item = VertexItem>>> {
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         match q {
-            &VertexQuery::All { start_id, limit } => {
+            VertexQuery::All { start_id, limit } => {
                 let next_uuid = match start_id {
                     Some(start_id) => {
                         match next_uuid(start_id) {
@@ -130,66 +128,60 @@ impl RocksdbTransaction {
                 let iterator = vertex_manager.iterate_for_range(next_uuid)?;
                 Ok(Box::new(iterator.take(limit as usize)))
             }
-            &VertexQuery::Vertices { ref ids } => {
+            VertexQuery::Vertices { ref ids } => {
                 let vertices: Vec<Result<Uuid>> = ids.into_iter().map(|id| Ok(*id)).collect();
-                let iterator = Box::new(vertices.into_iter());
-                Ok(self.handle_vertex_id_iterator(iterator))
+                let iterator = vertices.into_iter();
+                Ok(Box::new(self.handle_vertex_id_iterator(iterator)))
             }
-            &VertexQuery::Pipe {
-                ref edge_query,
+            VertexQuery::Pipe {
+                edge_query,
                 converter,
                 limit,
             } => {
-                let edge_iterator = self.edge_query_to_iterator(edge_query)?;
+                let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
 
-                let vertex_id_iterator = Box::new(edge_iterator.map(move |item| {
+                let vertex_id_iterator = edge_iterator.map(move |item| {
                     let (outbound_id, _, _, inbound_id) = item?;
 
                     match converter {
                         EdgeDirection::Outbound => Ok(outbound_id),
                         EdgeDirection::Inbound => Ok(inbound_id),
                     }
-                }));
+                });
 
                 Ok(Box::new(
-                    self.handle_vertex_id_iterator(vertex_id_iterator)
-                        .take(limit as usize),
+                    self.handle_vertex_id_iterator(vertex_id_iterator).take(limit as usize),
                 ))
             }
         }
     }
 
-    fn edge_query_to_iterator(&self, q: &EdgeQuery) -> Result<Box<Iterator<Item = EdgeRangeItem>>> {
+    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
         match q {
-            &EdgeQuery::Edges { ref keys } => {
+            EdgeQuery::Edges { keys } => {
                 let edge_manager = EdgeManager::new(self.db.clone());
 
-                let edges: Vec<Result<Option<(Uuid, models::Type, DateTime<Utc>, Uuid)>>> = keys.into_iter()
-                    .map(
-                        move |key| match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                            Some(update_datetime) => Ok(Some((
-                                key.outbound_id,
-                                key.t.clone(),
-                                update_datetime,
-                                key.inbound_id,
-                            ))),
-                            None => Ok(None),
-                        },
-                    )
-                    .collect();
+                let edges = keys.into_iter().map(move |key| {
+                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                        Some(update_datetime) => {
+                            Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                        }
+                        None => Ok(None),
+                    }
+                });
 
-                let iterator = self.remove_nones_from_iterator(Box::new(edges.into_iter()));
-                Ok(iterator)
+                let iterator = self.remove_nones_from_iterator(edges);
+                Ok(Box::new(iterator))
             }
-            &EdgeQuery::Pipe {
-                ref vertex_query,
+            EdgeQuery::Pipe {
+                vertex_query,
                 converter,
-                ref type_filter,
+                type_filter,
                 high_filter,
                 low_filter,
                 limit,
             } => {
-                let vertex_iterator = self.vertex_query_to_iterator(&*vertex_query)?;
+                let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
 
                 let edge_range_manager = match converter {
                     EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
@@ -201,84 +193,42 @@ impl RocksdbTransaction {
                 // returning the same type signature, issues with `Result`s
                 // and some of the iterators, etc. So at this point, we'll
                 // just resort to building a vector.
-                let mut edges: Vec<EdgeRangeItem> = Vec::new();
+                let mut edges: Vec<Result<EdgeRangeItem>> = Vec::new();
 
-                if let Some(low_filter) = low_filter {
-                    for item in vertex_iterator {
-                        let (id, _) = item?;
-                        let edge_iterator =
-                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
+                for item in vertex_iterator {
+                    let (id, _) = item?;
+                    let edge_iterator = edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
 
-                        for item in edge_iterator {
-                            match item {
-                                Ok((
-                                    edge_range_first_id,
-                                    edge_range_t,
-                                    edge_range_update_datetime,
-                                    edge_range_second_id,
-                                )) => {
-                                    if edge_range_update_datetime >= low_filter {
-                                        edges.push(match converter {
-                                            EdgeDirection::Outbound => Ok((
-                                                edge_range_first_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_second_id,
-                                            )),
-                                            EdgeDirection::Inbound => Ok((
-                                                edge_range_second_id,
-                                                edge_range_t,
-                                                edge_range_update_datetime,
-                                                edge_range_first_id,
-                                            )),
-                                        });
-                                    } else {
+                    for item in edge_iterator {
+                        match item {
+                            Ok((
+                                edge_range_first_id,
+                                edge_range_t,
+                                edge_range_update_datetime,
+                                edge_range_second_id,
+                            )) => {
+                                if let Some(low_filter) = low_filter {
+                                    if edge_range_update_datetime < low_filter {
                                         break;
                                     }
                                 }
-                                Err(_) => edges.push(item),
-                            }
 
-                            if edges.len() == limit as usize {
-                                break;
+                                edges.push(match converter {
+                                    EdgeDirection::Outbound => Ok((
+                                        edge_range_first_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_second_id,
+                                    )),
+                                    EdgeDirection::Inbound => Ok((
+                                        edge_range_second_id,
+                                        edge_range_t,
+                                        edge_range_update_datetime,
+                                        edge_range_first_id,
+                                    )),
+                                })
                             }
-                        }
-                    }
-                } else {
-                    for item in vertex_iterator {
-                        let (id, _) = item?;
-                        let edge_iterator =
-                            edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
-
-                        for item in edge_iterator {
-                            match item {
-                                Ok((
-                                    edge_range_first_id,
-                                    edge_range_t,
-                                    edge_range_update_datetime,
-                                    edge_range_second_id,
-                                )) => {
-                                    edges.push(match converter {
-                                        EdgeDirection::Outbound => Ok((
-                                            edge_range_first_id,
-                                            edge_range_t,
-                                            edge_range_update_datetime,
-                                            edge_range_second_id,
-                                        )),
-                                        EdgeDirection::Inbound => Ok((
-                                            edge_range_second_id,
-                                            edge_range_t,
-                                            edge_range_update_datetime,
-                                            edge_range_first_id,
-                                        )),
-                                    });
-                                }
-                                Err(_) => edges.push(item),
-                            }
-
-                            if edges.len() == limit as usize {
-                                break;
-                            }
+                            Err(_) => edges.push(item),
                         }
 
                         if edges.len() == limit as usize {
@@ -292,10 +242,10 @@ impl RocksdbTransaction {
         }
     }
 
-    fn remove_nones_from_iterator<'a, T: Debug + 'a>(
-        &self,
-        iterator: Box<Iterator<Item = Result<Option<T>>>>,
-    ) -> Box<Iterator<Item = Result<T>> + 'a> {
+    fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item = Result<T>>
+    where
+        I: Iterator<Item = Result<Option<T>>>,
+    {
         let filtered = iterator.filter(|item| match *item {
             Err(_) | Ok(Some(_)) => true,
             _ => false,
@@ -310,10 +260,10 @@ impl RocksdbTransaction {
         Box::new(mapped)
     }
 
-    fn handle_vertex_id_iterator(
+    fn handle_vertex_id_iterator<T: Iterator<Item = Result<Uuid>>>(
         &self,
-        iterator: Box<Iterator<Item = Result<Uuid>>>,
-    ) -> Box<Iterator<Item = VertexItem>> {
+        iterator: T,
+    ) -> impl Iterator<Item = Result<VertexItem>> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         let mapped = iterator.map(move |item| {
@@ -343,7 +293,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
-        let iterator = self.vertex_query_to_iterator(q)?;
+        let iterator = self.vertex_query_to_iterator(q.clone())?;
 
         let mapped = iterator.map(move |item| {
             let (id, t) = item?;
@@ -355,7 +305,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
-        let iterator = self.vertex_query_to_iterator(q)?;
+        let iterator = self.vertex_query_to_iterator(q.clone())?;
         let vertex_manager = VertexManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
@@ -394,7 +344,7 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
-        let iterator = self.edge_query_to_iterator(q)?;
+        let iterator = self.edge_query_to_iterator(q.clone())?;
 
         let mapped = iterator.map(move |item| {
             let (outbound_id, t, update_datetime, inbound_id) = item?;
@@ -409,7 +359,7 @@ impl Transaction for RocksdbTransaction {
     fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let edge_manager = EdgeManager::new(self.db.clone());
         let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = self.edge_query_to_iterator(q)?;
+        let iterator = self.edge_query_to_iterator(q.clone())?;
         let mut batch = WriteBatch::default();
 
         for item in iterator {
@@ -435,9 +385,7 @@ impl Transaction for RocksdbTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
         };
 
-        let count = edge_range_manager
-            .iterate_for_range(id, type_filter, None)?
-            .count();
+        let count = edge_range_manager.iterate_for_range(id, type_filter, None)?.count();
 
         Ok(count as u64)
     }
@@ -446,7 +394,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             let value = manager.get(id, &name[..])?;
 
@@ -462,7 +410,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             manager.set(&mut batch, id, &name[..], value)?;
         }
@@ -475,7 +423,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q)? {
+        for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             manager.delete(&mut batch, id, &name[..])?;
         }
@@ -488,7 +436,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut metadata = Vec::new();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
 
@@ -505,7 +453,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], value)?;
         }
@@ -518,7 +466,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgeMetadataManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q)? {
+        for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
             manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
         }

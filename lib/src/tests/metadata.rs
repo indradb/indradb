@@ -20,18 +20,14 @@ where
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
-    trans
-        .set_vertex_metadata(&q, &name, &JsonValue::Bool(true))
-        .unwrap();
+    trans.set_vertex_metadata(&q, &name, &JsonValue::Bool(true)).unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
-    trans
-        .set_vertex_metadata(&q, &name, &JsonValue::Bool(false))
-        .unwrap();
+    trans.set_vertex_metadata(&q, &name, &JsonValue::Bool(false)).unwrap();
     let result = trans.get_vertex_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
@@ -52,9 +48,7 @@ where
     let q = VertexQuery::Vertices {
         ids: vec![Uuid::default()],
     };
-    trans
-        .set_vertex_metadata(&q, "foo", &JsonValue::Null)
-        .unwrap();
+    trans.set_vertex_metadata(&q, "foo", &JsonValue::Null).unwrap();
     let result = trans.get_vertex_metadata(&q, "foo").unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -102,18 +96,14 @@ where
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
-    trans
-        .set_edge_metadata(&q, &name, &JsonValue::Bool(true))
-        .unwrap();
+    trans.set_edge_metadata(&q, &name, &JsonValue::Bool(true)).unwrap();
     let result = trans.get_edge_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
-    trans
-        .set_edge_metadata(&q, &name, &JsonValue::Bool(false))
-        .unwrap();
+    trans.set_edge_metadata(&q, &name, &JsonValue::Bool(false)).unwrap();
     let result = trans.get_edge_metadata(&q, &name).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
@@ -132,17 +122,13 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let q = EdgeQuery::Edges {
-        keys: vec![
-            EdgeKey::new(
-                Uuid::default(),
-                Type::new("foo".to_string()).unwrap(),
-                Uuid::default(),
-            ),
-        ],
+        keys: vec![EdgeKey::new(
+            Uuid::default(),
+            Type::new("foo".to_string()).unwrap(),
+            Uuid::default(),
+        )],
     };
-    trans
-        .set_edge_metadata(&q, "bar", &JsonValue::Null)
-        .unwrap();
+    trans.set_edge_metadata(&q, "bar", &JsonValue::Null).unwrap();
     let result = trans.get_edge_metadata(&q, "bar").unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -154,13 +140,11 @@ where
 {
     let trans = datastore.transaction().unwrap();
     let q = EdgeQuery::Edges {
-        keys: vec![
-            EdgeKey::new(
-                Uuid::default(),
-                Type::new("foo".to_string()).unwrap(),
-                Uuid::default(),
-            ),
-        ],
+        keys: vec![EdgeKey::new(
+            Uuid::default(),
+            Type::new("foo".to_string()).unwrap(),
+            Uuid::default(),
+        )],
     };
     trans.delete_edge_metadata(&q, "bar").unwrap();
 
@@ -169,11 +153,7 @@ where
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
 
-    let key = EdgeKey::new(
-        outbound_v.id,
-        Type::new("baz".to_string()).unwrap(),
-        inbound_v.id,
-    );
+    let key = EdgeKey::new(outbound_v.id, Type::new("baz".to_string()).unwrap(), inbound_v.id);
     trans.create_edge(&key).unwrap();
     trans
         .delete_edge_metadata(&EdgeQuery::Edges { keys: vec![key] }, "bleh")

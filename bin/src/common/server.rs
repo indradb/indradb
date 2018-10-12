@@ -205,7 +205,7 @@ impl autogen::transaction::Server for Transaction {
     fn get_edge_count(&mut self, req: autogen::transaction::GetEdgeCountParams<>, mut res: autogen::transaction::GetEdgeCountResults<>) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
-        let id = pry!(map_err!(Uuid::from_bytes(pry!(params.get_id()))));
+        let id = pry!(map_err!(Uuid::from_slice(pry!(params.get_id()))));
         let type_filter = match pry!(params.get_type_filter()) {
             "" => None,
             value => Some(pry!(map_err!(Type::new(value.to_string()))))

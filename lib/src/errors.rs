@@ -1,4 +1,5 @@
-// TODO: remove this once error-chain fixes it
+// Ignored because of warnings in error-chain that we cannot control.
+// TODO: remove after error-chain fixes this.
 #![allow(renamed_and_removed_lints)]
 
 #[cfg(feature = "rocksdb-datastore")]

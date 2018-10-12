@@ -26,23 +26,23 @@ name = "common"
 path = "src/common/lib.rs"
 
 [dependencies]
-error-chain = "~0.11.0"
-serde = "^1.0.27"
-serde_json = "^1.0.9"
-serde_derive = "^1.0.27"
-libc = "0.2.26"
-rand = "~0.4.2"
-regex = "~0.2.5"
-clap = "2.29.4"
-lazy_static = "1.0.0"
+error-chain = "~0.12.0"
+serde = "^1.0.79"
+serde_json = "^1.0.31"
+serde_derive = "^1.0.79"
+libc = "0.2.43"
+rand = "~0.5.5"
+regex = "^1.0.5"
+clap = "^2.32.0"
+lazy_static = "^1.1.0"
 capnp = "0.8.17"
 capnp-rpc = "0.8.3"
 futures = "0.1"
 tokio-core = "0.1"
 tokio-io = "0.1"
 futures-cpupool = "0.1"
-chrono = { version = "0.4.3", features = ["serde"] }
-uuid = { version = "0.5.1", features = ["serde", "v4"] }
+chrono = { version = "0.4.6", features = ["serde"] }
+uuid = { version = "~0.7.1", features = ["serde", "v4"] }
 
 [dependencies.indradb-lib]
 path = "../lib"

@@ -1,9 +1,9 @@
 //! The rocksdb datastore implementation.
 
-mod keys;
-mod instance;
-mod managers;
 mod datastore;
+mod instance;
+mod keys;
+mod managers;
 
 pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
 
