@@ -13,7 +13,7 @@ error_chain!{
     }
 
     foreign_links {
-        UuidParseError(uuid::ParseError);
+        UuidParseError(uuid::parser::ParseError);
         JsonError(serde_json::Error);
     }
 }
