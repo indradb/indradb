@@ -11,9 +11,11 @@ TEST_FILE_PATTERN_TEMPLATE = r"^%s-[0-9a-f]{16}$"
 
 EXCLUDE_PATTERNS = [
     "/.cargo",
+    "target",
     "/usr",
     "lib/src/tests",
     "lib/src/benches",
+    "bin/src/common/autogen",
     "tests.rs"
 ]
 
