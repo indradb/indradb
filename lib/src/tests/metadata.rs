@@ -3,10 +3,7 @@ use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
 
-pub fn should_handle_vertex_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_handle_vertex_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let t = Type::new("test_edge_type".to_string()).unwrap();
@@ -39,10 +36,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_vertex_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_not_set_invalid_vertex_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let q = VertexQuery::Vertices {
@@ -53,10 +47,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_vertex_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_not_delete_invalid_vertex_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let q = VertexQuery::Vertices {
@@ -71,10 +62,7 @@ where
     trans.delete_vertex_metadata(&q, "foo").unwrap();
 }
 
-pub fn should_handle_edge_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_handle_edge_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let vertex_t = Type::new("test_edge_type".to_string()).unwrap();
@@ -115,10 +103,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_edge_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_not_set_invalid_edge_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let q = EdgeQuery::Edges {
@@ -133,10 +118,7 @@ where
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_edge_metadata<D, T>(datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
+pub fn should_not_delete_invalid_edge_metadata<D: Datastore>(datastore: &mut D)
 {
     let trans = datastore.transaction().unwrap();
     let q = EdgeQuery::Edges {

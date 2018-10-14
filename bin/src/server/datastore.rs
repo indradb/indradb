@@ -16,7 +16,9 @@ pub enum ProxyDatastore {
     Memory(MemoryDatastore),
 }
 
-impl Datastore<ProxyTransaction> for ProxyDatastore {
+impl Datastore for ProxyDatastore {
+    type T = ProxyTransaction;
+
     fn transaction(&self) -> Result<ProxyTransaction, Error> {
         match *self {
             ProxyDatastore::Rocksdb(ref r) => {

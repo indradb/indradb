@@ -81,8 +81,10 @@ impl Drop for BatchDatastore {
     }
 }
 
-impl Datastore<BatchTransaction> for BatchDatastore {
-    fn transaction(&self) -> Result<BatchTransaction, Error> {
+impl Datastore for BatchDatastore {
+    type T = BatchTransaction;
+
+    fn transaction(&self) -> Result<Self::T, Error> {
         Ok(BatchTransaction::new(self.port))
     }
 }
