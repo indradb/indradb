@@ -11,6 +11,6 @@ lazy_static! {
 
 full_test_impl!({
     let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
-    spawn(move || server::start(&format!("127.0.0.1:{}", port)));
+    spawn(move || server::start(&format!("127.0.0.1:{}", port), "memory://"));
     ClientDatastore::new(port as u16)
 });

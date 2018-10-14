@@ -20,5 +20,7 @@ fn main() {
         .expect("Could not parse environment variable `PORT`");
     let binding = format!("127.0.0.1:{}", port);
 
-    common::server::start(&binding).expect("Expected to be able to start the server");
+    let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
+
+    common::server::start(&binding, &connection_string).expect("Expected to be able to start the server");
 }

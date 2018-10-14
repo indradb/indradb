@@ -268,9 +268,9 @@ impl MemoryDatastore {
 }
 
 impl Datastore for MemoryDatastore {
-    type T = MemoryTransaction;
+    type Trans = MemoryTransaction;
 
-    fn transaction(&self) -> Result<Self::T> {
+    fn transaction(&self) -> Result<Self::Trans> {
         Ok(MemoryTransaction {
             datastore: Arc::clone(&self.0),
         })

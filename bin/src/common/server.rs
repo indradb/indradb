@@ -8,10 +8,9 @@ use capnp::capability::Promise;
 use tokio_core::net::{TcpListener};
 use std::net::{ToSocketAddrs};
 use futures::{Future, Stream};
-use proxy_datastore;
 use capnp;
 use indradb;
-use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex, Edge, Type, VertexMetadata, EdgeMetadata};
+use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Vertex, Edge, Type, VertexMetadata, EdgeMetadata, RocksdbDatastore, MemoryDatastore};
 use tokio_io::AsyncRead;
 use errors;
 use converters;
@@ -20,6 +19,8 @@ use uuid::Uuid;
 use futures_cpupool::CpuPool;
 use std::error::Error;
 use serde_json;
+use std::env;
+use std::net::SocketAddr;
 
 macro_rules! pry_user {
     ($e:expr) => (pry!(map_err!($e)))
@@ -28,13 +29,13 @@ macro_rules! pry_user {
 // TODO: make this configurable
 const WORKER_COUNT: usize = 8;
 
-struct Service {
-    datastore: proxy_datastore::ProxyDatastore,
+struct Service<D: IndraDbDatastore<Trans=T>, T: IndraDbTransaction + Send + Sync + 'static> {
+    datastore: D,
     pool: CpuPool
 }
 
-impl Service {
-    fn new(datastore: proxy_datastore::ProxyDatastore) -> Self {
+impl<D: IndraDbDatastore<Trans=T>, T: IndraDbTransaction + Send + Sync + 'static> Service<D, T> {
+    fn new(datastore: D) -> Self {
         Self {
             datastore: datastore,
             pool: CpuPool::new(WORKER_COUNT)
@@ -42,7 +43,7 @@ impl Service {
     }
 }
 
-impl autogen::service::Server for Service {
+impl<D: IndraDbDatastore<Trans=T>, T: IndraDbTransaction + Send + Sync + 'static> autogen::service::Server for Service<D, T> {
     fn ping(&mut self, _: autogen::service::PingParams, mut res: autogen::service::PingResults) -> Promise<(), CapnpError> {
         res.get().set_ready(true);
         Promise::ok(())
@@ -57,13 +58,13 @@ impl autogen::service::Server for Service {
     }
 }
 
-struct Transaction {
+struct Transaction<T: IndraDbTransaction + Send + Sync + 'static> {
     pool: CpuPool,
-    trans: Arc<proxy_datastore::ProxyTransaction>
+    trans: Arc<T>
 }
 
-impl Transaction {
-    fn new(pool: CpuPool, trans: proxy_datastore::ProxyTransaction) -> Self {
+impl<T: IndraDbTransaction + Send + Sync + 'static> Transaction<T> {
+    fn new(pool: CpuPool, trans: T) -> Self {
         Self {
             pool: pool,
             trans: Arc::new(trans)
@@ -71,7 +72,7 @@ impl Transaction {
     }
 }
 
-impl autogen::transaction::Server for Transaction {
+impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server for Transaction<T> {
     fn create_vertex(&mut self, req: autogen::transaction::CreateVertexParams<>, mut res: autogen::transaction::CreateVertexResults<>) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_vertex = pry!(pry!(req.get()).get_vertex());
@@ -339,12 +340,14 @@ impl autogen::transaction::Server for Transaction {
     }
 }
 
-pub fn start(binding: &str) -> Result<(), errors::Error> {
-    let datastore = proxy_datastore::datastore();
+fn run<D, T>(addr: SocketAddr, datastore: D) -> Result<(), errors::Error>
+where D: IndraDbDatastore<Trans=T> + 'static,
+      T: IndraDbTransaction + Send + Sync + 'static
+{
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let addr = binding.to_socket_addrs()?.next().ok_or_else(|| -> errors::Error { "Could not parse binding".into() })?;
     let socket = TcpListener::bind(&addr, &handle)?;
+
     let service = autogen::service::ToClient::new(Service::new(datastore)).from_server::<Server>();
 
     let done = {
@@ -360,4 +363,28 @@ pub fn start(binding: &str) -> Result<(), errors::Error> {
 
     core.run(done).unwrap();
     Ok(())
+}
+
+pub fn start(binding: &str, connection_string: &str) -> Result<(), errors::Error> {
+    let addr = binding.to_socket_addrs()?.next().ok_or_else(|| -> errors::Error { "Could not parse binding".into() })?;
+
+    if connection_string.starts_with("rocksdb://") {
+        let path = &connection_string[10..connection_string.len()];
+
+        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
+        let max_open_files = max_open_files_str.parse::<i32>().expect(
+            "Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
+             i32",
+        );
+
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files))
+            .expect("Expected to be able to create the RocksDB datastore");
+
+        run(addr, datastore)
+    } else if connection_string == "memory://" {
+        let datastore = MemoryDatastore::default();
+        run(addr, datastore)
+    } else {
+        panic!("Cannot parse environment variable `DATABASE_URL`");
+    }
 }

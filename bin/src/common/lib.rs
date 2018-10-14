@@ -29,7 +29,6 @@ pub mod autogen;
 pub mod converters;
 pub mod errors;
 pub mod client_datastore;
-pub mod proxy_datastore;
 pub mod server;
 
 #[cfg(test)]

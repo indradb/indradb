@@ -55,7 +55,7 @@ impl ClientDatastore {
 }
 
 impl indradb::Datastore for ClientDatastore {
-    type T = ClientTransaction;
+    type Trans = ClientTransaction;
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();

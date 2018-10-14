@@ -12,10 +12,10 @@ use uuid::Uuid;
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore {
-    type T: Transaction;
+    type Trans: Transaction;
 
     /// Creates a new transaction.
-    fn transaction(&self) -> Result<Self::T>;
+    fn transaction(&self) -> Result<Self::Trans>;
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
