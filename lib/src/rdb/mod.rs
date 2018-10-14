@@ -5,6 +5,9 @@ mod instance;
 mod keys;
 mod managers;
 
+#[cfg(feature = "test-suite")]
+mod tests;
+
 pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
 
 #[cfg(feature = "bench-suite")]
