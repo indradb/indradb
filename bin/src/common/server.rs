@@ -350,16 +350,14 @@ where D: IndraDbDatastore<Trans=T> + 'static,
 
     let service = autogen::service::ToClient::new(Service::new(datastore)).from_server::<Server>();
 
-    let done = {
-        socket.incoming().for_each(move |(socket, _)| {
-            socket.set_nodelay(true)?;
-            let (reader, writer) = socket.split();
-            let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
-            let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(service.clone().client));
-            handle.spawn(rpc_system.map_err(|_| ()));
-            Ok(())
-        })
-    };
+    let done = socket.incoming().for_each(move |(socket, _)| {
+        socket.set_nodelay(true)?;
+        let (reader, writer) = socket.split();
+        let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
+        let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(service.clone().client));
+        handle.spawn(rpc_system.map_err(|_| ()));
+        Ok(())
+    });
 
     core.run(done).unwrap();
     Ok(())
