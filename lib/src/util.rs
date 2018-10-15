@@ -6,11 +6,22 @@ use errors::ValidationResult;
 use rand::{OsRng, Rng};
 use uuid::Uuid;
 use uuid::v1::Context;
+use std::env;
 
+const TEMP_PATH_RANDOM_PART_LENGTH: usize = 8;
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
 lazy_static! {
     static ref CONTEXT: Context = Context::new(0);
+}
+
+/// Gets the path to a file or directory within the temporary directory, in a
+/// platform-independent manner. Note that this will panic if the path cannot
+/// be formatted into UTF-8.
+pub fn generate_temporary_path() -> String {
+    let mut path = env::temp_dir();
+    path.push(generate_random_secret(TEMP_PATH_RANDOM_PART_LENGTH));
+    path.to_str().expect("Expected to be able to parse the temp path into UTF-8").to_string()
 }
 
 /// Generates a UUID v1. this utility method uses a shared context and node ID
@@ -73,11 +84,20 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, generate_uuid_v1, nanos_since_epoch, next_uuid};
+    use super::{generate_temporary_path, generate_random_secret, generate_uuid_v1, nanos_since_epoch, next_uuid};
     use chrono::{DateTime, NaiveDateTime, Utc};
     use core::str::FromStr;
     use regex::Regex;
     use uuid::Uuid;
+
+    #[test]
+    fn should_generate_temporary_path() {
+        let first = generate_temporary_path();
+        let second = generate_temporary_path();
+        assert!(first.len() > 0);
+        assert!(second.len() > 0);
+        assert_ne!(first, second);
+    }
 
     #[test]
     fn should_generate_new_uuid_v1() {

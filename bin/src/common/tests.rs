@@ -3,7 +3,7 @@ use client_datastore::ClientDatastore;
 use server;
 use std::thread::spawn;
 use std::sync::atomic::Ordering;
-use indradb::util::generate_random_secret;
+use indradb::util::generate_temporary_path;
 use std::path::Path;
 use std::panic::catch_unwind;
 use indradb::{Datastore, Transaction};
@@ -22,12 +22,9 @@ full_test_impl!({
 
 #[test]
 fn should_create_rocksdb_datastore() {
-    // TODO: do not hardcode the temp directory, to support non-POSIX
-    let path = Path::new("/tmp/test-rdb").join(generate_random_secret(8));
-
     let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
 
-    spawn(move || server::start(&format!("127.0.0.1:{}", port), &format!("rocksdb://{}", path.to_str().unwrap())));
+    spawn(move || server::start(&format!("127.0.0.1:{}", port), &format!("rocksdb://{}", generate_temporary_path())));
 
     // Just make sure we can run a command
     let datastore = ClientDatastore::new(port as u16);
