@@ -1,8 +1,11 @@
+use std::sync::atomic::AtomicUsize;
 use client_datastore::ClientDatastore;
 use server;
 use std::thread::spawn;
 use std::sync::atomic::Ordering;
-use std::sync::atomic::AtomicUsize;
+use indradb::util::generate_random_secret;
+use std::path::Path;
+use indradb::{Datastore, Transaction};
 
 const START_PORT: u16 = 27616;
 
@@ -15,3 +18,20 @@ full_test_impl!({
     spawn(move || server::start(&format!("127.0.0.1:{}", port), "memory://"));
     ClientDatastore::new(port as u16)
 });
+
+#[test]
+fn should_create_rocksdb_datastore() {
+    // TODO: do not hardcode the temp directory, to support non-POSIX
+    let path = Path::new("/tmp/test-rdb").join(generate_random_secret(8));
+
+    let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
+
+    spawn(move || server::start(&format!("127.0.0.1:{}", port), &format!("rocksdb://{}", path.to_str().unwrap())));
+
+    // Just make sure we can run a command
+    let datastore = ClientDatastore::new(port as u16);
+    let trans = datastore.transaction().unwrap();
+    let count = trans.get_vertex_count().unwrap();
+
+    assert_eq!(count, 0);
+}
