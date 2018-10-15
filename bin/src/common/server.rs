@@ -26,19 +26,16 @@ macro_rules! pry_user {
     ($e:expr) => (pry!(map_err!($e)))
 }
 
-// TODO: make this configurable
-const WORKER_COUNT: usize = 8;
-
 struct Service<D: IndraDbDatastore<Trans=T>, T: IndraDbTransaction + Send + Sync + 'static> {
     datastore: D,
     pool: CpuPool
 }
 
 impl<D: IndraDbDatastore<Trans=T>, T: IndraDbTransaction + Send + Sync + 'static> Service<D, T> {
-    fn new(datastore: D) -> Self {
+    fn new(datastore: D, worker_count: usize) -> Self {
         Self {
             datastore: datastore,
-            pool: CpuPool::new(WORKER_COUNT)
+            pool: CpuPool::new(worker_count)
         }
     }
 }
@@ -340,7 +337,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-fn run<D, T>(addr: SocketAddr, datastore: D) -> Result<(), errors::Error>
+fn run<D, T>(addr: SocketAddr, datastore: D, worker_count: usize) -> Result<(), errors::Error>
 where D: IndraDbDatastore<Trans=T> + 'static,
       T: IndraDbTransaction + Send + Sync + 'static
 {
@@ -348,7 +345,7 @@ where D: IndraDbDatastore<Trans=T> + 'static,
     let handle = core.handle();
     let socket = TcpListener::bind(&addr, &handle)?;
 
-    let service = autogen::service::ToClient::new(Service::new(datastore)).from_server::<Server>();
+    let service = autogen::service::ToClient::new(Service::new(datastore, worker_count)).from_server::<Server>();
 
     let done = socket.incoming().for_each(move |(socket, _)| {
         socket.set_nodelay(true)?;
@@ -363,7 +360,7 @@ where D: IndraDbDatastore<Trans=T> + 'static,
     Ok(())
 }
 
-pub fn start(binding: &str, connection_string: &str) -> Result<(), errors::Error> {
+pub fn start(binding: &str, connection_string: &str, worker_count: usize) -> Result<(), errors::Error> {
     let addr = binding.to_socket_addrs()?.next().ok_or_else(|| -> errors::Error { "Could not parse binding".into() })?;
 
     if connection_string.starts_with("rocksdb://") {
@@ -378,10 +375,10 @@ pub fn start(binding: &str, connection_string: &str) -> Result<(), errors::Error
         let datastore = RocksdbDatastore::new(path, Some(max_open_files))
             .expect("Expected to be able to create the RocksDB datastore");
 
-        run(addr, datastore)
+        run(addr, datastore, worker_count)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
-        run(addr, datastore)
+        run(addr, datastore, worker_count)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     }

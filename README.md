@@ -47,6 +47,7 @@ Applications are configured via environment variables:
 
 * `DATABASE_URL`: The connection string to the underlying database.
 * `PORT`: The port to run the server on. Defaults to `27615`.
+* `WORKER_COUNT`: How many worker threads to have to satisfy client requests. Defaults to twice the number of CPUs.
 
 ## Install from source
 

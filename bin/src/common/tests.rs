@@ -4,7 +4,6 @@ use server;
 use std::thread::spawn;
 use std::sync::atomic::Ordering;
 use indradb::util::generate_temporary_path;
-use std::path::Path;
 use std::panic::catch_unwind;
 use indradb::{Datastore, Transaction};
 
@@ -16,7 +15,7 @@ lazy_static! {
 
 full_test_impl!({
     let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
-    spawn(move || server::start(&format!("127.0.0.1:{}", port), "memory://"));
+    spawn(move || server::start(&format!("127.0.0.1:{}", port), "memory://", 1));
     ClientDatastore::new(port as u16)
 });
 
@@ -24,7 +23,10 @@ full_test_impl!({
 fn should_create_rocksdb_datastore() {
     let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
 
-    spawn(move || server::start(&format!("127.0.0.1:{}", port), &format!("rocksdb://{}", generate_temporary_path())));
+    spawn(move || {
+        let connection_string = format!("rocksdb://{}", generate_temporary_path());
+        server::start(&format!("127.0.0.1:{}", port), &connection_string, 1)
+    });
 
     // Just make sure we can run a command
     let datastore = ClientDatastore::new(port as u16);
@@ -36,6 +38,6 @@ fn should_create_rocksdb_datastore() {
 
 #[test]
 fn should_panic_on_bad_connection_string() {
-    let result = catch_unwind(|| server::start("127.0.0.1:9999", "foo://"));
+    let result = catch_unwind(|| server::start("127.0.0.1:9999", "foo://", 1));
     assert!(result.is_err());
 }
