@@ -5,6 +5,7 @@ use std::thread::spawn;
 use std::sync::atomic::Ordering;
 use indradb::util::generate_random_secret;
 use std::path::Path;
+use std::panic::catch_unwind;
 use indradb::{Datastore, Transaction};
 
 const START_PORT: u16 = 27616;
@@ -34,4 +35,10 @@ fn should_create_rocksdb_datastore() {
     let count = trans.get_vertex_count().unwrap();
 
     assert_eq!(count, 0);
+}
+
+#[test]
+fn should_panic_on_bad_connection_string() {
+    let result = catch_unwind(|| server::start("127.0.0.1:9999", "foo://"));
+    assert!(result.is_err());
 }
