@@ -134,3 +134,23 @@ impl EdgeQuery {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::EdgeDirection;
+
+    #[test]
+    fn should_convert_str_to_edge_direction() {
+        assert_eq!(EdgeDirection::from_str("outbound").unwrap(), EdgeDirection::Outbound);
+        assert_eq!(EdgeDirection::from_str("inbound").unwrap(), EdgeDirection::Inbound);
+        assert!(EdgeDirection::from_str("foo").is_err());
+    }
+
+    #[test]
+    fn should_convert_edge_direction_to_string() {
+        let s: String = EdgeDirection::Outbound.into();
+        assert_eq!(s, "outbound".to_string());
+        let s: String = EdgeDirection::Inbound.into();
+        assert_eq!(s, "inbound".to_string());
+    }
+}

@@ -90,4 +90,3 @@ mod tests {
         assert!(edge.created_datetime <= end_datetime);
     }
 }
-
