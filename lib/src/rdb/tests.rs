@@ -1,13 +1,15 @@
 use super::RocksdbDatastore;
-use super::instance::get_options;
+use util::generate_random_secret;
+use std::path::Path;
 
 #[test]
 fn should_repair() {
-    let (path, max_open_files) = get_options();
+    // TODO: do not hardcode the temp directory to support non-POSIX
+    let path = Path::new("/tmp/test-rdb").join(generate_random_secret(8));
 
     // // Make sure we just initialize the database
-    RocksdbDatastore::new(&path, Some(max_open_files));
+    RocksdbDatastore::new(path.to_str().unwrap(), Some(1));
 
     // Now try to repair
-    RocksdbDatastore::repair(&path, Some(max_open_files)).unwrap();
+    RocksdbDatastore::repair(path.to_str().unwrap(), Some(1)).unwrap();
 }

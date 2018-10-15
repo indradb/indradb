@@ -1,7 +1,8 @@
 use client_datastore::ClientDatastore;
 use server;
 use std::thread::spawn;
-use std::sync::atomic::{Ordering, AtomicUsize};
+use std::sync::atomic::Ordering;
+use std::sync::atomic::AtomicUsize;
 
 const START_PORT: u16 = 27616;
 
