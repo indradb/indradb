@@ -2,11 +2,7 @@ use models::{EdgeDirection, EdgeKey, EdgeQuery, Type, Vertex, VertexQuery};
 use test::Bencher;
 use traits::{Datastore, Transaction};
 
-pub fn bench_create_vertex<D, T>(b: &mut Bencher, datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
+pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_create_vertex".to_string()).unwrap();
 
     b.iter(|| {
@@ -16,11 +12,7 @@ where
     });
 }
 
-pub fn bench_get_vertices<D, T>(b: &mut Bencher, datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
+pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let id = {
         let trans = datastore.transaction().unwrap();
         let t = Type::new("bench_get_vertices".to_string()).unwrap();
@@ -36,11 +28,7 @@ where
     });
 }
 
-pub fn bench_create_edge<D, T>(b: &mut Bencher, datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
+pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_create_edge".to_string()).unwrap();
 
     let (outbound_id, inbound_id) = {
@@ -59,11 +47,7 @@ where
     });
 }
 
-pub fn bench_get_edges<D, T>(b: &mut Bencher, datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
+pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_get_edges".to_string()).unwrap();
 
     let key = {
@@ -86,11 +70,7 @@ where
     });
 }
 
-pub fn bench_get_edge_count<D, T>(b: &mut Bencher, datastore: &mut D)
-where
-    D: Datastore<T>,
-    T: Transaction,
-{
+pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_get_edge_count".to_string()).unwrap();
 
     let outbound_id = {
