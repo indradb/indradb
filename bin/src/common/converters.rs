@@ -9,7 +9,7 @@ use std::error::Error;
 use serde_json;
 use capnp::Error as CapnpError;
 
-const NANOS_PER_SEC: u32 = 1_000_000_000;
+const NANOS_PER_SEC: u64 = 1_000_000_000;
 
 #[macro_export]
 macro_rules! map_err {
@@ -107,7 +107,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
             let start_id_bytes = params.get_start_id()?;
 
             Ok(indradb::VertexQuery::All {
-                start_id: if start_id_bytes.len() == 0 {
+                start_id: if start_id_bytes.is_empty() {
                     None
                 } else {
                     Some(map_err!(Uuid::from_slice(start_id_bytes))?)
@@ -208,8 +208,8 @@ pub fn to_optional_datetime(timestamp: u64) -> Option<DateTime<Utc>> {
     if timestamp == 0 {
         None
     } else {
-        let secs = timestamp / (NANOS_PER_SEC as u64);
-        let nanos = timestamp % (NANOS_PER_SEC as u64);
+        let secs = timestamp / NANOS_PER_SEC;
+        let nanos = timestamp % NANOS_PER_SEC;
         Some(Utc.timestamp(secs as i64, nanos as u32))
     }
 }

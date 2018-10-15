@@ -1,6 +1,3 @@
-// TODO: remove this once error-chain fixes it
-#![allow(renamed_and_removed_lints)]
-
 use std::io;
 
 error_chain!{
