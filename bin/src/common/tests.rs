@@ -1,11 +1,11 @@
-use std::sync::atomic::AtomicUsize;
 use client_datastore::ClientDatastore;
-use server;
-use std::thread::spawn;
-use std::sync::atomic::Ordering;
 use indradb::util::generate_temporary_path;
-use std::panic::catch_unwind;
 use indradb::{Datastore, Transaction};
+use server;
+use std::panic::catch_unwind;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+use std::thread::spawn;
 
 const START_PORT: u16 = 27616;
 

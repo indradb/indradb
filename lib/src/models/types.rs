@@ -50,9 +50,9 @@ impl FromStr for Type {
 
 #[cfg(test)]
 mod tests {
-    use util::generate_random_secret;
     use super::Type;
     use std::str::FromStr;
+    use util::generate_random_secret;
 
     #[test]
     fn should_fail_for_invalid_types() {

@@ -1,10 +1,10 @@
 use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
-use errors;
 use chrono::DateTime;
-use uuid::Uuid;
+use errors;
 use std::str::FromStr;
+use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.

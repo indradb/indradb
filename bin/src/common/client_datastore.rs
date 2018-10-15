@@ -1,24 +1,24 @@
-use capnp_rpc::{RpcSystem, twoparty};
-use capnp_rpc::rpc_twoparty_capnp::Side;
-use capnp::Error as CapnpError;
 use autogen;
+use capnp::Error as CapnpError;
+use capnp_rpc::rpc_twoparty_capnp::Side;
+use capnp_rpc::{twoparty, RpcSystem};
+use converters;
 use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
+use std::cell::RefCell;
+use std::net::ToSocketAddrs;
+use std::rc::Rc;
 use std::thread::sleep;
 use std::time::Duration;
-use uuid::Uuid;
-use std::net::ToSocketAddrs;
-use tokio_core::reactor::Core;
 use tokio_core::net::TcpStream;
+use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
-use converters;
-use std::rc::Rc;
-use std::cell::RefCell;
+use uuid::Uuid;
 
 pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
-    client: autogen::service::Client
+    client: autogen::service::Client,
 }
 
 impl ClientDatastore {
@@ -31,18 +31,23 @@ impl ClientDatastore {
             if let Ok(stream) = core.run(TcpStream::connect(&addr, &handle)) {
                 stream.set_nodelay(true).unwrap();
                 let (reader, writer) = stream.split();
-                let rpc_network = Box::new(twoparty::VatNetwork::new(reader, writer, Side::Client, Default::default()));
+                let rpc_network = Box::new(twoparty::VatNetwork::new(
+                    reader,
+                    writer,
+                    Side::Client,
+                    Default::default(),
+                ));
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
                 let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
                 handle.spawn(rpc_system.map_err(|_e| ()));
 
                 let req = client.ping_request();
                 let res = core.run(req.send().promise).unwrap();
-                
+
                 if res.get().unwrap().get_ready() {
-                    return Self { 
+                    return Self {
                         core: Rc::new(RefCell::new(core)),
-                        client: client
+                        client: client,
                     };
                 }
             }
@@ -65,23 +70,29 @@ impl indradb::Datastore for ClientDatastore {
 
 pub struct ClientTransaction {
     core: Rc<RefCell<Core>>,
-    trans: RefCell<autogen::transaction::Client>
+    trans: RefCell<autogen::transaction::Client>,
 }
 
 impl ClientTransaction {
     fn new(core: Rc<RefCell<Core>>, trans: autogen::transaction::Client) -> Self {
         ClientTransaction {
             core: core,
-            trans: RefCell::new(trans)
+            trans: RefCell::new(trans),
         }
     }
 }
 
 impl ClientTransaction {
     fn execute<F, G>(&self, f: F) -> Result<G, indradb::Error>
-    where F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item=G, Error=CapnpError>> {
+    where
+        F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item = G, Error = CapnpError>>,
+    {
         let future = f(&mut self.trans.borrow_mut());
-        return self.core.borrow_mut().run(future).map_err(|err| format!("{:?}", err).into());
+        return self
+            .core
+            .borrow_mut()
+            .run(future)
+            .map_err(|err| format!("{:?}", err).into());
     }
 }
 
@@ -91,9 +102,7 @@ impl indradb::Transaction for ClientTransaction {
             let mut req = trans.create_vertex_request();
             converters::from_vertex(v, req.get().init_vertex());
 
-            let f = req.send().promise.and_then(move |res| {
-                Ok(res.get()?.get_result())
-            });
+            let f = req.send().promise.and_then(move |res| Ok(res.get()?.get_result()));
 
             Box::new(f)
         })
@@ -120,7 +129,8 @@ impl indradb::Transaction for ClientTransaction {
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::Vertex>, CapnpError> = list.into_iter().map(|reader| converters::to_vertex(&reader)).collect();
+                let list: Result<Vec<indradb::Vertex>, CapnpError> =
+                    list.into_iter().map(|reader| converters::to_vertex(&reader)).collect();
                 list
             });
 
@@ -146,9 +156,7 @@ impl indradb::Transaction for ClientTransaction {
         self.execute(move |trans| {
             let req = trans.get_vertex_count_request();
 
-            let f = req.send().promise.and_then(move |res| {
-                Ok(res.get()?.get_result())
-            });
+            let f = req.send().promise.and_then(move |res| Ok(res.get()?.get_result()));
 
             Box::new(f)
         })
@@ -159,9 +167,7 @@ impl indradb::Transaction for ClientTransaction {
             let mut req = trans.create_edge_request();
             converters::from_edge_key(e, req.get().init_key());
 
-            let f = req.send().promise.and_then(move |res| {
-                Ok(res.get()?.get_result())
-            });
+            let f = req.send().promise.and_then(move |res| Ok(res.get()?.get_result()));
 
             Box::new(f)
         })
@@ -174,7 +180,8 @@ impl indradb::Transaction for ClientTransaction {
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::Edge>, CapnpError> = list.into_iter().map(|reader| converters::to_edge(&reader)).collect();
+                let list: Result<Vec<indradb::Edge>, CapnpError> =
+                    list.into_iter().map(|reader| converters::to_edge(&reader)).collect();
                 list
             });
 
@@ -205,16 +212,14 @@ impl indradb::Transaction for ClientTransaction {
         self.execute(move |trans| {
             let mut req = trans.get_edge_count_request();
             req.get().set_id(id.as_bytes());
-            
+
             if let Some(type_filter) = type_filter {
                 req.get().set_type_filter(&type_filter.0);
             }
 
             req.get().set_direction(converters::from_edge_direction(direction));
 
-            let f = req.send().promise.and_then(move |res| {
-                Ok(res.get()?.get_result())
-            });
+            let f = req.send().promise.and_then(move |res| Ok(res.get()?.get_result()));
 
             Box::new(f)
         })
@@ -232,7 +237,10 @@ impl indradb::Transaction for ClientTransaction {
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::VertexMetadata>, CapnpError> = list.into_iter().map(|reader| converters::to_vertex_metadata(&reader)).collect();
+                let list: Result<Vec<indradb::VertexMetadata>, CapnpError> = list
+                    .into_iter()
+                    .map(|reader| converters::to_vertex_metadata(&reader))
+                    .collect();
                 list
             });
 
@@ -288,7 +296,10 @@ impl indradb::Transaction for ClientTransaction {
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::EdgeMetadata>, CapnpError> = list.into_iter().map(|reader| converters::to_edge_metadata(&reader)).collect();
+                let list: Result<Vec<indradb::EdgeMetadata>, CapnpError> = list
+                    .into_iter()
+                    .map(|reader| converters::to_edge_metadata(&reader))
+                    .collect();
                 list
             });
 

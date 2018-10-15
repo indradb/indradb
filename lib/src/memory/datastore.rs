@@ -23,21 +23,23 @@ struct InternalMemoryDatastore {
 impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(&self, q: &VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
         match *q {
-            VertexQuery::All { start_id, limit } => if let Some(start_id) = start_id {
-                Ok(self
-                    .vertices
-                    .range(start_id..)
-                    .take(limit as usize)
-                    .map(|(k, v)| (*k, v.clone()))
-                    .collect())
-            } else {
-                Ok(self
-                    .vertices
-                    .iter()
-                    .take(limit as usize)
-                    .map(|(k, v)| (*k, v.clone()))
-                    .collect())
-            },
+            VertexQuery::All { start_id, limit } => {
+                if let Some(start_id) = start_id {
+                    Ok(self
+                        .vertices
+                        .range(start_id..)
+                        .take(limit as usize)
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect())
+                } else {
+                    Ok(self
+                        .vertices
+                        .iter()
+                        .take(limit as usize)
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect())
+                }
+            }
             VertexQuery::Vertices { ref ids } => {
                 let mut results = Vec::new();
 
@@ -112,45 +114,47 @@ impl InternalMemoryDatastore {
                 let mut results = Vec::new();
 
                 match converter {
-                    models::EdgeDirection::Outbound => for (id, _) in vertex_values {
-                        let lower_bound = match *type_filter {
-                            Some(ref type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
-                            None => {
-                                let empty_type = models::Type::default();
-                                models::EdgeKey::new(id, empty_type, Uuid::default())
-                            }
-                        };
+                    models::EdgeDirection::Outbound => {
+                        for (id, _) in vertex_values {
+                            let lower_bound = match *type_filter {
+                                Some(ref type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
+                                None => {
+                                    let empty_type = models::Type::default();
+                                    models::EdgeKey::new(id, empty_type, Uuid::default())
+                                }
+                            };
 
-                        for (key, update_datetime) in self.edges.range(lower_bound..) {
-                            if key.outbound_id != id {
-                                break;
-                            }
-
-                            if let Some(ref type_filter) = *type_filter {
-                                if &key.t != type_filter {
+                            for (key, update_datetime) in self.edges.range(lower_bound..) {
+                                if key.outbound_id != id {
                                     break;
                                 }
-                            }
 
-                            if let Some(high_filter) = high_filter {
-                                if *update_datetime > high_filter {
-                                    continue;
+                                if let Some(ref type_filter) = *type_filter {
+                                    if &key.t != type_filter {
+                                        break;
+                                    }
                                 }
-                            }
 
-                            if let Some(low_filter) = low_filter {
-                                if *update_datetime < low_filter {
-                                    continue;
+                                if let Some(high_filter) = high_filter {
+                                    if *update_datetime > high_filter {
+                                        continue;
+                                    }
                                 }
-                            }
 
-                            results.push((key.clone(), *update_datetime));
+                                if let Some(low_filter) = low_filter {
+                                    if *update_datetime < low_filter {
+                                        continue;
+                                    }
+                                }
 
-                            if results.len() == limit as usize {
-                                return Ok(results);
+                                results.push((key.clone(), *update_datetime));
+
+                                if results.len() == limit as usize {
+                                    return Ok(results);
+                                }
                             }
                         }
-                    },
+                    }
                     models::EdgeDirection::Inbound => {
                         let mut candidate_ids = HashSet::new();
                         for (id, _) in vertex_values {

@@ -4,8 +4,7 @@ use chrono::DateTime;
 use models;
 use uuid::Uuid;
 
-pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid
-{
+pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid {
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type".to_string()).unwrap();
     let inbound_v = models::Vertex::new(inbound_vertex_t);
     trans.create_vertex(&inbound_v).unwrap();
@@ -15,8 +14,7 @@ pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid
     inbound_v.id
 }
 
-pub fn create_edges<D: Datastore>(datastore: &mut D) -> (Uuid, [Uuid; 5])
-{
+pub fn create_edges<D: Datastore>(datastore: &mut D) -> (Uuid, [Uuid; 5]) {
     let trans = datastore.transaction().unwrap();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
     let outbound_v = models::Vertex::new(outbound_vertex_t);
@@ -32,8 +30,9 @@ pub fn create_edges<D: Datastore>(datastore: &mut D) -> (Uuid, [Uuid; 5])
     (outbound_v.id, inbound_ids)
 }
 
-pub fn create_time_range_queryable_edges<D: Datastore>(datastore: &mut D) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5])
-{
+pub fn create_time_range_queryable_edges<D: Datastore>(
+    datastore: &mut D,
+) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5]) {
     let trans = datastore.transaction().unwrap();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type".to_string()).unwrap();
     let outbound_v = models::Vertex::new(outbound_vertex_t);
