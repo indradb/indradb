@@ -4,6 +4,7 @@ use chrono::offset::Utc;
 use errors;
 use chrono::DateTime;
 use uuid::Uuid;
+use std::str::FromStr;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -21,8 +22,10 @@ pub enum EdgeDirection {
     Inbound,
 }
 
-impl EdgeDirection {
-    pub fn from_str(s: &str) -> errors::ValidationResult<EdgeDirection> {
+impl FromStr for EdgeDirection {
+    type Err = errors::ValidationError;
+
+    fn from_str(s: &str) -> Result<EdgeDirection, Self::Err> {
         match s {
             "outbound" => Ok(EdgeDirection::Outbound),
             "inbound" => Ok(EdgeDirection::Inbound),
@@ -138,6 +141,7 @@ impl EdgeQuery {
 #[cfg(test)]
 mod tests {
     use super::EdgeDirection;
+    use std::str::FromStr;
 
     #[test]
     fn should_convert_str_to_edge_direction() {
