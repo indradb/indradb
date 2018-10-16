@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery};
+use super::super::{Datastore, EdgeKey, Transaction, Type, Vertex};
 use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;

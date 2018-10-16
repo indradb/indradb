@@ -3,6 +3,22 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use uuid::Uuid;
 
+/// Specifies what kind of items should be piped from one type of query to
+/// another.
+///
+/// Edge and vertex queries can build off of one another via pipes - e.g. you
+/// can get the outbound edges of a set of vertices by piping from a vertex
+/// query to an edge query. `EdgeDirection`s are used to specify which
+/// end of things you want to pipe - either the outbound items or the inbound
+/// items.
+#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Copy)]
+pub enum EdgeDirection {
+    #[serde(rename = "outbound")]
+    Outbound,
+    #[serde(rename = "inbound")]
+    Inbound,
+}
+
 /// Represents a uniquely identifiable key to an edge.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct EdgeKey {

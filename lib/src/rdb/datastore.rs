@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery};
+use super::super::{Datastore, Transaction};
 use super::managers::*;
 use chrono::offset::Utc;
 use errors::Result;

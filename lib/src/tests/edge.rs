@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeDirection, EdgeKey, EdgeQuery, Transaction, VertexQuery};
+use super::super::{Datastore, EdgeKey, Transaction};
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use chrono::offset::Utc;
 use chrono::Timelike;

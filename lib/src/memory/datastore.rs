@@ -1,12 +1,13 @@
-use super::super::{Datastore, EdgeQuery, Transaction, VertexQuery};
+use traits::{Datastore, Transaction, VertexIterator, EdgeIterator, VertexMetadataIterator, EdgeMetadataIterator};
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;
 use models;
 use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, HashSet};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 use uuid::Uuid;
+use std::iter::Iterator;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -18,239 +19,6 @@ struct InternalMemoryDatastore {
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
     vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
-}
-
-impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query(&self, q: &VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
-        match *q {
-            VertexQuery::All { start_id, limit } => {
-                if let Some(start_id) = start_id {
-                    Ok(self
-                        .vertices
-                        .range(start_id..)
-                        .take(limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect())
-                } else {
-                    Ok(self
-                        .vertices
-                        .iter()
-                        .take(limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect())
-                }
-            }
-            VertexQuery::Vertices { ref ids } => {
-                let mut results = Vec::new();
-
-                for id in ids {
-                    let value = self.vertices.get(id);
-
-                    if let Some(value) = value {
-                        results.push((*id, value.clone()));
-                    }
-                }
-
-                Ok(results)
-            }
-            VertexQuery::Pipe {
-                ref edge_query,
-                converter,
-                limit,
-            } => {
-                let edge_values = self.get_edge_values_by_query(&*edge_query)?;
-
-                let ids: Vec<Uuid> = match converter {
-                    models::EdgeDirection::Outbound => edge_values
-                        .into_iter()
-                        .take(limit as usize)
-                        .map(|(key, _)| key.outbound_id)
-                        .collect(),
-                    models::EdgeDirection::Inbound => edge_values
-                        .into_iter()
-                        .take(limit as usize)
-                        .map(|(key, _)| key.inbound_id)
-                        .collect(),
-                };
-
-                let mut results = Vec::new();
-
-                for id in ids {
-                    let value = self.vertices.get(&id);
-                    if let Some(value) = value {
-                        results.push((id, value.clone()));
-                    }
-                }
-
-                Ok(results)
-            }
-        }
-    }
-
-    fn get_edge_values_by_query(&self, q: &EdgeQuery) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
-        match *q {
-            EdgeQuery::Edges { ref keys } => {
-                let mut results = Vec::new();
-
-                for key in keys {
-                    let value = self.edges.get(key);
-
-                    if let Some(update_datetime) = value {
-                        results.push((key.clone(), *update_datetime));
-                    }
-                }
-
-                Ok(results)
-            }
-            EdgeQuery::Pipe {
-                ref vertex_query,
-                converter,
-                ref type_filter,
-                high_filter,
-                low_filter,
-                limit,
-            } => {
-                let vertex_values = self.get_vertex_values_by_query(&*vertex_query)?;
-                let mut results = Vec::new();
-
-                match converter {
-                    models::EdgeDirection::Outbound => {
-                        for (id, _) in vertex_values {
-                            let lower_bound = match *type_filter {
-                                Some(ref type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
-                                None => {
-                                    let empty_type = models::Type::default();
-                                    models::EdgeKey::new(id, empty_type, Uuid::default())
-                                }
-                            };
-
-                            for (key, update_datetime) in self.edges.range(lower_bound..) {
-                                if key.outbound_id != id {
-                                    break;
-                                }
-
-                                if let Some(ref type_filter) = *type_filter {
-                                    if &key.t != type_filter {
-                                        break;
-                                    }
-                                }
-
-                                if let Some(high_filter) = high_filter {
-                                    if *update_datetime > high_filter {
-                                        continue;
-                                    }
-                                }
-
-                                if let Some(low_filter) = low_filter {
-                                    if *update_datetime < low_filter {
-                                        continue;
-                                    }
-                                }
-
-                                results.push((key.clone(), *update_datetime));
-
-                                if results.len() == limit as usize {
-                                    return Ok(results);
-                                }
-                            }
-                        }
-                    }
-                    models::EdgeDirection::Inbound => {
-                        let mut candidate_ids = HashSet::new();
-                        for (id, _) in vertex_values {
-                            candidate_ids.insert(id);
-                        }
-
-                        for (key, update_datetime) in &self.edges {
-                            if !candidate_ids.contains(&key.inbound_id) {
-                                continue;
-                            }
-
-                            if let Some(ref type_filter) = *type_filter {
-                                if &key.t != type_filter {
-                                    continue;
-                                }
-                            }
-
-                            if let Some(high_filter) = high_filter {
-                                if *update_datetime > high_filter {
-                                    continue;
-                                }
-                            }
-
-                            if let Some(low_filter) = low_filter {
-                                if *update_datetime < low_filter {
-                                    continue;
-                                }
-                            }
-
-                            results.push((key.clone(), *update_datetime));
-
-                            if results.len() == limit as usize {
-                                return Ok(results);
-                            }
-                        }
-                    }
-                }
-
-                Ok(results)
-            }
-        }
-    }
-
-    fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
-        for vertex_id in vertices {
-            self.vertices.remove(&vertex_id);
-
-            let mut deletable_vertex_metadata: Vec<(Uuid, String)> = Vec::new();
-
-            for (metadata_key, _) in self.vertex_metadata.range((vertex_id, "".to_string())..) {
-                let &(ref metadata_vertex_id, _) = metadata_key;
-
-                if &vertex_id != metadata_vertex_id {
-                    break;
-                }
-
-                deletable_vertex_metadata.push(metadata_key.clone());
-            }
-
-            for metadata_key in deletable_vertex_metadata {
-                self.vertex_metadata.remove(&metadata_key);
-            }
-
-            let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
-
-            for edge_key in self.edges.keys() {
-                if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
-                    deletable_edges.push(edge_key.clone());
-                }
-            }
-
-            self.delete_edges(deletable_edges);
-        }
-    }
-
-    fn delete_edges(&mut self, edges: Vec<models::EdgeKey>) {
-        for edge_key in edges {
-            self.edges.remove(&edge_key);
-
-            let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
-
-            for (metadata_key, _) in self.edge_metadata.range((edge_key.clone(), "".to_string())..) {
-                let &(ref metadata_edge_key, _) = metadata_key;
-
-                if &edge_key != metadata_edge_key {
-                    break;
-                }
-
-                deletable_edge_metadata.push(metadata_key.clone());
-            }
-
-            for metadata_key in deletable_edge_metadata {
-                self.edge_metadata.remove(&metadata_key);
-            }
-        }
-    }
 }
 
 /// An in-memory-only datastore.
@@ -288,6 +56,8 @@ pub struct MemoryTransaction {
 }
 
 impl Transaction for MemoryTransaction {
+    type VertexIterator = MemoryVertexIterator;
+
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
         let mut inserted = false;
@@ -298,30 +68,6 @@ impl Transaction for MemoryTransaction {
         });
 
         Ok(inserted)
-    }
-
-    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
-        let vertex_values = self.datastore.read().unwrap().get_vertex_values_by_query(q)?;
-        let iter = vertex_values
-            .into_iter()
-            .map(|(uuid, t)| models::Vertex::with_id(uuid, t));
-        Ok(iter.collect())
-    }
-
-    fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
-        let deletable_vertices = datastore
-            .get_vertex_values_by_query(q)?
-            .into_iter()
-            .map(|(k, _)| k)
-            .collect();
-        datastore.delete_vertices(deletable_vertices);
-        Ok(())
-    }
-
-    fn get_vertex_count(&self) -> Result<u64> {
-        let datastore = self.datastore.read().unwrap();
-        Ok(datastore.vertices.len() as u64)
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
@@ -335,146 +81,396 @@ impl Transaction for MemoryTransaction {
         Ok(true)
     }
 
-    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
-        let edge_values = {
-            let datastore = self.datastore.read().unwrap();
-            datastore.get_edge_values_by_query(q)?
-        };
-
-        let iter = edge_values
-            .into_iter()
-            .map(|(key, update_datetime)| models::Edge::new(key, update_datetime));
-        Ok(iter.collect())
-    }
-
-    fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<models::EdgeKey> = datastore
-            .get_edge_values_by_query(q)?
-            .into_iter()
-            .map(|(k, _)| k)
-            .collect();
-        datastore.delete_edges(deletable_edges);
-        Ok(())
-    }
-
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        type_filter: Option<&models::Type>,
-        direction: models::EdgeDirection,
-    ) -> Result<u64> {
-        let datastore = self.datastore.read().unwrap();
-
-        if direction == models::EdgeDirection::Outbound {
-            let lower_bound = match type_filter {
-                Some(type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
-                None => {
-                    let empty_type = models::Type::default();
-                    models::EdgeKey::new(id, empty_type, Uuid::default())
-                }
-            };
-            let range = datastore.edges.range(lower_bound..);
-
-            let range = range.take_while(|&(k, _)| {
-                if let Some(type_filter) = type_filter {
-                    k.outbound_id == id && &k.t == type_filter
-                } else {
-                    k.outbound_id == id
-                }
-            });
-
-            Ok(range.count() as u64)
-        } else {
-            let range = datastore.edges.iter().filter(|&(k, _)| {
-                if let Some(type_filter) = type_filter {
-                    k.inbound_id == id && &k.t == type_filter
-                } else {
-                    k.inbound_id == id
-                }
-            });
-
-            Ok(range.count() as u64)
-        }
-    }
-
-    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
-        let mut result = Vec::new();
-        let datastore = self.datastore.read().unwrap();
-        let vertex_values = datastore.get_vertex_values_by_query(q)?;
-
-        for (id, _) in vertex_values {
-            let metadata_value = datastore.vertex_metadata.get(&(id, name.to_string()));
-
-            if let Some(metadata_value) = metadata_value {
-                result.push(models::VertexMetadata::new(id, metadata_value.clone()));
-            }
-        }
-
-        Ok(result)
-    }
-
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
+    fn set_vertex_metadata(&self, id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let vertex_values = datastore.get_vertex_values_by_query(q)?;
-
-        for (id, _) in vertex_values {
+        if datastore.vertices.contains_key(&id) {
             datastore.vertex_metadata.insert((id, name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
+    fn set_edge_metadata(&self, key: &models::EdgeKey, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let vertex_values = datastore.get_vertex_values_by_query(q)?;
-
-        for (id, _) in vertex_values {
-            datastore.vertex_metadata.remove(&(id, name.to_string()));
+        if datastore.edges.contains_key(key) {
+            datastore.edge_metadata.insert((key.clone(), name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
-        let mut result = Vec::new();
-        let datastore = self.datastore.read().unwrap();
-        let edge_values = datastore.get_edge_values_by_query(q)?;
+    fn vertices(&self) -> Self::VertexIterator {
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::All(Arc::clone(&self.datastore)), None, None)
+    }
 
-        for (key, _) in edge_values {
-            let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.to_string()));
+    fn vertex(&self, id: Uuid) -> Self::VertexIterator {
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Id(Arc::clone(&self.datastore), id), None, None)
+    }
+}
 
-            if let Some(metadata_value) = metadata_value {
-                result.push(models::EdgeMetadata::new(key, metadata_value.clone()));
+enum MemoryVertexIteratorSource {
+    All(Arc<RwLock<InternalMemoryDatastore>>),
+    Id(Arc<RwLock<InternalMemoryDatastore>>, Uuid),
+    Pipe(MemoryEdgeIterator, models::EdgeDirection)
+}
+
+pub struct MemoryVertexIterator {
+    source: MemoryVertexIteratorSource,
+    t: Option<models::Type>,
+    limit: Option<usize>
+}
+
+impl MemoryVertexIterator {
+    fn new(source: MemoryVertexIteratorSource, t: Option<models::Type>, limit: Option<usize>) -> Self {
+        Self { source, t, limit }
+    }
+
+    fn get_datastore(&self) -> &Arc<RwLock<InternalMemoryDatastore>> {
+        match self.source {
+            MemoryVertexIteratorSource::All(ref datastore) => datastore,
+            MemoryVertexIteratorSource::Id(ref datastore, _) => datastore,
+            MemoryVertexIteratorSource::Pipe(ref iter, _) => iter.source.get_datastore()
+        }
+    }
+}
+
+impl VertexIterator for MemoryVertexIterator {
+    type EdgeIterator = MemoryEdgeIterator;
+    type VertexMetadataIterator = MemoryVertexMetadataIterator;
+
+    fn t(self, t: models::Type) -> Self {
+        Self::new(self.source, Some(t), self.limit)
+    }
+
+    fn limit(self, limit: usize) -> Self {
+        Self::new(self.source, self.t, Some(limit))
+    }
+
+    fn metadata(self, name: String) -> Self::VertexMetadataIterator {
+        MemoryVertexMetadataIterator {
+            source: self,
+            name: name,
+        }
+    }
+
+    fn outbound(self) -> Self::EdgeIterator {
+        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Outbound, None, None, None, None)
+    }
+
+    fn inbound(self) -> Self::EdgeIterator {
+        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Inbound, None, None, None, None)
+    }
+
+    fn get(&self) -> Result<Vec<models::Vertex>> {
+        let datastore = self.get_datastore().read().unwrap();
+
+        match self.source {
+            MemoryVertexIteratorSource::All(_) => {
+                let iter = datastore.vertices.iter();
+
+                if let Some(limit) = self.limit {
+                    Ok(iter.take(limit).map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect())
+                } else {
+                    Ok(iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect())
+                }
+            },
+            MemoryVertexIteratorSource::Id(_, id) => {
+                let results = if let Some(value) = datastore.vertices.get(&id) {
+                    vec![models::Vertex::with_id(id, value.clone())]
+                } else {
+                    vec![]
+                };
+
+                Ok(results)
+            },
+            MemoryVertexIteratorSource::Pipe(ref iter, direction) => {
+                let edges = iter.get()?;
+
+                let edges = match self.limit {
+                    Some(limit) if limit <= edges.len() => edges.get(0..limit),
+                    _ => edges.get(..)
+                };
+
+                Ok(edges.unwrap().into_iter().filter_map(|edge| {
+                    let id = match direction {
+                        models::EdgeDirection::Outbound => edge.key.outbound_id,
+                        models::EdgeDirection::Inbound => edge.key.inbound_id,
+                    };
+
+                    datastore.vertices.get(&id).map(|value| {
+                        models::Vertex::with_id(id, value.clone())
+                    })
+                }).collect())
             }
         }
-
-        Ok(result)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
-
-        let edge_values = datastore.get_edge_values_by_query(q)?;
-
-        for (key, _) in edge_values {
-            datastore.edge_metadata.insert((key, name.to_string()), value.clone());
-        }
-
-        Ok(())
+    fn len(&self) -> Result<u64> {
+        Ok(self.get()?.len() as u64)
     }
 
-    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
-        let mut datastore = self.datastore.write().unwrap();
+    fn delete(&self) -> Result<()> {
+        let vertices = self.get()?;
+        let mut datastore = self.get_datastore().write().unwrap();
 
-        let edge_values = datastore.get_edge_values_by_query(q)?;
+        for vertex in vertices {
+            datastore.vertices.remove(&vertex.id);
 
-        for (key, _) in edge_values {
-            datastore.edge_metadata.remove(&(key, name.to_string()));
+            let deletable_vertex_metadata = datastore.vertex_metadata
+                .range((vertex.id, "".to_string())..)
+                .take_while(|((metadata_vertex_id, _), _)| &vertex.id == metadata_vertex_id)
+                .map(|(metadata_key, _)| metadata_key.clone())
+                .collect();
+
+            delete_vertex_metadata(&mut datastore, deletable_vertex_metadata);
+
+            let deletable_edges = datastore.edges.keys()
+                .filter(|edge_key| edge_key.outbound_id == vertex.id || edge_key.inbound_id == vertex.id)
+                .cloned()
+                .collect();
+
+            delete_edges(&mut datastore, deletable_edges);
         }
 
         Ok(())
     }
 }
+
+pub struct MemoryVertexMetadataIterator {
+    source: MemoryVertexIterator,
+    name: String
+}
+
+impl VertexMetadataIterator for MemoryVertexMetadataIterator {
+    fn get(&self) -> Result<Vec<models::VertexMetadata>> {
+        let vertices = self.source.get()?;
+        let datastore = self.source.get_datastore().read().unwrap();
+        
+        Ok(vertices.into_iter().filter_map(|vertex| {
+            let key = (vertex.id, self.name.clone());
+            datastore.vertex_metadata.get(&key).map(|value| {
+                models::VertexMetadata::new(vertex.id, value.clone())
+            })
+        }).collect())
+    }
+
+    fn delete(&self) -> Result<()> {
+        let deletable_vertex_metadata = self.get()?.into_iter()
+            .map(|metadata| (metadata.id, self.name.clone()))
+            .collect();
+        let mut datastore = self.source.get_datastore().write().unwrap();
+        delete_vertex_metadata(&mut datastore, deletable_vertex_metadata);
+        Ok(())
+    }
+}
+
+pub struct MemoryEdgeIterator {
+    source: Box<MemoryVertexIterator>,
+    direction: models::EdgeDirection,
+    t: Option<models::Type>,
+    high: Option<DateTime<Utc>>,
+    low: Option<DateTime<Utc>>,
+    limit: Option<usize>
+}
+
+impl MemoryEdgeIterator {
+    fn new(source: Box<MemoryVertexIterator>, direction: models::EdgeDirection, t: Option<models::Type>, high: Option<DateTime<Utc>>, low: Option<DateTime<Utc>>, limit: Option<usize>) -> Self {
+        Self { source, direction, t, high, low, limit }
+    }
+}
+
+impl EdgeIterator for MemoryEdgeIterator {
+    type VertexIterator = MemoryVertexIterator;
+    type EdgeMetadataIterator = MemoryEdgeMetadataIterator;
+
+    fn t(self, t: models::Type) -> Self {
+        Self::new(self.source, self.direction, Some(t), self.high, self.low, self.limit)
+    }
+
+    fn high(self, dt: DateTime<Utc>) -> Self {
+        Self::new(self.source, self.direction, self.t, Some(dt), self.low, self.limit)
+    }
+
+    fn low(self, dt: DateTime<Utc>) -> Self {
+        Self::new(self.source, self.direction, self.t, self.high, Some(dt), self.limit)
+    }
+
+    fn limit(self, limit: usize) -> Self {
+        Self::new(self.source, self.direction, self.t, self.high, self.low, Some(limit))
+    }
+
+    fn metadata(self, name: String) -> Self::EdgeMetadataIterator {
+        MemoryEdgeMetadataIterator {
+            source: self,
+            name: name,
+        }
+    }
+
+    fn outbound(self) -> Self::VertexIterator {
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None, None)
+    }
+
+    fn inbound(self) -> Self::VertexIterator {
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None, None)
+    }
+
+    fn get(&self) -> Result<Vec<models::Edge>> {
+        let vertices = self.source.get()?;
+        let datastore = self.source.get_datastore().read().unwrap();
+        let mut results = Vec::new();
+
+        match self.direction {
+            models::EdgeDirection::Outbound => {
+                for vertex in vertices.into_iter() {
+                    let lower_bound = match self.t {
+                        Some(ref type_filter) => models::EdgeKey::new(vertex.id, type_filter.clone(), Uuid::default()),
+                        None => {
+                            let empty_type = models::Type::default();
+                            models::EdgeKey::new(vertex.id, empty_type, Uuid::default())
+                        }
+                    };
+
+                    for (key, update_datetime) in datastore.edges.range(lower_bound..) {
+                        if key.outbound_id != vertex.id {
+                            break;
+                        }
+
+                        if let Some(ref t) = self.t {
+                            if &key.t != t {
+                                break;
+                            }
+                        }
+
+                        if let Some(dt) = self.high {
+                            if *update_datetime > dt {
+                                continue;
+                            }
+                        }
+
+                        if let Some(dt) = self.low {
+                            if *update_datetime < dt {
+                                continue;
+                            }
+                        }
+
+                        results.push(models::Edge::new(key.clone(), *update_datetime));
+
+                        if let Some(limit) = self.limit {
+                            if results.len() == limit {
+                                return Ok(results);
+                            }
+                        }
+                    }
+                }
+            }
+            models::EdgeDirection::Inbound => {
+                let mut candidate_ids = HashSet::new();
+                for vertex in vertices.into_iter() {
+                    candidate_ids.insert(vertex.id);
+                }
+
+                for (key, update_datetime) in &datastore.edges {
+                    if !candidate_ids.contains(&key.inbound_id) {
+                        continue;
+                    }
+
+                    if let Some(ref t) = self.t {
+                        if &key.t != t {
+                            continue;
+                        }
+                    }
+
+                    if let Some(dt) = self.high {
+                        if *update_datetime > dt {
+                            continue;
+                        }
+                    }
+
+                    if let Some(dt) = self.low {
+                        if *update_datetime < dt {
+                            continue;
+                        }
+                    }
+
+                    results.push(models::Edge::new(key.clone(), *update_datetime));
+
+                    if let Some(limit) = self.limit {
+                        if results.len() == limit {
+                            return Ok(results);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
+    fn len(&self) -> Result<u64> {
+        Ok(self.get()?.len() as u64)
+    }
+
+    fn delete(&self) -> Result<()> {
+        let edges = self.get()?.into_iter().map(|edge| edge.key).collect();
+        let mut datastore = self.source.get_datastore().write().unwrap();
+        delete_edges(&mut datastore, edges);
+        Ok(())
+    }
+}
+
+pub struct MemoryEdgeMetadataIterator {
+    source: MemoryEdgeIterator,
+    name: String
+}
+
+impl EdgeMetadataIterator for MemoryEdgeMetadataIterator {
+    fn get(&self) -> Result<Vec<models::EdgeMetadata>> {
+        let edges = self.source.get()?;
+        let datastore = self.source.source.get_datastore().read().unwrap();
+        
+        Ok(edges.into_iter().filter_map(|edge| {
+            let key = (edge.key.clone(), self.name.clone());
+            datastore.edge_metadata.get(&key).map(|value| {
+                models::EdgeMetadata::new(edge.key, value.clone())
+            })
+        }).collect())
+    }
+
+    fn delete(&self) -> Result<()> {
+        let deletable_edge_metadata = self.get()?.into_iter()
+            .map(|metadata| (metadata.key, self.name.clone()))
+            .collect();
+        let mut datastore = self.source.source.get_datastore().write().unwrap();
+        delete_edge_metadata(&mut datastore, deletable_edge_metadata);
+        Ok(())
+    }
+}
+
+fn delete_vertex_metadata(datastore: &mut RwLockWriteGuard<'_, InternalMemoryDatastore>, vertex_metadata: Vec<(Uuid, String)>) {
+    for metadata_key in vertex_metadata {
+        datastore.vertex_metadata.remove(&metadata_key);
+    }
+}
+
+fn delete_edge_metadata(datastore: &mut RwLockWriteGuard<'_, InternalMemoryDatastore>, edge_metadata: Vec<(models::EdgeKey, String)>) {
+    for metadata_key in edge_metadata {
+        datastore.edge_metadata.remove(&metadata_key);
+    }
+}
+
+fn delete_edges(datastore: &mut RwLockWriteGuard<'_, InternalMemoryDatastore>, edges: Vec<models::EdgeKey>) {
+    for edge_key in &edges {
+        datastore.edges.remove(&edge_key);
+
+        let deletable_edge_metadata = datastore.edge_metadata
+            .range((edge_key.clone(), "".to_string())..)
+            .take_while(|((metadata_edge_key, _), _)| edge_key == metadata_edge_key)
+            .map(|(metadata_key, _)| metadata_key.clone())
+            .collect();
+
+        delete_edge_metadata(datastore, deletable_edge_metadata);
+    }
+}
+
