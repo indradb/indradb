@@ -1,7 +1,6 @@
 use errors::Result;
 use models;
 use serde_json::value::Value as JsonValue;
-use std::vec::Vec;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
@@ -86,6 +85,7 @@ pub trait Transaction {
 pub trait VertexIterator {
     type EdgeIterator: EdgeIterator;
     type VertexMetadataIterator: VertexMetadataIterator;
+    type Iterator: Iterator<Item=models::Vertex>;
 
     fn t(self, t: models::Type) -> Self;
     fn limit(self, limit: usize) -> Self;
@@ -94,19 +94,24 @@ pub trait VertexIterator {
     fn outbound(self) -> Self::EdgeIterator;
     fn inbound(self) -> Self::EdgeIterator;
 
-    fn get(&self) -> Result<Vec<models::Vertex>>;
+    fn get(&self) -> Result<Self::Iterator>;
     fn len(&self) -> Result<u64>;
     fn delete(&self) -> Result<()>;
 }
 
 pub trait VertexMetadataIterator {
-    fn get(&self) -> Result<Vec<models::VertexMetadata>>;
+    type Iterator: Iterator<Item=models::VertexMetadata>;
+
+    // TODO: add a name filter, so that users could alternatively query for
+    // all metadata
+    fn get(&self) -> Result<Self::Iterator>;
     fn delete(&self) -> Result<()>;
 }
 
 pub trait EdgeIterator {
     type VertexIterator: VertexIterator;
     type EdgeMetadataIterator: EdgeMetadataIterator;
+    type Iterator: Iterator<Item=models::Edge>;
 
     fn t(self, t: models::Type) -> Self;
     fn high(self, dt: DateTime<Utc>) -> Self;
@@ -117,12 +122,16 @@ pub trait EdgeIterator {
     fn outbound(self) -> Self::VertexIterator;
     fn inbound(self) -> Self::VertexIterator;
 
-    fn get(&self) -> Result<Vec<models::Edge>>;
+    fn get(&self) -> Result<Self::Iterator>;
     fn len(&self) -> Result<u64>;
     fn delete(&self) -> Result<()>;
 }
 
 pub trait EdgeMetadataIterator {
-    fn get(&self) -> Result<Vec<models::EdgeMetadata>>;
+    type Iterator: Iterator<Item=models::EdgeMetadata>;
+
+    // TODO: add a name filter, so that users could alternatively query for
+    // all metadata
+    fn get(&self) -> Result<Self::Iterator>;
     fn delete(&self) -> Result<()>;
 }
