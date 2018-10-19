@@ -38,6 +38,11 @@ fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: &[u8], value: &T) -
     Ok(())
 }
 
+fn set_json(db: &DB, cf: ColumnFamily, key: &[u8], value: &JsonValue) -> Result<()> {
+    db.put_cf(cf, key, &json_serialize_value(value)?)?;
+    Ok(())
+}
+
 fn get_json(db: &DB, cf: ColumnFamily, key: &[u8]) -> Result<Option<JsonValue>> {
     match db.get_cf(cf, key)? {
         Some(value_bytes) => Ok(Some(json_deserialize_value(&value_bytes)?)),
@@ -415,11 +420,8 @@ impl VertexMetadataManager {
         get_json(&self.db, self.cf, &self.key(vertex_id, name))
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
-        let key = self.key(vertex_id, name);
-        let value_json = json_serialize_value(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
-        Ok(())
+    pub fn set(&self, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
+        set_json(&self.db, self.cf, &self.key(vertex_id, name), value)
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<()> {
@@ -501,19 +503,8 @@ impl EdgeMetadataManager {
         get_json(&self.db, self.cf, &self.key(outbound_id, t, inbound_id, name))
     }
 
-    pub fn set(
-        &self,
-        batch: &mut WriteBatch,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-        name: &str,
-        value: &JsonValue,
-    ) -> Result<()> {
-        let key = self.key(outbound_id, t, inbound_id, name);
-        let value_json = json_serialize_value(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
-        Ok(())
+    pub fn set(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
+        set_json(&self.db, self.cf, &self.key(outbound_id, t, inbound_id, name), value)
     }
 
     pub fn delete(

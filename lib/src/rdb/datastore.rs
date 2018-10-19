@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction};
+use super::super::{VertexIterator, EdgeIterator, VertexMetadataIterator, EdgeMetadataIterator, Datastore, Transaction};
 use super::managers::*;
 use chrono::offset::Utc;
 use errors::Result;
@@ -7,10 +7,9 @@ use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use serde_json::Value as JsonValue;
 use std::i32;
 use std::sync::Arc;
-use std::u64;
-use std::usize;
-use util::next_uuid;
 use uuid::Uuid;
+use std::vec::IntoIter;
+use chrono::DateTime;
 
 const CF_NAMES: [&str; 6] = [
     "vertices:v1",
@@ -106,183 +105,11 @@ impl RocksdbTransaction {
     fn new(db: Arc<DB>) -> Result<Self> {
         Ok(RocksdbTransaction { db })
     }
-
-    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
-        match q {
-            VertexQuery::All { start_id, limit } => {
-                let next_uuid = match start_id {
-                    Some(start_id) => {
-                        match next_uuid(start_id) {
-                            Ok(next_uuid) => next_uuid,
-                            // If we get an error back, it's because
-                            // `start_id` is the maximum possible value. We
-                            // know that no vertices exist whose ID is greater
-                            // than the maximum possible value, so just return
-                            // an empty list.
-                            Err(_) => return Ok(Box::new(vec![].into_iter())),
-                        }
-                    }
-                    None => Uuid::default(),
-                };
-
-                let iterator = vertex_manager.iterate_for_range(next_uuid)?;
-                Ok(Box::new(iterator.take(limit as usize)))
-            }
-            VertexQuery::Vertices { ref ids } => {
-                let vertices: Vec<Result<Uuid>> = ids.into_iter().map(|id| Ok(*id)).collect();
-                let iterator = vertices.into_iter();
-                Ok(Box::new(self.handle_vertex_id_iterator(iterator)))
-            }
-            VertexQuery::Pipe {
-                edge_query,
-                converter,
-                limit,
-            } => {
-                let edge_iterator = self.edge_query_to_iterator(*edge_query)?;
-
-                let vertex_id_iterator = edge_iterator.map(move |item| {
-                    let (outbound_id, _, _, inbound_id) = item?;
-
-                    match converter {
-                        EdgeDirection::Outbound => Ok(outbound_id),
-                        EdgeDirection::Inbound => Ok(inbound_id),
-                    }
-                });
-
-                Ok(Box::new(
-                    self.handle_vertex_id_iterator(vertex_id_iterator).take(limit as usize),
-                ))
-            }
-        }
-    }
-
-    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
-        match q {
-            EdgeQuery::Edges { keys } => {
-                let edge_manager = EdgeManager::new(self.db.clone());
-
-                let edges = keys.into_iter().map(move |key| {
-                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                        Some(update_datetime) => {
-                            Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
-                        }
-                        None => Ok(None),
-                    }
-                });
-
-                let iterator = self.remove_nones_from_iterator(edges);
-                Ok(Box::new(iterator))
-            }
-            EdgeQuery::Pipe {
-                vertex_query,
-                converter,
-                type_filter,
-                high_filter,
-                low_filter,
-                limit,
-            } => {
-                let vertex_iterator = self.vertex_query_to_iterator(*vertex_query)?;
-
-                let edge_range_manager = match converter {
-                    EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
-                    EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
-                };
-
-                // Ideally we'd use iterators all the way down, but things
-                // start breaking apart due to conditional expressions not
-                // returning the same type signature, issues with `Result`s
-                // and some of the iterators, etc. So at this point, we'll
-                // just resort to building a vector.
-                let mut edges: Vec<Result<EdgeRangeItem>> = Vec::new();
-
-                for item in vertex_iterator {
-                    let (id, _) = item?;
-                    let edge_iterator = edge_range_manager.iterate_for_range(id, type_filter.as_ref(), high_filter)?;
-
-                    for item in edge_iterator {
-                        match item {
-                            Ok((
-                                edge_range_first_id,
-                                edge_range_t,
-                                edge_range_update_datetime,
-                                edge_range_second_id,
-                            )) => {
-                                if let Some(low_filter) = low_filter {
-                                    if edge_range_update_datetime < low_filter {
-                                        break;
-                                    }
-                                }
-
-                                edges.push(match converter {
-                                    EdgeDirection::Outbound => Ok((
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_second_id,
-                                    )),
-                                    EdgeDirection::Inbound => Ok((
-                                        edge_range_second_id,
-                                        edge_range_t,
-                                        edge_range_update_datetime,
-                                        edge_range_first_id,
-                                    )),
-                                })
-                            }
-                            Err(_) => edges.push(item),
-                        }
-
-                        if edges.len() == limit as usize {
-                            break;
-                        }
-                    }
-                }
-
-                Ok(Box::new(edges.into_iter()))
-            }
-        }
-    }
-
-    fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item = Result<T>>
-    where
-        I: Iterator<Item = Result<Option<T>>>,
-    {
-        let filtered = iterator.filter(|item| match *item {
-            Err(_) | Ok(Some(_)) => true,
-            _ => false,
-        });
-
-        let mapped = filtered.map(|item| match item {
-            Ok(Some(value)) => Ok(value),
-            Err(err) => Err(err),
-            _ => unreachable!(),
-        });
-
-        Box::new(mapped)
-    }
-
-    fn handle_vertex_id_iterator<T: Iterator<Item = Result<Uuid>>>(
-        &self,
-        iterator: T,
-    ) -> impl Iterator<Item = Result<VertexItem>> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
-        let mapped = iterator.map(move |item| {
-            let id = item?;
-            let value = vertex_manager.get(id)?;
-
-            match value {
-                Some(value) => Ok(Some((id, value))),
-                None => Ok(None),
-            }
-        });
-
-        self.remove_nones_from_iterator(Box::new(mapped))
-    }
 }
 
 impl Transaction for RocksdbTransaction {
+    type VertexIterator = RocksdbVertexIterator;
+
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
@@ -292,38 +119,6 @@ impl Transaction for RocksdbTransaction {
             vertex_manager.create(vertex)?;
             Ok(true)
         }
-    }
-
-    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
-        let iterator = self.vertex_query_to_iterator(q.clone())?;
-
-        let mapped = iterator.map(move |item| {
-            let (id, t) = item?;
-            let vertex = models::Vertex::with_id(id, t);
-            Ok(vertex)
-        });
-
-        mapped.collect()
-    }
-
-    fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
-        let iterator = self.vertex_query_to_iterator(q.clone())?;
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
-
-        for item in iterator {
-            let (id, _) = item?;
-            vertex_manager.delete(&mut batch, id)?;
-        }
-
-        self.db.write(batch)?;
-        Ok(())
-    }
-
-    fn get_vertex_count(&self) -> Result<u64> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
-        Ok(iterator.count() as u64)
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
@@ -345,135 +140,204 @@ impl Transaction for RocksdbTransaction {
         Ok(true)
     }
 
-    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
-        let iterator = self.edge_query_to_iterator(q.clone())?;
-
-        let mapped = iterator.map(move |item| {
-            let (outbound_id, t, update_datetime, inbound_id) = item?;
-            let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, update_datetime);
-            Ok(edge)
-        });
-
-        mapped.collect()
-    }
-
-    fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
-        let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = self.edge_query_to_iterator(q.clone())?;
-        let mut batch = WriteBatch::default();
-
-        for item in iterator {
-            let (outbound_id, t, update_datetime, inbound_id) = item?;
-
-            if vertex_manager.get(outbound_id)?.is_some() {
-                edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
-            };
-        }
-
-        self.db.write(batch)?;
-        Ok(())
-    }
-
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        type_filter: Option<&models::Type>,
-        direction: models::EdgeDirection,
-    ) -> Result<u64> {
-        let edge_range_manager = match direction {
-            EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
-            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
-        };
-
-        let count = edge_range_manager.iterate_for_range(id, type_filter, None)?.count();
-
-        Ok(count as u64)
-    }
-
-    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
+    fn set_vertex_metadata(&self, id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
         let manager = VertexMetadataManager::new(self.db.clone());
-        let mut metadata = Vec::new();
-
-        for item in self.vertex_query_to_iterator(q.clone())? {
-            let (id, _) = item?;
-            let value = manager.get(id, &name[..])?;
-
-            if let Some(value) = value {
-                metadata.push(models::VertexMetadata::new(id, value));
-            }
-        }
-
-        Ok(metadata)
+        manager.set(id, name, value)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
-        let manager = VertexMetadataManager::new(self.db.clone());
+    fn set_edge_metadata(&self, key: &models::EdgeKey, name: &str, value: &JsonValue) -> Result<()> {
+        let manager = EdgeMetadataManager::new(self.db.clone());
+        manager.set(key.outbound_id, &key.t, key.inbound_id, name, value)
+    }
+
+    fn vertices(&self) -> Self::VertexIterator {
+        RocksdbVertexIterator::new(RocksdbVertexIteratorSource::All(Arc::clone(&self.db)), None)
+    }
+
+    fn vertex(&self, id: Uuid) -> Self::VertexIterator {
+        RocksdbVertexIterator::new(RocksdbVertexIteratorSource::Id(Arc::clone(&self.db), id), None)
+    }
+}
+
+enum RocksdbVertexIteratorSource {
+    All(Arc<DB>),
+    Id(Arc<DB>, Uuid),
+    Pipe(RocksdbEdgeIterator, models::EdgeDirection)
+}
+
+pub struct RocksdbVertexIterator {
+    source: RocksdbVertexIteratorSource,
+    t: Option<models::Type>
+}
+
+impl RocksdbVertexIterator {
+    fn new(source: RocksdbVertexIteratorSource, t: Option<models::Type>) -> Self {
+        Self { source, t }
+    }
+
+    fn get_datastore(&self) -> Arc<DB> {
+        match self.source {
+            RocksdbVertexIteratorSource::All(ref datastore) => datastore.clone(),
+            RocksdbVertexIteratorSource::Id(ref datastore, _) => datastore.clone(),
+            RocksdbVertexIteratorSource::Pipe(ref iter, _) => iter.source.get_datastore()
+        }
+    }
+}
+
+impl VertexIterator for RocksdbVertexIterator {
+    type EdgeIterator = RocksdbEdgeIterator;
+    type VertexMetadataIterator = RocksdbVertexMetadataIterator;
+    type Iterator = IntoIter<models::Vertex>;
+
+    fn t(self, t: models::Type) -> Self {
+        Self::new(self.source, Some(t))
+    }
+
+    fn metadata(self, name: String) -> Self::VertexMetadataIterator {
+        RocksdbVertexMetadataIterator {
+            source: self,
+            name: name,
+        }
+    }
+
+    fn outbound(self) -> Self::EdgeIterator {
+        RocksdbEdgeIterator::new(Box::new(self), models::EdgeDirection::Outbound, None, None, None)
+    }
+
+    fn inbound(self) -> Self::EdgeIterator {
+        RocksdbEdgeIterator::new(Box::new(self), models::EdgeDirection::Inbound, None, None, None)
+    }
+
+    fn get(&self) -> Result<Self::Iterator> {
+        unimplemented!();
+    }
+
+    fn delete(&self) -> Result<()> {
+        let iterator = self.get()?;
+        let vertex_manager = VertexManager::new(self.get_datastore());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q.clone())? {
-            let (id, _) = item?;
-            manager.set(&mut batch, id, &name[..], value)?;
+        for vertex in iterator {
+            vertex_manager.delete(&mut batch, vertex.id)?;
         }
 
-        self.db.write(batch)?;
+        self.get_datastore().write(batch)?;
         Ok(())
     }
+}
 
-    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
-        let manager = VertexMetadataManager::new(self.db.clone());
+pub struct RocksdbVertexMetadataIterator {
+    source: RocksdbVertexIterator,
+    name: String
+}
+
+impl VertexMetadataIterator for RocksdbVertexMetadataIterator {
+    type Iterator = IntoIter<models::VertexMetadata>;
+
+    fn get(&self) -> Result<Self::Iterator> {
+        unimplemented!();
+    }
+
+    fn delete(&self) -> Result<()> {
+        let iterator = self.get()?;
+        let vertex_metadata_manager = VertexMetadataManager::new(self.source.get_datastore());
         let mut batch = WriteBatch::default();
 
-        for item in self.vertex_query_to_iterator(q.clone())? {
-            let (id, _) = item?;
-            manager.delete(&mut batch, id, &name[..])?;
+        for metadata in iterator {
+            vertex_metadata_manager.delete(&mut batch, metadata.id, &self.name)?;
         }
 
-        self.db.write(batch)?;
+        self.source.get_datastore().write(batch)?;
         Ok(())
     }
+}
 
-    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
-        let mut metadata = Vec::new();
+pub struct RocksdbEdgeIterator {
+    source: Box<RocksdbVertexIterator>,
+    direction: models::EdgeDirection,
+    t: Option<models::Type>,
+    high: Option<DateTime<Utc>>,
+    low: Option<DateTime<Utc>>
+}
 
-        for item in self.edge_query_to_iterator(q.clone())? {
-            let (outbound_id, t, _, inbound_id) = item?;
-            let value = manager.get(outbound_id, &t, inbound_id, &name[..])?;
+impl RocksdbEdgeIterator {
+    fn new(source: Box<RocksdbVertexIterator>, direction: models::EdgeDirection, t: Option<models::Type>, high: Option<DateTime<Utc>>, low: Option<DateTime<Utc>>) -> Self {
+        Self { source, direction, t, high, low }
+    }
+}
 
-            if let Some(value) = value {
-                let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-                metadata.push(models::EdgeMetadata::new(key, value));
-            }
-        }
+impl EdgeIterator for RocksdbEdgeIterator {
+    type VertexIterator = RocksdbVertexIterator;
+    type EdgeMetadataIterator = RocksdbEdgeMetadataIterator;
+    type Iterator = IntoIter<models::Edge>;
 
-        Ok(metadata)
+    fn t(self, t: models::Type) -> Self {
+        Self::new(self.source, self.direction, Some(t), self.high, self.low)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
+    fn high(self, dt: DateTime<Utc>) -> Self {
+        Self::new(self.source, self.direction, self.t, Some(dt), self.low)
+    }
+
+    fn low(self, dt: DateTime<Utc>) -> Self {
+        Self::new(self.source, self.direction, self.t, self.high, Some(dt))
+    }
+
+    fn metadata(self, name: String) -> Self::EdgeMetadataIterator {
+        RocksdbEdgeMetadataIterator {
+            source: self,
+            name: name,
+        }
+    }
+
+    fn outbound(self) -> Self::VertexIterator {
+        RocksdbVertexIterator::new(RocksdbVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None)
+    }
+
+    fn inbound(self) -> Self::VertexIterator {
+        RocksdbVertexIterator::new(RocksdbVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None)
+    }
+
+    fn get(&self) -> Result<Self::Iterator> {
+        unimplemented!();
+    }
+
+    fn delete(&self) -> Result<()> {
+        let iterator = self.get()?;
+        let edge_manager = EdgeManager::new(self.source.get_datastore());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q.clone())? {
-            let (outbound_id, t, _, inbound_id) = item?;
-            manager.set(&mut batch, outbound_id, &t, inbound_id, &name[..], value)?;
+        for edge in iterator {
+            edge_manager.delete(&mut batch, edge.key.outbound_id, &edge.key.t, edge.key.inbound_id, edge.created_datetime)?;
         }
 
-        self.db.write(batch)?;
+        self.source.get_datastore().write(batch)?;
         Ok(())
     }
+}
 
-    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
+pub struct RocksdbEdgeMetadataIterator {
+    source: RocksdbEdgeIterator,
+    name: String
+}
+
+impl EdgeMetadataIterator for RocksdbEdgeMetadataIterator {
+    type Iterator = IntoIter<models::EdgeMetadata>;
+
+    fn get(&self) -> Result<Self::Iterator> {
+        unimplemented!();
+    }
+
+    fn delete(&self) -> Result<()> {
+        let iterator = self.get()?;
+        let edge_metadata_manager = EdgeMetadataManager::new(self.source.source.get_datastore());
         let mut batch = WriteBatch::default();
 
-        for item in self.edge_query_to_iterator(q.clone())? {
-            let (outbound_id, t, _, inbound_id) = item?;
-            manager.delete(&mut batch, outbound_id, &t, inbound_id, &name[..])?;
+        for metadata in iterator {
+            edge_metadata_manager.delete(&mut batch, metadata.key.outbound_id, &metadata.key.t, metadata.key.inbound_id, &self.name)?;
         }
 
-        self.db.write(batch)?;
+        self.source.source.get_datastore().write(batch)?;
         Ok(())
     }
 }
