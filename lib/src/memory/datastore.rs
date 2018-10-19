@@ -103,11 +103,11 @@ impl Transaction for MemoryTransaction {
     }
 
     fn vertices(&self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::All(Arc::clone(&self.datastore)), None, None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::All(Arc::clone(&self.datastore)), None)
     }
 
     fn vertex(&self, id: Uuid) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Id(Arc::clone(&self.datastore), id), None, None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Id(Arc::clone(&self.datastore), id), None)
     }
 }
 
@@ -119,13 +119,12 @@ enum MemoryVertexIteratorSource {
 
 pub struct MemoryVertexIterator {
     source: MemoryVertexIteratorSource,
-    t: Option<models::Type>,
-    limit: Option<usize>
+    t: Option<models::Type>
 }
 
 impl MemoryVertexIterator {
-    fn new(source: MemoryVertexIteratorSource, t: Option<models::Type>, limit: Option<usize>) -> Self {
-        Self { source, t, limit }
+    fn new(source: MemoryVertexIteratorSource, t: Option<models::Type>) -> Self {
+        Self { source, t }
     }
 
     fn get_datastore(&self) -> &Arc<RwLock<InternalMemoryDatastore>> {
@@ -143,11 +142,7 @@ impl VertexIterator for MemoryVertexIterator {
     type Iterator = IntoIter<models::Vertex>;
 
     fn t(self, t: models::Type) -> Self {
-        Self::new(self.source, Some(t), self.limit)
-    }
-
-    fn limit(self, limit: usize) -> Self {
-        Self::new(self.source, self.t, Some(limit))
+        Self::new(self.source, Some(t))
     }
 
     fn metadata(self, name: String) -> Self::VertexMetadataIterator {
@@ -158,48 +153,32 @@ impl VertexIterator for MemoryVertexIterator {
     }
 
     fn outbound(self) -> Self::EdgeIterator {
-        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Outbound, None, None, None, None)
+        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Outbound, None, None, None)
     }
 
     fn inbound(self) -> Self::EdgeIterator {
-        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Inbound, None, None, None, None)
+        MemoryEdgeIterator::new(Box::new(self), models::EdgeDirection::Inbound, None, None, None)
     }
 
-    // TODO: currently does not handle type filters
     fn get(&self) -> Result<Self::Iterator> {
         let datastore = self.get_datastore().read().unwrap();
 
-        match self.source {
+        let vec = match self.source {
             MemoryVertexIteratorSource::All(_) => {
                 let iter = datastore.vertices.iter();
-
-                if let Some(limit) = self.limit {
-                    let vec: Vec<models::Vertex> = iter.take(limit).map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect();
-                    Ok(vec.into_iter())
-                } else {
-                    let vec: Vec<models::Vertex> = iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect();
-                    Ok(vec.into_iter())
-                }
+                iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect()
             },
             MemoryVertexIteratorSource::Id(_, id) => {
-                // TODO: currently does not handle limits
-                let results = if let Some(value) = datastore.vertices.get(&id) {
+                if let Some(value) = datastore.vertices.get(&id) {
                     vec![models::Vertex::with_id(id, value.clone())]
                 } else {
                     vec![]
-                };
-
-                Ok(results.into_iter())
+                }
             },
             MemoryVertexIteratorSource::Pipe(ref iter, direction) => {
-                let edges = iter.get()?;
+                let edges: IntoIter<models::Edge> = iter.get()?;
 
-                let edges: Vec<models::Edge> = match self.limit {
-                    Some(limit) if limit <= edges.len() => edges.take(limit).collect(),
-                    _ => edges.collect()
-                };
-
-                let vec: Vec<models::Vertex> = edges.into_iter().filter_map(|edge| {
+                edges.filter_map(|edge| {
                     let id = match direction {
                         models::EdgeDirection::Outbound => edge.key.outbound_id,
                         models::EdgeDirection::Inbound => edge.key.inbound_id,
@@ -208,10 +187,17 @@ impl VertexIterator for MemoryVertexIterator {
                     datastore.vertices.get(&id).map(|value| {
                         models::Vertex::with_id(id, value.clone())
                     })
-                }).collect();
-
-                Ok(vec.into_iter())
+                }).collect()
             }
+        };
+
+        if let Some(ref t) = self.t {
+            let vec: Vec<models::Vertex> = vec.into_iter()
+                .filter(|vertex| &vertex.t == t)
+                .collect();
+            Ok(vec.into_iter())
+        } else {
+            Ok(vec.into_iter())
         }
     }
 
@@ -283,13 +269,12 @@ pub struct MemoryEdgeIterator {
     direction: models::EdgeDirection,
     t: Option<models::Type>,
     high: Option<DateTime<Utc>>,
-    low: Option<DateTime<Utc>>,
-    limit: Option<usize>
+    low: Option<DateTime<Utc>>
 }
 
 impl MemoryEdgeIterator {
-    fn new(source: Box<MemoryVertexIterator>, direction: models::EdgeDirection, t: Option<models::Type>, high: Option<DateTime<Utc>>, low: Option<DateTime<Utc>>, limit: Option<usize>) -> Self {
-        Self { source, direction, t, high, low, limit }
+    fn new(source: Box<MemoryVertexIterator>, direction: models::EdgeDirection, t: Option<models::Type>, high: Option<DateTime<Utc>>, low: Option<DateTime<Utc>>) -> Self {
+        Self { source, direction, t, high, low }
     }
 }
 
@@ -299,19 +284,15 @@ impl EdgeIterator for MemoryEdgeIterator {
     type Iterator = IntoIter<models::Edge>;
 
     fn t(self, t: models::Type) -> Self {
-        Self::new(self.source, self.direction, Some(t), self.high, self.low, self.limit)
+        Self::new(self.source, self.direction, Some(t), self.high, self.low)
     }
 
     fn high(self, dt: DateTime<Utc>) -> Self {
-        Self::new(self.source, self.direction, self.t, Some(dt), self.low, self.limit)
+        Self::new(self.source, self.direction, self.t, Some(dt), self.low)
     }
 
     fn low(self, dt: DateTime<Utc>) -> Self {
-        Self::new(self.source, self.direction, self.t, self.high, Some(dt), self.limit)
-    }
-
-    fn limit(self, limit: usize) -> Self {
-        Self::new(self.source, self.direction, self.t, self.high, self.low, Some(limit))
+        Self::new(self.source, self.direction, self.t, self.high, Some(dt))
     }
 
     fn metadata(self, name: String) -> Self::EdgeMetadataIterator {
@@ -322,11 +303,11 @@ impl EdgeIterator for MemoryEdgeIterator {
     }
 
     fn outbound(self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None, None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None)
     }
 
     fn inbound(self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None, None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None)
     }
 
     fn get(&self) -> Result<Self::Iterator> {
@@ -334,7 +315,6 @@ impl EdgeIterator for MemoryEdgeIterator {
         let datastore = self.source.get_datastore().read().unwrap();
         let mut results = Vec::new();
 
-        // TODO: currently handles limit=0 incorrectly
         match self.direction {
             models::EdgeDirection::Outbound => {
                 for vertex in vertices.into_iter() {
@@ -370,12 +350,6 @@ impl EdgeIterator for MemoryEdgeIterator {
                         }
 
                         results.push(models::Edge::new(key.clone(), *update_datetime));
-
-                        if let Some(limit) = self.limit {
-                            if results.len() == limit {
-                                return Ok(results.into_iter());
-                            }
-                        }
                     }
                 }
             }
@@ -409,12 +383,6 @@ impl EdgeIterator for MemoryEdgeIterator {
                     }
 
                     results.push(models::Edge::new(key.clone(), *update_datetime));
-
-                    if let Some(limit) = self.limit {
-                        if results.len() == limit {
-                            return Ok(results.into_iter());
-                        }
-                    }
                 }
             }
         }

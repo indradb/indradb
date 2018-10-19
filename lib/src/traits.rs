@@ -88,7 +88,6 @@ pub trait VertexIterator {
     type Iterator: Iterator<Item=models::Vertex>;
 
     fn t(self, t: models::Type) -> Self;
-    fn limit(self, limit: usize) -> Self;
 
     fn metadata(self, name: String) -> Self::VertexMetadataIterator;
     fn outbound(self) -> Self::EdgeIterator;
@@ -116,7 +115,6 @@ pub trait EdgeIterator {
     fn t(self, t: models::Type) -> Self;
     fn high(self, dt: DateTime<Utc>) -> Self;
     fn low(self, dt: DateTime<Utc>) -> Self;
-    fn limit(self, limit: usize) -> Self;
 
     fn metadata(self, name: String) -> Self::EdgeMetadataIterator;
     fn outbound(self) -> Self::VertexIterator;
