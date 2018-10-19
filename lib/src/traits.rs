@@ -94,7 +94,6 @@ pub trait VertexIterator {
     fn inbound(self) -> Self::EdgeIterator;
 
     fn get(&self) -> Result<Self::Iterator>;
-    fn len(&self) -> Result<u64>;
     fn delete(&self) -> Result<()>;
 }
 
@@ -121,7 +120,6 @@ pub trait EdgeIterator {
     fn inbound(self) -> Self::VertexIterator;
 
     fn get(&self) -> Result<Self::Iterator>;
-    fn len(&self) -> Result<u64>;
     fn delete(&self) -> Result<()>;
 }
 

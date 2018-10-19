@@ -201,10 +201,6 @@ impl VertexIterator for MemoryVertexIterator {
         }
     }
 
-    fn len(&self) -> Result<u64> {
-        Ok(self.get()?.len() as u64)
-    }
-
     fn delete(&self) -> Result<()> {
         let vertices = self.get()?;
         let mut datastore = self.get_datastore().write().unwrap();
@@ -388,10 +384,6 @@ impl EdgeIterator for MemoryEdgeIterator {
         }
 
         Ok(results.into_iter())
-    }
-
-    fn len(&self) -> Result<u64> {
-        Ok(self.get()?.len() as u64)
     }
 
     fn delete(&self) -> Result<()> {
