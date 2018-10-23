@@ -1,5 +1,4 @@
 export RUST_BACKTRACE=1
-export INDRADB_SCRIPT_ROOT=test_scripts
 
 .PHONY: test bench
 
