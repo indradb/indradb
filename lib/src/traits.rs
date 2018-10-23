@@ -78,7 +78,7 @@ pub trait Transaction {
     /// * `value` - The metadata value.
     fn set_edge_metadata(&self, key: &models::EdgeKey, name: &str, value: &JsonValue) -> Result<()>;
 
-    fn vertices(&self) -> Self::VertexIterator;
+    fn vertices(&self, offset: Option<Uuid>) -> Self::VertexIterator;
     fn vertex(&self, id: Uuid) -> Self::VertexIterator;
 }
 
@@ -100,8 +100,6 @@ pub trait VertexIterator {
 pub trait VertexMetadataIterator {
     type Iterator: Iterator<Item=models::VertexMetadata>;
 
-    // TODO: add a name filter, so that users could alternatively query for
-    // all metadata
     fn get(&self) -> Result<Self::Iterator>;
     fn delete(&self) -> Result<()>;
 }
@@ -126,8 +124,6 @@ pub trait EdgeIterator {
 pub trait EdgeMetadataIterator {
     type Iterator: Iterator<Item=models::EdgeMetadata>;
 
-    // TODO: add a name filter, so that users could alternatively query for
-    // all metadata
     fn get(&self) -> Result<Self::Iterator>;
     fn delete(&self) -> Result<()>;
 }

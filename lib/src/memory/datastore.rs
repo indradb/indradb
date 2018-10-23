@@ -102,34 +102,36 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn vertices(&self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::All(Arc::clone(&self.datastore)), None)
+    fn vertices(&self, offset: Option<Uuid>) -> Self::VertexIterator {
+        let source = MemoryVertexIteratorSource::All(Arc::clone(&self.datastore), offset);
+        MemoryVertexIterator::new(source, None, None)
     }
 
     fn vertex(&self, id: Uuid) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Id(Arc::clone(&self.datastore), id), None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Id(Arc::clone(&self.datastore), id), None, None)
     }
 }
 
 enum MemoryVertexIteratorSource {
-    All(Arc<RwLock<InternalMemoryDatastore>>),
+    All(Arc<RwLock<InternalMemoryDatastore>>, Option<Uuid>),
     Id(Arc<RwLock<InternalMemoryDatastore>>, Uuid),
     Pipe(MemoryEdgeIterator, models::EdgeDirection)
 }
 
 pub struct MemoryVertexIterator {
     source: MemoryVertexIteratorSource,
-    t: Option<models::Type>
+    t: Option<models::Type>,
+    offset: Option<Uuid>
 }
 
 impl MemoryVertexIterator {
-    fn new(source: MemoryVertexIteratorSource, t: Option<models::Type>) -> Self {
-        Self { source, t }
+    fn new(source: MemoryVertexIteratorSource, t: Option<models::Type>, offset: Option<Uuid>) -> Self {
+        Self { source, t, offset }
     }
 
     fn get_datastore(&self) -> &Arc<RwLock<InternalMemoryDatastore>> {
         match self.source {
-            MemoryVertexIteratorSource::All(ref datastore) => datastore,
+            MemoryVertexIteratorSource::All(ref datastore, _) => datastore,
             MemoryVertexIteratorSource::Id(ref datastore, _) => datastore,
             MemoryVertexIteratorSource::Pipe(ref iter, _) => iter.source.get_datastore()
         }
@@ -142,14 +144,11 @@ impl VertexIterator for MemoryVertexIterator {
     type Iterator = IntoIter<models::Vertex>;
 
     fn t(self, t: models::Type) -> Self {
-        Self::new(self.source, Some(t))
+        Self::new(self.source, Some(t), self.offset)
     }
 
     fn metadata(self, name: String) -> Self::VertexMetadataIterator {
-        MemoryVertexMetadataIterator {
-            source: self,
-            name: name,
-        }
+        MemoryVertexMetadataIterator::new(self, name)
     }
 
     fn outbound(self) -> Self::EdgeIterator {
@@ -164,9 +163,14 @@ impl VertexIterator for MemoryVertexIterator {
         let datastore = self.get_datastore().read().unwrap();
 
         let vec = match self.source {
-            MemoryVertexIteratorSource::All(_) => {
-                let iter = datastore.vertices.iter();
-                iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect()
+            MemoryVertexIteratorSource::All(_, offset) => {
+                if let Some(offset) = offset {
+                    let iter = datastore.vertices.range(offset..);
+                    iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect()
+                } else {
+                    let iter = datastore.vertices.iter();
+                    iter.map(|(k, v)| models::Vertex::with_id(*k, v.clone())).collect()
+                }
             },
             MemoryVertexIteratorSource::Id(_, id) => {
                 if let Some(value) = datastore.vertices.get(&id) {
@@ -233,6 +237,12 @@ pub struct MemoryVertexMetadataIterator {
     name: String
 }
 
+impl MemoryVertexMetadataIterator {
+    fn new(source: MemoryVertexIterator, name: String) -> Self {
+        Self { source, name }
+    }
+}
+
 impl VertexMetadataIterator for MemoryVertexMetadataIterator {
     type Iterator = IntoIter<models::VertexMetadata>;
 
@@ -292,18 +302,15 @@ impl EdgeIterator for MemoryEdgeIterator {
     }
 
     fn metadata(self, name: String) -> Self::EdgeMetadataIterator {
-        MemoryEdgeMetadataIterator {
-            source: self,
-            name: name,
-        }
+        MemoryEdgeMetadataIterator::new(self, name)
     }
 
     fn outbound(self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Outbound), None, None)
     }
 
     fn inbound(self) -> Self::VertexIterator {
-        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None)
+        MemoryVertexIterator::new(MemoryVertexIteratorSource::Pipe(self, models::EdgeDirection::Inbound), None, None)
     }
 
     fn get(&self) -> Result<Self::Iterator> {
@@ -397,6 +404,12 @@ impl EdgeIterator for MemoryEdgeIterator {
 pub struct MemoryEdgeMetadataIterator {
     source: MemoryEdgeIterator,
     name: String
+}
+
+impl MemoryEdgeMetadataIterator {
+    fn new(source: MemoryEdgeIterator, name: String) -> Self {
+        Self { source, name }
+    }
 }
 
 impl EdgeMetadataIterator for MemoryEdgeMetadataIterator {
