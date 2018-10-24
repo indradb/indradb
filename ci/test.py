@@ -33,9 +33,7 @@ def run(args, cwd="."):
     subprocess.check_call(args, cwd=cwd)
 
 def main():
-    run(["cargo", "build"], cwd="bin")
-
-    if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
+    if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "stable":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
         run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
