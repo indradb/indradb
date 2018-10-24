@@ -389,7 +389,9 @@ impl VertexMetadataManager {
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedMetadataItem>>> {
         let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
-        let iterator = self.db.iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+        let iterator = self
+            .db
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
         Ok(filtered.map(move |item| -> Result<OwnedMetadataItem> {
