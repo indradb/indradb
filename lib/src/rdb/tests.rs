@@ -1,7 +1,6 @@
 #[test]
 fn should_repair() {
     use super::RocksdbDatastore;
-    use std::path::Path;
     use util::generate_temporary_path;
 
     let path = generate_temporary_path();

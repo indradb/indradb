@@ -52,26 +52,6 @@ fn take_while_prefixed(iterator: DBIterator, prefix: Box<[u8]>) -> impl Iterator
     })
 }
 
-fn iterate_metadata_for_owner(
-    db: &DB,
-    cf: ColumnFamily,
-    id: Uuid,
-) -> Result<impl Iterator<Item = Result<OwnedMetadataItem>>> {
-    let prefix = build_key(&[KeyComponent::Uuid(id)]);
-    let iterator = db.iterator_cf(cf, IteratorMode::From(&prefix, Direction::Forward))?;
-    let filtered = take_while_prefixed(iterator, prefix);
-
-    Ok(filtered.map(move |item| -> Result<((Uuid, String), JsonValue)> {
-        let (k, v) = item;
-        let mut cursor = Cursor::new(k);
-        let owner_id = read_uuid(&mut cursor);
-        debug_assert_eq!(id, owner_id);
-        let name = read_unsized_string(&mut cursor);
-        let value = json_deserialize_value(&v.to_owned()[..])?;
-        Ok(((owner_id, name), value))
-    }))
-}
-
 pub struct VertexManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
@@ -408,7 +388,19 @@ impl VertexMetadataManager {
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedMetadataItem>>> {
-        iterate_metadata_for_owner(&self.db, self.cf, vertex_id)
+        let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
+        let iterator = self.db.iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+        let filtered = take_while_prefixed(iterator, prefix);
+
+        Ok(filtered.map(move |item| -> Result<OwnedMetadataItem> {
+            let (k, v) = item;
+            let mut cursor = Cursor::new(k);
+            let owner_id = read_uuid(&mut cursor);
+            debug_assert_eq!(vertex_id, owner_id);
+            let name = read_unsized_string(&mut cursor);
+            let value = json_deserialize_value(&v.to_owned()[..])?;
+            Ok(((owner_id, name), value))
+        }))
     }
 
     pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
