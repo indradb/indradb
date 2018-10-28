@@ -1,4 +1,3 @@
 target
 lib/Cargo.lock
 /Cargo.lock
-bin/src/common/autogen/indradb_capnp.rs
