@@ -54,9 +54,9 @@ env:
   global:
     - RUST_BACKTRACE=1
 
-install: ./ci/install.sh
-script: ./ci/test.py
-before_deploy: ./ci/before_deploy.sh
+install: ./scripts/install.sh
+script: ./scripts/test.py
+before_deploy: ./scripts/before_deploy.sh
 
 deploy:
   api_key:
