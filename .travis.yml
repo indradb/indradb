@@ -53,7 +53,6 @@ matrix:
 env:
   global:
     - RUST_BACKTRACE=1
-    - INDRADB_SCRIPT_ROOT=~/build/indradb/indradb/bin/test_scripts
 
 install: ./ci/install.sh
 script: ./ci/test.py
