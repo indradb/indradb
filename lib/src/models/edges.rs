@@ -66,3 +66,23 @@ impl Edge {
         Edge { key, created_datetime }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Edge, EdgeKey};
+    use chrono::Utc;
+    use models::Type;
+    use uuid::Uuid;
+
+    #[test]
+    fn should_create_edge_with_current_datetime() {
+        let start_datetime = Utc::now();
+
+        let edge = Edge::new_with_current_datetime(EdgeKey::new(Uuid::default(), Type::default(), Uuid::default()));
+
+        let end_datetime = Utc::now();
+
+        assert!(edge.created_datetime >= start_datetime);
+        assert!(edge.created_datetime <= end_datetime);
+    }
+}

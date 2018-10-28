@@ -1,38 +1,39 @@
 #![recursion_limit = "1024"]
 
 extern crate chrono;
+extern crate common;
 extern crate core;
-#[macro_use]
-extern crate crossbeam_channel;
-extern crate hyper;
+extern crate futures;
 extern crate indradb;
-extern crate iron;
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 extern crate num_cpus;
 extern crate regex;
-extern crate rlua;
-extern crate router;
 extern crate serde;
-#[macro_use]
 extern crate serde_json;
-extern crate urlencoded;
 extern crate uuid;
-
-mod datastore;
-mod http;
-mod script;
-mod statics;
-mod util;
 
 use std::env;
 
-/// App for exposing a `RESTful` API for a datastore
+const DEFAULT_PORT: u16 = 27615;
+
 fn main() {
-    let port_str = env::var("PORT").unwrap_or_else(|_| "8000".to_string());
-    let port = port_str
-        .parse::<u16>()
-        .expect("Could not parse environment variable `PORT`");
-    http::start(port);
+    let port = match env::var("PORT") {
+        Ok(value) => value
+            .parse::<u16>()
+            .expect("Could not parse environment variable `PORT`"),
+        Err(_) => DEFAULT_PORT,
+    };
+
+    let binding = format!("127.0.0.1:{}", port);
+
+    let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
+
+    let worker_count = match env::var("WORKER_COUNT") {
+        Ok(value) => value
+            .parse::<usize>()
+            .expect("Could not parse environment variable `WORKER_COUNT`"),
+        Err(_) => num_cpus::get() * 2,
+    };
+
+    common::server::start(&binding, &connection_string, worker_count).expect("Expected to be able to start the server");
 }

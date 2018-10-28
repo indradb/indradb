@@ -6,21 +6,18 @@
 
 A graph database written in rust. This software is in the alpha state.
 
-IndraDB consists of an HTTP server and an underlying library. Most users would use the HTTP server - either communicating with it directly, or using a [client library](https://github.com/indradb/python-client). For convenience, the HTTP server is available as pre-compiled binaries as releases. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
+IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
 ## Features
 
 * Support for directed and typed graphs.
-* A simple, JSON-based query DSL with support for multiple hops.
-* Multiple ways to work with the database:
-    * Via HTTP API, and the clients that build off of it.
-    * Via lua-based scripting.
-    * By embedding IndraDB directly as a library.
+* Support for queries with multiple hops.
+* Cross-language support via Cap'n Proto, or direct embedding as a library.
 * Support for metadata: key/value data tied to graph items that can be used for supporting things like caching results from graph processing algorithms executed offline.
 * Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query langauge, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for metadata.
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for metadata.
 
 For more details, see the [homepage](https://indradb.github.io).
 
@@ -30,9 +27,7 @@ For more details, see the [homepage](https://indradb.github.io).
 * Add the binaries to your `PATH`.
 * Start the app: `indradb`
 
-This should start an in-memory-only datastore, where all work will be wiped
-out when the server is shutdown. You can persist your work with one of the
-alternative datastores.
+This should start an in-memory-only datastore, where all work will be wiped out when the server is shutdown. You can persist your work with one of the alternative datastores.
 
 ### In-memory
 
@@ -51,10 +46,8 @@ environment variable; e.g.: `DATABASE_URL=rocksdb://database.rdb indradb`.
 Applications are configured via environment variables:
 
 * `DATABASE_URL`: The connection string to the underlying database.
-* `PORT`: The port to run the server on. Defaults to `8000`.
-* `INDRADB_SCRIPT_ROOT`: The directory housing the lua scripts. Defaults to `./scripts`.
-* `INDRADB_MAP_REDUCE_QUERY_LIMIT`: How many vertices to query at a time when executing mapreduce tasks. Higher values will consume more memory. Defaults to `10000`.
-* `MAP_REDUCE_WORKER_POOL_SIZE`: How many worker threads to spawn for mapreduce tasks. Defaults to the number of CPUs.
+* `PORT`: The port to run the server on. Defaults to `27615`.
+* `WORKER_COUNT`: How many worker threads to have to satisfy client requests. Defaults to twice the number of CPUs.
 
 ## Install from source
 

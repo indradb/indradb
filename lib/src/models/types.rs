@@ -47,3 +47,21 @@ impl FromStr for Type {
         Ok(Self::new(s.to_string())?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Type;
+    use std::str::FromStr;
+    use util::generate_random_secret;
+
+    #[test]
+    fn should_fail_for_invalid_types() {
+        assert!(Type::new(generate_random_secret(256)).is_err());
+        assert!(Type::new("$".to_string()).is_err());
+    }
+
+    #[test]
+    fn should_convert_str_to_type() {
+        assert_eq!(Type::from_str("foo").unwrap(), Type::new("foo".to_string()).unwrap());
+    }
+}

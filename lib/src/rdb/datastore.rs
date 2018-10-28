@@ -89,9 +89,9 @@ impl RocksdbDatastore {
 }
 
 impl Datastore for RocksdbDatastore {
-    type T = RocksdbTransaction;
+    type Trans = RocksdbTransaction;
 
-    fn transaction(&self) -> Result<Self::T> {
+    fn transaction(&self) -> Result<Self::Trans> {
         RocksdbTransaction::new(self.db.clone())
     }
 }

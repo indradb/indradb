@@ -1,4 +1,4 @@
-use errors::{ErrorKind, Result};
+use errors::Result;
 use models;
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
@@ -12,10 +12,10 @@ use uuid::Uuid;
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore {
-    type T: Transaction;
+    type Trans: Transaction;
 
     /// Creates a new transaction.
-    fn transaction(&self) -> Result<Self::T>;
+    fn transaction(&self) -> Result<Self::Trans>;
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
@@ -40,12 +40,12 @@ pub trait Transaction {
     /// the vertex's UUID. Returns the new vertex's UUID.
     ///
     /// # Arguments
-    /// * `type`: The type of the vertex to create.
+    /// * `t`: The type of the vertex to create.
     fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
         let v = models::Vertex::new(t);
 
         if !self.create_vertex(&v)? {
-            Err(ErrorKind::UuidConflict.into())
+            Err("UUID already taken".into())
         } else {
             Ok(v.id)
         }

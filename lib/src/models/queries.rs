@@ -2,6 +2,8 @@ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use errors;
+use std::str::FromStr;
 use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -18,6 +20,27 @@ pub enum EdgeDirection {
     Outbound,
     #[serde(rename = "inbound")]
     Inbound,
+}
+
+impl FromStr for EdgeDirection {
+    type Err = errors::ValidationError;
+
+    fn from_str(s: &str) -> Result<EdgeDirection, Self::Err> {
+        match s {
+            "outbound" => Ok(EdgeDirection::Outbound),
+            "inbound" => Ok(EdgeDirection::Inbound),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+
+impl From<EdgeDirection> for String {
+    fn from(d: EdgeDirection) -> Self {
+        match d {
+            EdgeDirection::Outbound => "outbound".to_string(),
+            EdgeDirection::Inbound => "inbound".to_string(),
+        }
+    }
 }
 
 /// A query for vertices.
@@ -112,5 +135,26 @@ impl EdgeQuery {
             converter: EdgeDirection::Inbound,
             limit,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EdgeDirection;
+    use std::str::FromStr;
+
+    #[test]
+    fn should_convert_str_to_edge_direction() {
+        assert_eq!(EdgeDirection::from_str("outbound").unwrap(), EdgeDirection::Outbound);
+        assert_eq!(EdgeDirection::from_str("inbound").unwrap(), EdgeDirection::Inbound);
+        assert!(EdgeDirection::from_str("foo").is_err());
+    }
+
+    #[test]
+    fn should_convert_edge_direction_to_string() {
+        let s: String = EdgeDirection::Outbound.into();
+        assert_eq!(s, "outbound".to_string());
+        let s: String = EdgeDirection::Inbound.into();
+        assert_eq!(s, "inbound".to_string());
     }
 }

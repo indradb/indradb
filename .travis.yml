@@ -80,6 +80,8 @@ cache:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
   - $HOME/kcov-35
+  # Increase default timeout of 3m
+  timeout: 500
 
 notifications:
   email:
