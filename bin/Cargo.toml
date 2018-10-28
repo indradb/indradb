@@ -35,8 +35,8 @@ rand = "~0.5.5"
 regex = "^1.0.5"
 clap = "^2.32.0"
 lazy_static = "^1.1.0"
-capnp = "0.8.17"
-capnp-rpc = "0.8.3"
+capnp = "0.9.1"
+capnp-rpc = "0.9.0"
 futures = "0.1"
 tokio-core = "0.1"
 tokio-io = "0.1"
@@ -51,4 +51,4 @@ version = "0.16.1"
 features = ["test-suite", "rocksdb-datastore"]
 
 [build-dependencies]
-capnpc = "0.8.9"
+capnpc = "0.9.0"
