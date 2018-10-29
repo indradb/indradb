@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "0.16.1"
+version = "0.17.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -47,7 +47,7 @@ uuid = { version = "~0.7.1", features = ["serde", "v4"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "0.16.1"
+version = "0.17.0"
 features = ["test-suite", "rocksdb-datastore"]
 
 [build-dependencies]
