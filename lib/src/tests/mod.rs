@@ -7,12 +7,12 @@
 mod edge;
 #[macro_use]
 mod macros;
-mod metadata;
+mod properties;
 mod util;
 mod vertex;
 
 pub use self::edge::*;
 pub use self::macros::*;
-pub use self::metadata::*;
+pub use self::properties::*;
 pub use self::util::*;
 pub use self::vertex::*;
