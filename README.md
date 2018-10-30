@@ -13,7 +13,7 @@ IndraDB consists of a server and an underlying library. Most users would use the
 * Support for directed and typed graphs.
 * Support for queries with multiple hops.
 * Cross-language support via Cap'n Proto, or direct embedding as a library.
-* Vertices and edges can have properties (string keys + JSON values) to support things like caching results from graph processing algorithms executed offline.
+* Support for JSON-based properties tied to vertices and edges.
 * Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!
 
