@@ -2,45 +2,45 @@ use super::edges::EdgeKey;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-/// Represents vertex metadata.
+/// Represents a vertex property.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct VertexMetadata {
+pub struct VertexProperty {
     /// The id of the vertex
     pub id: Uuid,
 
-    /// The metadata value.
+    /// The property value.
     pub value: JsonValue,
 }
 
-impl VertexMetadata {
-    /// Creates a new vertex metadata.
+impl VertexProperty {
+    /// Creates a new vertex property.
     ///
     /// # Arguments
     ///
     /// * `id` - The id of the vertex.
-    /// * `value` - The metadata value.
+    /// * `value` - The property value.
     pub fn new(id: Uuid, value: JsonValue) -> Self {
         Self { id, value }
     }
 }
 
-/// Represents edge metadata.
+/// Represents an edge property.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct EdgeMetadata {
+pub struct EdgeProperty {
     /// The key to the edge.
     pub key: EdgeKey,
 
-    /// The metadata value.
+    /// The property value.
     pub value: JsonValue,
 }
 
-impl EdgeMetadata {
-    /// Creates a new vertex metadata.
+impl EdgeProperty {
+    /// Creates a new edge property.
     ///
     /// # Arguments
     ///
     /// * `key` - The key to the edge.
-    /// * `value` - The metadata value.
+    /// * `value` - The property value.
     pub fn new(key: EdgeKey, value: JsonValue) -> Self {
         Self { key, value }
     }

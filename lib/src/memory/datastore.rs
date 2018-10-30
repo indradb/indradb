@@ -14,9 +14,9 @@ use uuid::Uuid;
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug)]
 struct InternalMemoryDatastore {
-    edge_metadata: BTreeMap<(models::EdgeKey, String), JsonValue>,
+    edge_properties: BTreeMap<(models::EdgeKey, String), JsonValue>,
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
-    vertex_metadata: BTreeMap<(Uuid, String), JsonValue>,
+    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
 }
 
@@ -202,20 +202,20 @@ impl InternalMemoryDatastore {
         for vertex_id in vertices {
             self.vertices.remove(&vertex_id);
 
-            let mut deletable_vertex_metadata: Vec<(Uuid, String)> = Vec::new();
+            let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
 
-            for (metadata_key, _) in self.vertex_metadata.range((vertex_id, "".to_string())..) {
-                let &(ref metadata_vertex_id, _) = metadata_key;
+            for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
+                let &(ref property_vertex_id, _) = property_key;
 
-                if &vertex_id != metadata_vertex_id {
+                if &vertex_id != property_vertex_id {
                     break;
                 }
 
-                deletable_vertex_metadata.push(metadata_key.clone());
+                deletable_vertex_properties.push(property_key.clone());
             }
 
-            for metadata_key in deletable_vertex_metadata {
-                self.vertex_metadata.remove(&metadata_key);
+            for property_key in deletable_vertex_properties {
+                self.vertex_properties.remove(&property_key);
             }
 
             let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
@@ -234,20 +234,20 @@ impl InternalMemoryDatastore {
         for edge_key in edges {
             self.edges.remove(&edge_key);
 
-            let mut deletable_edge_metadata: Vec<(models::EdgeKey, String)> = Vec::new();
+            let mut deletable_edge_properties: Vec<(models::EdgeKey, String)> = Vec::new();
 
-            for (metadata_key, _) in self.edge_metadata.range((edge_key.clone(), "".to_string())..) {
-                let &(ref metadata_edge_key, _) = metadata_key;
+            for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
+                let &(ref property_edge_key, _) = property_key;
 
-                if &edge_key != metadata_edge_key {
+                if &edge_key != property_edge_key {
                     break;
                 }
 
-                deletable_edge_metadata.push(metadata_key.clone());
+                deletable_edge_properties.push(property_key.clone());
             }
 
-            for metadata_key in deletable_edge_metadata {
-                self.edge_metadata.remove(&metadata_key);
+            for property_key in deletable_edge_properties {
+                self.edge_properties.remove(&property_key);
             }
         }
     }
@@ -262,9 +262,9 @@ impl MemoryDatastore {
     pub fn default() -> MemoryDatastore {
         Self {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
-                edge_metadata: BTreeMap::new(),
+                edge_properties: BTreeMap::new(),
                 edges: BTreeMap::new(),
-                vertex_metadata: BTreeMap::new(),
+                vertex_properties: BTreeMap::new(),
                 vertices: BTreeMap::new(),
             })),
         }
@@ -398,81 +398,81 @@ impl Transaction for MemoryTransaction {
         }
     }
 
-    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
+    fn get_vertex_properties(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexProperty>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            let metadata_value = datastore.vertex_metadata.get(&(id, name.to_string()));
+            let property_value = datastore.vertex_properties.get(&(id, name.to_string()));
 
-            if let Some(metadata_value) = metadata_value {
-                result.push(models::VertexMetadata::new(id, metadata_value.clone()));
+            if let Some(property_value) = property_value {
+                result.push(models::VertexProperty::new(id, property_value.clone()));
             }
         }
 
         Ok(result)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
+    fn set_vertex_properties(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            datastore.vertex_metadata.insert((id, name.to_string()), value.clone());
+            datastore.vertex_properties.insert((id, name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
+    fn delete_vertex_properties(&self, q: &VertexQuery, name: &str) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            datastore.vertex_metadata.remove(&(id, name.to_string()));
+            datastore.vertex_properties.remove(&(id, name.to_string()));
         }
 
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
+    fn get_edge_properties(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeProperty>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            let metadata_value = datastore.edge_metadata.get(&(key.clone(), name.to_string()));
+            let property_value = datastore.edge_properties.get(&(key.clone(), name.to_string()));
 
-            if let Some(metadata_value) = metadata_value {
-                result.push(models::EdgeMetadata::new(key, metadata_value.clone()));
+            if let Some(property_value) = property_value {
+                result.push(models::EdgeProperty::new(key, property_value.clone()));
             }
         }
 
         Ok(result)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
+    fn set_edge_properties(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            datastore.edge_metadata.insert((key, name.to_string()), value.clone());
+            datastore.edge_properties.insert((key, name.to_string()), value.clone());
         }
 
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
+    fn delete_edge_properties(&self, q: &EdgeQuery, name: &str) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
         let edge_values = datastore.get_edge_values_by_query(q)?;
 
         for (key, _) in edge_values {
-            datastore.edge_metadata.remove(&(key, name.to_string()));
+            datastore.edge_properties.remove(&(key, name.to_string()));
         }
 
         Ok(())

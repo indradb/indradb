@@ -11,8 +11,8 @@ use futures::{Future, Stream};
 use futures_cpupool::CpuPool;
 use indradb;
 use indradb::{
-    Datastore as IndraDbDatastore, Edge, EdgeMetadata, MemoryDatastore, RocksdbDatastore,
-    Transaction as IndraDbTransaction, Type, Vertex, VertexMetadata,
+    Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
+    Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
 };
 use serde_json;
 use std::env;
@@ -286,10 +286,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn get_vertex_metadata(
+    fn get_vertex_properties(
         &mut self,
-        req: autogen::transaction::GetVertexMetadataParams,
-        mut res: autogen::transaction::GetVertexMetadataResults,
+        req: autogen::transaction::GetVertexPropertiesParams,
+        mut res: autogen::transaction::GetVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -299,14 +299,14 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<VertexMetadata>, CapnpError> {
-                map_err!(trans.get_vertex_metadata(&q, &name))
+            .spawn_fn(move || -> Result<Vec<VertexProperty>, CapnpError> {
+                map_err!(trans.get_vertex_properties(&q, &name))
             })
-            .and_then(move |metadatas| -> Result<(), CapnpError> {
-                let mut res = res.get().init_result(metadatas.len() as u32);
+            .and_then(move |properties| -> Result<(), CapnpError> {
+                let mut res = res.get().init_result(properties.len() as u32);
 
-                for (i, metadata) in metadatas.into_iter().enumerate() {
-                    converters::from_vertex_metadata(&metadata, res.reborrow().get(i as u32));
+                for (i, property) in properties.into_iter().enumerate() {
+                    converters::from_vertex_property(&property, res.reborrow().get(i as u32));
                 }
 
                 Ok(())
@@ -315,10 +315,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn set_vertex_metadata(
+    fn set_vertex_properties(
         &mut self,
-        req: autogen::transaction::SetVertexMetadataParams,
-        mut res: autogen::transaction::SetVertexMetadataResults,
+        req: autogen::transaction::SetVertexPropertiesParams,
+        mut res: autogen::transaction::SetVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -330,7 +330,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.set_vertex_metadata(&q, &name, &value)) })
+            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.set_vertex_properties(&q, &name, &value)) })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
                 Ok(())
@@ -339,10 +339,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn delete_vertex_metadata(
+    fn delete_vertex_properties(
         &mut self,
-        req: autogen::transaction::DeleteVertexMetadataParams,
-        mut res: autogen::transaction::DeleteVertexMetadataResults,
+        req: autogen::transaction::DeleteVertexPropertiesParams,
+        mut res: autogen::transaction::DeleteVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -352,7 +352,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.delete_vertex_metadata(&q, &name)) })
+            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.delete_vertex_properties(&q, &name)) })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
                 Ok(())
@@ -361,10 +361,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn get_edge_metadata(
+    fn get_edge_properties(
         &mut self,
-        req: autogen::transaction::GetEdgeMetadataParams,
-        mut res: autogen::transaction::GetEdgeMetadataResults,
+        req: autogen::transaction::GetEdgePropertiesParams,
+        mut res: autogen::transaction::GetEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -374,12 +374,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<EdgeMetadata>, CapnpError> { map_err!(trans.get_edge_metadata(&q, &name)) })
-            .and_then(move |metadatas| -> Result<(), CapnpError> {
-                let mut res = res.get().init_result(metadatas.len() as u32);
+            .spawn_fn(move || -> Result<Vec<EdgeProperty>, CapnpError> { map_err!(trans.get_edge_properties(&q, &name)) })
+            .and_then(move |properties| -> Result<(), CapnpError> {
+                let mut res = res.get().init_result(properties.len() as u32);
 
-                for (i, metadata) in metadatas.into_iter().enumerate() {
-                    converters::from_edge_metadata(&metadata, res.reborrow().get(i as u32));
+                for (i, property) in properties.into_iter().enumerate() {
+                    converters::from_edge_property(&property, res.reborrow().get(i as u32));
                 }
 
                 Ok(())
@@ -388,10 +388,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn set_edge_metadata(
+    fn set_edge_properties(
         &mut self,
-        req: autogen::transaction::SetEdgeMetadataParams,
-        mut res: autogen::transaction::SetEdgeMetadataResults,
+        req: autogen::transaction::SetEdgePropertiesParams,
+        mut res: autogen::transaction::SetEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -403,7 +403,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.set_edge_metadata(&q, &name, &value)) })
+            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.set_edge_properties(&q, &name, &value)) })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
                 Ok(())
@@ -412,10 +412,10 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
-    fn delete_edge_metadata(
+    fn delete_edge_properties(
         &mut self,
-        req: autogen::transaction::DeleteEdgeMetadataParams,
-        mut res: autogen::transaction::DeleteEdgeMetadataResults,
+        req: autogen::transaction::DeleteEdgePropertiesParams,
+        mut res: autogen::transaction::DeleteEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -425,7 +425,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.delete_edge_metadata(&q, &name)) })
+            .spawn_fn(move || -> Result<(), CapnpError> { map_err!(trans.delete_edge_properties(&q, &name)) })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
                 Ok(())

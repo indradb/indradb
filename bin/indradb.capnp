@@ -59,12 +59,12 @@ enum EdgeDirection {
     inbound @1;
 }
 
-struct VertexMetadata {
+struct VertexProperty {
     id @0 :Uuid;
     value @1 :Json;
 }
 
-struct EdgeMetadata {
+struct EdgeProperty {
     key @0 :EdgeKey;
     value @1 :Json;
 }
@@ -135,47 +135,47 @@ interface Transaction {
     # * `direction`: The direction of edges to get.
     getEdgeCount @8 (id :Uuid, typeFilter :Type, direction :EdgeDirection) -> (result :UInt64);
 
-    # Gets a vertex metadata value.
+    # Gets vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    getVertexMetadata @9 (q :VertexQuery, name :Text) -> (result :List(VertexMetadata));
+    # * `name` - The property name.
+    getVertexProperties @9 (q :VertexQuery, name :Text) -> (result :List(VertexProperty));
 
-    # Sets a vertex metadata value.
+    # Sets vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    # * `value` - The metadata value.
-    setVertexMetadata @10 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
+    # * `name` - The property name.
+    # * `value` - The property value.
+    setVertexProperties @10 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
 
-    # Deletes a vertex metadata value.
+    # Deletes vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    deleteVertexMetadata @11 (q :VertexQuery, name :Text) -> (result :Void);
+    # * `name` - The property name.
+    deleteVertexProperties @11 (q :VertexQuery, name :Text) -> (result :Void);
 
-    # Gets an edge metadata value.
+    # Gets edge properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    getEdgeMetadata @12 (q :EdgeQuery, name :Text) -> (result :List(EdgeMetadata));
+    # * `name` - The property name.
+    getEdgeProperties @12 (q :EdgeQuery, name :Text) -> (result :List(EdgeProperty));
 
-    # Sets an edge metadata value.
+    # Sets edge properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    # * `value` - The metadata value.
-    setEdgeMetadata @13 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
+    # * `name` - The property name.
+    # * `value` - The property value.
+    setEdgeProperties @13 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
 
-    # Deletes an edge metadata value.
+    # Deletes edge properties.
     #
     # Arguments
     # * `q` - The query to run.
-    # * `name` - The metadata name.
-    deleteEdgeMetadata @14 (q :EdgeQuery, name :Text) -> (result :Void);
+    # * `name` - The property name.
+    deleteEdgeProperties @14 (q :EdgeQuery, name :Text) -> (result :Void);
 }

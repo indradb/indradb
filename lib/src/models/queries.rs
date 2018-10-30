@@ -46,7 +46,7 @@ impl From<EdgeDirection> for String {
 /// A query for vertices.
 ///
 /// This is used by transactions to get, set and delete vertices and vertex
-/// metadata.
+/// properties.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VertexQuery {
@@ -103,7 +103,7 @@ impl VertexQuery {
 /// A query for edges.
 ///
 /// This is used by transactions to get, set and delete edges and edge
-/// metadata.
+/// properties.
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EdgeQuery {

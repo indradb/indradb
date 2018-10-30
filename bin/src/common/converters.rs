@@ -54,31 +54,31 @@ pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
-pub fn from_vertex_metadata<'a>(
-    metadata: &indradb::VertexMetadata,
-    mut builder: autogen::vertex_metadata::Builder<'a>,
+pub fn from_vertex_property<'a>(
+    property: &indradb::VertexProperty,
+    mut builder: autogen::vertex_property::Builder<'a>,
 ) {
-    builder.set_id(metadata.id.as_bytes());
-    builder.set_value(&metadata.value.to_string());
+    builder.set_id(property.id.as_bytes());
+    builder.set_value(&property.value.to_string());
 }
 
-pub fn to_vertex_metadata<'a>(
-    reader: &autogen::vertex_metadata::Reader<'a>,
-) -> Result<indradb::VertexMetadata, CapnpError> {
+pub fn to_vertex_property<'a>(
+    reader: &autogen::vertex_property::Reader<'a>,
+) -> Result<indradb::VertexProperty, CapnpError> {
     let id = map_err!(Uuid::from_slice(reader.get_id()?))?;
     let value = map_err!(serde_json::from_str(reader.get_value()?))?;
-    Ok(indradb::VertexMetadata::new(id, value))
+    Ok(indradb::VertexProperty::new(id, value))
 }
 
-pub fn from_edge_metadata<'a>(metadata: &indradb::EdgeMetadata, mut builder: autogen::edge_metadata::Builder<'a>) {
-    builder.set_value(&metadata.value.to_string());
-    from_edge_key(&metadata.key, builder.init_key());
+pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: autogen::edge_property::Builder<'a>) {
+    builder.set_value(&property.value.to_string());
+    from_edge_key(&property.key, builder.init_key());
 }
 
-pub fn to_edge_metadata<'a>(reader: &autogen::edge_metadata::Reader<'a>) -> Result<indradb::EdgeMetadata, CapnpError> {
+pub fn to_edge_property<'a>(reader: &autogen::edge_property::Reader<'a>) -> Result<indradb::EdgeProperty, CapnpError> {
     let key = to_edge_key(&reader.get_key()?)?;
     let value = map_err!(serde_json::from_str(reader.get_value()?))?;
-    Ok(indradb::EdgeMetadata::new(key, value))
+    Ok(indradb::EdgeProperty::new(key, value))
 }
 
 pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {

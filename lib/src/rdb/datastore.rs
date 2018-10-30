@@ -17,8 +17,8 @@ const CF_NAMES: [&str; 6] = [
     "edges:v1",
     "edge_ranges:v1",
     "reversed_edge_ranges:v1",
-    "vertex_metadata:v1",
-    "edge_metadata:v1",
+    "vertex_properties:v1",
+    "edge_properties:v1",
 ];
 
 fn get_options(max_open_files: Option<i32>) -> Options {
@@ -392,24 +392,24 @@ impl Transaction for RocksdbTransaction {
         Ok(count as u64)
     }
 
-    fn get_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>> {
-        let manager = VertexMetadataManager::new(self.db.clone());
-        let mut metadata = Vec::new();
+    fn get_vertex_properties(&self, q: &VertexQuery, name: &str) -> Result<Vec<models::VertexProperty>> {
+        let manager = VertexPropertyManager::new(self.db.clone());
+        let mut properties = Vec::new();
 
         for item in self.vertex_query_to_iterator(q.clone())? {
             let (id, _) = item?;
             let value = manager.get(id, &name[..])?;
 
             if let Some(value) = value {
-                metadata.push(models::VertexMetadata::new(id, value));
+                properties.push(models::VertexProperty::new(id, value));
             }
         }
 
-        Ok(metadata)
+        Ok(properties)
     }
 
-    fn set_vertex_metadata(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
-        let manager = VertexMetadataManager::new(self.db.clone());
+    fn set_vertex_properties(&self, q: &VertexQuery, name: &str, value: &JsonValue) -> Result<()> {
+        let manager = VertexPropertyManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q.clone())? {
@@ -421,8 +421,8 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn delete_vertex_metadata(&self, q: &VertexQuery, name: &str) -> Result<()> {
-        let manager = VertexMetadataManager::new(self.db.clone());
+    fn delete_vertex_properties(&self, q: &VertexQuery, name: &str) -> Result<()> {
+        let manager = VertexPropertyManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q.clone())? {
@@ -434,9 +434,9 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
-        let mut metadata = Vec::new();
+    fn get_edge_properties(&self, q: &EdgeQuery, name: &str) -> Result<Vec<models::EdgeProperty>> {
+        let manager = EdgePropertyManager::new(self.db.clone());
+        let mut properties = Vec::new();
 
         for item in self.edge_query_to_iterator(q.clone())? {
             let (outbound_id, t, _, inbound_id) = item?;
@@ -444,15 +444,15 @@ impl Transaction for RocksdbTransaction {
 
             if let Some(value) = value {
                 let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-                metadata.push(models::EdgeMetadata::new(key, value));
+                properties.push(models::EdgeProperty::new(key, value));
             }
         }
 
-        Ok(metadata)
+        Ok(properties)
     }
 
-    fn set_edge_metadata(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
+    fn set_edge_properties(&self, q: &EdgeQuery, name: &str, value: &JsonValue) -> Result<()> {
+        let manager = EdgePropertyManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q.clone())? {
@@ -464,8 +464,8 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn delete_edge_metadata(&self, q: &EdgeQuery, name: &str) -> Result<()> {
-        let manager = EdgeMetadataManager::new(self.db.clone());
+    fn delete_edge_properties(&self, q: &EdgeQuery, name: &str) -> Result<()> {
+        let manager = EdgePropertyManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q.clone())? {

@@ -13,10 +13,10 @@ use std::sync::Arc;
 use std::u8;
 use uuid::Uuid;
 
-pub type OwnedMetadataItem = ((Uuid, String), JsonValue);
+pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
 pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
-pub type EdgeMetadataItem = ((Uuid, models::Type, Uuid, String), JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>> {
     let result = bincode::serialize(value, bincode::Infinite)?;
@@ -111,10 +111,10 @@ impl VertexManager {
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id))?;
 
-        let vertex_metadata_manager = VertexMetadataManager::new(self.db.clone());
-        for item in vertex_metadata_manager.iterate_for_owner(id)? {
-            let ((vertex_metadata_owner_id, vertex_metadata_name), _) = item?;
-            vertex_metadata_manager.delete(&mut batch, vertex_metadata_owner_id, &vertex_metadata_name[..])?;
+        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
+        for item in vertex_property_manager.iterate_for_owner(id)? {
+            let ((vertex_property_owner_id, vertex_property_name), _) = item?;
+            vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name[..])?;
         }
 
         let edge_manager = EdgeManager::new(self.db.clone());
@@ -229,15 +229,15 @@ impl EdgeManager {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
 
-        let edge_metadata_manager = EdgeMetadataManager::new(self.db.clone());
-        for item in edge_metadata_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
-            let ((edge_metadata_outbound_id, edge_metadata_t, edge_metadata_inbound_id, edge_metadata_name), _) = item?;
-            edge_metadata_manager.delete(
+        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
+        for item in edge_property_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
+            let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) = item?;
+            edge_property_manager.delete(
                 &mut batch,
-                edge_metadata_outbound_id,
-                &edge_metadata_t,
-                edge_metadata_inbound_id,
-                &edge_metadata_name[..],
+                edge_property_outbound_id,
+                &edge_property_t,
+                edge_property_inbound_id,
+                &edge_property_name[..],
             )?;
         }
 
@@ -370,15 +370,15 @@ impl EdgeRangeManager {
     }
 }
 
-pub struct VertexMetadataManager {
+pub struct VertexPropertyManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
 }
 
-impl VertexMetadataManager {
+impl VertexPropertyManager {
     pub fn new(db: Arc<DB>) -> Self {
-        VertexMetadataManager {
-            cf: db.cf_handle("vertex_metadata:v1").unwrap(),
+        VertexPropertyManager {
+            cf: db.cf_handle("vertex_properties:v1").unwrap(),
             db,
         }
     }
@@ -387,14 +387,14 @@ impl VertexMetadataManager {
         build_key(&[KeyComponent::Uuid(vertex_id), KeyComponent::UnsizedString(name)])
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedMetadataItem>>> {
+    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>>> {
         let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
-        Ok(filtered.map(move |item| -> Result<OwnedMetadataItem> {
+        Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
             let owner_id = read_uuid(&mut cursor);
@@ -422,15 +422,15 @@ impl VertexMetadataManager {
     }
 }
 
-pub struct EdgeMetadataManager {
+pub struct EdgePropertyManager {
     pub db: Arc<DB>,
     pub cf: ColumnFamily,
 }
 
-impl EdgeMetadataManager {
+impl EdgePropertyManager {
     pub fn new(db: Arc<DB>) -> Self {
-        EdgeMetadataManager {
-            cf: db.cf_handle("edge_metadata:v1").unwrap(),
+        EdgePropertyManager {
+            cf: db.cf_handle("edge_properties:v1").unwrap(),
             db,
         }
     }
@@ -449,7 +449,7 @@ impl EdgeMetadataManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeMetadataItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
         let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),
@@ -461,28 +461,28 @@ impl EdgeMetadataManager {
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
 
-        let mapped = filtered.map(move |item| -> Result<EdgeMetadataItem> {
+        let mapped = filtered.map(move |item| -> Result<EdgePropertyItem> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
 
-            let edge_metadata_outbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_metadata_outbound_id, outbound_id);
+            let edge_property_outbound_id = read_uuid(&mut cursor);
+            debug_assert_eq!(edge_property_outbound_id, outbound_id);
 
-            let edge_metadata_t = read_type(&mut cursor);
-            debug_assert_eq!(&edge_metadata_t, t);
+            let edge_property_t = read_type(&mut cursor);
+            debug_assert_eq!(&edge_property_t, t);
 
-            let edge_metadata_inbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_metadata_inbound_id, inbound_id);
+            let edge_property_inbound_id = read_uuid(&mut cursor);
+            debug_assert_eq!(edge_property_inbound_id, inbound_id);
 
-            let edge_metadata_name = read_unsized_string(&mut cursor);
+            let edge_property_name = read_unsized_string(&mut cursor);
 
             let value = json_deserialize_value(&v.to_owned()[..])?;
             Ok((
                 (
-                    edge_metadata_outbound_id,
-                    edge_metadata_t,
-                    edge_metadata_inbound_id,
-                    edge_metadata_name,
+                    edge_property_outbound_id,
+                    edge_property_t,
+                    edge_property_inbound_id,
+                    edge_property_name,
                 ),
                 value,
             ))

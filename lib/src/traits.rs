@@ -100,47 +100,47 @@ pub trait Transaction {
         direction: models::EdgeDirection,
     ) -> Result<u64>;
 
-    /// Gets a vertex metadata value.
+    /// Gets vertex properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    fn get_vertex_metadata(&self, q: &models::VertexQuery, name: &str) -> Result<Vec<models::VertexMetadata>>;
+    /// * `name` - The property name.
+    fn get_vertex_properties(&self, q: &models::VertexQuery, name: &str) -> Result<Vec<models::VertexProperty>>;
 
-    /// Sets a vertex metadata value.
+    /// Sets a vertex properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    /// * `value` - The metadata value.
-    fn set_vertex_metadata(&self, q: &models::VertexQuery, name: &str, value: &JsonValue) -> Result<()>;
+    /// * `name` - The property name.
+    /// * `value` - The property value.
+    fn set_vertex_properties(&self, q: &models::VertexQuery, name: &str, value: &JsonValue) -> Result<()>;
 
-    /// Deletes a vertex metadata value.
+    /// Deletes vertex properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    fn delete_vertex_metadata(&self, q: &models::VertexQuery, name: &str) -> Result<()>;
+    /// * `name` - The property name.
+    fn delete_vertex_properties(&self, q: &models::VertexQuery, name: &str) -> Result<()>;
 
-    /// Gets an edge metadata value.
+    /// Gets edge properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    fn get_edge_metadata(&self, q: &models::EdgeQuery, name: &str) -> Result<Vec<models::EdgeMetadata>>;
+    /// * `name` - The property name.
+    fn get_edge_properties(&self, q: &models::EdgeQuery, name: &str) -> Result<Vec<models::EdgeProperty>>;
 
-    /// Sets an edge metadata value.
+    /// Sets edge properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    /// * `value` - The metadata value.
-    fn set_edge_metadata(&self, q: &models::EdgeQuery, name: &str, value: &JsonValue) -> Result<()>;
+    /// * `name` - The property name.
+    /// * `value` - The property value.
+    fn set_edge_properties(&self, q: &models::EdgeQuery, name: &str, value: &JsonValue) -> Result<()>;
 
-    /// Deletes an edge metadata value.
+    /// Deletes edge properties.
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    /// * `name` - The metadata name.
-    fn delete_edge_metadata(&self, q: &models::EdgeQuery, name: &str) -> Result<()>;
+    /// * `name` - The property name.
+    fn delete_edge_properties(&self, q: &models::EdgeQuery, name: &str) -> Result<()>;
 }

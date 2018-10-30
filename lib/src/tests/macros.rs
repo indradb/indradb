@@ -49,12 +49,12 @@ macro_rules! full_test_impl {
         define_test!(should_get_no_edges_for_reversed_time, $code);
         define_test!(should_get_edges, $code);
 
-        // Metadata
-        define_test!(should_handle_vertex_metadata, $code);
-        define_test!(should_not_set_invalid_vertex_metadata, $code);
-        define_test!(should_not_delete_invalid_vertex_metadata, $code);
-        define_test!(should_handle_edge_metadata, $code);
-        define_test!(should_not_set_invalid_edge_metadata, $code);
-        define_test!(should_not_delete_invalid_edge_metadata, $code);
+        // Properties
+        define_test!(should_handle_vertex_properties, $code);
+        define_test!(should_not_set_invalid_vertex_properties, $code);
+        define_test!(should_not_delete_invalid_vertex_properties, $code);
+        define_test!(should_handle_edge_properties, $code);
+        define_test!(should_not_set_invalid_edge_properties, $code);
+        define_test!(should_not_delete_invalid_edge_properties, $code);
     };
 }

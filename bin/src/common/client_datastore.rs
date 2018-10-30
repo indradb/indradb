@@ -225,21 +225,21 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_vertex_metadata(
+    fn get_vertex_properties(
         &self,
         q: &indradb::VertexQuery,
         name: &str,
-    ) -> Result<Vec<indradb::VertexMetadata>, indradb::Error> {
+    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.get_vertex_metadata_request();
+            let mut req = trans.get_vertex_properties_request();
             converters::from_vertex_query(&q, req.get().init_q());
             req.get().set_name(name);
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::VertexMetadata>, CapnpError> = list
+                let list: Result<Vec<indradb::VertexProperty>, CapnpError> = list
                     .into_iter()
-                    .map(|reader| converters::to_vertex_metadata(&reader))
+                    .map(|reader| converters::to_vertex_property(&reader))
                     .collect();
                 list
             });
@@ -248,14 +248,14 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn set_vertex_metadata(
+    fn set_vertex_properties(
         &self,
         q: &indradb::VertexQuery,
         name: &str,
         value: &JsonValue,
     ) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.set_vertex_metadata_request();
+            let mut req = trans.set_vertex_properties_request();
             converters::from_vertex_query(&q, req.get().init_q());
             req.get().set_name(name);
             req.get().set_value(&value.to_string());
@@ -269,9 +269,9 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_vertex_metadata(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
+    fn delete_vertex_properties(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.delete_vertex_metadata_request();
+            let mut req = trans.delete_vertex_properties_request();
             converters::from_vertex_query(&q, req.get().init_q());
             req.get().set_name(name);
 
@@ -284,21 +284,21 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_edge_metadata(
+    fn get_edge_properties(
         &self,
         q: &indradb::EdgeQuery,
         name: &str,
-    ) -> Result<Vec<indradb::EdgeMetadata>, indradb::Error> {
+    ) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.get_edge_metadata_request();
+            let mut req = trans.get_edge_properties_request();
             converters::from_edge_query(&q, req.get().init_q());
             req.get().set_name(name);
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
-                let list: Result<Vec<indradb::EdgeMetadata>, CapnpError> = list
+                let list: Result<Vec<indradb::EdgeProperty>, CapnpError> = list
                     .into_iter()
-                    .map(|reader| converters::to_edge_metadata(&reader))
+                    .map(|reader| converters::to_edge_property(&reader))
                     .collect();
                 list
             });
@@ -307,9 +307,9 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn set_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
+    fn set_edge_properties(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.set_edge_metadata_request();
+            let mut req = trans.set_edge_properties_request();
             converters::from_edge_query(&q, req.get().init_q());
             req.get().set_name(name);
             req.get().set_value(&value.to_string());
@@ -323,9 +323,9 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_edge_metadata(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
+    fn delete_edge_properties(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
-            let mut req = trans.delete_edge_metadata_request();
+            let mut req = trans.delete_edge_properties_request();
             converters::from_edge_query(&q, req.get().init_q());
             req.get().set_name(name);
 
