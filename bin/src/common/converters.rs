@@ -12,6 +12,7 @@ use std::vec::IntoIter;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
+// TODO: just use a normal function here
 #[macro_export]
 macro_rules! map_err {
     ($e:expr) => {
@@ -216,6 +217,31 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
                 limit,
             })
         }
+    }
+}
+
+pub fn from_bulk_insert_vertex_items<'a>(items: &Vec<(indradb::Vertex, Vec<indradb::Property>)>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<(), CapnpError> {
+    for (i, (vertex, properties)) in items.iter().enumerate() {
+        from_vertex(vertex, builder.reborrow().get(i as u32).get_value()?);
+        from_properties(properties, builder.reborrow().get(i as u32).init_properties(properties.len() as u32));
+    }
+
+    Ok(())
+}
+
+pub fn from_bulk_insert_edge_items<'a>(items: &Vec<(indradb::EdgeKey, Vec<indradb::Property>)>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<(), CapnpError> {
+    for (i, (edge_key, properties)) in items.iter().enumerate() {
+        from_edge_key(edge_key, builder.reborrow().get(i as u32).get_value()?);
+        from_properties(properties, builder.reborrow().get(i as u32).init_properties(properties.len() as u32));
+    }
+
+    Ok(())
+}
+
+pub fn from_properties<'a>(properties: &Vec<indradb::Property>, mut builder: capnp::struct_list::Builder<'a, autogen::property::Owned>) {
+    for (i, property) in properties.iter().enumerate() {
+        builder.reborrow().get(i as u32).set_name(&property.name);
+        builder.reborrow().get(i as u32).set_value(&property.value.to_string());
     }
 }
 

@@ -15,6 +15,11 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
+use std::fmt::Debug;
+
+fn map_err<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
+    result.map_err(|err| format!("{:?}", err).into())
+}
 
 pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
@@ -64,14 +69,30 @@ impl indradb::Datastore for ClientDatastore {
 
     fn bulk_insert_vertices<I>(&self, items: I) -> Result<(), indradb::Error>
     where I: Iterator<Item=(indradb::Vertex, Vec<indradb::Property>)> {
-        // TODO
-        unimplemented!();
+        let items: Vec<(indradb::Vertex, Vec<indradb::Property>)> = items.collect();
+        let mut req = self.client.bulk_insert_vertices_request();
+        map_err(converters::from_bulk_insert_vertex_items(&items, req.get().init_items(items.len() as u32)))?;
+
+        let f = req.send().promise.and_then(move |res| {
+            res.get()?;
+            Ok(())
+        });
+
+        map_err(self.core.borrow_mut().run(f))
     }
 
     fn bulk_insert_edges<I>(&self, items: I) -> Result<(), indradb::Error>
     where I: Iterator<Item=(indradb::EdgeKey, Vec<indradb::Property>)> {
-        // TODO
-        unimplemented!();
+        let items: Vec<(indradb::EdgeKey, Vec<indradb::Property>)> = items.collect();
+        let mut req = self.client.bulk_insert_edges_request();
+        map_err(converters::from_bulk_insert_edge_items(&items, req.get().init_items(items.len() as u32)))?;
+
+        let f = req.send().promise.and_then(move |res| {
+            res.get()?;
+            Ok(())
+        });
+
+        map_err(self.core.borrow_mut().run(f))
     }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
@@ -100,11 +121,7 @@ impl ClientTransaction {
         F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item = G, Error = CapnpError>>,
     {
         let future = f(&mut self.trans.borrow_mut());
-        return self
-            .core
-            .borrow_mut()
-            .run(future)
-            .map_err(|err| format!("{:?}", err).into());
+        map_err(self.core.borrow_mut().run(future))
     }
 }
 
