@@ -220,65 +220,66 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
     }
 }
 
-pub fn from_bulk_insert_vertex_items<'a>(items: &Vec<(indradb::Vertex, Vec<indradb::Property>)>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<(), CapnpError> {
-    for (i, (vertex, properties)) in items.iter().enumerate() {
-        from_vertex(vertex, builder.reborrow().get(i as u32).get_value()?);
-        from_properties(properties, builder.reborrow().get(i as u32).init_properties(properties.len() as u32));
+pub fn from_bulk_insert_items<'a>(items: &Vec<indradb::BulkInsertItem>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>) -> Result<(), CapnpError> {
+    for (i, item) in items.iter().enumerate() {
+        let mut builder = builder.reborrow().get(i as u32);
+
+        match item {
+            indradb::BulkInsertItem::Vertex(vertex) => {
+                let mut builder = builder.init_vertex();
+                from_vertex(vertex, builder.get_vertex()?);
+            },
+            indradb::BulkInsertItem::Edge(edge) => {
+                let mut builder = builder.init_edge();
+                from_edge_key(edge, builder.get_key()?);
+            },
+            indradb::BulkInsertItem::VertexProperty(id, name, value) => {
+                let mut builder = builder.init_vertex_property();
+                builder.set_id(id.as_bytes());
+                builder.set_name(name);
+                builder.set_value(&value.to_string());
+            },
+            indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
+                let mut builder = builder.init_edge_property();
+                builder.set_name(name);
+                builder.set_value(&value.to_string());
+                from_edge_key(key, builder.get_key()?);
+            },
+        }
     }
 
     Ok(())
 }
 
-pub fn from_bulk_insert_edge_items<'a>(items: &Vec<(indradb::EdgeKey, Vec<indradb::Property>)>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<(), CapnpError> {
-    for (i, (edge_key, properties)) in items.iter().enumerate() {
-        from_edge_key(edge_key, builder.reborrow().get(i as u32).get_value()?);
-        from_properties(properties, builder.reborrow().get(i as u32).init_properties(properties.len() as u32));
-    }
-
-    Ok(())
-}
-
-pub fn from_properties<'a>(properties: &Vec<indradb::Property>, mut builder: capnp::struct_list::Builder<'a, autogen::property::Owned>) {
-    for (i, property) in properties.iter().enumerate() {
-        builder.reborrow().get(i as u32).set_name(&property.name);
-        builder.reborrow().get(i as u32).set_value(&property.value.to_string());
-    }
-}
-
-pub fn to_bulk_insert_vertex_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<IntoIter<(indradb::Vertex, Vec<indradb::Property>)>, CapnpError> {
-    let items: Result<Vec<(indradb::Vertex, Vec<indradb::Property>)>, CapnpError> = reader
+pub fn to_bulk_insert_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned>) -> Result<IntoIter<indradb::BulkInsertItem>, CapnpError> {
+    let items: Result<Vec<indradb::BulkInsertItem>, CapnpError> = reader
         .into_iter()
         .map(|item| {
-            let vertex = to_vertex(&item.get_value()?)?;
-            let properties = to_bulk_insert_properties(&item.get_properties()?)?;
-            Ok((vertex, properties))
+            match item.which()? {
+                autogen::bulk_insert_item::Vertex(params) => {
+                    let vertex = to_vertex(&params.get_vertex()?)?;
+                    Ok(indradb::BulkInsertItem::Vertex(vertex))
+                },
+                autogen::bulk_insert_item::Edge(params) => {
+                    let edge_key = to_edge_key(&params.get_key()?)?;
+                    Ok(indradb::BulkInsertItem::Edge(edge_key))
+                },
+                autogen::bulk_insert_item::VertexProperty(params) => {
+                    let id = map_err!(Uuid::from_slice(params.get_id()?))?;
+                    let name = params.get_name()?.to_string();
+                    let value = map_err!(serde_json::from_str(params.get_value()?))?;
+                    Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
+                },
+                autogen::bulk_insert_item::EdgeProperty(params) => {
+                    let key = to_edge_key(&params.get_key()?)?;
+                    let name = params.get_name()?.to_string();
+                    let value = map_err!(serde_json::from_str(params.get_value()?))?;
+                    Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
+                }
+            }
         })
         .collect();
     Ok(items?.into_iter())
-}
-
-pub fn to_bulk_insert_edge_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<IntoIter<(indradb::EdgeKey, Vec<indradb::Property>)>, CapnpError> {
-    let items: Result<Vec<(indradb::EdgeKey, Vec<indradb::Property>)>, CapnpError> = reader
-        .into_iter()
-        .map(|item| {
-            let edge_key = to_edge_key(&item.get_value()?)?;
-            let properties = to_bulk_insert_properties(&item.get_properties()?)?;
-            Ok((edge_key, properties))
-        })
-        .collect();
-    Ok(items?.into_iter())
-}
-
-pub fn to_bulk_insert_properties<'a>(reader: &capnp::struct_list::Reader<'a, autogen::property::Owned>) -> Result<Vec<indradb::Property>, CapnpError> {
-    let properties: Result<Vec<indradb::Property>, CapnpError> = reader
-        .into_iter()
-        .map(|item| {
-            let name = item.get_name()?;
-            let value = map_err!(serde_json::from_str(item.get_value()?))?;
-            Ok(indradb::Property::new(name.to_string(), value))
-        })
-        .collect();
-    properties
 }
 
 pub fn from_edge_direction(direction: indradb::EdgeDirection) -> autogen::EdgeDirection {

@@ -15,46 +15,30 @@ pub trait Datastore {
     /// Creates a new transaction.
     fn transaction(&self) -> Result<Self::Trans>;
 
-    /// Bulk inserts many vertices and their properties.
+    /// Bulk inserts many vertices, edges, and/or properties.
     ///
     /// # Arguments
-    /// * `items`: The vertices and their properties to insert.
-    fn bulk_insert_vertices<I>(&self, items: I) -> Result<()>
-    where I: Iterator<Item=(models::Vertex, Vec<models::Property>)> {
+    /// * `items`: The items to insert.
+    fn bulk_insert<I>(&self, items: I) -> Result<()>
+    where I: Iterator<Item=models::BulkInsertItem> {
         let trans = self.transaction()?;
 
-        for (vertex, properties) in items {
-            trans.create_vertex(&vertex)?;
-
-            if properties.len() > 0 {
-                let query = models::VertexQuery::Vertices { ids: vec![vertex.id] };
-                
-                for property in &properties {
-                    trans.set_vertex_properties(&query, &property.name, &property.value)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Bulk inserts many edges and their properties.
-    ///
-    /// # Arguments
-    /// * `items`: The edges and their properties to insert.
-    fn bulk_insert_edges<I>(&self, items: I) -> Result<()>
-    where I: Iterator<Item=(models::EdgeKey, Vec<models::Property>)> {
-        let trans = self.transaction()?;
-
-        for (edge_key, properties) in items {
-            trans.create_edge(&edge_key)?;
-
-            if properties.len() > 0 {
-                let query = models::EdgeQuery::Edges { keys: vec![edge_key] };
-                
-                for property in &properties {
-                    trans.set_edge_properties(&query, &property.name, &property.value)?;
-                }
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(ref vertex) => {
+                    trans.create_vertex(vertex)?;
+                },
+                models::BulkInsertItem::Edge(ref edge_key) => {
+                    trans.create_edge(edge_key)?;
+                },
+                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                    let query = models::VertexQuery::Vertices { ids: vec![id] };
+                    trans.set_vertex_properties(&query, name, value)?;
+                },
+                models::BulkInsertItem::EdgeProperty(ref edge_key, ref name, ref value) => {
+                    let query = models::EdgeQuery::Edges { keys: vec![edge_key.clone()] };
+                    trans.set_edge_properties(&query, name, value)?;
+                },
             }
         }
 

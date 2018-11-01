@@ -57,34 +57,15 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
         Promise::ok(())
     }
 
-    fn bulk_insert_vertices(&mut self, req: autogen::service::BulkInsertVerticesParams, mut res: autogen::service::BulkInsertVerticesResults) -> Promise<(), CapnpError> {
+    fn bulk_insert(&mut self, req: autogen::service::BulkInsertParams, mut res: autogen::service::BulkInsertResults) -> Promise<(), CapnpError> {
         let datastore = self.datastore.clone();
         let cnp_items = pry!(pry!(req.get()).get_items());
-        let items = pry!(converters::to_bulk_insert_vertex_items(&cnp_items));
+        let items = pry!(converters::to_bulk_insert_items(&cnp_items));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                map_err!(datastore.bulk_insert_vertices(items))?;
-                Ok(())
-            })
-            .and_then(move |_| -> Result<(), CapnpError> {
-                res.get().set_result(());
-                Ok(())
-            });
-
-        Promise::from_future(f)
-    }
-
-    fn bulk_insert_edges(&mut self, req: autogen::service::BulkInsertEdgesParams, mut res: autogen::service::BulkInsertEdgesResults) -> Promise<(), CapnpError> {
-        let datastore = self.datastore.clone();
-        let cnp_items = pry!(pry!(req.get()).get_items());
-        let items = pry!(converters::to_bulk_insert_edge_items(&cnp_items));
-
-        let f = self
-            .pool
-            .spawn_fn(move || -> Result<(), CapnpError> {
-                map_err!(datastore.bulk_insert_edges(items))?;
+                map_err!(datastore.bulk_insert(items))?;
                 Ok(())
             })
             .and_then(move |_| -> Result<(), CapnpError> {

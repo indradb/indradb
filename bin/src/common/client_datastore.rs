@@ -67,25 +67,11 @@ impl ClientDatastore {
 impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
-    fn bulk_insert_vertices<I>(&self, items: I) -> Result<(), indradb::Error>
-    where I: Iterator<Item=(indradb::Vertex, Vec<indradb::Property>)> {
-        let items: Vec<(indradb::Vertex, Vec<indradb::Property>)> = items.collect();
-        let mut req = self.client.bulk_insert_vertices_request();
-        map_err(converters::from_bulk_insert_vertex_items(&items, req.get().init_items(items.len() as u32)))?;
-
-        let f = req.send().promise.and_then(move |res| {
-            res.get()?;
-            Ok(())
-        });
-
-        map_err(self.core.borrow_mut().run(f))
-    }
-
-    fn bulk_insert_edges<I>(&self, items: I) -> Result<(), indradb::Error>
-    where I: Iterator<Item=(indradb::EdgeKey, Vec<indradb::Property>)> {
-        let items: Vec<(indradb::EdgeKey, Vec<indradb::Property>)> = items.collect();
-        let mut req = self.client.bulk_insert_edges_request();
-        map_err(converters::from_bulk_insert_edge_items(&items, req.get().init_items(items.len() as u32)))?;
+    fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
+    where I: Iterator<Item=indradb::BulkInsertItem> {
+        let items: Vec<indradb::BulkInsertItem> = items.collect();
+        let mut req = self.client.bulk_insert_request();
+        map_err(converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)))?;
 
         let f = req.send().promise.and_then(move |res| {
             res.get()?;

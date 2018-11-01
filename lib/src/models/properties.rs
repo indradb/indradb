@@ -45,15 +45,3 @@ impl EdgeProperty {
         Self { key, value }
     }
 }
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Property {
-    pub name: String,
-    pub value: JsonValue
-}
-
-impl Property {
-    pub fn new(name: String, value: JsonValue) -> Self {
-        Self { name, value }
-    }
-}
