@@ -52,7 +52,7 @@ impl ClientDatastore {
                 if res.get().unwrap().get_ready() {
                     return Self {
                         core: Rc::new(RefCell::new(core)),
-                        client: client,
+                        client,
                     };
                 }
             }
@@ -100,7 +100,7 @@ pub struct ClientTransaction {
 impl ClientTransaction {
     fn new(core: Rc<RefCell<Core>>, trans: autogen::transaction::Client) -> Self {
         ClientTransaction {
-            core: core,
+            core,
             trans: RefCell::new(trans),
         }
     }

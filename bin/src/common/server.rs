@@ -95,7 +95,7 @@ struct Transaction<T: IndraDbTransaction + Send + Sync + 'static> {
 impl<T: IndraDbTransaction + Send + Sync + 'static> Transaction<T> {
     fn new(pool: CpuPool, trans: T) -> Self {
         Self {
-            pool: pool,
+            pool,
             trans: Arc::new(trans),
         }
     }

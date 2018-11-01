@@ -217,7 +217,7 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
 }
 
 pub fn from_bulk_insert_items<'a>(
-    items: &Vec<indradb::BulkInsertItem>,
+    items: &[indradb::BulkInsertItem],
     mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>,
 ) -> Result<(), CapnpError> {
     for (i, item) in items.iter().enumerate() {
