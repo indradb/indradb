@@ -16,6 +16,45 @@ pub trait Datastore {
 
     /// Creates a new transaction.
     fn transaction(&self) -> Result<Self::Trans>;
+
+    fn bulk_insert_vertices<I>(&self, items: I) -> Result<()>
+    where I: Iterator<Item=models::BulkInsertItem<models::Vertex>> {
+        let trans = self.transaction()?;
+
+        for item in items {
+            trans.create_vertex(&item.value)?;
+
+            if item.properties.len() > 0 {
+                let query = models::VertexQuery::Vertices { ids: vec![item.value.id] };
+                
+                for property in &item.properties {
+                    trans.set_vertex_properties(&query, &property.name, &property.value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn bulk_insert_edges<I>(&self, items: I) -> Result<()>
+    where I: Iterator<Item=models::BulkInsertItem<models::EdgeKey>> {
+        let trans = self.transaction()?;
+
+        for item in items {
+            trans.create_edge(&item.value)?;
+
+            if item.properties.len() > 0 {
+                let query = models::EdgeQuery::Edges { keys: vec![item.value] };
+                
+                for property in &item.properties {
+                    trans.set_edge_properties(&query, &property.name, &property.value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
