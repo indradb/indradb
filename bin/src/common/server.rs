@@ -57,6 +57,29 @@ impl<D: IndraDbDatastore<Trans = T>, T: IndraDbTransaction + Send + Sync + 'stat
         Promise::ok(())
     }
 
+    fn bulk_insert_vertices(&mut self, req: autogen::service::BulkInsertVerticesParams, mut res: autogen::service::BulkInsertVerticesResults) -> Promise<(), CapnpError> {
+        let cnp_items = pry!(pry!(req.get()).get_items());
+        let items = pry!(converters::to_bulk_insert_vertex_items(&cnp_items));
+
+        let f = self
+            .pool
+            .spawn_fn(move || -> Result<(), CapnpError> {
+                map_err!(self.datastore.bulk_insert_vertices(items))?;
+                Ok(())
+            })
+            .and_then(move |_| -> Result<(), CapnpError> {
+                res.get().set_result(());
+                Ok(())
+            });
+
+        Promise::from_future(f)
+    }
+
+    fn bulk_insert_edges(&mut self, req: autogen::service::BulkInsertEdgesParams, mut res: autogen::service::BulkInsertEdgesResults) -> Promise<(), CapnpError> {
+        // TODO
+        unimplemented!();
+    }
+
     fn transaction(
         &mut self,
         _: autogen::service::TransactionParams,

@@ -8,6 +8,7 @@ use indradb;
 use serde_json;
 use std::error::Error;
 use uuid::Uuid;
+use std::vec::IntoIter;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -218,6 +219,30 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
     }
 }
 
+pub fn to_bulk_insert_vertex_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<IntoIter<indradb::BulkInsertItem<indradb::Vertex>>, CapnpError> {
+    let items: Result<Vec<indradb::BulkInsertItem<indradb::Vertex>>, CapnpError> = reader
+        .into_iter()
+        .map(|item| {
+            let vertex = to_vertex(&item.get_value()?)?;
+            let properties = to_bulk_insert_properties(&item.get_properties()?)?;
+            Ok(indradb::BulkInsertItem::new(vertex, properties))
+        })
+        .collect();
+    Ok(items?.into_iter())
+}
+
+pub fn to_bulk_insert_properties<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_property::Owned>) -> Result<Vec<indradb::BulkInsertProperty>, CapnpError> {
+    let properties: Result<Vec<indradb::BulkInsertProperty>, CapnpError> = reader
+        .into_iter()
+        .map(|item| {
+            let name = item.get_name()?;
+            let value = map_err!(serde_json::from_str(item.get_value()?))?;
+            Ok(indradb::BulkInsertProperty::new(name.to_string(), value))
+        })
+        .collect();
+    properties
+}
+
 pub fn from_edge_direction(direction: indradb::EdgeDirection) -> autogen::EdgeDirection {
     match direction {
         indradb::EdgeDirection::Outbound => autogen::EdgeDirection::Outbound,
@@ -241,3 +266,4 @@ pub fn to_optional_datetime(timestamp: u64) -> Option<DateTime<Utc>> {
         Some(Utc.timestamp(secs as i64, nanos as u32))
     }
 }
+

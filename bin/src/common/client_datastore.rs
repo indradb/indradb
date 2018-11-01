@@ -62,6 +62,18 @@ impl ClientDatastore {
 impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
+    fn bulk_insert_vertices<I>(&self, items: I) -> Result<(), indradb::Error>
+    where I: Iterator<Item=indradb::BulkInsertItem<indradb::Vertex>> {
+        // TODO
+        unimplemented!();
+    }
+
+    fn bulk_insert_edges<I>(&self, items: I) -> Result<(), indradb::Error>
+    where I: Iterator<Item=indradb::BulkInsertItem<indradb::EdgeKey>> {
+        // TODO
+        unimplemented!();
+    }
+
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         Ok(ClientTransaction::new(self.core.clone(), trans))
