@@ -6,9 +6,9 @@ use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
 use indradb;
 use serde_json;
-use uuid::Uuid;
-use std::vec::IntoIter;
 use std::fmt::Display;
+use std::vec::IntoIter;
+use uuid::Uuid;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -216,7 +216,10 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
     }
 }
 
-pub fn from_bulk_insert_items<'a>(items: &Vec<indradb::BulkInsertItem>, mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>) -> Result<(), CapnpError> {
+pub fn from_bulk_insert_items<'a>(
+    items: &Vec<indradb::BulkInsertItem>,
+    mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>,
+) -> Result<(), CapnpError> {
     for (i, item) in items.iter().enumerate() {
         let mut builder = builder.reborrow().get(i as u32);
 
@@ -224,54 +227,54 @@ pub fn from_bulk_insert_items<'a>(items: &Vec<indradb::BulkInsertItem>, mut buil
             indradb::BulkInsertItem::Vertex(vertex) => {
                 let mut builder = builder.init_vertex();
                 from_vertex(vertex, builder.get_vertex()?);
-            },
+            }
             indradb::BulkInsertItem::Edge(edge) => {
                 let mut builder = builder.init_edge();
                 from_edge_key(edge, builder.get_key()?);
-            },
+            }
             indradb::BulkInsertItem::VertexProperty(id, name, value) => {
                 let mut builder = builder.init_vertex_property();
                 builder.set_id(id.as_bytes());
                 builder.set_name(name);
                 builder.set_value(&value.to_string());
-            },
+            }
             indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
                 let mut builder = builder.init_edge_property();
                 builder.set_name(name);
                 builder.set_value(&value.to_string());
                 from_edge_key(key, builder.get_key()?);
-            },
+            }
         }
     }
 
     Ok(())
 }
 
-pub fn to_bulk_insert_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned>) -> Result<IntoIter<indradb::BulkInsertItem>, CapnpError> {
+pub fn to_bulk_insert_items<'a>(
+    reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned>,
+) -> Result<IntoIter<indradb::BulkInsertItem>, CapnpError> {
     let items: Result<Vec<indradb::BulkInsertItem>, CapnpError> = reader
         .into_iter()
-        .map(|item| {
-            match item.which()? {
-                autogen::bulk_insert_item::Vertex(params) => {
-                    let vertex = to_vertex(&params.get_vertex()?)?;
-                    Ok(indradb::BulkInsertItem::Vertex(vertex))
-                },
-                autogen::bulk_insert_item::Edge(params) => {
-                    let edge_key = to_edge_key(&params.get_key()?)?;
-                    Ok(indradb::BulkInsertItem::Edge(edge_key))
-                },
-                autogen::bulk_insert_item::VertexProperty(params) => {
-                    let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
-                    let name = params.get_name()?.to_string();
-                    let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
-                    Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
-                },
-                autogen::bulk_insert_item::EdgeProperty(params) => {
-                    let key = to_edge_key(&params.get_key()?)?;
-                    let name = params.get_name()?.to_string();
-                    let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
-                    Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
-                }
+        .map(|item| match item.which()? {
+            autogen::bulk_insert_item::Vertex(params) => {
+                let vertex = to_vertex(&params.get_vertex()?)?;
+                Ok(indradb::BulkInsertItem::Vertex(vertex))
+            }
+            autogen::bulk_insert_item::Edge(params) => {
+                let edge_key = to_edge_key(&params.get_key()?)?;
+                Ok(indradb::BulkInsertItem::Edge(edge_key))
+            }
+            autogen::bulk_insert_item::VertexProperty(params) => {
+                let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
+                let name = params.get_name()?.to_string();
+                let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
+                Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
+            }
+            autogen::bulk_insert_item::EdgeProperty(params) => {
+                let key = to_edge_key(&params.get_key()?)?;
+                let name = params.get_name()?.to_string();
+                let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
+                Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
             }
         })
         .collect();
@@ -301,4 +304,3 @@ pub fn to_optional_datetime(timestamp: u64) -> Option<DateTime<Utc>> {
         Some(Utc.timestamp(secs as i64, nanos as u32))
     }
 }
-

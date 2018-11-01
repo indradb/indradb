@@ -7,6 +7,7 @@ use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 use std::thread::sleep;
@@ -15,7 +16,6 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
-use std::fmt::Debug;
 
 fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
@@ -68,10 +68,15 @@ impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
     fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
-    where I: Iterator<Item=indradb::BulkInsertItem> {
+    where
+        I: Iterator<Item = indradb::BulkInsertItem>,
+    {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
         let mut req = self.client.bulk_insert_request();
-        map_indradb_error(converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)))?;
+        map_indradb_error(converters::from_bulk_insert_items(
+            &items,
+            req.get().init_items(items.len() as u32),
+        ))?;
 
         let f = req.send().promise.and_then(move |res| {
             res.get()?;

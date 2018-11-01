@@ -42,6 +42,5 @@ fn main() {
         .run()
         .expect("Expected to be able to compile capnp schemas");
 
-    fix(Path::new(&var("OUT_DIR").expect("Expected `OUT_DIR` environmental variable"))
-        .join("indradb_capnp.rs"));
+    fix(Path::new(&var("OUT_DIR").expect("Expected `OUT_DIR` environmental variable")).join("indradb_capnp.rs"));
 }

@@ -20,25 +20,29 @@ pub trait Datastore {
     /// # Arguments
     /// * `items`: The items to insert.
     fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where I: Iterator<Item=models::BulkInsertItem> {
+    where
+        I: Iterator<Item = models::BulkInsertItem>,
+    {
         let trans = self.transaction()?;
 
         for item in items {
             match item {
                 models::BulkInsertItem::Vertex(ref vertex) => {
                     trans.create_vertex(vertex)?;
-                },
+                }
                 models::BulkInsertItem::Edge(ref edge_key) => {
                     trans.create_edge(edge_key)?;
-                },
+                }
                 models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     let query = models::VertexQuery::Vertices { ids: vec![id] };
                     trans.set_vertex_properties(&query, name, value)?;
-                },
+                }
                 models::BulkInsertItem::EdgeProperty(ref edge_key, ref name, ref value) => {
-                    let query = models::EdgeQuery::Edges { keys: vec![edge_key.clone()] };
+                    let query = models::EdgeQuery::Edges {
+                        keys: vec![edge_key.clone()],
+                    };
                     trans.set_edge_properties(&query, name, value)?;
-                },
+                }
             }
         }
 
