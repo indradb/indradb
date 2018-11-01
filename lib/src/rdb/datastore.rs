@@ -91,6 +91,43 @@ impl RocksdbDatastore {
 impl Datastore for RocksdbDatastore {
     type Trans = RocksdbTransaction;
 
+    // We override the default `bulk_insert` implementation because further
+    // optimization can be done by using `WriteBatch`s.
+    fn bulk_insert<I>(&self, items: I) -> Result<()>
+    where
+        I: Iterator<Item = models::BulkInsertItem>,
+    {
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let edge_manager = EdgeManager::new(self.db.clone());
+        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
+        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
+        let mut batch = WriteBatch::default();
+
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(ref vertex) => {
+                    if !vertex_manager.create(&mut batch, vertex)? {
+                        return Err("Vertex already exists".into());
+                    }
+                }
+                models::BulkInsertItem::Edge(ref key) => {
+                    if !edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())? {
+                        return Err("Missing vertex".into());
+                    }
+                }
+                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                    vertex_property_manager.set(&mut batch, id, name, value)?;
+                }
+                models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
+                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
+                }
+            }
+        }
+
+        self.db.write(batch)?;
+        Ok(())
+    }
+
     fn transaction(&self) -> Result<Self::Trans> {
         RocksdbTransaction::new(self.db.clone())
     }
@@ -285,13 +322,10 @@ impl RocksdbTransaction {
 impl Transaction for RocksdbTransaction {
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let vertex_manager = VertexManager::new(self.db.clone());
-
-        if vertex_manager.exists(vertex.id)? {
-            Ok(false)
-        } else {
-            vertex_manager.create(vertex)?;
-            Ok(true)
-        }
+        let mut batch = WriteBatch::default();
+        let created = vertex_manager.create(&mut batch, vertex)?;
+        self.db.write(batch)?;
+        Ok(created)
     }
 
     fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<models::Vertex>> {
@@ -327,22 +361,18 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
-        // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone()).exists(key.inbound_id)? {
-            return Ok(false);
-        }
-
-        let new_update_datetime = Utc::now();
         let mut batch = WriteBatch::default();
-        EdgeManager::new(self.db.clone()).set(
+
+        let created = EdgeManager::new(self.db.clone()).set(
             &mut batch,
             key.outbound_id,
             &key.t,
             key.inbound_id,
-            new_update_datetime,
+            Utc::now(),
         )?;
+        
         self.db.write(batch)?;
-        Ok(true)
+        Ok(created)
     }
 
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {
