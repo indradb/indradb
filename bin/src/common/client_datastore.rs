@@ -17,7 +17,7 @@ use tokio_io::AsyncRead;
 use uuid::Uuid;
 use std::fmt::Debug;
 
-fn map_err<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
+fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
 }
 
@@ -71,14 +71,14 @@ impl indradb::Datastore for ClientDatastore {
     where I: Iterator<Item=indradb::BulkInsertItem> {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
         let mut req = self.client.bulk_insert_request();
-        map_err(converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)))?;
+        map_indradb_error(converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)))?;
 
         let f = req.send().promise.and_then(move |res| {
             res.get()?;
             Ok(())
         });
 
-        map_err(self.core.borrow_mut().run(f))
+        map_indradb_error(self.core.borrow_mut().run(f))
     }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
@@ -107,7 +107,7 @@ impl ClientTransaction {
         F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item = G, Error = CapnpError>>,
     {
         let future = f(&mut self.trans.borrow_mut());
-        map_err(self.core.borrow_mut().run(future))
+        map_indradb_error(self.core.borrow_mut().run(future))
     }
 }
 

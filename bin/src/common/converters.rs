@@ -6,18 +6,14 @@ use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
 use indradb;
 use serde_json;
-use std::error::Error;
 use uuid::Uuid;
 use std::vec::IntoIter;
+use std::fmt::Display;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
-// TODO: just use a normal function here
-#[macro_export]
-macro_rules! map_err {
-    ($e:expr) => {
-        $e.map_err(|err| capnp::Error::failed(err.description().to_string()))
-    };
+pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Error> {
+    result.map_err(|err| capnp::Error::failed(format!("{}", err)))
 }
 
 pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::Builder<'a>) {
@@ -26,8 +22,8 @@ pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::B
 }
 
 pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
-    let id = map_err!(Uuid::from_slice(reader.get_id()?))?;
-    let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
+    let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_type()?.to_string()))?;
     Ok(indradb::Vertex::with_id(id, t))
 }
 
@@ -50,9 +46,9 @@ pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key:
 }
 
 pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
-    let outbound_id = map_err!(Uuid::from_slice(reader.get_outbound_id()?))?;
-    let t = map_err!(indradb::Type::new(reader.get_type()?.to_string()))?;
-    let inbound_id = map_err!(Uuid::from_slice(reader.get_inbound_id()?))?;
+    let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_type()?.to_string()))?;
+    let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
@@ -67,8 +63,8 @@ pub fn from_vertex_property<'a>(
 pub fn to_vertex_property<'a>(
     reader: &autogen::vertex_property::Reader<'a>,
 ) -> Result<indradb::VertexProperty, CapnpError> {
-    let id = map_err!(Uuid::from_slice(reader.get_id()?))?;
-    let value = map_err!(serde_json::from_str(reader.get_value()?))?;
+    let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
+    let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::VertexProperty::new(id, value))
 }
 
@@ -79,7 +75,7 @@ pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: aut
 
 pub fn to_edge_property<'a>(reader: &autogen::edge_property::Reader<'a>) -> Result<indradb::EdgeProperty, CapnpError> {
     let key = to_edge_key(&reader.get_key()?)?;
-    let value = map_err!(serde_json::from_str(reader.get_value()?))?;
+    let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::EdgeProperty::new(key, value))
 }
 
@@ -123,7 +119,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
                 start_id: if start_id_bytes.is_empty() {
                     None
                 } else {
-                    Some(map_err!(Uuid::from_slice(start_id_bytes))?)
+                    Some(map_capnp_err(Uuid::from_slice(start_id_bytes))?)
                 },
                 limit: params.get_limit(),
             })
@@ -132,7 +128,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
             let ids: Result<Vec<Uuid>, CapnpError> = params
                 .get_ids()?
                 .into_iter()
-                .map(|bytes| map_err!(Uuid::from_slice(bytes?)))
+                .map(|bytes| map_capnp_err(Uuid::from_slice(bytes?)))
                 .collect();
             Ok(indradb::VertexQuery::Vertices { ids: ids? })
         }
@@ -202,7 +198,7 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
             let converter = to_edge_direction(params.get_converter()?);
             let type_filter = match params.get_type_filter()? {
                 "" => None,
-                value => Some(map_err!(indradb::Type::new(value.to_string()))?),
+                value => Some(map_capnp_err(indradb::Type::new(value.to_string()))?),
             };
             let high_filter = to_optional_datetime(params.get_high_filter());
             let low_filter = to_optional_datetime(params.get_low_filter());
@@ -265,15 +261,15 @@ pub fn to_bulk_insert_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen:
                     Ok(indradb::BulkInsertItem::Edge(edge_key))
                 },
                 autogen::bulk_insert_item::VertexProperty(params) => {
-                    let id = map_err!(Uuid::from_slice(params.get_id()?))?;
+                    let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
                     let name = params.get_name()?.to_string();
-                    let value = map_err!(serde_json::from_str(params.get_value()?))?;
+                    let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
                     Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
                 },
                 autogen::bulk_insert_item::EdgeProperty(params) => {
                     let key = to_edge_key(&params.get_key()?)?;
                     let name = params.get_name()?.to_string();
-                    let value = map_err!(serde_json::from_str(params.get_value()?))?;
+                    let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
                     Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
                 }
             }
