@@ -28,10 +28,14 @@ pub trait Datastore {
         for item in items {
             match item {
                 models::BulkInsertItem::Vertex(ref vertex) => {
-                    trans.create_vertex(vertex)?;
+                    if !trans.create_vertex(vertex)? {
+                        return Err("Vertex already exists".into());
+                    }
                 }
                 models::BulkInsertItem::Edge(ref edge_key) => {
-                    trans.create_edge(edge_key)?;
+                    if !trans.create_edge(edge_key)? {
+                        return Err("Missing vertex".into());
+                    }
                 }
                 models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     let query = models::VertexQuery::Vertices { ids: vec![id] };
