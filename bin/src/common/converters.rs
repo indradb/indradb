@@ -231,6 +231,18 @@ pub fn to_bulk_insert_vertex_items<'a>(reader: &capnp::struct_list::Reader<'a, a
     Ok(items?.into_iter())
 }
 
+pub fn to_bulk_insert_edge_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<IntoIter<indradb::BulkInsertItem<indradb::EdgeKey>>, CapnpError> {
+    let items: Result<Vec<indradb::BulkInsertItem<indradb::EdgeKey>>, CapnpError> = reader
+        .into_iter()
+        .map(|item| {
+            let edge_key = to_edge_key(&item.get_value()?)?;
+            let properties = to_bulk_insert_properties(&item.get_properties()?)?;
+            Ok(indradb::BulkInsertItem::new(edge_key, properties))
+        })
+        .collect();
+    Ok(items?.into_iter())
+}
+
 pub fn to_bulk_insert_properties<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_property::Owned>) -> Result<Vec<indradb::BulkInsertProperty>, CapnpError> {
     let properties: Result<Vec<indradb::BulkInsertProperty>, CapnpError> = reader
         .into_iter()
