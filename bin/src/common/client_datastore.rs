@@ -63,13 +63,13 @@ impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
     fn bulk_insert_vertices<I>(&self, items: I) -> Result<(), indradb::Error>
-    where I: Iterator<Item=indradb::BulkInsertItem<indradb::Vertex>> {
+    where I: Iterator<Item=(indradb::Vertex, Vec<indradb::Property>)> {
         // TODO
         unimplemented!();
     }
 
     fn bulk_insert_edges<I>(&self, items: I) -> Result<(), indradb::Error>
-    where I: Iterator<Item=indradb::BulkInsertItem<indradb::EdgeKey>> {
+    where I: Iterator<Item=(indradb::EdgeKey, Vec<indradb::Property>)> {
         // TODO
         unimplemented!();
     }

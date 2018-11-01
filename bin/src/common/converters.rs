@@ -219,37 +219,37 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
     }
 }
 
-pub fn to_bulk_insert_vertex_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<IntoIter<indradb::BulkInsertItem<indradb::Vertex>>, CapnpError> {
-    let items: Result<Vec<indradb::BulkInsertItem<indradb::Vertex>>, CapnpError> = reader
+pub fn to_bulk_insert_vertex_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::vertex::Owned>>) -> Result<IntoIter<(indradb::Vertex, Vec<indradb::Property>)>, CapnpError> {
+    let items: Result<Vec<(indradb::Vertex, Vec<indradb::Property>)>, CapnpError> = reader
         .into_iter()
         .map(|item| {
             let vertex = to_vertex(&item.get_value()?)?;
             let properties = to_bulk_insert_properties(&item.get_properties()?)?;
-            Ok(indradb::BulkInsertItem::new(vertex, properties))
+            Ok((vertex, properties))
         })
         .collect();
     Ok(items?.into_iter())
 }
 
-pub fn to_bulk_insert_edge_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<IntoIter<indradb::BulkInsertItem<indradb::EdgeKey>>, CapnpError> {
-    let items: Result<Vec<indradb::BulkInsertItem<indradb::EdgeKey>>, CapnpError> = reader
+pub fn to_bulk_insert_edge_items<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned<autogen::edge_key::Owned>>) -> Result<IntoIter<(indradb::EdgeKey, Vec<indradb::Property>)>, CapnpError> {
+    let items: Result<Vec<(indradb::EdgeKey, Vec<indradb::Property>)>, CapnpError> = reader
         .into_iter()
         .map(|item| {
             let edge_key = to_edge_key(&item.get_value()?)?;
             let properties = to_bulk_insert_properties(&item.get_properties()?)?;
-            Ok(indradb::BulkInsertItem::new(edge_key, properties))
+            Ok((edge_key, properties))
         })
         .collect();
     Ok(items?.into_iter())
 }
 
-pub fn to_bulk_insert_properties<'a>(reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_property::Owned>) -> Result<Vec<indradb::BulkInsertProperty>, CapnpError> {
-    let properties: Result<Vec<indradb::BulkInsertProperty>, CapnpError> = reader
+pub fn to_bulk_insert_properties<'a>(reader: &capnp::struct_list::Reader<'a, autogen::property::Owned>) -> Result<Vec<indradb::Property>, CapnpError> {
+    let properties: Result<Vec<indradb::Property>, CapnpError> = reader
         .into_iter()
         .map(|item| {
             let name = item.get_name()?;
             let value = map_err!(serde_json::from_str(item.get_value()?))?;
-            Ok(indradb::BulkInsertProperty::new(name.to_string(), value))
+            Ok(indradb::Property::new(name.to_string(), value))
         })
         .collect();
     properties

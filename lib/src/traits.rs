@@ -20,16 +20,16 @@ pub trait Datastore {
     /// # Arguments
     /// * `items`: The vertices and their properties to insert.
     fn bulk_insert_vertices<I>(&self, items: I) -> Result<()>
-    where I: Iterator<Item=models::BulkInsertItem<models::Vertex>> {
+    where I: Iterator<Item=(models::Vertex, Vec<models::Property>)> {
         let trans = self.transaction()?;
 
-        for item in items {
-            trans.create_vertex(&item.value)?;
+        for (vertex, properties) in items {
+            trans.create_vertex(&vertex)?;
 
-            if item.properties.len() > 0 {
-                let query = models::VertexQuery::Vertices { ids: vec![item.value.id] };
+            if properties.len() > 0 {
+                let query = models::VertexQuery::Vertices { ids: vec![vertex.id] };
                 
-                for property in &item.properties {
+                for property in &properties {
                     trans.set_vertex_properties(&query, &property.name, &property.value)?;
                 }
             }
@@ -43,16 +43,16 @@ pub trait Datastore {
     /// # Arguments
     /// * `items`: The edges and their properties to insert.
     fn bulk_insert_edges<I>(&self, items: I) -> Result<()>
-    where I: Iterator<Item=models::BulkInsertItem<models::EdgeKey>> {
+    where I: Iterator<Item=(models::EdgeKey, Vec<models::Property>)> {
         let trans = self.transaction()?;
 
-        for item in items {
-            trans.create_edge(&item.value)?;
+        for (edge_key, properties) in items {
+            trans.create_edge(&edge_key)?;
 
-            if item.properties.len() > 0 {
-                let query = models::EdgeQuery::Edges { keys: vec![item.value] };
+            if properties.len() > 0 {
+                let query = models::EdgeQuery::Edges { keys: vec![edge_key] };
                 
-                for property in &item.properties {
+                for property in &properties {
                     trans.set_edge_properties(&query, &property.name, &property.value)?;
                 }
             }
