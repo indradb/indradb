@@ -47,7 +47,7 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     if bulk_load_optimized {
         // Via https://github.com/facebook/rocksdb/wiki/RocksDB-FAQ
         opts.set_allow_concurrent_memtable_write(false);
-        opts.set_memtable_factory(MemtableFactory::Vector);
+        // opts.set_memtable_factory(MemtableFactory::Vector); // disabled as this seems to stall writes
         opts.set_max_background_flushes(8);
         opts.set_disable_auto_compactions(true);
         opts.set_level_zero_file_num_compaction_trigger(1024);
@@ -143,7 +143,7 @@ impl Datastore for RocksdbDatastore {
         }
 
         // NOTE: syncing and WAL are disabled for bulk inserts to maximimze
-        // performanc
+        // performance
         let mut opts = WriteOptions::default();
         opts.set_sync(false);
         opts.disable_wal(true);
