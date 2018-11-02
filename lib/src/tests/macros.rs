@@ -16,8 +16,8 @@ macro_rules! full_test_impl {
     ($code:expr) => {
         // Bulk insert
         define_test!(should_bulk_insert, $code);
-        define_test!(should_not_bulk_insert_an_invalid_vertex, $code);
-        define_test!(should_not_bulk_insert_an_invalid_edge, $code);
+        define_test!(should_bulk_insert_a_redundant_vertex, $code);
+        define_test!(should_bulk_insert_an_invalid_edge, $code);
 
         // Vertices
         define_test!(should_create_vertex_from_type, $code);
