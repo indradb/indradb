@@ -363,14 +363,9 @@ impl Transaction for RocksdbTransaction {
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
         let mut batch = WriteBatch::default();
 
-        let created = EdgeManager::new(self.db.clone()).set(
-            &mut batch,
-            key.outbound_id,
-            &key.t,
-            key.inbound_id,
-            Utc::now(),
-        )?;
-        
+        let created =
+            EdgeManager::new(self.db.clone()).set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+
         self.db.write(batch)?;
         Ok(created)
     }
