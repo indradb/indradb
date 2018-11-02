@@ -103,13 +103,8 @@ impl VertexManager {
         self.iterate(iterator)
     }
 
-    pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<bool> {
-        if self.exists(vertex.id)? {
-            Ok(false)
-        } else {
-            set_bincode(batch, self.cf, &self.key(vertex.id), &vertex.t)?;
-            Ok(true)
-        }
+    pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
+        set_bincode(batch, self.cf, &self.key(vertex.id), &vertex.t)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
@@ -197,13 +192,7 @@ impl EdgeManager {
         t: &models::Type,
         inbound_id: Uuid,
         new_update_datetime: DateTime<Utc>,
-    ) -> Result<bool> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
-        if !vertex_manager.exists(outbound_id)? || !vertex_manager.exists(inbound_id)? {
-            return Ok(false);
-        }
-
+    ) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
 
@@ -217,7 +206,7 @@ impl EdgeManager {
         set_bincode(batch, self.cf, &key, &new_update_datetime)?;
         edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id)?;
-        Ok(true)
+        Ok(())
     }
 
     pub fn delete(
