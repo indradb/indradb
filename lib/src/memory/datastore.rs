@@ -113,6 +113,10 @@ impl InternalMemoryDatastore {
                 let vertex_values = self.get_vertex_values_by_query(&*vertex_query)?;
                 let mut results = Vec::new();
 
+                if limit == 0 {
+                    return Ok(results);
+                }
+
                 match converter {
                     models::EdgeDirection::Outbound => {
                         for (id, _) in vertex_values {
