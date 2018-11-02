@@ -503,7 +503,9 @@ pub fn start(binding: &str, connection_string: &str, worker_count: usize) -> Res
              i32",
         );
 
-        let datastore = RocksdbDatastore::new(path, Some(max_open_files))
+        let bulk_load_optimized = env::var("ROCKSDB_BULK_LOAD_OPTIMIZED").unwrap_or_else(|_| "".to_string()) == "true";
+
+        let datastore = RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
         run(addr, datastore, worker_count)

@@ -6,7 +6,7 @@ fn should_repair() {
     let path = generate_temporary_path();
 
     // // Make sure we just initialize the database
-    RocksdbDatastore::new(&path, Some(1)).unwrap();
+    RocksdbDatastore::new(&path, Some(1), false).unwrap();
 
     // Now try to repair
     RocksdbDatastore::repair(&path, Some(1)).unwrap();
