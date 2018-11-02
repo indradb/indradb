@@ -37,7 +37,7 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     opts.set_level_zero_stop_writes_trigger(24);
     opts.set_num_levels(4);
     opts.set_max_bytes_for_level_base(536_870_912); // 512mb
-    opts.set_max_bytes_for_level_multiplier(8);
+    opts.set_max_bytes_for_level_multiplier(8.0);
     opts.set_max_background_compactions(4);
 
     if let Some(max_open_files) = max_open_files {
