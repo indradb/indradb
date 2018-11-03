@@ -1,4 +1,4 @@
-use super::super::{BulkInsertItem, Datastore, EdgeKey, EdgeQuery, Transaction, Type, Vertex, VertexQuery};
+use super::super::{BulkInsertItem, Datastore, EdgeKey, Transaction, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery};
 use chrono::offset::Utc;
 use chrono::Timelike;
 use serde_json::Value as JsonValue;
@@ -41,12 +41,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     let end_time = Utc::now();
 
     let trans = datastore.transaction().unwrap();
-
-    let vertices = trans
-        .get_vertices(&VertexQuery::Vertices {
-            ids: vec![outbound_v.id, inbound_v.id],
-        })
-        .unwrap();
+    let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id])).unwrap();
 
     assert_eq!(vertices.len(), 2);
     assert_eq!(vertices[0].id, outbound_v.id);
@@ -54,11 +49,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = trans
-        .get_edges(&EdgeQuery::Edges {
-            keys: vec![key.clone()],
-        })
-        .unwrap();
+    let edges = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].key.outbound_id, outbound_v.id);
@@ -67,14 +58,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert!(edges[0].created_datetime >= start_time);
     assert!(edges[0].created_datetime <= end_time);
 
-    let vertex_properties = trans
-        .get_vertex_properties(
-            &VertexQuery::Vertices {
-                ids: vec![outbound_v.id],
-            },
-            "vertex_property_name",
-        )
-        .unwrap();
+    let vertex_properties = trans.get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property("vertex_property_name")).unwrap();
 
     assert_eq!(vertex_properties.len(), 1);
     assert_eq!(vertex_properties[0].id, outbound_v.id);
@@ -83,14 +67,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         JsonValue::String("vertex_property_value".to_string())
     );
 
-    let edge_properties = trans
-        .get_edge_properties(
-            &EdgeQuery::Edges {
-                keys: vec![key.clone()],
-            },
-            "edge_property_name",
-        )
-        .unwrap();
+    let edge_properties = trans.get_edge_properties(SpecificEdgeQuery::single(key.clone()).property("edge_property_name")).unwrap();
 
     assert_eq!(edge_properties.len(), 1);
     assert_eq!(edge_properties[0].key, key);

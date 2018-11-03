@@ -155,7 +155,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<Vertex>, CapnpError> { converters::map_capnp_err(trans.get_vertices(&q)) })
+            .spawn_fn(move || -> Result<Vec<Vertex>, CapnpError> { converters::map_capnp_err(trans.get_vertices(q)) })
             .and_then(move |vertices| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(vertices.len() as u32);
 
@@ -181,7 +181,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.delete_vertices(&q))?;
+                converters::map_capnp_err(trans.delete_vertices(q))?;
                 Ok(())
             })
             .and_then(move |_| -> Result<(), CapnpError> {
@@ -241,7 +241,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<Edge>, CapnpError> { converters::map_capnp_err(trans.get_edges(&q)) })
+            .spawn_fn(move || -> Result<Vec<Edge>, CapnpError> { converters::map_capnp_err(trans.get_edges(q)) })
             .and_then(move |edges| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(edges.len() as u32);
 
@@ -267,7 +267,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.delete_edges(&q))?;
+                converters::map_capnp_err(trans.delete_edges(q))?;
                 Ok(())
             })
             .and_then(move |_| -> Result<(), CapnpError> {
@@ -313,13 +313,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_vertex_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_vertex_property_query(&cnp_q));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<Vec<VertexProperty>, CapnpError> {
-                converters::map_capnp_err(trans.get_vertex_properties(&q, &name))
+                converters::map_capnp_err(trans.get_vertex_properties(q))
             })
             .and_then(move |properties| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(properties.len() as u32);
@@ -342,15 +341,14 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_vertex_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_vertex_property_query(&cnp_q));
         let cnp_value = pry!(params.get_value());
         let value = pry!(converters::map_capnp_err(serde_json::from_str(cnp_value)));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.set_vertex_properties(&q, &name, &value))
+                converters::map_capnp_err(trans.set_vertex_properties(q, &value))
             })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
@@ -368,13 +366,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_vertex_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_vertex_property_query(&cnp_q));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.delete_vertex_properties(&q, &name))
+                converters::map_capnp_err(trans.delete_vertex_properties(q))
             })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
@@ -392,13 +389,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_edge_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_edge_property_query(&cnp_q));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<Vec<EdgeProperty>, CapnpError> {
-                converters::map_capnp_err(trans.get_edge_properties(&q, &name))
+                converters::map_capnp_err(trans.get_edge_properties(q))
             })
             .and_then(move |properties| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(properties.len() as u32);
@@ -421,15 +417,14 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_edge_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_edge_property_query(&cnp_q));
         let cnp_value = pry!(params.get_value());
         let value = pry!(converters::map_capnp_err(serde_json::from_str(cnp_value)));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.set_edge_properties(&q, &name, &value))
+                converters::map_capnp_err(trans.set_edge_properties(q, &value))
             })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
@@ -447,13 +442,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let cnp_q = pry!(params.get_q());
-        let q = pry!(converters::to_edge_query(&cnp_q));
-        let name = pry!(params.get_name()).to_string();
+        let q = pry!(converters::to_edge_property_query(&cnp_q));
 
         let f = self
             .pool
             .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.delete_edge_properties(&q, &name))
+                converters::map_capnp_err(trans.delete_edge_properties(q))
             })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());

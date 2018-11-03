@@ -81,139 +81,145 @@ pub fn to_edge_property<'a>(reader: &autogen::edge_property::Reader<'a>) -> Resu
 
 pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {
     match q {
-        indradb::VertexQuery::All { start_id, limit } => {
-            let mut builder = builder.init_all();
+        indradb::VertexQuery::Range(range) => {
+            let mut builder = builder.init_range();
 
-            if let Some(start_id) = start_id {
+            if let Some(start_id) = range.start_id {
                 builder.set_start_id(start_id.as_bytes());
             }
 
-            builder.set_limit(*limit);
+            builder.set_limit(range.limit);
         }
-        indradb::VertexQuery::Vertices { ids } => {
-            let mut builder = builder.init_vertices().init_ids(ids.len() as u32);
+        indradb::VertexQuery::Specific(specific) => {
+            let mut builder = builder.init_specific().init_ids(specific.ids.len() as u32);
 
-            for (i, id) in ids.iter().enumerate() {
+            for (i, id) in specific.ids.iter().enumerate() {
                 builder.set(i as u32, id.as_bytes());
             }
         }
-        indradb::VertexQuery::Pipe {
-            edge_query,
-            converter,
-            limit,
-        } => {
+        indradb::VertexQuery::Pipe(pipe) => {
             let mut builder = builder.init_pipe();
-            builder.set_converter(from_edge_direction(*converter));
-            builder.set_limit(*limit);
-            from_edge_query(&edge_query, builder.init_edge_query());
+            builder.set_direction(from_edge_direction(pipe.direction));
+            builder.set_limit(pipe.limit);
+            from_edge_query(&pipe.inner, builder.init_inner());
         }
     }
 }
 
 pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
     match reader.which()? {
-        autogen::vertex_query::All(params) => {
+        autogen::vertex_query::Range(params) => {
             let start_id_bytes = params.get_start_id()?;
+            let mut range = indradb::RangeVertexQuery::new(params.get_limit());
 
-            Ok(indradb::VertexQuery::All {
-                start_id: if start_id_bytes.is_empty() {
-                    None
-                } else {
-                    Some(map_capnp_err(Uuid::from_slice(start_id_bytes))?)
-                },
-                limit: params.get_limit(),
-            })
+            if !start_id_bytes.is_empty() {
+                range = range.start_id(map_capnp_err(Uuid::from_slice(start_id_bytes))?);
+            }
+
+            Ok(indradb::VertexQuery::Range(range))
         }
-        autogen::vertex_query::Vertices(params) => {
+        autogen::vertex_query::Specific(params) => {
             let ids: Result<Vec<Uuid>, CapnpError> = params
                 .get_ids()?
                 .into_iter()
                 .map(|bytes| map_capnp_err(Uuid::from_slice(bytes?)))
                 .collect();
-            Ok(indradb::VertexQuery::Vertices { ids: ids? })
+            Ok(indradb::VertexQuery::Specific(indradb::SpecificVertexQuery::new(ids?)))
         }
         autogen::vertex_query::Pipe(params) => {
-            let edge_query = Box::new(to_edge_query(&params.get_edge_query()?)?);
-            let converter = to_edge_direction(params.get_converter()?);
+            let inner = Box::new(to_edge_query(&params.get_inner()?)?);
+            let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
-            Ok(indradb::VertexQuery::Pipe {
-                edge_query,
-                converter,
-                limit,
-            })
+            Ok(indradb::VertexQuery::Pipe(indradb::PipeVertexQuery::new(inner, direction, limit)))
         }
     }
 }
 
+pub fn from_vertex_property_query<'a>(q: &indradb::VertexPropertyQuery, mut builder: autogen::vertex_property_query::Builder<'a>) {
+    builder.set_name(&q.name);
+    from_vertex_query(&q.inner, builder.init_inner());
+}
+
+pub fn to_vertex_property_query<'a>(reader: &autogen::vertex_property_query::Reader<'a>) -> Result<indradb::VertexPropertyQuery, CapnpError> {
+    let inner = to_vertex_query(&reader.get_inner()?)?;
+    let name = reader.get_name()?;
+    Ok(indradb::VertexPropertyQuery::new(inner, name))
+}
+
 pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query::Builder<'a>) {
     match q {
-        indradb::EdgeQuery::Edges { keys } => {
-            let mut builder = builder.init_edges().init_keys(keys.len() as u32);
+        indradb::EdgeQuery::Specific(specific) => {
+            let mut builder = builder.init_specific().init_keys(specific.keys.len() as u32);
 
-            for (i, key) in keys.iter().enumerate() {
+            for (i, key) in specific.keys.iter().enumerate() {
                 from_edge_key(key, builder.reborrow().get(i as u32));
             }
         }
-        indradb::EdgeQuery::Pipe {
-            vertex_query,
-            converter,
-            type_filter,
-            high_filter,
-            low_filter,
-            limit,
-        } => {
+        indradb::EdgeQuery::Pipe(pipe) => {
             let mut builder = builder.init_pipe();
-            builder.set_converter(from_edge_direction(*converter));
+            builder.set_direction(from_edge_direction(pipe.direction));
 
-            if let Some(type_filter) = type_filter {
-                builder.set_type_filter(&type_filter.0);
+            if let Some(t) = &pipe.t {
+                builder.set_t(&t.0);
             }
 
-            if let Some(high_filter) = high_filter {
-                builder.set_high_filter(high_filter.timestamp_nanos() as u64);
+            if let Some(high) = pipe.high {
+                builder.set_high(high.timestamp_nanos() as u64);
             }
 
-            if let Some(low_filter) = low_filter {
-                builder.set_low_filter(low_filter.timestamp_nanos() as u64);
+            if let Some(low) = pipe.low {
+                builder.set_low(low.timestamp_nanos() as u64);
             }
 
-            builder.set_limit(*limit);
-            from_vertex_query(&vertex_query, builder.init_vertex_query());
+            builder.set_limit(pipe.limit);
+            from_vertex_query(&pipe.inner, builder.init_inner());
         }
     }
 }
 
 pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
     match reader.which()? {
-        autogen::edge_query::Edges(params) => {
+        autogen::edge_query::Specific(params) => {
             let keys: Result<Vec<indradb::EdgeKey>, CapnpError> = params
                 .get_keys()?
                 .into_iter()
                 .map(|reader| to_edge_key(&reader))
                 .collect();
-            Ok(indradb::EdgeQuery::Edges { keys: keys? })
+            Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(keys?)))
         }
         autogen::edge_query::Pipe(params) => {
-            let vertex_query = Box::new(to_vertex_query(&params.get_vertex_query()?)?);
-            let converter = to_edge_direction(params.get_converter()?);
-            let type_filter = match params.get_type_filter()? {
-                "" => None,
-                value => Some(map_capnp_err(indradb::Type::new(value.to_string()))?),
-            };
-            let high_filter = to_optional_datetime(params.get_high_filter());
-            let low_filter = to_optional_datetime(params.get_low_filter());
+            let inner = Box::new(to_vertex_query(&params.get_inner()?)?);
+            let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
+            let mut pipe = indradb::PipeEdgeQuery::new(inner, direction, limit);
 
-            Ok(indradb::EdgeQuery::Pipe {
-                vertex_query,
-                converter,
-                type_filter,
-                high_filter,
-                low_filter,
-                limit,
-            })
+            let t = params.get_t()?;
+            if t != "" {
+                pipe = pipe.t(map_capnp_err(indradb::Type::new(t.to_string()))?);
+            }
+
+            if let Some(high) = to_optional_datetime(params.get_high()) {
+                pipe = pipe.high(high);
+            }
+
+            if let Some(low) = to_optional_datetime(params.get_low()) {
+                pipe = pipe.low(low);
+            }
+
+            Ok(indradb::EdgeQuery::Pipe(pipe))
         }
     }
+}
+
+pub fn from_edge_property_query<'a>(q: &indradb::EdgePropertyQuery, mut builder: autogen::edge_property_query::Builder<'a>) {
+    builder.set_name(&q.name);
+    from_edge_query(&q.inner, builder.init_inner());
+}
+
+pub fn to_edge_property_query<'a>(reader: &autogen::edge_property_query::Reader<'a>) -> Result<indradb::EdgePropertyQuery, CapnpError> {
+    let inner = to_edge_query(&reader.get_inner()?)?;
+    let name = reader.get_name()?;
+    Ok(indradb::EdgePropertyQuery::new(inner, name))
 }
 
 pub fn from_bulk_insert_items<'a>(

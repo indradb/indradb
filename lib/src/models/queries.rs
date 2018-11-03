@@ -43,98 +43,245 @@ impl From<EdgeDirection> for String {
     }
 }
 
-/// A query for vertices.
-///
-/// This is used by transactions to get, set and delete vertices and vertex
-/// properties.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub enum VertexQuery {
-    All {
-        start_id: Option<Uuid>,
-        limit: u32,
-    },
-    Vertices {
-        ids: Vec<Uuid>,
-    },
-    Pipe {
-        edge_query: Box<EdgeQuery>,
-        converter: EdgeDirection,
-        limit: u32,
-    },
+    Range(RangeVertexQuery),
+    Specific(SpecificVertexQuery),
+    Pipe(PipeVertexQuery),
 }
 
-impl VertexQuery {
-    pub fn outbound_edges(
-        self,
-        type_filter: Option<Type>,
-        high_filter: Option<DateTime<Utc>>,
-        low_filter: Option<DateTime<Utc>>,
-        limit: u32,
-    ) -> EdgeQuery {
-        EdgeQuery::Pipe {
-            vertex_query: Box::new(self),
-            converter: EdgeDirection::Outbound,
-            type_filter,
-            high_filter,
-            low_filter,
-            limit,
-        }
-    }
-
-    pub fn inbound_edges(
-        self,
-        type_filter: Option<Type>,
-        high_filter: Option<DateTime<Utc>>,
-        low_filter: Option<DateTime<Utc>>,
-        limit: u32,
-    ) -> EdgeQuery {
-        EdgeQuery::Pipe {
-            vertex_query: Box::new(self),
-            converter: EdgeDirection::Inbound,
-            type_filter,
-            high_filter,
-            low_filter,
-            limit,
-        }
+impl From<RangeVertexQuery> for VertexQuery {
+    fn from(query: RangeVertexQuery) -> Self {
+        VertexQuery::Range(query)
     }
 }
 
-/// A query for edges.
-///
-/// This is used by transactions to get, set and delete edges and edge
-/// properties.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash)]
-#[serde(tag = "type", rename_all = "snake_case")]
+impl From<SpecificVertexQuery> for VertexQuery {
+    fn from(query: SpecificVertexQuery) -> Self {
+        VertexQuery::Specific(query)
+    }
+}
+
+impl From<PipeVertexQuery> for VertexQuery {
+    fn from(query: PipeVertexQuery) -> Self {
+        VertexQuery::Pipe(query)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct RangeVertexQuery {
+    pub start_id: Option<Uuid>,
+    pub limit: u32
+}
+
+impl RangeVertexQuery {
+    pub fn new(limit: u32) -> Self {
+        Self { start_id: None, limit }
+    }
+
+    pub fn start_id(&mut self, start_id: Uuid) -> Self {
+        Self { start_id: Some(start_id), limit: self.limit }
+    }
+
+    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+        VertexPropertyQuery::new(self.into(), name)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct SpecificVertexQuery {
+    pub ids: Vec<Uuid>
+}
+
+impl SpecificVertexQuery {
+    pub fn new(ids: Vec<Uuid>) -> Self {
+        Self { ids }
+    }
+
+    pub fn single(id: Uuid) -> Self {
+        Self { ids: vec![id] }
+    }
+
+    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+        VertexPropertyQuery::new(self.into(), name)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct PipeVertexQuery {
+    pub inner: Box<EdgeQuery>,
+    pub direction: EdgeDirection,
+    pub limit: u32
+}
+
+impl PipeVertexQuery {
+    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
+        Self { inner, direction, limit }
+    }
+
+    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+        VertexPropertyQuery::new(self.into(), name)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct VertexPropertyQuery {
+    pub inner: VertexQuery,
+    pub name: String
+}
+
+impl VertexPropertyQuery {
+    pub fn new<S: Into<String>>(inner: VertexQuery, name: S) -> Self {
+        Self { inner, name: name.into() }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
 pub enum EdgeQuery {
-    Edges {
-        keys: Vec<EdgeKey>,
-    },
-    Pipe {
-        vertex_query: Box<VertexQuery>,
-        converter: EdgeDirection,
-        type_filter: Option<Type>,
-        high_filter: Option<DateTime<Utc>>,
-        low_filter: Option<DateTime<Utc>>,
-        limit: u32,
-    },
+    Specific(SpecificEdgeQuery),
+    Pipe(PipeEdgeQuery),
 }
 
-impl EdgeQuery {
-    pub fn outbound_vertices(self, limit: u32) -> VertexQuery {
-        VertexQuery::Pipe {
-            edge_query: Box::new(self),
-            converter: EdgeDirection::Outbound,
-            limit,
+impl From<SpecificEdgeQuery> for EdgeQuery {
+    fn from(query: SpecificEdgeQuery) -> Self {
+        EdgeQuery::Specific(query)
+    }
+}
+
+impl From<PipeEdgeQuery> for EdgeQuery {
+    fn from(query: PipeEdgeQuery) -> Self {
+        EdgeQuery::Pipe(query)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct SpecificEdgeQuery {
+    pub keys: Vec<EdgeKey>
+}
+
+impl SpecificEdgeQuery {
+    pub fn new(keys: Vec<EdgeKey>) -> Self {
+        Self { keys }
+    }
+
+    pub fn single(key: EdgeKey) -> Self {
+        Self { keys: vec![key] }
+    }
+
+    pub fn outbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    pub fn inbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    pub fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
+        EdgePropertyQuery::new(self.into(), name)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct PipeEdgeQuery {
+    pub inner: Box<VertexQuery>,
+    pub direction: EdgeDirection,
+    pub t: Option<Type>,
+    pub high: Option<DateTime<Utc>>,
+    pub low: Option<DateTime<Utc>>,
+    pub limit: u32
+}
+
+impl PipeEdgeQuery {
+    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection, limit: u32) -> Self {
+        Self {
+            inner,
+            direction,
+            t: None,
+            high: None,
+            low: None,
+            limit
         }
     }
 
-    pub fn inbound_vertices(self, limit: u32) -> VertexQuery {
-        VertexQuery::Pipe {
-            edge_query: Box::new(self),
-            converter: EdgeDirection::Inbound,
-            limit,
+    pub fn t(self, t: Type) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            t: Some(t),
+            high: self.high,
+            low: self.low,
+            limit: self.limit
         }
+    }
+
+    pub fn high(self, high: DateTime<Utc>) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            t: self.t,
+            high: Some(high),
+            low: self.low,
+            limit: self.limit
+        }
+    }
+
+    pub fn low(self, low: DateTime<Utc>) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            t: self.t,
+            high: self.high,
+            low: Some(low),
+            limit: self.limit
+        }
+    }
+
+    pub fn outbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    pub fn inbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    pub fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
+        EdgePropertyQuery::new(self.into(), name)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct EdgePropertyQuery {
+    pub inner: EdgeQuery,
+    pub name: String
+}
+
+impl EdgePropertyQuery {
+    pub fn new<S: Into<String>>(inner: EdgeQuery, name: S) -> Self {
+        Self { inner, name: name.into() }
     }
 }
 

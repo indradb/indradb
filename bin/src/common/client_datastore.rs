@@ -142,10 +142,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_vertices(&self, q: &indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
+    fn get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Vec<indradb::Vertex>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_vertices_request();
-            converters::from_vertex_query(&q, req.get().init_q());
+            converters::from_vertex_query(&q.into(), req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
@@ -158,10 +158,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_vertices(&self, q: &indradb::VertexQuery) -> Result<(), indradb::Error> {
+    fn delete_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.delete_vertices_request();
-            converters::from_vertex_query(&q, req.get().init_q());
+            converters::from_vertex_query(&q.into(), req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 res.get()?;
@@ -193,10 +193,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_edges(&self, q: &indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
+    fn get_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Vec<indradb::Edge>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_edges_request();
-            converters::from_edge_query(&q, req.get().init_q());
+            converters::from_edge_query(&q.into(), req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
@@ -209,10 +209,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_edges(&self, q: &indradb::EdgeQuery) -> Result<(), indradb::Error> {
+    fn delete_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.delete_edges_request();
-            converters::from_edge_query(&q, req.get().init_q());
+            converters::from_edge_query(&q.into(), req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 res.get()?;
@@ -245,15 +245,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_vertex_properties(
-        &self,
-        q: &indradb::VertexQuery,
-        name: &str,
-    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
+    fn get_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_vertex_properties_request();
-            converters::from_vertex_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_vertex_property_query(&q, req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
@@ -268,16 +263,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn set_vertex_properties(
-        &self,
-        q: &indradb::VertexQuery,
-        name: &str,
-        value: &JsonValue,
-    ) -> Result<(), indradb::Error> {
+    fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.set_vertex_properties_request();
-            converters::from_vertex_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_vertex_property_query(&q, req.get().init_q());
             req.get().set_value(&value.to_string());
 
             let f = req.send().promise.and_then(move |res| {
@@ -289,11 +278,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_vertex_properties(&self, q: &indradb::VertexQuery, name: &str) -> Result<(), indradb::Error> {
+    fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.delete_vertex_properties_request();
-            converters::from_vertex_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_vertex_property_query(&q, req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 res.get()?;
@@ -304,15 +292,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_edge_properties(
-        &self,
-        q: &indradb::EdgeQuery,
-        name: &str,
-    ) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
+    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_edge_properties_request();
-            converters::from_edge_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_edge_property_query(&q, req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 let list = res.get()?.get_result()?;
@@ -327,11 +310,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn set_edge_properties(&self, q: &indradb::EdgeQuery, name: &str, value: &JsonValue) -> Result<(), indradb::Error> {
+    fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.set_edge_properties_request();
-            converters::from_edge_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_edge_property_query(&q, req.get().init_q());
             req.get().set_value(&value.to_string());
 
             let f = req.send().promise.and_then(move |res| {
@@ -343,11 +325,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn delete_edge_properties(&self, q: &indradb::EdgeQuery, name: &str) -> Result<(), indradb::Error> {
+    fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.delete_edge_properties_request();
-            converters::from_edge_query(&q, req.get().init_q());
-            req.get().set_name(name);
+            converters::from_edge_property_query(&q, req.get().init_q());
 
             let f = req.send().promise.and_then(move |res| {
                 res.get()?;

@@ -22,7 +22,7 @@ macro_rules! full_test_impl {
         // Vertices
         define_test!(should_create_vertex_from_type, $code);
         define_test!(should_get_all_vertices, $code);
-        define_test!(should_get_all_vertices_with_zero_limit, $code);
+        define_test!(should_get_no_vertices_with_zero_limit, $code);
         define_test!(should_get_all_vertices_out_of_range, $code);
         define_test!(should_get_single_vertices, $code);
         define_test!(should_get_single_vertices_nonexisting, $code);

@@ -23,35 +23,45 @@ struct Vertex {
 
 struct VertexQuery {
     union {
-        all :group {
+        range :group {
             startId @0 :Uuid;
             limit @1 :UInt32;
         }
-        vertices :group {
+        specific :group {
             ids @2 :List(Uuid);
         }
         pipe :group {
-            edgeQuery @3 :EdgeQuery;
-            converter @4 :EdgeDirection;
+            inner @3 :EdgeQuery;
+            direction @4 :EdgeDirection;
             limit @5 :UInt32;
         }
     }
 }
 
+struct VertexPropertyQuery {
+    inner @0 :VertexQuery;
+    name @1 :Text;
+}
+
 struct EdgeQuery {
     union {
-        edges :group {
+        specific :group {
             keys @0 :List(EdgeKey);
         }
         pipe :group {
-            vertexQuery @1 :VertexQuery;
-            converter @2 :EdgeDirection;
-            typeFilter @3 :Type;
-            highFilter @4 :Timestamp;
-            lowFilter @5 :Timestamp;
+            inner @1 :VertexQuery;
+            direction @2 :EdgeDirection;
+            t @3 :Type;
+            high @4 :Timestamp;
+            low @5 :Timestamp;
             limit @6 :UInt32;
         }
     }
+}
+
+struct EdgePropertyQuery {
+    inner @0 :EdgeQuery;
+    name @1 :Text;
 }
 
 enum EdgeDirection {
@@ -167,7 +177,7 @@ interface Transaction {
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    getVertexProperties @9 (q :VertexQuery, name :Text) -> (result :List(VertexProperty));
+    getVertexProperties @9 (q :VertexPropertyQuery) -> (result :List(VertexProperty));
 
     # Sets vertex properties.
     #
@@ -175,21 +185,21 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The property name.
     # * `value` - The property value.
-    setVertexProperties @10 (q :VertexQuery, name :Text, value :Json) -> (result :Void);
+    setVertexProperties @10 (q :VertexPropertyQuery, value :Json) -> (result :Void);
 
     # Deletes vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    deleteVertexProperties @11 (q :VertexQuery, name :Text) -> (result :Void);
+    deleteVertexProperties @11 (q :VertexPropertyQuery) -> (result :Void);
 
     # Gets edge properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    getEdgeProperties @12 (q :EdgeQuery, name :Text) -> (result :List(EdgeProperty));
+    getEdgeProperties @12 (q :EdgePropertyQuery) -> (result :List(EdgeProperty));
 
     # Sets edge properties.
     #
@@ -197,12 +207,12 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The property name.
     # * `value` - The property value.
-    setEdgeProperties @13 (q :EdgeQuery, name :Text, value :Json) -> (result :Void);
+    setEdgeProperties @13 (q :EdgePropertyQuery, value :Json) -> (result :Void);
 
     # Deletes edge properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    deleteEdgeProperties @14 (q :EdgeQuery, name :Text) -> (result :Void);
+    deleteEdgeProperties @14 (q :EdgePropertyQuery) -> (result :Void);
 }
