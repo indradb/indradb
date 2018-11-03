@@ -4,6 +4,7 @@
 //! `indradb` crate can reuse them. Generally you can use the convenience macro
 //! `full_test_impl`.
 
+mod bulk_insert;
 mod edge;
 #[macro_use]
 mod macros;
@@ -11,6 +12,7 @@ mod properties;
 mod util;
 mod vertex;
 
+pub use self::bulk_insert::*;
 pub use self::edge::*;
 pub use self::macros::*;
 pub use self::properties::*;

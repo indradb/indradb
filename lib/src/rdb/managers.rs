@@ -33,8 +33,8 @@ fn json_deserialize_value(value: &[u8]) -> Result<JsonValue> {
     Ok(result)
 }
 
-fn set_bincode<T: Serialize>(db: &DB, cf: ColumnFamily, key: &[u8], value: &T) -> Result<()> {
-    db.put_cf(cf, key, &bincode_serialize_value(value)?)?;
+fn set_bincode<T: Serialize>(batch: &mut WriteBatch, cf: ColumnFamily, key: &[u8], value: &T) -> Result<()> {
+    batch.put_cf(cf, key, &bincode_serialize_value(value)?)?;
     Ok(())
 }
 
@@ -103,9 +103,8 @@ impl VertexManager {
         self.iterate(iterator)
     }
 
-    pub fn create(&self, vertex: &models::Vertex) -> Result<()> {
-        set_bincode(&self.db, self.cf, &self.key(vertex.id), &vertex.t)?;
-        Ok(())
+    pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
+        set_bincode(batch, self.cf, &self.key(vertex.id), &vertex.t)
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
@@ -202,12 +201,9 @@ impl EdgeManager {
             reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
         }
 
-        set_bincode(
-            &self.db,
-            self.cf,
-            &self.key(outbound_id, t, inbound_id),
-            &new_update_datetime,
-        )?;
+        let key = self.key(outbound_id, t, inbound_id);
+
+        set_bincode(batch, self.cf, &key, &new_update_datetime)?;
         edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id)?;
         Ok(())

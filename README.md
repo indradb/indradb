@@ -49,6 +49,11 @@ Applications are configured via environment variables:
 * `PORT`: The port to run the server on. Defaults to `27615`.
 * `WORKER_COUNT`: How many worker threads to have to satisfy client requests. Defaults to twice the number of CPUs.
 
+Additional environment variables available when using the RocksDB datastore:
+
+* `ROCKSDB_MAX_OPEN_FILES`: Sets the number of maximum open files to have open in RocksDB.
+* `ROCKSDB_BULK_LOAD_OPTIMIZED`: If set to `true`, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
+
 ## Install from source
 
 If you don't want to use the pre-built releases, you can build/install from source:

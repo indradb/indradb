@@ -14,7 +14,12 @@ macro_rules! define_test {
 #[macro_export]
 macro_rules! full_test_impl {
     ($code:expr) => {
-        // Vertex queries
+        // Bulk insert
+        define_test!(should_bulk_insert, $code);
+        define_test!(should_bulk_insert_a_redundant_vertex, $code);
+        define_test!(should_bulk_insert_an_invalid_edge, $code);
+
+        // Vertices
         define_test!(should_create_vertex_from_type, $code);
         define_test!(should_get_all_vertices, $code);
         define_test!(should_get_all_vertices_with_zero_limit, $code);
@@ -24,8 +29,6 @@ macro_rules! full_test_impl {
         define_test!(should_get_vertices, $code);
         define_test!(should_get_vertices_piped, $code);
         define_test!(should_get_a_vertex_count, $code);
-
-        // Vertex updates
         define_test!(should_delete_a_valid_vertex, $code);
         define_test!(should_not_delete_an_invalid_vertex, $code);
 

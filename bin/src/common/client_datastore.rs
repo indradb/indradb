@@ -7,6 +7,7 @@ use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 use std::thread::sleep;
@@ -15,6 +16,10 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
+
+fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
+    result.map_err(|err| format!("{:?}", err).into())
+}
 
 pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
@@ -47,7 +52,7 @@ impl ClientDatastore {
                 if res.get().unwrap().get_ready() {
                     return Self {
                         core: Rc::new(RefCell::new(core)),
-                        client: client,
+                        client,
                     };
                 }
             }
@@ -61,6 +66,25 @@ impl ClientDatastore {
 
 impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
+
+    fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
+    where
+        I: Iterator<Item = indradb::BulkInsertItem>,
+    {
+        let items: Vec<indradb::BulkInsertItem> = items.collect();
+        let mut req = self.client.bulk_insert_request();
+        map_indradb_error(converters::from_bulk_insert_items(
+            &items,
+            req.get().init_items(items.len() as u32),
+        ))?;
+
+        let f = req.send().promise.and_then(move |res| {
+            res.get()?;
+            Ok(())
+        });
+
+        map_indradb_error(self.core.borrow_mut().run(f))
+    }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
@@ -76,7 +100,7 @@ pub struct ClientTransaction {
 impl ClientTransaction {
     fn new(core: Rc<RefCell<Core>>, trans: autogen::transaction::Client) -> Self {
         ClientTransaction {
-            core: core,
+            core,
             trans: RefCell::new(trans),
         }
     }
@@ -88,11 +112,7 @@ impl ClientTransaction {
         F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item = G, Error = CapnpError>>,
     {
         let future = f(&mut self.trans.borrow_mut());
-        return self
-            .core
-            .borrow_mut()
-            .run(future)
-            .map_err(|err| format!("{:?}", err).into());
+        map_indradb_error(self.core.borrow_mut().run(future))
     }
 }
 

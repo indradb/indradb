@@ -3,7 +3,7 @@ use super::managers::*;
 use chrono::offset::Utc;
 use errors::Result;
 use models;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB, WriteOptions};
 use serde_json::Value as JsonValue;
 use std::i32;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ const CF_NAMES: [&str; 6] = [
     "edge_properties:v1",
 ];
 
-fn get_options(max_open_files: Option<i32>) -> Options {
+fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Options {
     // Current tuning based off of the total ordered example, flash
     // storage example on
     // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
@@ -29,15 +29,30 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.set_compaction_style(DBCompactionStyle::Level);
-    opts.set_write_buffer_size(67_108_864); //64mb
+    opts.set_write_buffer_size(67_108_864); // 64mb
     opts.set_max_write_buffer_number(3);
-    opts.set_target_file_size_base(67_108_864); //64mb
-    opts.set_max_background_compactions(4);
+    opts.set_target_file_size_base(67_108_864); // 64mb
+    opts.set_level_zero_file_num_compaction_trigger(8);
     opts.set_level_zero_slowdown_writes_trigger(17);
     opts.set_level_zero_stop_writes_trigger(24);
+    opts.set_num_levels(4);
+    opts.set_max_bytes_for_level_base(536_870_912); // 512mb
+    opts.set_max_bytes_for_level_multiplier(8.0);
+    opts.set_max_background_compactions(4);
 
     if let Some(max_open_files) = max_open_files {
         opts.set_max_open_files(max_open_files);
+    }
+
+    if bulk_load_optimized {
+        // Via https://github.com/facebook/rocksdb/wiki/RocksDB-FAQ
+        opts.set_allow_concurrent_memtable_write(false);
+        // opts.set_memtable_factory(MemtableFactory::Vector); // disabled as this seems to stall writes
+        opts.set_max_background_flushes(8);
+        opts.set_disable_auto_compactions(true);
+        opts.set_level_zero_file_num_compaction_trigger(1024);
+        opts.set_level_zero_slowdown_writes_trigger(1024 * 5);
+        opts.set_level_zero_stop_writes_trigger(1024 * 6);
     }
 
     opts
@@ -56,8 +71,11 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
-        let opts = get_options(max_open_files);
+    /// * `bulk_load_optimized` - Whether to configure the database to
+    ///   optimize for bulk loading, based off of suggestions from the RocksDB
+    ///   FAQ.
+    pub fn new(path: &str, max_open_files: Option<i32>, bulk_load_optimized: bool) -> Result<RocksdbDatastore> {
+        let opts = get_options(max_open_files, bulk_load_optimized);
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
             Ok(db) => db,
@@ -82,7 +100,7 @@ impl RocksdbDatastore {
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
     pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
-        let opts = get_options(max_open_files);
+        let opts = get_options(max_open_files, false);
         DB::repair(opts, path)?;
         Ok(())
     }
@@ -90,6 +108,45 @@ impl RocksdbDatastore {
 
 impl Datastore for RocksdbDatastore {
     type Trans = RocksdbTransaction;
+
+    // We override the default `bulk_insert` implementation because further
+    // optimization can be done by using `WriteBatch`s.
+    fn bulk_insert<I>(&self, items: I) -> Result<()>
+    where
+        I: Iterator<Item = models::BulkInsertItem>,
+    {
+        let vertex_manager = VertexManager::new(self.db.clone());
+        let edge_manager = EdgeManager::new(self.db.clone());
+        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
+        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
+        let mut batch = WriteBatch::default();
+
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(ref vertex) => {
+                    vertex_manager.create(&mut batch, vertex)?;
+                }
+                models::BulkInsertItem::Edge(ref key) => {
+                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                }
+                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                    vertex_property_manager.set(&mut batch, id, name, value)?;
+                }
+                models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
+                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
+                }
+            }
+        }
+
+        // NOTE: syncing and WAL are disabled for bulk inserts to maximimze
+        // performance
+        let mut opts = WriteOptions::default();
+        opts.set_sync(false);
+        opts.disable_wal(true);
+
+        self.db.write_opt(batch, &opts)?;
+        Ok(())
+    }
 
     fn transaction(&self) -> Result<Self::Trans> {
         RocksdbTransaction::new(self.db.clone())
@@ -289,7 +346,9 @@ impl Transaction for RocksdbTransaction {
         if vertex_manager.exists(vertex.id)? {
             Ok(false)
         } else {
-            vertex_manager.create(vertex)?;
+            let mut batch = WriteBatch::default();
+            vertex_manager.create(&mut batch, vertex)?;
+            self.db.write(batch)?;
             Ok(true)
         }
     }
@@ -327,22 +386,17 @@ impl Transaction for RocksdbTransaction {
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
-        // Verify that the vertices exist and that we own the vertex with the outbound ID
-        if !VertexManager::new(self.db.clone()).exists(key.inbound_id)? {
-            return Ok(false);
-        }
+        let vertex_manager = VertexManager::new(self.db.clone());
 
-        let new_update_datetime = Utc::now();
-        let mut batch = WriteBatch::default();
-        EdgeManager::new(self.db.clone()).set(
-            &mut batch,
-            key.outbound_id,
-            &key.t,
-            key.inbound_id,
-            new_update_datetime,
-        )?;
-        self.db.write(batch)?;
-        Ok(true)
+        if !vertex_manager.exists(key.outbound_id)? || !vertex_manager.exists(key.inbound_id)? {
+            Ok(false)
+        } else {
+            let edge_manager = EdgeManager::new(self.db.clone());
+            let mut batch = WriteBatch::default();
+            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            self.db.write(batch)?;
+            Ok(true)
+        }
     }
 
     fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<models::Edge>> {

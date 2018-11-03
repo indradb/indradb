@@ -420,7 +420,9 @@ impl Transaction for MemoryTransaction {
         let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         for (id, _) in vertex_values {
-            datastore.vertex_properties.insert((id, name.to_string()), value.clone());
+            datastore
+                .vertex_properties
+                .insert((id, name.to_string()), value.clone());
         }
 
         Ok(())

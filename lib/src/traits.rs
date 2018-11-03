@@ -6,8 +6,6 @@ use uuid::Uuid;
 
 /// Specifies a datastore implementation.
 ///
-/// Datastores are responsible for providing transactions.
-///
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
@@ -16,6 +14,40 @@ pub trait Datastore {
 
     /// Creates a new transaction.
     fn transaction(&self) -> Result<Self::Trans>;
+
+    /// Bulk inserts many vertices, edges, and/or properties.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
+    fn bulk_insert<I>(&self, items: I) -> Result<()>
+    where
+        I: Iterator<Item = models::BulkInsertItem>,
+    {
+        let trans = self.transaction()?;
+
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(ref vertex) => {
+                    trans.create_vertex(vertex)?;
+                }
+                models::BulkInsertItem::Edge(ref edge_key) => {
+                    trans.create_edge(edge_key)?;
+                }
+                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                    let query = models::VertexQuery::Vertices { ids: vec![id] };
+                    trans.set_vertex_properties(&query, name, value)?;
+                }
+                models::BulkInsertItem::EdgeProperty(ref edge_key, ref name, ref value) => {
+                    let query = models::EdgeQuery::Edges {
+                        keys: vec![edge_key.clone()],
+                    };
+                    trans.set_edge_properties(&query, name, value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Specifies a transaction implementation, which are returned by datastores.
