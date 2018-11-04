@@ -58,6 +58,17 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     opts
 }
 
+fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
+where
+    I: Iterator<Item = Result<Option<T>>>,
+{
+    iter.filter_map(|item| match item {
+        Err(err) => Some(Err(err)),
+        Ok(Some(value)) => Some(Ok(value)),
+        _ => None
+    })
+}
+
 /// A datastore that is backed by rocksdb.
 #[derive(Debug)]
 pub struct RocksdbDatastore {
@@ -197,24 +208,35 @@ impl RocksdbTransaction {
                 Ok(Box::new(results.into_iter()))
             }
             VertexQuery::Specific(specific) => {
-                let vertices: Vec<Result<Uuid>> = specific.ids.into_iter().map(|id| Ok(id)).collect();
-                let iterator = vertices.into_iter();
-                Ok(Box::new(self.handle_vertex_id_iterator(iterator)))
+                let vertex_manager = VertexManager::new(self.db.clone());
+
+                let iter = specific.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
+                    Some(value) => Ok(Some((id, value))),
+                    None => Ok(None)
+                });
+                
+                Ok(Box::new(remove_nones_from_iterator(iter)))
             }
             VertexQuery::Pipe(pipe) => {
+                let vertex_manager = VertexManager::new(self.db.clone());
                 let edge_iterator = self.edge_query_to_iterator(*pipe.inner)?;
                 let direction = pipe.direction;
 
                 let iter = edge_iterator.map(move |item| {
                     let (outbound_id, _, _, inbound_id) = item?;
 
-                    match direction {
-                        EdgeDirection::Outbound => Ok(outbound_id),
-                        EdgeDirection::Inbound => Ok(inbound_id),
+                    let id = match direction {
+                        EdgeDirection::Outbound => outbound_id,
+                        EdgeDirection::Inbound => inbound_id,
+                    };
+
+                    match vertex_manager.get(id)? {
+                        Some(value) => Ok(Some((id, value))),
+                        None => Ok(None)
                     }
                 });
 
-                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(self.handle_vertex_id_iterator(iter));
+                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(remove_nones_from_iterator(iter));
 
                 if let Some(ref t) = pipe.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -243,7 +265,7 @@ impl RocksdbTransaction {
                     }
                 });
 
-                let iterator = self.remove_nones_from_iterator(edges);
+                let iterator = remove_nones_from_iterator(edges);
                 Ok(Box::new(iterator))
             }
             EdgeQuery::Pipe(pipe) => {
@@ -306,45 +328,6 @@ impl RocksdbTransaction {
                 Ok(Box::new(edges.into_iter()))
             }
         }
-    }
-
-    // TODO: remove in favor of embedding coding directly
-    fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item = Result<T>>
-    where
-        I: Iterator<Item = Result<Option<T>>>,
-    {
-        let filtered = iterator.filter(|item| match *item {
-            Err(_) | Ok(Some(_)) => true,
-            _ => false,
-        });
-
-        let mapped = filtered.map(|item| match item {
-            Ok(Some(value)) => Ok(value),
-            Err(err) => Err(err),
-            _ => unreachable!(),
-        });
-
-        Box::new(mapped)
-    }
-
-    // TODO: remove in favor of embedding coding directly
-    fn handle_vertex_id_iterator<T: Iterator<Item = Result<Uuid>>>(
-        &self,
-        iterator: T,
-    ) -> impl Iterator<Item = Result<VertexItem>> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
-        let mapped = iterator.map(move |item| {
-            let id = item?;
-            let value = vertex_manager.get(id)?;
-
-            match value {
-                Some(value) => Ok(Some((id, value))),
-                None => Ok(None),
-            }
-        });
-
-        self.remove_nones_from_iterator(Box::new(mapped))
     }
 }
 
