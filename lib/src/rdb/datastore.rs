@@ -164,11 +164,11 @@ impl RocksdbTransaction {
         Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
-        let vertex_manager = VertexManager::new(self.db.clone());
-
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item=Result<VertexItem>>>> {
         match q {
             VertexQuery::Range(range) => {
+                let vertex_manager = VertexManager::new(self.db.clone());
+
                 let next_uuid = match range.start_id {
                     Some(start_id) => {
                         match next_uuid(start_id) {
@@ -184,8 +184,17 @@ impl RocksdbTransaction {
                     None => Uuid::default(),
                 };
 
-                let iterator = vertex_manager.iterate_for_range(next_uuid)?;
-                Ok(Box::new(iterator.take(range.limit as usize)))
+                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+
+                if let Some(ref t) = range.t {
+                    iter = Box::new(iter.filter(move |item| match item {
+                        Ok((_, v)) => v == t,
+                        Err(_) => true
+                    }));
+                }
+
+                let results: Vec<Result<VertexItem>> = iter.take(range.limit as usize).collect();
+                Ok(Box::new(results.into_iter()))
             }
             VertexQuery::Specific(specific) => {
                 let vertices: Vec<Result<Uuid>> = specific.ids.into_iter().map(|id| Ok(id)).collect();
@@ -196,7 +205,7 @@ impl RocksdbTransaction {
                 let edge_iterator = self.edge_query_to_iterator(*pipe.inner)?;
                 let direction = pipe.direction;
 
-                let vertex_id_iterator = edge_iterator.map(move |item| {
+                let iter = edge_iterator.map(move |item| {
                     let (outbound_id, _, _, inbound_id) = item?;
 
                     match direction {
@@ -205,9 +214,17 @@ impl RocksdbTransaction {
                     }
                 });
 
-                Ok(Box::new(
-                    self.handle_vertex_id_iterator(vertex_id_iterator).take(pipe.limit as usize),
-                ))
+                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(self.handle_vertex_id_iterator(iter));
+
+                if let Some(ref t) = pipe.t {
+                    iter = Box::new(iter.filter(move |item| match item {
+                        Ok((_, v)) => v == t,
+                        Err(_) => true
+                    }));
+                }
+
+                let results: Vec<Result<VertexItem>> = iter.take(pipe.limit as usize).collect();
+                Ok(Box::new(results.into_iter()))
             }
         }
     }
@@ -291,6 +308,7 @@ impl RocksdbTransaction {
         }
     }
 
+    // TODO: remove in favor of embedding coding directly
     fn remove_nones_from_iterator<I, T>(&self, iterator: I) -> impl Iterator<Item = Result<T>>
     where
         I: Iterator<Item = Result<Option<T>>>,
@@ -309,6 +327,7 @@ impl RocksdbTransaction {
         Box::new(mapped)
     }
 
+    // TODO: remove in favor of embedding coding directly
     fn handle_vertex_id_iterator<T: Iterator<Item = Result<Uuid>>>(
         &self,
         iterator: T,

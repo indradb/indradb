@@ -1,4 +1,4 @@
-use super::edges::EdgeKey;
+ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -43,7 +43,7 @@ impl From<EdgeDirection> for String {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum VertexQuery {
     Range(RangeVertexQuery),
     Specific(SpecificVertexQuery),
@@ -68,19 +68,36 @@ impl From<PipeVertexQuery> for VertexQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
+    pub limit: u32,
+    pub t: Option<Type>,
     pub start_id: Option<Uuid>,
-    pub limit: u32
 }
 
 impl RangeVertexQuery {
     pub fn new(limit: u32) -> Self {
-        Self { start_id: None, limit }
+        Self {
+            limit,
+            t: None,
+            start_id: None,
+        }
     }
 
-    pub fn start_id(&mut self, start_id: Uuid) -> Self {
-        Self { start_id: Some(start_id), limit: self.limit }
+    pub fn t(self, t: Type) -> Self {
+        Self {
+            limit: self.limit,
+            t: Some(t),
+            start_id: self.start_id,
+        }
+    }
+
+    pub fn start_id(self, start_id: Uuid) -> Self {
+        Self {
+            limit: self.limit,
+            t: self.t,
+            start_id: Some(start_id),
+        }
     }
 
     pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
@@ -96,7 +113,7 @@ impl RangeVertexQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     pub ids: Vec<Uuid>
 }
@@ -123,16 +140,26 @@ impl SpecificVertexQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct PipeVertexQuery {
     pub inner: Box<EdgeQuery>,
     pub direction: EdgeDirection,
-    pub limit: u32
+    pub limit: u32,
+    pub t: Option<Type>,
 }
 
 impl PipeVertexQuery {
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
-        Self { inner, direction, limit }
+        Self { inner, direction, limit, t: None }
+    }
+
+    pub fn t(self, t: Type) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit: self.limit,
+            t: Some(t),
+        }
     }
 
     pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
@@ -148,7 +175,7 @@ impl PipeVertexQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
     pub name: String
@@ -160,7 +187,7 @@ impl VertexPropertyQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum EdgeQuery {
     Specific(SpecificEdgeQuery),
     Pipe(PipeEdgeQuery),
@@ -178,7 +205,7 @@ impl From<PipeEdgeQuery> for EdgeQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
     pub keys: Vec<EdgeKey>
 }
@@ -205,14 +232,14 @@ impl SpecificEdgeQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct PipeEdgeQuery {
     pub inner: Box<VertexQuery>,
     pub direction: EdgeDirection,
+    pub limit: u32,
     pub t: Option<Type>,
     pub high: Option<DateTime<Utc>>,
     pub low: Option<DateTime<Utc>>,
-    pub limit: u32
 }
 
 impl PipeEdgeQuery {
@@ -220,10 +247,10 @@ impl PipeEdgeQuery {
         Self {
             inner,
             direction,
+            limit,
             t: None,
             high: None,
             low: None,
-            limit
         }
     }
 
@@ -231,10 +258,10 @@ impl PipeEdgeQuery {
         Self {
             inner: self.inner,
             direction: self.direction,
+            limit: self.limit,
             t: Some(t),
             high: self.high,
             low: self.low,
-            limit: self.limit
         }
     }
 
@@ -242,10 +269,10 @@ impl PipeEdgeQuery {
         Self {
             inner: self.inner,
             direction: self.direction,
+            limit: self.limit,
             t: self.t,
             high: Some(high),
             low: self.low,
-            limit: self.limit
         }
     }
 
@@ -253,10 +280,10 @@ impl PipeEdgeQuery {
         Self {
             inner: self.inner,
             direction: self.direction,
+            limit: self.limit,
             t: self.t,
             high: self.high,
             low: Some(low),
-            limit: self.limit
         }
     }
 
@@ -273,7 +300,7 @@ impl PipeEdgeQuery {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
     pub name: String

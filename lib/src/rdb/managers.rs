@@ -45,7 +45,7 @@ fn get_json(db: &DB, cf: ColumnFamily, key: &[u8]) -> Result<Option<JsonValue>> 
     }
 }
 
-fn take_while_prefixed(iterator: DBIterator, prefix: Box<[u8]>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> {
+fn take_while_prefixed(iterator: DBIterator, prefix: Box<[u8]>) -> impl Iterator<Item=(Box<[u8]>, Box<[u8]>)> {
     iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;
         k.starts_with(&prefix)
@@ -80,7 +80,7 @@ impl VertexManager {
         }
     }
 
-    fn iterate(&self, iterator: DBIterator) -> Result<impl Iterator<Item = Result<VertexItem>>> {
+    fn iterate(&self, iterator: DBIterator) -> Result<impl Iterator<Item=Result<VertexItem>>> {
         Ok(iterator.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
 
@@ -95,12 +95,10 @@ impl VertexManager {
         }))
     }
 
-    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>>> {
+    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item=Result<VertexItem>>> {
         let low_key = build_key(&[KeyComponent::Uuid(id)]);
-        let iterator = self
-            .db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-        self.iterate(iterator)
+        let iter = self.db.iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+        self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
@@ -270,7 +268,7 @@ impl EdgeRangeManager {
         ])
     }
 
-    fn iterate(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
+    fn iterate(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<impl Iterator<Item=Result<EdgeRangeItem>>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
         Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
@@ -289,7 +287,7 @@ impl EdgeRangeManager {
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
+    ) -> Result<Box<dyn Iterator<Item=Result<EdgeRangeItem>>>> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -331,7 +329,7 @@ impl EdgeRangeManager {
         }
     }
 
-    pub fn iterate_for_owner(&self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
+    pub fn iterate_for_owner(&self, id: Uuid) -> Result<impl Iterator<Item=Result<EdgeRangeItem>>> {
         let prefix = build_key(&[KeyComponent::Uuid(id)]);
         let iterator = self
             .db
@@ -383,7 +381,7 @@ impl VertexPropertyManager {
         build_key(&[KeyComponent::Uuid(vertex_id), KeyComponent::UnsizedString(name)])
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>>> {
+    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item=Result<OwnedPropertyItem>>> {
         let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
         let iterator = self
             .db
@@ -445,7 +443,7 @@ impl EdgePropertyManager {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item=Result<EdgePropertyItem>> + 'a>> {
         let prefix = build_key(&[
             KeyComponent::Uuid(outbound_id),
             KeyComponent::Type(t),

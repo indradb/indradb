@@ -24,21 +24,17 @@ impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
         match q {
             VertexQuery::Range(range) => {
-                if let Some(start_id) = range.start_id {
-                    Ok(self
-                        .vertices
-                        .range(start_id..)
-                        .take(range.limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect())
+                let mut iter: Box<dyn Iterator<Item=(&Uuid, &models::Type)>> = if let Some(start_id) = range.start_id {
+                    Box::new(self.vertices.range(start_id..))
                 } else {
-                    Ok(self
-                        .vertices
-                        .iter()
-                        .take(range.limit as usize)
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect())
+                    Box::new(self.vertices.iter())
+                };
+
+                if let Some(ref t) = range.t {
+                    iter = Box::new(iter.filter(move |(_, v)| v == &t));
                 }
+
+                Ok(iter.take(range.limit as usize).map(|(k, v)| (*k, v.clone())).collect())
             }
             VertexQuery::Specific(specific) => {
                 let mut results = Vec::new();
@@ -54,31 +50,22 @@ impl InternalMemoryDatastore {
                 Ok(results)
             }
             VertexQuery::Pipe(pipe) => {
-                let edge_values = self.get_edge_values_by_query(*pipe.inner)?;
+                let edge_values = self.get_edge_values_by_query(*pipe.inner)?.into_iter();
 
-                let ids: Vec<Uuid> = match pipe.direction {
-                    models::EdgeDirection::Outbound => edge_values
-                        .into_iter()
-                        .take(pipe.limit as usize)
-                        .map(|(key, _)| key.outbound_id)
-                        .collect(),
-                    models::EdgeDirection::Inbound => edge_values
-                        .into_iter()
-                        .take(pipe.limit as usize)
-                        .map(|(key, _)| key.inbound_id)
-                        .collect(),
+                let iter: Box<dyn Iterator<Item=Uuid>> = match pipe.direction {
+                    models::EdgeDirection::Outbound => Box::new(edge_values.map(|(key, _)| key.outbound_id)),
+                    models::EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
                 };
 
-                let mut results = Vec::new();
+                let mut iter: Box<dyn Iterator<Item=(Uuid, &models::Type)>> = Box::new(
+                    iter.map(|id| (id, self.vertices.get(&id))).filter_map(|(k, v)| Some((k, v?)))
+                );
 
-                for id in ids {
-                    let value = self.vertices.get(&id);
-                    if let Some(value) = value {
-                        results.push((id, value.clone()));
-                    }
+                if let Some(ref t) = pipe.t {
+                    iter = Box::new(iter.filter(move |(_, v)| v == &t));
                 }
 
-                Ok(results)
+                Ok(iter.take(pipe.limit as usize).map(|(k, v)| (k, v.clone())).collect())
             }
         }
     }
