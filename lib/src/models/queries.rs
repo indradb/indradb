@@ -5,6 +5,8 @@ use chrono::DateTime;
 use errors;
 use std::str::FromStr;
 use uuid::Uuid;
+use std::collections::BTreeMap;
+use serde_json::Value as JsonValue;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -73,6 +75,7 @@ pub struct RangeVertexQuery {
     pub limit: u32,
     pub t: Option<Type>,
     pub start_id: Option<Uuid>,
+    pub with_prop: BTreeMap<String, JsonValue>
 }
 
 impl RangeVertexQuery {
@@ -81,6 +84,7 @@ impl RangeVertexQuery {
             limit,
             t: None,
             start_id: None,
+            with_prop: BTreeMap::new()
         }
     }
 
@@ -89,6 +93,7 @@ impl RangeVertexQuery {
             limit: self.limit,
             t: Some(t),
             start_id: self.start_id,
+            with_prop: self.with_prop
         }
     }
 
@@ -97,6 +102,18 @@ impl RangeVertexQuery {
             limit: self.limit,
             t: self.t,
             start_id: Some(start_id),
+            with_prop: self.with_prop
+        }
+    }
+
+    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
+        let mut with_prop = self.with_prop;
+        with_prop.insert(name.into(), value);
+        Self {
+            limit: self.limit,
+            t: self.t,
+            start_id: self.start_id,
+            with_prop
         }
     }
 
@@ -146,11 +163,12 @@ pub struct PipeVertexQuery {
     pub direction: EdgeDirection,
     pub limit: u32,
     pub t: Option<Type>,
+    pub with_prop: BTreeMap<String, JsonValue>
 }
 
 impl PipeVertexQuery {
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
-        Self { inner, direction, limit, t: None }
+        Self { inner, direction, limit, t: None, with_prop: BTreeMap::new() }
     }
 
     pub fn t(self, t: Type) -> Self {
@@ -159,6 +177,19 @@ impl PipeVertexQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
+            with_prop: self.with_prop
+        }
+    }
+
+    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
+        let mut with_prop = self.with_prop;
+        with_prop.insert(name.into(), value);
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit: self.limit,
+            t: self.t,
+            with_prop
         }
     }
 
@@ -240,6 +271,7 @@ pub struct PipeEdgeQuery {
     pub t: Option<Type>,
     pub high: Option<DateTime<Utc>>,
     pub low: Option<DateTime<Utc>>,
+    pub with_prop: BTreeMap<String, JsonValue>,
 }
 
 impl PipeEdgeQuery {
@@ -251,6 +283,7 @@ impl PipeEdgeQuery {
             t: None,
             high: None,
             low: None,
+            with_prop: BTreeMap::new()
         }
     }
 
@@ -262,6 +295,7 @@ impl PipeEdgeQuery {
             t: Some(t),
             high: self.high,
             low: self.low,
+            with_prop: self.with_prop
         }
     }
 
@@ -273,6 +307,7 @@ impl PipeEdgeQuery {
             t: self.t,
             high: Some(high),
             low: self.low,
+            with_prop: self.with_prop
         }
     }
 
@@ -284,6 +319,21 @@ impl PipeEdgeQuery {
             t: self.t,
             high: self.high,
             low: Some(low),
+            with_prop: self.with_prop
+        }
+    }
+
+    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
+        let mut with_prop = self.with_prop;
+        with_prop.insert(name.into(), value);
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit: self.limit,
+            t: self.t,
+            high: self.high,
+            low: self.low,
+            with_prop
         }
     }
 
