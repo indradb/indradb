@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction, SpecificVertexQuery, RangeVertexQuery};
+use super::super::{Datastore, Transaction, SpecificVertexQuery, RangeVertexQuery, VertexQueryExt, EdgeQueryExt};
 use super::util::{create_edge_from, create_edges};
 use models;
 use std::collections::HashSet;

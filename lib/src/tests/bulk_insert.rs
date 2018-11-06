@@ -1,4 +1,4 @@
-use super::super::{BulkInsertItem, Datastore, EdgeKey, Transaction, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery};
+use super::super::{BulkInsertItem, Datastore, EdgeKey, Transaction, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery, VertexQueryExt, EdgeQueryExt};
 use chrono::offset::Utc;
 use chrono::Timelike;
 use serde_json::Value as JsonValue;

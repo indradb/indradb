@@ -70,6 +70,20 @@ impl From<PipeVertexQuery> for VertexQuery {
     }
 }
 
+pub trait VertexQueryExt: Into<VertexQuery> {
+    fn outbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    fn inbound(self, limit: u32) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+        VertexPropertyQuery::new(self.into(), name)
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
     pub limit: u32,
@@ -77,6 +91,8 @@ pub struct RangeVertexQuery {
     pub start_id: Option<Uuid>,
     pub with_prop: BTreeMap<String, JsonValue>
 }
+
+impl VertexQueryExt for RangeVertexQuery {}
 
 impl RangeVertexQuery {
     pub fn new(limit: u32) -> Self {
@@ -116,24 +132,14 @@ impl RangeVertexQuery {
             with_prop
         }
     }
-
-    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
-    }
-
-    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
-    }
-
-    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
-        VertexPropertyQuery::new(self.into(), name)
-    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     pub ids: Vec<Uuid>
 }
+
+impl VertexQueryExt for SpecificVertexQuery {}
 
 impl SpecificVertexQuery {
     pub fn new(ids: Vec<Uuid>) -> Self {
@@ -142,18 +148,6 @@ impl SpecificVertexQuery {
 
     pub fn single(id: Uuid) -> Self {
         Self { ids: vec![id] }
-    }
-
-    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
-    }
-
-    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
-    }
-
-    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
-        VertexPropertyQuery::new(self.into(), name)
     }
 }
 
@@ -165,6 +159,8 @@ pub struct PipeVertexQuery {
     pub t: Option<Type>,
     pub with_prop: BTreeMap<String, JsonValue>
 }
+
+impl VertexQueryExt for PipeVertexQuery {}
 
 impl PipeVertexQuery {
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
@@ -191,18 +187,6 @@ impl PipeVertexQuery {
             t: self.t,
             with_prop
         }
-    }
-
-    pub fn outbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
-    }
-
-    pub fn inbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
-    }
-
-    pub fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
-        VertexPropertyQuery::new(self.into(), name)
     }
 }
 
@@ -236,10 +220,26 @@ impl From<PipeEdgeQuery> for EdgeQuery {
     }
 }
 
+pub trait EdgeQueryExt: Into<EdgeQuery> {
+    fn outbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    }
+
+    fn inbound(self, limit: u32) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    }
+
+    fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
+        EdgePropertyQuery::new(self.into(), name)
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
     pub keys: Vec<EdgeKey>
 }
+
+impl EdgeQueryExt for SpecificEdgeQuery {}
 
 impl SpecificEdgeQuery {
     pub fn new(keys: Vec<EdgeKey>) -> Self {
@@ -248,18 +248,6 @@ impl SpecificEdgeQuery {
 
     pub fn single(key: EdgeKey) -> Self {
         Self { keys: vec![key] }
-    }
-
-    pub fn outbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
-    }
-
-    pub fn inbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
-    }
-
-    pub fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
-        EdgePropertyQuery::new(self.into(), name)
     }
 }
 
@@ -273,6 +261,8 @@ pub struct PipeEdgeQuery {
     pub low: Option<DateTime<Utc>>,
     pub with_prop: BTreeMap<String, JsonValue>,
 }
+
+impl EdgeQueryExt for PipeEdgeQuery {}
 
 impl PipeEdgeQuery {
     pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection, limit: u32) -> Self {
@@ -335,18 +325,6 @@ impl PipeEdgeQuery {
             low: self.low,
             with_prop
         }
-    }
-
-    pub fn outbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
-    }
-
-    pub fn inbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
-    }
-
-    pub fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
-        EdgePropertyQuery::new(self.into(), name)
     }
 }
 
