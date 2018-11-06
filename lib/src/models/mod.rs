@@ -8,6 +8,6 @@ mod vertices;
 pub use self::bulk_insert::BulkInsertItem;
 pub use self::edges::{Edge, EdgeKey};
 pub use self::properties::{EdgeProperty, VertexProperty};
-pub use self::queries::{EdgeDirection, VertexQuery, RangeVertexQuery, SpecificVertexQuery, PipeVertexQuery, VertexPropertyQuery, EdgeQuery, SpecificEdgeQuery, PipeEdgeQuery, EdgePropertyQuery, VertexQueryExt, EdgeQueryExt};
+pub use self::queries::*;
 pub use self::types::Type;
 pub use self::vertices::Vertex;

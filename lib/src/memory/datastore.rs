@@ -10,8 +10,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 use hashbrown::{HashMap, HashSet};
-use std::collections::HashMap as StdHashMap;
-use std::hash::{Hash, BuildHasher, Hasher};
+use std::hash::{Hash, Hasher};
 use internment::ArcIntern;
 
 #[derive(Debug)]
@@ -88,36 +87,36 @@ struct InternalMemoryDatastore {
 impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
         match q {
-            VertexQuery::Range(range) => {
-                let mut iter: Box<dyn Iterator<Item=(&Uuid, &models::Type)>> = if let Some(start_id) = range.start_id {
+            VertexQuery::Intersection(q) => {
+                // TODO
+                unimplemented!();
+            },
+            VertexQuery::Union(q) => {
+                // TODO
+                unimplemented!();
+            },
+            VertexQuery::Range(q) => {
+                let mut iter: Box<dyn Iterator<Item=(&Uuid, &models::Type)>> = if let Some(start_id) = q.start_id {
                     Box::new(self.vertices.range(start_id..))
                 } else {
                     Box::new(self.vertices.iter())
                 };
 
-                if let Some(ref t) = range.t {
-                    iter = Box::new(iter.filter(move |(_, v)| v == &t));
-                }
-
-                Ok(iter.take(range.limit as usize).map(|(k, v)| (*k, v.clone())).collect())
+                Ok(iter.take(q.limit as usize).map(|(k, v)| (*k, v.clone())).collect())
             }
-            VertexQuery::Specific(specific) => {
-                let mut results = Vec::new();
+            VertexQuery::Id(q) => {
+                let value = self.vertices.get(&q.id);
 
-                for id in specific.ids {
-                    let value = self.vertices.get(&id);
-
-                    if let Some(value) = value {
-                        results.push((id, value.clone()));
-                    }
+                if let Some(value) = value {
+                    Ok(vec![(q.id, value.clone())])
+                } else {
+                    Ok(vec![])
                 }
-
-                Ok(results)
             }
-            VertexQuery::Pipe(pipe) => {
-                let edge_values = self.get_edge_values_by_query(*pipe.inner)?.into_iter();
+            VertexQuery::Pipe(q) => {
+                let edge_values = self.get_edge_values_by_query(*q.inner)?.into_iter();
 
-                let iter: Box<dyn Iterator<Item=Uuid>> = match pipe.direction {
+                let iter: Box<dyn Iterator<Item=Uuid>> = match q.direction {
                     models::EdgeDirection::Outbound => Box::new(edge_values.map(|(key, _)| key.outbound_id)),
                     models::EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
                 };
@@ -126,11 +125,15 @@ impl InternalMemoryDatastore {
                     iter.map(|id| (id, self.vertices.get(&id))).filter_map(|(k, v)| Some((k, v?)))
                 );
 
-                if let Some(ref t) = pipe.t {
-                    iter = Box::new(iter.filter(move |(_, v)| v == &t));
-                }
-
-                Ok(iter.take(pipe.limit as usize).map(|(k, v)| (k, v.clone())).collect())
+                Ok(iter.take(q.limit as usize).map(|(k, v)| (k, v.clone())).collect())
+            },
+            VertexQuery::Property(q) => {
+                // TODO
+                unimplemented!();
+            },
+            VertexQuery::Type(q) => {
+                // TODO
+                unimplemented!();
             }
         }
     }

@@ -1,11 +1,10 @@
- use super::edges::EdgeKey;
+use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors;
 use std::str::FromStr;
 use uuid::Uuid;
-use std::collections::BTreeMap;
 use serde_json::Value as JsonValue;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -46,10 +45,49 @@ impl From<EdgeDirection> for String {
 }
 
 #[derive(PartialEq, Clone, Debug)]
+pub struct PropertyQuery {
+    pub name: String,
+    pub value: JsonValue
+}
+
+impl PropertyQuery {
+    fn new(name: String, value: JsonValue) -> Self {
+        Self { name, value }
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct TypeQuery {
+    pub t: Type
+}
+
+impl TypeQuery {
+    fn new(t: Type) -> Self {
+        Self { t }
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
 pub enum VertexQuery {
+    Intersection(IntersectionVertexQuery),
+    Union(UnionVertexQuery),
     Range(RangeVertexQuery),
-    Specific(SpecificVertexQuery),
+    Id(IdVertexQuery),
     Pipe(PipeVertexQuery),
+    Property(PropertyQuery),
+    Type(TypeQuery)
+}
+
+impl From<IntersectionVertexQuery> for VertexQuery {
+    fn from(query: IntersectionVertexQuery) -> Self {
+        VertexQuery::Intersection(query)
+    }
+}
+
+impl From<UnionVertexQuery> for VertexQuery {
+    fn from(query: UnionVertexQuery) -> Self {
+        VertexQuery::Union(query)
+    }
 }
 
 impl From<RangeVertexQuery> for VertexQuery {
@@ -58,15 +96,27 @@ impl From<RangeVertexQuery> for VertexQuery {
     }
 }
 
-impl From<SpecificVertexQuery> for VertexQuery {
-    fn from(query: SpecificVertexQuery) -> Self {
-        VertexQuery::Specific(query)
+impl From<IdVertexQuery> for VertexQuery {
+    fn from(query: IdVertexQuery) -> Self {
+        VertexQuery::Id(query)
     }
 }
 
 impl From<PipeVertexQuery> for VertexQuery {
     fn from(query: PipeVertexQuery) -> Self {
         VertexQuery::Pipe(query)
+    }
+}
+
+impl From<PropertyQuery> for VertexQuery {
+    fn from(query: PropertyQuery) -> Self {
+        VertexQuery::Property(query)
+    }
+}
+
+impl From<TypeQuery> for VertexQuery {
+    fn from(query: TypeQuery) -> Self {
+        VertexQuery::Type(query)
     }
 }
 
@@ -82,14 +132,60 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
         VertexPropertyQuery::new(self.into(), name)
     }
+
+    fn and_with_property<S: Into<String>>(self, name: S, value: JsonValue) -> IntersectionVertexQuery {
+        IntersectionVertexQuery::new(Box::new(self.into()), Box::new(PropertyQuery::new(name.into(), value).into()))
+    }
+
+    fn or_with_property<S: Into<String>>(self, name: S, value: JsonValue) -> UnionVertexQuery {
+        UnionVertexQuery::new(Box::new(self.into()), Box::new(PropertyQuery::new(name.into(), value).into()))
+    }
+
+    fn and_with_t(self, t: Type) -> IntersectionVertexQuery {
+        IntersectionVertexQuery::new(Box::new(self.into()), Box::new(TypeQuery::new(t).into()))
+    }
+
+    fn or_with_t(self, t: Type) -> UnionVertexQuery {
+        UnionVertexQuery::new(Box::new(self.into()), Box::new(TypeQuery::new(t).into()))
+    }
+
+    fn and_with_id(self, id: Uuid) -> IntersectionVertexQuery {
+        IntersectionVertexQuery::new(Box::new(self.into()), Box::new(IdVertexQuery::new(id).into()))
+    }
+
+    fn or_with_id(self, id: Uuid) -> UnionVertexQuery {
+        UnionVertexQuery::new(Box::new(self.into()), Box::new(IdVertexQuery::new(id).into()))
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct IntersectionVertexQuery {
+    first: Box<VertexQuery>,
+    second: Box<VertexQuery>
+}
+
+impl IntersectionVertexQuery {
+    fn new(first: Box<VertexQuery>, second: Box<VertexQuery>) -> Self {
+        Self { first, second }
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct UnionVertexQuery {
+    first: Box<VertexQuery>,
+    second: Box<VertexQuery>
+}
+
+impl UnionVertexQuery {
+    fn new(first: Box<VertexQuery>, second: Box<VertexQuery>) -> Self {
+        Self { first, second }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
     pub limit: u32,
-    pub t: Option<Type>,
     pub start_id: Option<Uuid>,
-    pub with_prop: BTreeMap<String, JsonValue>
 }
 
 impl VertexQueryExt for RangeVertexQuery {}
@@ -98,56 +194,28 @@ impl RangeVertexQuery {
     pub fn new(limit: u32) -> Self {
         Self {
             limit,
-            t: None,
             start_id: None,
-            with_prop: BTreeMap::new()
-        }
-    }
-
-    pub fn t(self, t: Type) -> Self {
-        Self {
-            limit: self.limit,
-            t: Some(t),
-            start_id: self.start_id,
-            with_prop: self.with_prop
         }
     }
 
     pub fn start_id(self, start_id: Uuid) -> Self {
         Self {
             limit: self.limit,
-            t: self.t,
             start_id: Some(start_id),
-            with_prop: self.with_prop
-        }
-    }
-
-    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
-        let mut with_prop = self.with_prop;
-        with_prop.insert(name.into(), value);
-        Self {
-            limit: self.limit,
-            t: self.t,
-            start_id: self.start_id,
-            with_prop
         }
     }
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct SpecificVertexQuery {
-    pub ids: Vec<Uuid>
+pub struct IdVertexQuery {
+    pub id: Uuid
 }
 
-impl VertexQueryExt for SpecificVertexQuery {}
+impl VertexQueryExt for IdVertexQuery {}
 
-impl SpecificVertexQuery {
-    pub fn new(ids: Vec<Uuid>) -> Self {
-        Self { ids }
-    }
-
-    pub fn single(id: Uuid) -> Self {
-        Self { ids: vec![id] }
+impl IdVertexQuery {
+    pub fn new(id: Uuid) -> Self {
+        Self { id }
     }
 }
 
@@ -156,37 +224,13 @@ pub struct PipeVertexQuery {
     pub inner: Box<EdgeQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
-    pub t: Option<Type>,
-    pub with_prop: BTreeMap<String, JsonValue>
 }
 
 impl VertexQueryExt for PipeVertexQuery {}
 
 impl PipeVertexQuery {
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
-        Self { inner, direction, limit, t: None, with_prop: BTreeMap::new() }
-    }
-
-    pub fn t(self, t: Type) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: Some(t),
-            with_prop: self.with_prop
-        }
-    }
-
-    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
-        let mut with_prop = self.with_prop;
-        with_prop.insert(name.into(), value);
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            with_prop
-        }
+        Self { inner, direction, limit }
     }
 }
 
@@ -204,19 +248,47 @@ impl VertexPropertyQuery {
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum EdgeQuery {
-    Specific(SpecificEdgeQuery),
+    Intersection(IntersectionEdgeQuery),
+    Union(UnionEdgeQuery),
+    Key(KeyEdgeQuery),
     Pipe(PipeEdgeQuery),
+    Property(PropertyQuery),
+    Type(TypeQuery)
 }
 
-impl From<SpecificEdgeQuery> for EdgeQuery {
-    fn from(query: SpecificEdgeQuery) -> Self {
-        EdgeQuery::Specific(query)
+impl From<IntersectionEdgeQuery> for EdgeQuery {
+    fn from(query: IntersectionEdgeQuery) -> Self {
+        EdgeQuery::Intersection(query)
+    }
+}
+
+impl From<UnionEdgeQuery> for EdgeQuery {
+    fn from(query: UnionEdgeQuery) -> Self {
+        EdgeQuery::Union(query)
+    }
+}
+
+impl From<KeyEdgeQuery> for EdgeQuery {
+    fn from(query: KeyEdgeQuery) -> Self {
+        EdgeQuery::Key(query)
     }
 }
 
 impl From<PipeEdgeQuery> for EdgeQuery {
     fn from(query: PipeEdgeQuery) -> Self {
         EdgeQuery::Pipe(query)
+    }
+}
+
+impl From<PropertyQuery> for EdgeQuery {
+    fn from(query: PropertyQuery) -> Self {
+        EdgeQuery::Property(query)
+    }
+}
+
+impl From<TypeQuery> for EdgeQuery {
+    fn from(query: TypeQuery) -> Self {
+        EdgeQuery::Type(query)
     }
 }
 
@@ -232,22 +304,66 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
         EdgePropertyQuery::new(self.into(), name)
     }
+
+    fn and_with_property<S: Into<String>>(self, name: S, value: JsonValue) -> IntersectionEdgeQuery {
+        IntersectionEdgeQuery::new(Box::new(self.into()), Box::new(PropertyQuery::new(name.into(), value).into()))
+    }
+
+    fn or_with_property<S: Into<String>>(self, name: S, value: JsonValue) -> UnionEdgeQuery {
+        UnionEdgeQuery::new(Box::new(self.into()), Box::new(PropertyQuery::new(name.into(), value).into()))
+    }
+
+    fn and_with_t(self, t: Type) -> IntersectionEdgeQuery {
+        IntersectionEdgeQuery::new(Box::new(self.into()), Box::new(TypeQuery::new(t).into()))
+    }
+
+    fn or_with_t(self, t: Type) -> UnionEdgeQuery {
+        UnionEdgeQuery::new(Box::new(self.into()), Box::new(TypeQuery::new(t).into()))
+    }
+
+    fn and_with_key(self, key: EdgeKey) -> IntersectionEdgeQuery {
+        IntersectionEdgeQuery::new(Box::new(self.into()), Box::new(KeyEdgeQuery::new(key).into()))
+    }
+
+    fn or_with_key(self, key: EdgeKey) -> UnionEdgeQuery {
+        UnionEdgeQuery::new(Box::new(self.into()), Box::new(KeyEdgeQuery::new(key).into()))
+    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct SpecificEdgeQuery {
-    pub keys: Vec<EdgeKey>
+pub struct IntersectionEdgeQuery {
+    first: Box<EdgeQuery>,
+    second: Box<EdgeQuery>
 }
 
-impl EdgeQueryExt for SpecificEdgeQuery {}
-
-impl SpecificEdgeQuery {
-    pub fn new(keys: Vec<EdgeKey>) -> Self {
-        Self { keys }
+impl IntersectionEdgeQuery {
+    fn new(first: Box<EdgeQuery>, second: Box<EdgeQuery>) -> Self {
+        Self { first, second }
     }
+}
 
-    pub fn single(key: EdgeKey) -> Self {
-        Self { keys: vec![key] }
+#[derive(PartialEq, Clone, Debug)]
+pub struct UnionEdgeQuery {
+    first: Box<EdgeQuery>,
+    second: Box<EdgeQuery>
+}
+
+impl UnionEdgeQuery {
+    fn new(first: Box<EdgeQuery>, second: Box<EdgeQuery>) -> Self {
+        Self { first, second }
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct KeyEdgeQuery {
+    pub key: EdgeKey
+}
+
+impl EdgeQueryExt for KeyEdgeQuery {}
+
+impl KeyEdgeQuery {
+    pub fn new(key: EdgeKey) -> Self {
+        Self { key }
     }
 }
 
@@ -256,10 +372,8 @@ pub struct PipeEdgeQuery {
     pub inner: Box<VertexQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
-    pub t: Option<Type>,
     pub high: Option<DateTime<Utc>>,
     pub low: Option<DateTime<Utc>>,
-    pub with_prop: BTreeMap<String, JsonValue>,
 }
 
 impl EdgeQueryExt for PipeEdgeQuery {}
@@ -270,22 +384,8 @@ impl PipeEdgeQuery {
             inner,
             direction,
             limit,
-            t: None,
             high: None,
             low: None,
-            with_prop: BTreeMap::new()
-        }
-    }
-
-    pub fn t(self, t: Type) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: Some(t),
-            high: self.high,
-            low: self.low,
-            with_prop: self.with_prop
         }
     }
 
@@ -294,10 +394,8 @@ impl PipeEdgeQuery {
             inner: self.inner,
             direction: self.direction,
             limit: self.limit,
-            t: self.t,
             high: Some(high),
             low: self.low,
-            with_prop: self.with_prop
         }
     }
 
@@ -306,24 +404,8 @@ impl PipeEdgeQuery {
             inner: self.inner,
             direction: self.direction,
             limit: self.limit,
-            t: self.t,
             high: self.high,
             low: Some(low),
-            with_prop: self.with_prop
-        }
-    }
-
-    pub fn with_prop<S: Into<String>>(self, name: S, value: JsonValue) -> Self {
-        let mut with_prop = self.with_prop;
-        with_prop.insert(name.into(), value);
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: self.high,
-            low: self.low,
-            with_prop
         }
     }
 }
