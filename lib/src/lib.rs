@@ -19,6 +19,8 @@ extern crate core;
 extern crate crypto;
 #[macro_use]
 extern crate error_chain;
+extern crate hashbrown;
+extern crate internment;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;

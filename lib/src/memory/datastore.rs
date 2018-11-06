@@ -1,12 +1,77 @@
-use super::super::{Datastore, EdgeQuery, Transaction, VertexQuery, VertexPropertyQuery, EdgePropertyQuery};
+
+use ::{Datastore, EdgeQuery, Transaction, VertexQuery, VertexPropertyQuery, EdgePropertyQuery};
+use ::util::InternableJsonValue;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;
 use models;
 use serde_json::Value as JsonValue;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
+use hashbrown::{HashMap, HashSet};
+use std::collections::HashMap as StdHashMap;
+use std::hash::{Hash, BuildHasher, Hasher};
+use internment::ArcIntern;
+
+#[derive(Debug)]
+struct PropertyMap<K: Clone + Eq + Hash> {
+    key_map: HashMap<K, HashMap<ArcIntern<String>, ArcIntern<InternableJsonValue>>>,
+    value_map: HashMap<ArcIntern<String>, HashMap<ArcIntern<InternableJsonValue>, HashSet<K>>>
+}
+
+impl<K: Clone + Eq + Hash> Default for PropertyMap<K> {
+    fn default() -> Self {
+        Self {
+            key_map: HashMap::new(),
+            value_map: HashMap::new()
+        }
+    }
+}
+
+impl<K: Clone + Eq + Hash> PropertyMap<K> {
+    fn remove_range(&mut self, key: K) {
+        if let Some(values) = self.key_map.remove(&key) {
+            for (name, value) in values {
+                if let Some(container) = self.value_map.get_mut(&name) {
+                    if let Some(container) = container.get_mut(&value) {
+                        container.remove(&key);
+                    }
+                }
+            }
+        }
+    }
+
+    fn remove(&mut self, key: K, name: String) {
+        let name = ArcIntern::new(name);
+
+        if let Some(container) = self.key_map.get_mut(&key) {
+            if let Some(value) = container.remove(&name) {
+                self.value_map.get_mut(&name).unwrap().remove(&value);
+            }
+        }
+    }
+
+    fn insert(&mut self, key: K, name: String, value: JsonValue) {
+        let name = ArcIntern::new(name);
+        let value = ArcIntern::new(InternableJsonValue::new(value));
+        self.key_map.entry(key.clone()).or_insert_with(HashMap::new).insert(name.clone(), value.clone());
+        let container = self.value_map.entry(name).or_insert_with(HashMap::new);
+        container.entry(value).or_insert_with(HashSet::new).insert(key);
+    }
+
+    fn get(&self, key: K, name: String) -> Option<&JsonValue> {
+        let name = ArcIntern::new(name);
+
+        if let Some(container) = self.key_map.get(&key) {
+            if let Some(value) = container.get(&name) {
+                return Some(&value.0);
+            }
+        }
+
+        None
+    }
+}
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -14,9 +79,9 @@ use uuid::Uuid;
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug)]
 struct InternalMemoryDatastore {
-    edge_properties: BTreeMap<(models::EdgeKey, String), JsonValue>,
+    edge_properties: PropertyMap<models::EdgeKey>,
     edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
-    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
+    vertex_properties: PropertyMap<Uuid>,
     vertices: BTreeMap<Uuid, models::Type>,
 }
 
@@ -181,22 +246,7 @@ impl InternalMemoryDatastore {
     fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
         for vertex_id in vertices {
             self.vertices.remove(&vertex_id);
-
-            let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
-
-            for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
-                let &(ref property_vertex_id, _) = property_key;
-
-                if &vertex_id != property_vertex_id {
-                    break;
-                }
-
-                deletable_vertex_properties.push(property_key.clone());
-            }
-
-            for property_key in deletable_vertex_properties {
-                self.vertex_properties.remove(&property_key);
-            }
+            self.vertex_properties.remove_range(vertex_id);
 
             let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
 
@@ -213,22 +263,7 @@ impl InternalMemoryDatastore {
     fn delete_edges(&mut self, edges: Vec<models::EdgeKey>) {
         for edge_key in edges {
             self.edges.remove(&edge_key);
-
-            let mut deletable_edge_properties: Vec<(models::EdgeKey, String)> = Vec::new();
-
-            for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
-                let &(ref property_edge_key, _) = property_key;
-
-                if &edge_key != property_edge_key {
-                    break;
-                }
-
-                deletable_edge_properties.push(property_key.clone());
-            }
-
-            for property_key in deletable_edge_properties {
-                self.edge_properties.remove(&property_key);
-            }
+            self.edge_properties.remove_range(edge_key);
         }
     }
 }
@@ -242,9 +277,9 @@ impl MemoryDatastore {
     pub fn default() -> MemoryDatastore {
         Self {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
-                edge_properties: BTreeMap::new(),
+                edge_properties: PropertyMap::default(),
                 edges: BTreeMap::new(),
-                vertex_properties: BTreeMap::new(),
+                vertex_properties: PropertyMap::default(),
                 vertices: BTreeMap::new(),
             })),
         }
@@ -384,7 +419,7 @@ impl Transaction for MemoryTransaction {
         let vertex_values = datastore.get_vertex_values_by_query(q.inner)?;
 
         for (id, _) in vertex_values {
-            let property_value = datastore.vertex_properties.get(&(id, q.name.clone()));
+            let property_value = datastore.vertex_properties.get(id, q.name.clone());
 
             if let Some(property_value) = property_value {
                 result.push(models::VertexProperty::new(id, property_value.clone()));
@@ -402,7 +437,7 @@ impl Transaction for MemoryTransaction {
         for (id, _) in vertex_values {
             datastore
                 .vertex_properties
-                .insert((id, q.name.clone()), value.clone());
+                .insert(id, q.name.clone(), value.clone());
         }
 
         Ok(())
@@ -414,7 +449,7 @@ impl Transaction for MemoryTransaction {
         let vertex_values = datastore.get_vertex_values_by_query(q.inner)?;
 
         for (id, _) in vertex_values {
-            datastore.vertex_properties.remove(&(id, q.name.clone()));
+            datastore.vertex_properties.remove(id, q.name.clone());
         }
 
         Ok(())
@@ -426,7 +461,7 @@ impl Transaction for MemoryTransaction {
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
         for (key, _) in edge_values {
-            let property_value = datastore.edge_properties.get(&(key.clone(), q.name.clone()));
+            let property_value = datastore.edge_properties.get(key.clone(), q.name.clone());
 
             if let Some(property_value) = property_value {
                 result.push(models::EdgeProperty::new(key, property_value.clone()));
@@ -442,7 +477,7 @@ impl Transaction for MemoryTransaction {
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
         for (key, _) in edge_values {
-            datastore.edge_properties.insert((key, q.name.clone()), value.clone());
+            datastore.edge_properties.insert(key, q.name.clone(), value.clone());
         }
 
         Ok(())
@@ -454,7 +489,7 @@ impl Transaction for MemoryTransaction {
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
         for (key, _) in edge_values {
-            datastore.edge_properties.remove(&(key, q.name.clone()));
+            datastore.edge_properties.remove(key, q.name.clone());
         }
 
         Ok(())
