@@ -12,13 +12,13 @@ struct Edge {
 
 struct EdgeKey {
     outboundId @0 :Uuid;
-    type @1 :Type;
+    t @1 :Type;
     inboundId @2 :Uuid;
 }
 
 struct Vertex {
     id @0 :Uuid;
-    type @1 :Type;
+    t @1 :Type;
 }
 
 struct VertexQuery {

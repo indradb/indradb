@@ -18,12 +18,12 @@ pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Er
 
 pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::Builder<'a>) {
     builder.set_id(vertex.id.as_bytes());
-    builder.set_type(&vertex.t.0);
+    builder.set_t(&vertex.t.0);
 }
 
 pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
     let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
-    let t = map_capnp_err(indradb::Type::new(reader.get_type()?.to_string()))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_t()?.to_string()))?;
     Ok(indradb::Vertex::with_id(id, t))
 }
 
@@ -41,13 +41,13 @@ pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, 
 
 pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
     builder.set_outbound_id(key.outbound_id.as_bytes());
-    builder.set_type(&key.t.0);
+    builder.set_t(&key.t.0);
     builder.set_inbound_id(key.inbound_id.as_bytes());
 }
 
 pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
     let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
-    let t = map_capnp_err(indradb::Type::new(reader.get_type()?.to_string()))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_t()?.to_string()))?;
     let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
