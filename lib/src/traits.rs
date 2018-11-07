@@ -1,5 +1,6 @@
 use errors::Result;
 use models;
+use models::{VertexQueryExt, EdgeQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 use uuid::Uuid;
