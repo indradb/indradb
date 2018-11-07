@@ -341,14 +341,14 @@ impl Transaction for MemoryTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<&models::Type>,
+        t: Option<&models::Type>,
         direction: models::EdgeDirection,
     ) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         if direction == models::EdgeDirection::Outbound {
-            let lower_bound = match type_filter {
-                Some(type_filter) => models::EdgeKey::new(id, type_filter.clone(), Uuid::default()),
+            let lower_bound = match t {
+                Some(t) => models::EdgeKey::new(id, t.clone(), Uuid::default()),
                 None => {
                     let empty_type = models::Type::default();
                     models::EdgeKey::new(id, empty_type, Uuid::default())
@@ -357,8 +357,8 @@ impl Transaction for MemoryTransaction {
             let range = datastore.edges.range(lower_bound..);
 
             let range = range.take_while(|&(k, _)| {
-                if let Some(type_filter) = type_filter {
-                    k.outbound_id == id && &k.t == type_filter
+                if let Some(t) = t {
+                    k.outbound_id == id && &k.t == t
                 } else {
                     k.outbound_id == id
                 }
@@ -367,8 +367,8 @@ impl Transaction for MemoryTransaction {
             Ok(range.count() as u64)
         } else {
             let range = datastore.edges.iter().filter(|&(k, _)| {
-                if let Some(type_filter) = type_filter {
-                    k.inbound_id == id && &k.t == type_filter
+                if let Some(t) = t {
+                    k.inbound_id == id && &k.t == t
                 } else {
                     k.inbound_id == id
                 }

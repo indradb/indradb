@@ -226,15 +226,15 @@ impl indradb::Transaction for ClientTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<&indradb::Type>,
+        t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_edge_count_request();
             req.get().set_id(id.as_bytes());
 
-            if let Some(type_filter) = type_filter {
-                req.get().set_type_filter(&type_filter.0);
+            if let Some(t) = t {
+                req.get().set_t(&t.0);
             }
 
             req.get().set_direction(converters::from_edge_direction(direction));

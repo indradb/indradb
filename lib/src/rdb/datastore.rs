@@ -425,7 +425,7 @@ impl Transaction for RocksdbTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<&models::Type>,
+        t: Option<&models::Type>,
         direction: models::EdgeDirection,
     ) -> Result<u64> {
         let edge_range_manager = match direction {
@@ -433,7 +433,7 @@ impl Transaction for RocksdbTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
         };
 
-        let count = edge_range_manager.iterate_for_range(id, type_filter, None)?.count();
+        let count = edge_range_manager.iterate_for_range(id, t, None)?.count();
 
         Ok(count as u64)
     }

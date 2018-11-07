@@ -286,7 +286,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let trans = self.trans.clone();
         let params = pry!(req.get());
         let id = pry!(converters::map_capnp_err(Uuid::from_slice(pry!(params.get_id()))));
-        let type_filter = match pry!(params.get_type_filter()) {
+        let t = match pry!(params.get_t()) {
             "" => None,
             value => Some(pry!(converters::map_capnp_err(Type::new(value.to_string())))),
         };
@@ -295,7 +295,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let f = self
             .pool
             .spawn_fn(move || -> Result<u64, CapnpError> {
-                converters::map_capnp_err(trans.get_edge_count(id, type_filter.as_ref(), converter))
+                converters::map_capnp_err(trans.get_edge_count(id, t.as_ref(), converter))
             })
             .and_then(move |count| -> Result<(), CapnpError> {
                 res.get().set_result(count);

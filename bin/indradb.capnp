@@ -168,9 +168,9 @@ interface Transaction {
     #
     # Arguments
     # * `id` - The id of the vertex.
-    # * `typeFilter` - Only get the count for a specified edge type.
+    # * `t` - Only get the count for a specified edge type.
     # * `direction`: The direction of edges to get.
-    getEdgeCount @8 (id :Uuid, typeFilter :Type, direction :EdgeDirection) -> (result :UInt64);
+    getEdgeCount @8 (id :Uuid, t :Type, direction :EdgeDirection) -> (result :UInt64);
 
     # Gets vertex properties.
     #

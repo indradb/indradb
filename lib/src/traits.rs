@@ -122,12 +122,12 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `id` - The id of the vertex.
-    /// * `type_filter` - Only get the count for a specified edge type.
+    /// * `t` - Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
     fn get_edge_count(
         &self,
         id: Uuid,
-        type_filter: Option<&models::Type>,
+        t: Option<&models::Type>,
         direction: models::EdgeDirection,
     ) -> Result<u64>;
 
