@@ -1,4 +1,4 @@
-use super::super::{Datastore, Transaction, SpecificVertexQuery, RangeVertexQuery};
+use super::super::{Datastore, Transaction, WithIdVertexQuery, RangeVertexQuery, VertexQueryExt, EdgeQueryExt};
 use super::util::{create_edge_from, create_edges};
 use models;
 use std::collections::HashSet;
@@ -51,7 +51,7 @@ pub fn should_get_single_vertices<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
-    let range = trans.get_vertices(SpecificVertexQuery::single(vertex.id)).unwrap();
+    let range = trans.get_vertices(WithIdVertexQuery::single(vertex.id)).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, vertex.id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -62,7 +62,7 @@ pub fn should_get_single_vertices_nonexisting<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Type::new("test_vertex_type".to_string()).unwrap();
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
-    let range = trans.get_vertices(SpecificVertexQuery::single(Uuid::default())).unwrap();
+    let range = trans.get_vertices(WithIdVertexQuery::single(Uuid::default())).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -70,7 +70,7 @@ pub fn should_get_vertices<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let mut inserted_ids = create_vertices(&trans);
 
-    let range = trans.get_vertices(SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()])).unwrap();
+    let range = trans.get_vertices(WithIdVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()])).unwrap();
 
     assert!(range.len() == 3);
 
@@ -97,7 +97,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
     let inserted_id_2 = create_edge_from(&trans, v.id);
 
     // This query should get `inserted_id_2`
-    let query_1 = SpecificVertexQuery::single(v.id).outbound(1).t(edge_t.clone()).inbound(1);
+    let query_1 = WithIdVertexQuery::single(v.id).outbound(1).t(edge_t.clone()).inbound(1);
     let range = trans.get_vertices(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id_2);
@@ -112,7 +112,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let q = SpecificVertexQuery::single(outbound_id);
+    let q = WithIdVertexQuery::single(outbound_id);
     trans.delete_vertices(q.clone()).unwrap();
     let v = trans.get_vertices(q).unwrap();
     assert_eq!(v.len(), 0);
@@ -125,7 +125,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    trans.delete_vertices(SpecificVertexQuery::single(Uuid::default())).unwrap();
+    trans.delete_vertices(WithIdVertexQuery::single(Uuid::default())).unwrap();
 }
 
 pub fn should_get_a_vertex_count<D: Datastore>(datastore: &mut D) {

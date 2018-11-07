@@ -27,13 +27,18 @@ struct VertexQuery {
             startId @0 :Uuid;
             limit @1 :UInt32;
         }
-        specific :group {
+        withId :group {
             ids @2 :List(Uuid);
         }
-        pipe :group {
-            inner @3 :EdgeQuery;
-            direction @4 :EdgeDirection;
+        withProp :group {
+            name @3 :Text;
+            value @4 :Json;
             limit @5 :UInt32;
+        }
+        pipe :group {
+            inner @6 :EdgeQuery;
+            direction @7 :EdgeDirection;
+            limit @8 :UInt32;
         }
     }
 }
@@ -45,16 +50,21 @@ struct VertexPropertyQuery {
 
 struct EdgeQuery {
     union {
-        specific :group {
+        withKey :group {
             keys @0 :List(EdgeKey);
         }
+        withProp :group {
+            name @1 :Text;
+            value @2 :Json;
+            limit @3 :UInt32;
+        }
         pipe :group {
-            inner @1 :VertexQuery;
-            direction @2 :EdgeDirection;
-            t @3 :Type;
-            high @4 :Timestamp;
-            low @5 :Timestamp;
-            limit @6 :UInt32;
+            inner @4 :VertexQuery;
+            direction @5 :EdgeDirection;
+            t @6 :Type;
+            high @7 :Timestamp;
+            low @8 :Timestamp;
+            limit @9 :UInt32;
         }
     }
 }

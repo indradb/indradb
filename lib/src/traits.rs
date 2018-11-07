@@ -1,5 +1,6 @@
 use errors::Result;
 use models;
+use models::{VertexQueryExt, EdgeQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 use uuid::Uuid;
@@ -34,11 +35,11 @@ pub trait Datastore {
                     trans.create_edge(&edge_key)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
+                    let query = models::WithIdVertexQuery::single(id).property(name);
                     trans.set_vertex_properties(query, &value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
+                    let query = models::WithKeyEdgeQuery::single(edge_key).property(name);
                     trans.set_edge_properties(query, &value)?;
                 }
             }

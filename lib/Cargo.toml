@@ -25,6 +25,7 @@ bench-suite = []
 [dependencies]
 error-chain = "~0.12.0"
 rust-crypto = "~0.2.36"
+internment = "0.3.6"
 serde = "^1.0.79"
 serde_json = "^1.0.31"
 serde_derive = "^1.0.79"
@@ -33,6 +34,7 @@ rand = "~0.5.5"
 regex = "^1.0.5"
 lazy_static = "^1.1.0"
 byteorder = "^1.2.6"
+hashbrown = "0.1.4"
 chrono = { version = "0.4.6", features = ["serde"] }
 uuid = { version = "~0.7.1", features = ["serde", "v1"] }
 

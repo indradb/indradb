@@ -13,9 +13,9 @@ use std::sync::Arc;
 use std::u8;
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
 pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
+pub type VertexPropertyItem = ((Uuid, String), JsonValue);
 pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
 fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>> {
@@ -80,8 +80,11 @@ impl VertexManager {
         }
     }
 
-    fn iterate(&self, iterator: DBIterator) -> Result<impl Iterator<Item=Result<VertexItem>>> {
-        Ok(iterator.map(|item| -> Result<VertexItem> {
+    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item=Result<VertexItem>>> {
+        let low_key = build_key(&[KeyComponent::Uuid(id)]);
+        let iter = self.db.iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+
+        Ok(iter.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
 
             let id = {
@@ -93,12 +96,6 @@ impl VertexManager {
             let value: models::Type = bincode::deserialize(&v.to_owned()[..])?;
             Ok((id, value))
         }))
-    }
-
-    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item=Result<VertexItem>>> {
-        let low_key = build_key(&[KeyComponent::Uuid(id)]);
-        let iter = self.db.iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-        self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
@@ -268,10 +265,10 @@ impl EdgeRangeManager {
         ])
     }
 
-    fn iterate(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<impl Iterator<Item=Result<EdgeRangeItem>>> {
+    fn iterate(&self, iterator: DBIterator, prefix: Box<[u8]>) -> impl Iterator<Item=Result<EdgeRangeItem>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
-        Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
+        filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
@@ -279,7 +276,7 @@ impl EdgeRangeManager {
             let update_datetime = read_datetime(&mut cursor);
             let second_id = read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
-        }))
+        })
     }
 
     pub fn iterate_for_range(
@@ -300,14 +297,14 @@ impl EdgeRangeManager {
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-                Ok(Box::new(self.iterate(iterator, prefix)?))
+                Ok(Box::new(self.iterate(iterator, prefix)))
             }
             None => {
                 let prefix = build_key(&[KeyComponent::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-                let mapped = self.iterate(iterator, prefix)?;
+                let mapped = self.iterate(iterator, prefix);
 
                 if let Some(high) = high {
                     // We can filter out `update_datetime`s greater than
@@ -334,7 +331,7 @@ impl EdgeRangeManager {
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-        self.iterate(iterator, prefix)
+        Ok(self.iterate(iterator, prefix))
     }
 
     pub fn set(
@@ -381,22 +378,29 @@ impl VertexPropertyManager {
         build_key(&[KeyComponent::Uuid(vertex_id), KeyComponent::UnsizedString(name)])
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item=Result<OwnedPropertyItem>>> {
+    fn iterate<I: Iterator<Item=(Box<[u8]>, Box<[u8]>)>>(&self, iterator: I) -> impl Iterator<Item=Result<VertexPropertyItem>> {
+        iterator.map(move |item| -> Result<VertexPropertyItem> {
+            let (k, v) = item;
+            let mut cursor = Cursor::new(k);
+            let owner_id = read_uuid(&mut cursor);
+            let name = read_unsized_string(&mut cursor);
+            let value = json_deserialize_value(&v.to_owned()[..])?;
+            Ok(((owner_id, name), value))
+        })
+    }
+
+    pub fn iterate_all(&self) -> Result<impl Iterator<Item=Result<VertexPropertyItem>>> {
+        let iterator = self.db.iterator_cf(self.cf, IteratorMode::Start)?;
+        Ok(self.iterate(iterator))
+    }
+
+    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item=Result<VertexPropertyItem>>> {
         let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
-
-        Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
-            let (k, v) = item;
-            let mut cursor = Cursor::new(k);
-            let owner_id = read_uuid(&mut cursor);
-            debug_assert_eq!(vertex_id, owner_id);
-            let name = read_unsized_string(&mut cursor);
-            let value = json_deserialize_value(&v.to_owned()[..])?;
-            Ok(((owner_id, name), value))
-        }))
+        Ok(self.iterate(filtered))
     }
 
     pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
@@ -438,6 +442,34 @@ impl EdgePropertyManager {
         ])
     }
 
+    fn iterate<I: Iterator<Item=(Box<[u8]>, Box<[u8]>)>>(&self, iterator: I) -> impl Iterator<Item=Result<EdgePropertyItem>> {
+        iterator.map(move |item| -> Result<EdgePropertyItem> {
+            let (k, v) = item;
+            let mut cursor = Cursor::new(k);
+
+            let edge_property_outbound_id = read_uuid(&mut cursor);
+            let edge_property_t = read_type(&mut cursor);
+            let edge_property_inbound_id = read_uuid(&mut cursor);
+            let edge_property_name = read_unsized_string(&mut cursor);
+            let value = json_deserialize_value(&v.to_owned()[..])?;
+
+            Ok((
+                (
+                    edge_property_outbound_id,
+                    edge_property_t,
+                    edge_property_inbound_id,
+                    edge_property_name,
+                ),
+                value,
+            ))
+        })
+    }
+
+    pub fn iterate_all(&self) -> Result<impl Iterator<Item=Result<EdgePropertyItem>>> {
+        let iterator = self.db.iterator_cf(self.cf, IteratorMode::Start)?;
+        Ok(self.iterate(iterator))
+    }
+
     pub fn iterate_for_owner<'a>(
         &self,
         outbound_id: Uuid,
@@ -454,35 +486,7 @@ impl EdgePropertyManager {
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
         let filtered = take_while_prefixed(iterator, prefix);
-
-        let mapped = filtered.map(move |item| -> Result<EdgePropertyItem> {
-            let (k, v) = item;
-            let mut cursor = Cursor::new(k);
-
-            let edge_property_outbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_outbound_id, outbound_id);
-
-            let edge_property_t = read_type(&mut cursor);
-            debug_assert_eq!(&edge_property_t, t);
-
-            let edge_property_inbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_inbound_id, inbound_id);
-
-            let edge_property_name = read_unsized_string(&mut cursor);
-
-            let value = json_deserialize_value(&v.to_owned()[..])?;
-            Ok((
-                (
-                    edge_property_outbound_id,
-                    edge_property_t,
-                    edge_property_inbound_id,
-                    edge_property_name,
-                ),
-                value,
-            ))
-        });
-
-        Ok(Box::new(mapped))
+        Ok(Box::new(self.iterate(filtered)))
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
