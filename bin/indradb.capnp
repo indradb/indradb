@@ -24,16 +24,18 @@ struct Vertex {
 struct VertexQuery {
     union {
         range :group {
-            startId @0 :Uuid;
-            limit @1 :UInt32;
+            limit @0 :UInt32;
+            t @1 :Type;
+            startId @2 :Uuid;
         }
         specific :group {
-            ids @2 :List(Uuid);
+            ids @3 :List(Uuid);
         }
         pipe :group {
-            inner @3 :EdgeQuery;
-            direction @4 :EdgeDirection;
-            limit @5 :UInt32;
+            inner @4 :EdgeQuery;
+            direction @5 :EdgeDirection;
+            limit @6 :UInt32;
+            t @7 :Type;
         }
     }
 }
