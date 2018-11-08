@@ -23,7 +23,7 @@ pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::B
 
 pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
     let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
-    let t = map_capnp_err(indradb::Type::new(reader.get_t()?.to_string()))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     Ok(indradb::Vertex::with_id(id, t))
 }
 
@@ -47,7 +47,7 @@ pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key:
 
 pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
     let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
-    let t = map_capnp_err(indradb::Type::new(reader.get_t()?.to_string()))?;
+    let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
@@ -127,7 +127,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
             }
 
             if t_str != "" {
-                range = range.t(map_capnp_err(indradb::Type::new(t_str.to_string()))?);
+                range = range.t(map_capnp_err(indradb::Type::new(t_str))?);
             }
 
             Ok(range.into())
@@ -148,7 +148,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
             let mut pipe = indradb::PipeVertexQuery::new(inner, direction, limit);
 
             if t_str != "" {
-                pipe = pipe.t(map_capnp_err(indradb::Type::new(t_str.to_string()))?);
+                pipe = pipe.t(map_capnp_err(indradb::Type::new(t_str))?);
             }
 
             Ok(pipe.into())
@@ -221,7 +221,7 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
 
             let t = params.get_t()?;
             if t != "" {
-                pipe = pipe.t(map_capnp_err(indradb::Type::new(t.to_string()))?);
+                pipe = pipe.t(map_capnp_err(indradb::Type::new(t))?);
             }
 
             if let Some(high) = to_optional_datetime(params.get_high()) {

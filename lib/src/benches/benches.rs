@@ -3,7 +3,7 @@ use test::Bencher;
 use traits::{Datastore, Transaction};
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_create_vertex".to_string()).unwrap();
+    let t = Type::new("bench_create_vertex").unwrap();
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
@@ -15,7 +15,7 @@ pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let id = {
         let trans = datastore.transaction().unwrap();
-        let t = Type::new("bench_get_vertices".to_string()).unwrap();
+        let t = Type::new("bench_get_vertices").unwrap();
         let v = Vertex::new(t);
         trans.create_vertex(&v).unwrap();
         v.id
@@ -29,7 +29,7 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_create_edge".to_string()).unwrap();
+    let t = Type::new("bench_create_edge").unwrap();
 
     let (outbound_id, inbound_id) = {
         let trans = datastore.transaction().unwrap();
@@ -48,7 +48,7 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_get_edges".to_string()).unwrap();
+    let t = Type::new("bench_get_edges").unwrap();
 
     let key = {
         let trans = datastore.transaction().unwrap();
@@ -71,7 +71,7 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_get_edge_count".to_string()).unwrap();
+    let t = Type::new("bench_get_edge_count").unwrap();
 
     let outbound_id = {
         let trans = datastore.transaction().unwrap();

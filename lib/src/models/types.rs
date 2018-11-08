@@ -23,13 +23,15 @@ impl Type {
     /// # Errors
     /// Returns a `ValidationError` if the type is longer than 255 characters,
     /// or has invalid characters.
-    pub fn new(t: String) -> ValidationResult<Self> {
-        if t.len() > 255 {
+    pub fn new<S: Into<String>>(s: S) -> ValidationResult<Self> {
+        let s = s.into();
+
+        if s.len() > 255 {
             Err("Type is too long".into())
-        } else if !TYPE_VALIDATOR.is_match(&t[..]) {
+        } else if !TYPE_VALIDATOR.is_match(&s[..]) {
             Err("Invalid type".into())
         } else {
-            Ok(Type(t))
+            Ok(Type(s))
         }
     }
 }
@@ -57,11 +59,11 @@ mod tests {
     #[test]
     fn should_fail_for_invalid_types() {
         assert!(Type::new(generate_random_secret(256)).is_err());
-        assert!(Type::new("$".to_string()).is_err());
+        assert!(Type::new("$").is_err());
     }
 
     #[test]
     fn should_convert_str_to_type() {
-        assert_eq!(Type::from_str("foo").unwrap(), Type::new("foo".to_string()).unwrap());
+        assert_eq!(Type::from_str("foo").unwrap(), Type::new("foo").unwrap());
     }
 }

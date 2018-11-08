@@ -129,7 +129,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_t = pry!(pry!(req.get()).get_t());
-        let t = pry!(converters::map_capnp_err(indradb::Type::new(cnp_t.to_string())));
+        let t = pry!(converters::map_capnp_err(indradb::Type::new(cnp_t)));
 
         let f = self
             .pool
@@ -288,7 +288,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let id = pry!(converters::map_capnp_err(Uuid::from_slice(pry!(params.get_id()))));
         let t = match pry!(params.get_t()) {
             "" => None,
-            value => Some(pry!(converters::map_capnp_err(Type::new(value.to_string())))),
+            value => Some(pry!(converters::map_capnp_err(Type::new(value)))),
         };
         let converter = converters::to_edge_direction(pry!(params.get_direction()));
 
