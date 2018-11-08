@@ -1,4 +1,4 @@
-use models::{EdgeDirection, EdgeKey, EdgeQuery, Type, Vertex, VertexQuery};
+use models::{EdgeDirection, EdgeKey, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery};
 use test::Bencher;
 use traits::{Datastore, Transaction};
 
@@ -23,8 +23,8 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let q = VertexQuery::Vertices { ids: vec![id] };
-        trans.get_vertices(&q).unwrap();
+        let q = SpecificVertexQuery::single(id);
+        trans.get_vertices(q).unwrap();
     });
 }
 
@@ -63,10 +63,8 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let q = EdgeQuery::Edges {
-            keys: vec![key.clone()],
-        };
-        trans.get_edges(&q).unwrap();
+        let q = SpecificEdgeQuery::single(key.clone());
+        trans.get_edges(q).unwrap();
     });
 }
 
