@@ -309,11 +309,7 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range.len(), 1);
     assert_eq!(
         range[0].key,
-        models::EdgeKey::new(
-            outbound_v.id,
-            models::Type::new("test_edge_type").unwrap(),
-            inbound_id
-        )
+        models::EdgeKey::new(outbound_v.id, models::Type::new("test_edge_type").unwrap(), inbound_id)
     );
 
     let query_2 = query_1
@@ -324,11 +320,7 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range.len(), 1);
     assert_eq!(
         range[0].key,
-        models::EdgeKey::new(
-            outbound_v.id,
-            models::Type::new("test_edge_type").unwrap(),
-            inbound_id
-        )
+        models::EdgeKey::new(outbound_v.id, models::Type::new("test_edge_type").unwrap(), inbound_id)
     );
 }
 
