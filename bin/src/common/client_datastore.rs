@@ -245,7 +245,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
+    fn get_vertex_properties(
+        &self,
+        q: indradb::VertexPropertyQuery,
+    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_vertex_properties_request();
             converters::from_vertex_property_query(&q, req.get().init_q());

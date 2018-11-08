@@ -119,7 +119,7 @@ impl RangeVertexQuery {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
-    pub ids: Vec<Uuid>
+    pub ids: Vec<Uuid>,
 }
 
 impl VertexQueryExt for SpecificVertexQuery {}
@@ -146,7 +146,12 @@ impl VertexQueryExt for PipeVertexQuery {}
 
 impl PipeVertexQuery {
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
-        Self { inner, direction, limit, t: None }
+        Self {
+            inner,
+            direction,
+            limit,
+            t: None,
+        }
     }
 
     pub fn t(self, t: Type) -> Self {
@@ -162,12 +167,15 @@ impl PipeVertexQuery {
 #[derive(PartialEq, Clone, Debug)]
 pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
-    pub name: String
+    pub name: String,
 }
 
 impl VertexPropertyQuery {
     pub fn new<S: Into<String>>(inner: VertexQuery, name: S) -> Self {
-        Self { inner, name: name.into() }
+        Self {
+            inner,
+            name: name.into(),
+        }
     }
 }
 
@@ -205,7 +213,7 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
-    pub keys: Vec<EdgeKey>
+    pub keys: Vec<EdgeKey>,
 }
 
 impl EdgeQueryExt for SpecificEdgeQuery {}
@@ -281,12 +289,15 @@ impl PipeEdgeQuery {
 #[derive(PartialEq, Clone, Debug)]
 pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
-    pub name: String
+    pub name: String,
 }
 
 impl EdgePropertyQuery {
     pub fn new<S: Into<String>>(inner: EdgeQuery, name: S) -> Self {
-        Self { inner, name: name.into() }
+        Self {
+            inner,
+            name: name.into(),
+        }
     }
 }
 

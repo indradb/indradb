@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeQuery, Transaction, VertexQuery, VertexPropertyQuery, EdgePropertyQuery};
+use super::super::{Datastore, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery};
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;
@@ -24,7 +24,8 @@ impl InternalMemoryDatastore {
     fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<Vec<(Uuid, models::Type)>> {
         match q {
             VertexQuery::Range(range) => {
-                let mut iter: Box<dyn Iterator<Item=(&Uuid, &models::Type)>> = if let Some(start_id) = range.start_id {
+                let mut iter: Box<dyn Iterator<Item = (&Uuid, &models::Type)>> = if let Some(start_id) = range.start_id
+                {
                     Box::new(self.vertices.range(start_id..))
                 } else {
                     Box::new(self.vertices.iter())
@@ -52,13 +53,14 @@ impl InternalMemoryDatastore {
             VertexQuery::Pipe(pipe) => {
                 let edge_values = self.get_edge_values_by_query(*pipe.inner)?.into_iter();
 
-                let iter: Box<dyn Iterator<Item=Uuid>> = match pipe.direction {
+                let iter: Box<dyn Iterator<Item = Uuid>> = match pipe.direction {
                     models::EdgeDirection::Outbound => Box::new(edge_values.map(|(key, _)| key.outbound_id)),
                     models::EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
                 };
 
-                let mut iter: Box<dyn Iterator<Item=(Uuid, &models::Type)>> = Box::new(
-                    iter.map(|id| (id, self.vertices.get(&id))).filter_map(|(k, v)| Some((k, v?)))
+                let mut iter: Box<dyn Iterator<Item = (Uuid, &models::Type)>> = Box::new(
+                    iter.map(|id| (id, self.vertices.get(&id)))
+                        .filter_map(|(k, v)| Some((k, v?))),
                 );
 
                 if let Some(ref t) = pipe.t {
@@ -338,12 +340,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        t: Option<&models::Type>,
-        direction: models::EdgeDirection,
-    ) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         if direction == models::EdgeDirection::Outbound {
@@ -400,9 +397,7 @@ impl Transaction for MemoryTransaction {
         let vertex_values = datastore.get_vertex_values_by_query(q.inner)?;
 
         for (id, _) in vertex_values {
-            datastore
-                .vertex_properties
-                .insert((id, q.name.clone()), value.clone());
+            datastore.vertex_properties.insert((id, q.name.clone()), value.clone());
         }
 
         Ok(())

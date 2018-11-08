@@ -1,4 +1,6 @@
-use super::super::{Datastore, EdgeKey, Transaction, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery, VertexQueryExt, EdgeQueryExt};
+use super::super::{
+    Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
+};
 use serde_json::Value as JsonValue;
 use util::generate_random_secret;
 use uuid::Uuid;
@@ -105,7 +107,9 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
 pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let key = EdgeKey::new(Uuid::default(), Type::new("foo".to_string()).unwrap(), Uuid::default());
-    trans.delete_edge_properties(SpecificEdgeQuery::single(key).property("bar")).unwrap();
+    trans
+        .delete_edge_properties(SpecificEdgeQuery::single(key).property("bar"))
+        .unwrap();
 
     let outbound_v = Vertex::new(Type::new("foo".to_string()).unwrap());
     let inbound_v = Vertex::new(Type::new("foo".to_string()).unwrap());
@@ -114,5 +118,7 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D
 
     let key = EdgeKey::new(outbound_v.id, Type::new("baz".to_string()).unwrap(), inbound_v.id);
     trans.create_edge(&key).unwrap();
-    trans.delete_edge_properties(SpecificEdgeQuery::single(key).property("bleh")).unwrap();
+    trans
+        .delete_edge_properties(SpecificEdgeQuery::single(key).property("bleh"))
+        .unwrap();
 }

@@ -1,9 +1,11 @@
-use super::super::{Datastore, EdgeDirection, EdgeQuery, Transaction, VertexQuery, VertexPropertyQuery, EdgePropertyQuery};
+use super::super::{
+    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
+};
 use super::managers::*;
 use chrono::offset::Utc;
 use errors::Result;
 use models;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB, WriteOptions};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 use std::i32;
 use std::sync::Arc;
@@ -65,7 +67,7 @@ where
     iter.filter_map(|item| match item {
         Err(err) => Some(Err(err)),
         Ok(Some(value)) => Some(Ok(value)),
-        _ => None
+        _ => None,
     })
 }
 
@@ -175,7 +177,7 @@ impl RocksdbTransaction {
         Ok(RocksdbTransaction { db })
     }
 
-    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item=Result<VertexItem>>>> {
+    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
         match q {
             VertexQuery::Range(q) => {
                 let vertex_manager = VertexManager::new(self.db.clone());
@@ -195,12 +197,13 @@ impl RocksdbTransaction {
                     None => Uuid::default(),
                 };
 
-                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
+                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
                         Ok((_, v)) => v == t,
-                        Err(_) => true
+                        Err(_) => true,
                     }));
                 }
 
@@ -212,9 +215,9 @@ impl RocksdbTransaction {
 
                 let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
                     Some(value) => Ok(Some((id, value))),
-                    None => Ok(None)
+                    None => Ok(None),
                 });
-                
+
                 Ok(Box::new(remove_nones_from_iterator(iter)))
             }
             VertexQuery::Pipe(q) => {
@@ -232,16 +235,16 @@ impl RocksdbTransaction {
 
                     match vertex_manager.get(id)? {
                         Some(value) => Ok(Some((id, value))),
-                        None => Ok(None)
+                        None => Ok(None),
                     }
                 });
 
-                let mut iter: Box<dyn Iterator<Item=Result<VertexItem>>> = Box::new(remove_nones_from_iterator(iter));
+                let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(remove_nones_from_iterator(iter));
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
                         Ok((_, v)) => v == t,
-                        Err(_) => true
+                        Err(_) => true,
                     }));
                 }
 
@@ -422,12 +425,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        t: Option<&models::Type>,
-        direction: models::EdgeDirection,
-    ) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
         let edge_range_manager = match direction {
             EdgeDirection::Outbound => EdgeRangeManager::new(self.db.clone()),
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),

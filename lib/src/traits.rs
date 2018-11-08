@@ -1,6 +1,6 @@
 use errors::Result;
 use models;
-use models::{VertexQueryExt, EdgeQueryExt};
+use models::{EdgeQueryExt, VertexQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 use uuid::Uuid;
@@ -124,12 +124,7 @@ pub trait Transaction {
     /// * `id` - The id of the vertex.
     /// * `t` - Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        t: Option<&models::Type>,
-        direction: models::EdgeDirection,
-    ) -> Result<u64>;
+    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets vertex properties.
     ///

@@ -446,9 +446,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<(), CapnpError> {
-                converters::map_capnp_err(trans.delete_edge_properties(q))
-            })
+            .spawn_fn(move || -> Result<(), CapnpError> { converters::map_capnp_err(trans.delete_edge_properties(q)) })
             .and_then(move |_| -> Result<(), CapnpError> {
                 res.get().set_result(());
                 Ok(())

@@ -156,12 +156,17 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
     }
 }
 
-pub fn from_vertex_property_query<'a>(q: &indradb::VertexPropertyQuery, mut builder: autogen::vertex_property_query::Builder<'a>) {
+pub fn from_vertex_property_query<'a>(
+    q: &indradb::VertexPropertyQuery,
+    mut builder: autogen::vertex_property_query::Builder<'a>,
+) {
     builder.set_name(&q.name);
     from_vertex_query(&q.inner, builder.init_inner());
 }
 
-pub fn to_vertex_property_query<'a>(reader: &autogen::vertex_property_query::Reader<'a>) -> Result<indradb::VertexPropertyQuery, CapnpError> {
+pub fn to_vertex_property_query<'a>(
+    reader: &autogen::vertex_property_query::Reader<'a>,
+) -> Result<indradb::VertexPropertyQuery, CapnpError> {
     let inner = to_vertex_query(&reader.get_inner()?)?;
     let name = reader.get_name()?;
     Ok(indradb::VertexPropertyQuery::new(inner, name))
@@ -232,12 +237,17 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
     }
 }
 
-pub fn from_edge_property_query<'a>(q: &indradb::EdgePropertyQuery, mut builder: autogen::edge_property_query::Builder<'a>) {
+pub fn from_edge_property_query<'a>(
+    q: &indradb::EdgePropertyQuery,
+    mut builder: autogen::edge_property_query::Builder<'a>,
+) {
     builder.set_name(&q.name);
     from_edge_query(&q.inner, builder.init_inner());
 }
 
-pub fn to_edge_property_query<'a>(reader: &autogen::edge_property_query::Reader<'a>) -> Result<indradb::EdgePropertyQuery, CapnpError> {
+pub fn to_edge_property_query<'a>(
+    reader: &autogen::edge_property_query::Reader<'a>,
+) -> Result<indradb::EdgePropertyQuery, CapnpError> {
     let inner = to_edge_query(&reader.get_inner()?)?;
     let name = reader.get_name()?;
     Ok(indradb::EdgePropertyQuery::new(inner, name))
