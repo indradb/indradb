@@ -97,10 +97,10 @@ impl VertexManager {
 
     pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>>> {
         let low_key = build_key(&[KeyComponent::Uuid(id)]);
-        let iterator = self
+        let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-        self.iterate(iterator)
+        self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {

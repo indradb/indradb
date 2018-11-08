@@ -21,11 +21,12 @@ macro_rules! full_test_impl {
 
         // Vertices
         define_test!(should_create_vertex_from_type, $code);
-        define_test!(should_get_all_vertices, $code);
-        define_test!(should_get_all_vertices_with_zero_limit, $code);
-        define_test!(should_get_all_vertices_out_of_range, $code);
-        define_test!(should_get_single_vertices, $code);
-        define_test!(should_get_single_vertices_nonexisting, $code);
+        define_test!(should_get_range_vertices, $code);
+        define_test!(should_get_no_vertices_with_zero_limit, $code);
+        define_test!(should_get_range_vertices_out_of_range, $code);
+        define_test!(should_get_no_vertices_with_type_filter, $code);
+        define_test!(should_get_single_vertex, $code);
+        define_test!(should_get_single_vertex_nonexisting, $code);
         define_test!(should_get_vertices, $code);
         define_test!(should_get_vertices_piped, $code);
         define_test!(should_get_a_vertex_count, $code);
