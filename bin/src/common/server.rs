@@ -284,7 +284,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
-        let id = pry!(converters::map_capnp_err(indradb::Id::new(pry!(params.get_id()))));
+        let id = pry!(converters::map_capnp_err(indradb::Id::new(pry!(params.get_id()).to_vec())));
         let t = match pry!(params.get_t()) {
             "" => None,
             value => Some(pry!(converters::map_capnp_err(Type::new(value)))),

@@ -3,23 +3,15 @@ use errors::{ValidationError, ValidationResult};
 use std::u16;
 
 #[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Ord, PartialOrd)]
-pub struct Id(pub String);
+pub struct Id(pub Vec<u8>);
 
 impl Id {
-    pub fn new<S: Into<String>>(s: S) -> ValidationResult<Self> {
-        let s = s.into();
-
-        if s.len() > u16::max_value() as usize {
+    pub fn new(value: Vec<u8>) -> ValidationResult<Self> {
+        if value.len() > u16::max_value() as usize {
             Err("Id is too long".into())
         } else {
-            Ok(Id(s))
+            Ok(Id(value))
         }
-    }
-}
-
-impl Default for Id {
-    fn default() -> Self {
-        Self { 0: "".to_string() }
     }
 }
 
@@ -27,6 +19,12 @@ impl FromStr for Id {
     type Err = ValidationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s.to_string())?)
+        Self::new(s.as_bytes().to_vec())
+    }
+}
+
+impl Default for Id {
+    fn default() -> Self {
+        Self::new(Vec::new()).unwrap()
     }
 }

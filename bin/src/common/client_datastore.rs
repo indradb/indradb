@@ -133,8 +133,8 @@ impl indradb::Transaction for ClientTransaction {
             req.get().set_t(&t.0);
 
             let f = req.send().promise.and_then(move |res| {
-                let s = res.get()?.get_result()?;
-                Ok(indradb::Id::new(s).unwrap())
+                let b = res.get()?.get_result()?;
+                Ok(indradb::Id::new(b.to_vec()).unwrap())
             });
 
             Box::new(f)

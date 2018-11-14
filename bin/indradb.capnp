@@ -1,7 +1,7 @@
 @0xc656e2e7cbc5b02e;
 
 using Timestamp = UInt64;
-using Id = Text;
+using Id = Data;
 using Type = Text;
 using Json = Text;
 

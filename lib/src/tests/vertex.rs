@@ -42,7 +42,8 @@ pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(datastore: &mut D) {
 pub fn should_get_range_vertices_out_of_range<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
-    let id = Id::new(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap().to_hyphenated().to_string()).unwrap();
+    let uuid = Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap();
+    let id = Id::new(uuid.as_bytes().to_vec()).unwrap();
     let range = trans
         .get_vertices(
             RangeVertexQuery::new(u32::MAX).start_id(id),

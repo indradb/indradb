@@ -26,7 +26,7 @@ impl Vertex {
     ///
     /// * `t` - The type of the vertex.
     pub fn new(t: Type) -> Self {
-        let id = Id::new(generate_uuid_v1().to_hyphenated().to_string()).unwrap();
+        let id = Id::new(generate_uuid_v1().as_bytes().to_vec()).unwrap();
         Self::with_id(id, t)
     }
 

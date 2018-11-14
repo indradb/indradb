@@ -42,10 +42,10 @@ impl<'a> KeyComponent<'a> {
         match *self {
             KeyComponent::SizedId(id) => {
                 cursor.write_u16::<BigEndian>(id.0.len() as u16)?;
-                cursor.write_all(id.0.as_bytes())?;
+                cursor.write_all(&id.0)?;
             }
             KeyComponent::UnsizedId(id) => {
-                cursor.write_all(id.0.as_bytes())?;
+                cursor.write_all(&id.0)?;
             }
             KeyComponent::UnsizedString(s) => {
                 cursor.write_all(s.as_bytes())?;
@@ -81,13 +81,13 @@ pub fn read_sized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
     let id_len = cursor.read_u16::<BigEndian>().unwrap() as usize;
     let mut buf = vec![0u8; id_len];
     cursor.read_exact(&mut buf).unwrap();
-    let s = str::from_utf8(&buf).unwrap().to_string();
-    models::Id::new(s).unwrap()
+    models::Id::new(buf).unwrap()
 }
 
 pub fn read_unsized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
-    let s = read_unsized_string(cursor);
-    models::Id::new(s).unwrap()
+    let mut buf = Vec::new();
+    cursor.read_to_end(&mut buf).unwrap();
+    models::Id::new(buf).unwrap()
 }
 
 pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
