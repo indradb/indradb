@@ -1,7 +1,7 @@
 @0xc656e2e7cbc5b02e;
 
 using Timestamp = UInt64;
-using Uuid = Data;
+using Id = Text;
 using Type = Text;
 using Json = Text;
 
@@ -11,13 +11,13 @@ struct Edge {
 }
 
 struct EdgeKey {
-    outboundId @0 :Uuid;
+    outboundId @0 :Id;
     t @1 :Type;
-    inboundId @2 :Uuid;
+    inboundId @2 :Id;
 }
 
 struct Vertex {
-    id @0 :Uuid;
+    id @0 :Id;
     t @1 :Type;
 }
 
@@ -26,10 +26,10 @@ struct VertexQuery {
         range :group {
             limit @0 :UInt32;
             t @1 :Type;
-            startId @2 :Uuid;
+            startId @2 :Id;
         }
         specific :group {
-            ids @3 :List(Uuid);
+            ids @3 :List(Id);
         }
         pipe :group {
             inner @4 :EdgeQuery;
@@ -77,7 +77,7 @@ struct Property {
 }
 
 struct VertexProperty {
-    id @0 :Uuid;
+    id @0 :Id;
     value @1 :Json;
 }
 
@@ -95,7 +95,7 @@ struct BulkInsertItem {
             key @1 :EdgeKey;
         }
         vertexProperty :group {
-            id @2 :Uuid;
+            id @2 :Id;
             name @3 :Text;
             value @4 :Json;
         }
@@ -115,7 +115,7 @@ interface Service {
 
 interface Transaction {
     # Creates a new vertex. Returns whether the vertex was successfully
-    # created - if this is false, it's because a vertex with the same UUID
+    # created - if this is false, it's because a vertex with the same ID
     # already exists.
     #
     # Arguments
@@ -124,11 +124,11 @@ interface Transaction {
 
     # Creates a new vertex with just a type specification. As opposed to
     # `createVertex`, this is used when you do not want to manually specify
-    # the vertex's UUID. Returns the new vertex's UUID.
+    # the vertex's ID. Returns the new vertex's ID.
     #
     # Arguments
     # * `t`: The type of the vertex to create.
-    createVertexFromType @1 (t :Type) -> (result :Uuid);
+    createVertexFromType @1 (t :Type) -> (result :Id);
 
     # Gets a range of vertices specified by a query.
     #
@@ -172,7 +172,7 @@ interface Transaction {
     # * `id` - The id of the vertex.
     # * `t` - Only get the count for a specified edge type.
     # * `direction`: The direction of edges to get.
-    getEdgeCount @8 (id :Uuid, t :Type, direction :EdgeDirection) -> (result :UInt64);
+    getEdgeCount @8 (id :Id, t :Type, direction :EdgeDirection) -> (result :UInt64);
 
     # Gets vertex properties.
     #

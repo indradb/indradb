@@ -1,12 +1,12 @@
 use super::edges::EdgeKey;
 use super::vertices::Vertex;
+use super::ids::Id;
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(Uuid, String, JsonValue),
+    VertexProperty(Id, String, JsonValue),
     EdgeProperty(EdgeKey, String, JsonValue),
 }

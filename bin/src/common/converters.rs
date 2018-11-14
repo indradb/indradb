@@ -8,7 +8,6 @@ use indradb;
 use serde_json;
 use std::fmt::Display;
 use std::vec::IntoIter;
-use uuid::Uuid;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -17,12 +16,12 @@ pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Er
 }
 
 pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::Builder<'a>) {
-    builder.set_id(vertex.id.as_bytes());
+    builder.set_id(&vertex.id.0);
     builder.set_t(&vertex.t.0);
 }
 
 pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
-    let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
+    let id = map_capnp_err(indradb::Id::new(reader.get_id()?))?;
     let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     Ok(indradb::Vertex::with_id(id, t))
 }
@@ -40,15 +39,15 @@ pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, 
 }
 
 pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
-    builder.set_outbound_id(key.outbound_id.as_bytes());
+    builder.set_outbound_id(&key.outbound_id.0);
     builder.set_t(&key.t.0);
-    builder.set_inbound_id(key.inbound_id.as_bytes());
+    builder.set_inbound_id(&key.inbound_id.0);
 }
 
 pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
-    let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
+    let outbound_id = map_capnp_err(indradb::Id::new(reader.get_outbound_id()?))?;
     let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
-    let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
+    let inbound_id = map_capnp_err(indradb::Id::new(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
@@ -56,14 +55,14 @@ pub fn from_vertex_property<'a>(
     property: &indradb::VertexProperty,
     mut builder: autogen::vertex_property::Builder<'a>,
 ) {
-    builder.set_id(property.id.as_bytes());
+    builder.set_id(&property.id.0);
     builder.set_value(&property.value.to_string());
 }
 
 pub fn to_vertex_property<'a>(
     reader: &autogen::vertex_property::Reader<'a>,
 ) -> Result<indradb::VertexProperty, CapnpError> {
-    let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
+    let id = map_capnp_err(indradb::Id::new(reader.get_id()?))?;
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::VertexProperty::new(id, value))
 }
@@ -84,8 +83,8 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_
         indradb::VertexQuery::Range(q) => {
             let mut builder = builder.init_range();
 
-            if let Some(start_id) = q.start_id {
-                builder.set_start_id(start_id.as_bytes());
+            if let Some(ref start_id) = q.start_id {
+                builder.set_start_id(&start_id.0);
             }
 
             if let Some(ref t) = q.t {
@@ -98,7 +97,7 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_
             let mut builder = builder.init_specific().init_ids(q.ids.len() as u32);
 
             for (i, id) in q.ids.iter().enumerate() {
-                builder.set(i as u32, id.as_bytes());
+                builder.set(i as u32, &id.0);
             }
         }
         indradb::VertexQuery::Pipe(q) => {
@@ -118,12 +117,12 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_
 pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
     match reader.which()? {
         autogen::vertex_query::Range(params) => {
-            let start_id_bytes = params.get_start_id()?;
+            let start_id = params.get_start_id()?;
             let t_str = params.get_t()?;
             let mut range = indradb::RangeVertexQuery::new(params.get_limit());
 
-            if !start_id_bytes.is_empty() {
-                range = range.start_id(map_capnp_err(Uuid::from_slice(start_id_bytes))?);
+            if !start_id.is_empty() {
+                range = range.start_id(map_capnp_err(indradb::Id::new(start_id))?);
             }
 
             if t_str != "" {
@@ -133,10 +132,10 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
             Ok(range.into())
         }
         autogen::vertex_query::Specific(params) => {
-            let ids: Result<Vec<Uuid>, CapnpError> = params
+            let ids: Result<Vec<indradb::Id>, CapnpError> = params
                 .get_ids()?
                 .into_iter()
-                .map(|bytes| map_capnp_err(Uuid::from_slice(bytes?)))
+                .map(|s| map_capnp_err(indradb::Id::new(s?)))
                 .collect();
             Ok(indradb::SpecificVertexQuery::new(ids?).into())
         }
@@ -271,7 +270,7 @@ pub fn from_bulk_insert_items<'a>(
             }
             indradb::BulkInsertItem::VertexProperty(id, name, value) => {
                 let mut builder = builder.init_vertex_property();
-                builder.set_id(id.as_bytes());
+                builder.set_id(&id.0);
                 builder.set_name(name);
                 builder.set_value(&value.to_string());
             }
@@ -302,7 +301,7 @@ pub fn to_bulk_insert_items<'a>(
                 Ok(indradb::BulkInsertItem::Edge(edge_key))
             }
             autogen::bulk_insert_item::VertexProperty(params) => {
-                let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
+                let id = map_capnp_err(indradb::Id::new(params.get_id()?))?;
                 let name = params.get_name()?.to_string();
                 let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
                 Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))

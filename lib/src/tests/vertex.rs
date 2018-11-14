@@ -1,4 +1,4 @@
-use super::super::{Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
+use super::super::{Id, Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
 use super::util::{create_edge_from, create_edges};
 use models;
 use std::collections::HashSet;
@@ -19,7 +19,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
 
     assert!(range.len() >= 5);
 
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<Id> = HashSet::new();
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
@@ -28,7 +28,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
         }
 
         assert!(!covered_ids.contains(&vertex.id));
-        covered_ids.insert(vertex.id);
+        covered_ids.insert(vertex.id.clone());
     }
 }
 
@@ -42,9 +42,10 @@ pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(datastore: &mut D) {
 pub fn should_get_range_vertices_out_of_range<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
+    let id = Id::new(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap().to_hyphenated().to_string()).unwrap();
     let range = trans
         .get_vertices(
-            RangeVertexQuery::new(u32::MAX).start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
+            RangeVertexQuery::new(u32::MAX).start_id(id),
         )
         .unwrap();
     assert_eq!(range.len(), 0);
@@ -65,7 +66,7 @@ pub fn should_get_single_vertex<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
-    let range = trans.get_vertices(SpecificVertexQuery::single(vertex.id)).unwrap();
+    let range = trans.get_vertices(SpecificVertexQuery::single(vertex.id.clone())).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, vertex.id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -77,7 +78,7 @@ pub fn should_get_single_vertex_nonexisting<D: Datastore>(datastore: &mut D) {
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
     let range = trans
-        .get_vertices(SpecificVertexQuery::single(Uuid::default()))
+        .get_vertices(SpecificVertexQuery::single(Id::default()))
         .unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -88,16 +89,16 @@ pub fn should_get_vertices<D: Datastore>(datastore: &mut D) {
 
     let range = trans
         .get_vertices(SpecificVertexQuery::new(vec![
-            inserted_ids[0],
-            inserted_ids[1],
-            inserted_ids[2],
-            Uuid::default(),
+            inserted_ids[0].clone(),
+            inserted_ids[1].clone(),
+            inserted_ids[2].clone(),
+            Id::default(),
         ]))
         .unwrap();
 
     assert!(range.len() == 3);
 
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<Id> = HashSet::new();
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
@@ -106,7 +107,7 @@ pub fn should_get_vertices<D: Datastore>(datastore: &mut D) {
         }
 
         assert!(!covered_ids.contains(&vertex.id));
-        covered_ids.insert(vertex.id);
+        covered_ids.insert(vertex.id.clone());
     }
 }
 
@@ -117,10 +118,10 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 
     let v = models::Vertex::new(vertex_t);
     trans.create_vertex(&v).unwrap();
-    let inserted_id = create_edge_from(&trans, v.id);
+    let inserted_id = create_edge_from(&trans, v.id.clone());
 
     // This query should get `inserted_id`
-    let query_1 = SpecificVertexQuery::single(v.id)
+    let query_1 = SpecificVertexQuery::single(v.id.clone())
         .outbound(1)
         .t(edge_t.clone())
         .inbound(1);
@@ -129,7 +130,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get `inserted_id`
-    let query_2 = SpecificVertexQuery::single(v.id)
+    let query_2 = SpecificVertexQuery::single(v.id.clone())
         .outbound(1)
         .t(edge_t.clone())
         .inbound(1)
@@ -139,7 +140,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get nothing
-    let query_3 = SpecificVertexQuery::single(v.id)
+    let query_3 = SpecificVertexQuery::single(v.id.clone())
         .outbound(1)
         .t(edge_t.clone())
         .inbound(1)
@@ -157,7 +158,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
-    let q = SpecificVertexQuery::single(outbound_id);
+    let q = SpecificVertexQuery::single(outbound_id.clone());
     trans.delete_vertices(q.clone()).unwrap();
     let v = trans.get_vertices(q).unwrap();
     assert_eq!(v.len(), 0);
@@ -171,7 +172,7 @@ pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     trans
-        .delete_vertices(SpecificVertexQuery::single(Uuid::default()))
+        .delete_vertices(SpecificVertexQuery::single(Id::default()))
         .unwrap();
 }
 
@@ -184,7 +185,7 @@ pub fn should_get_a_vertex_count<D: Datastore>(datastore: &mut D) {
     assert!(count >= 1);
 }
 
-fn create_vertices<T>(trans: &T) -> Vec<Uuid>
+fn create_vertices<T>(trans: &T) -> Vec<Id>
 where
     T: Transaction,
 {
@@ -202,7 +203,7 @@ where
         trans.create_vertex(vertex).unwrap();
     }
 
-    let mut vertex_ids: Vec<Uuid> = vertices.into_iter().map(|v| v.id).collect();
+    let mut vertex_ids: Vec<Id> = vertices.into_iter().map(|v| v.id).collect();
     vertex_ids.sort();
     vertex_ids
 }

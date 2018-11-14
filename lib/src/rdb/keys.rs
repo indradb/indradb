@@ -11,7 +11,6 @@ use std::io::{Cursor, Error as IoError};
 use std::str;
 use std::u8;
 use util::nanos_since_epoch;
-use uuid::Uuid;
 
 lazy_static! {
     pub static ref MAX_DATETIME: DateTime<Utc> =
@@ -21,7 +20,8 @@ lazy_static! {
 }
 
 pub enum KeyComponent<'a> {
-    Uuid(Uuid),
+    SizedId(&'a models::Id),
+    UnsizedId(&'a models::Id),
     UnsizedString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
@@ -30,7 +30,8 @@ pub enum KeyComponent<'a> {
 impl<'a> KeyComponent<'a> {
     fn len(&self) -> usize {
         match *self {
-            KeyComponent::Uuid(_) => 16,
+            KeyComponent::SizedId(i) => i.0.len() + 2,
+            KeyComponent::UnsizedId(i) => i.0.len(),
             KeyComponent::UnsizedString(s) => s.len(),
             KeyComponent::Type(t) => t.0.len() + 1,
             KeyComponent::DateTime(_) => 8,
@@ -39,8 +40,12 @@ impl<'a> KeyComponent<'a> {
 
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            KeyComponent::Uuid(uuid) => {
-                cursor.write_all(uuid.as_bytes())?;
+            KeyComponent::SizedId(id) => {
+                cursor.write_u16::<BigEndian>(id.0.len() as u16)?;
+                cursor.write_all(id.0.as_bytes())?;
+            }
+            KeyComponent::UnsizedId(id) => {
+                cursor.write_all(id.0.as_bytes())?;
             }
             KeyComponent::UnsizedString(s) => {
                 cursor.write_all(s.as_bytes())?;
@@ -72,10 +77,17 @@ pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
     cursor.into_inner().into_boxed_slice()
 }
 
-pub fn read_uuid(cursor: &mut Cursor<Box<[u8]>>) -> Uuid {
-    let mut buf: [u8; 16] = [0; 16];
+pub fn read_sized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
+    let id_len = cursor.read_u16::<BigEndian>().unwrap() as usize;
+    let mut buf = vec![0u8; id_len];
     cursor.read_exact(&mut buf).unwrap();
-    Uuid::from_slice(&buf).unwrap()
+    let s = str::from_utf8(&buf).unwrap().to_string();
+    models::Id::new(s).unwrap()
+}
+
+pub fn read_unsized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
+    let s = read_unsized_string(cursor);
+    models::Id::new(s).unwrap()
 }
 
 pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {

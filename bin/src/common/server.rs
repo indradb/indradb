@@ -21,7 +21,6 @@ use std::sync::Arc;
 use tokio_core::net::TcpListener;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
-use uuid::Uuid;
 
 struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {
     datastore: Arc<D>,
@@ -133,11 +132,11 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Uuid, CapnpError> {
+            .spawn_fn(move || -> Result<indradb::Id, CapnpError> {
                 converters::map_capnp_err(trans.create_vertex_from_type(t))
             })
             .and_then(move |id| -> Result<(), CapnpError> {
-                res.get().set_result(id.as_bytes());
+                res.get().set_result(&id.0);
                 Ok(())
             });
 
@@ -285,7 +284,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
-        let id = pry!(converters::map_capnp_err(Uuid::from_slice(pry!(params.get_id()))));
+        let id = pry!(converters::map_capnp_err(indradb::Id::new(pry!(params.get_id()))));
         let t = match pry!(params.get_t()) {
             "" => None,
             value => Some(pry!(converters::map_capnp_err(Type::new(value)))),

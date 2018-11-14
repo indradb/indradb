@@ -23,12 +23,12 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     // accuracy.
     let start_time = Utc::now().with_nanosecond(0).unwrap();
     let edge_t = Type::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let key = EdgeKey::new(outbound_v.id.clone(), edge_t.clone(), inbound_v.id.clone());
 
     let items = vec![
         BulkInsertItem::Edge(key.clone()),
         BulkInsertItem::VertexProperty(
-            outbound_v.id,
+            outbound_v.id.clone(),
             "vertex_property_name".to_string(),
             JsonValue::String("vertex_property_value".to_string()),
         ),
@@ -45,7 +45,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
 
     let trans = datastore.transaction().unwrap();
     let vertices = trans
-        .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]))
+        .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id.clone(), inbound_v.id.clone()]))
         .unwrap();
 
     assert_eq!(vertices.len(), 2);
@@ -64,7 +64,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert!(edges[0].created_datetime <= end_time);
 
     let vertex_properties = trans
-        .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property("vertex_property_name"))
+        .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id.clone()).property("vertex_property_name"))
         .unwrap();
 
     assert_eq!(vertex_properties.len(), 1);
@@ -110,7 +110,7 @@ pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
 
     let edge_t = Type::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
+    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id.clone(), edge_t.clone(), v2.id.clone()))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t.clone(), v1.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());

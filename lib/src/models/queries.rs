@@ -1,10 +1,10 @@
 use super::edges::EdgeKey;
 use super::types::Type;
+use super::ids::Id;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors;
 use std::str::FromStr;
-use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -86,7 +86,7 @@ pub trait VertexQueryExt: Into<VertexQuery> {
 pub struct RangeVertexQuery {
     pub limit: u32,
     pub t: Option<Type>,
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<Id>,
 }
 
 impl VertexQueryExt for RangeVertexQuery {}
@@ -108,7 +108,7 @@ impl RangeVertexQuery {
         }
     }
 
-    pub fn start_id(self, start_id: Uuid) -> Self {
+    pub fn start_id(self, start_id: Id) -> Self {
         Self {
             limit: self.limit,
             t: self.t,
@@ -119,17 +119,17 @@ impl RangeVertexQuery {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<Id>,
 }
 
 impl VertexQueryExt for SpecificVertexQuery {}
 
 impl SpecificVertexQuery {
-    pub fn new(ids: Vec<Uuid>) -> Self {
+    pub fn new(ids: Vec<Id>) -> Self {
         Self { ids }
     }
 
-    pub fn single(id: Uuid) -> Self {
+    pub fn single(id: Id) -> Self {
         Self { ids: vec![id] }
     }
 }

@@ -15,7 +15,6 @@ use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
-use uuid::Uuid;
 
 fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
@@ -128,14 +127,14 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
+    fn create_vertex_from_type(&self, t: indradb::Type) -> Result<indradb::Id, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.create_vertex_from_type_request();
             req.get().set_t(&t.0);
 
             let f = req.send().promise.and_then(move |res| {
-                let bytes = res.get()?.get_result()?;
-                Ok(Uuid::from_slice(bytes).unwrap())
+                let s = res.get()?.get_result()?;
+                Ok(indradb::Id::new(s).unwrap())
             });
 
             Box::new(f)
@@ -225,13 +224,13 @@ impl indradb::Transaction for ClientTransaction {
 
     fn get_edge_count(
         &self,
-        id: Uuid,
+        id: indradb::Id,
         t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.get_edge_count_request();
-            req.get().set_id(id.as_bytes());
+            req.get().set_id(&id.0);
 
             if let Some(t) = t {
                 req.get().set_t(&t.0);

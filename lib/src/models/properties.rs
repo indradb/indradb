@@ -1,12 +1,12 @@
 use super::edges::EdgeKey;
+use super::ids::Id;
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 /// Represents a vertex property.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct VertexProperty {
     /// The id of the vertex
-    pub id: Uuid,
+    pub id: Id,
 
     /// The property value.
     pub value: JsonValue,
@@ -19,7 +19,7 @@ impl VertexProperty {
     ///
     /// * `id` - The id of the vertex.
     /// * `value` - The property value.
-    pub fn new(id: Uuid, value: JsonValue) -> Self {
+    pub fn new(id: Id, value: JsonValue) -> Self {
         Self { id, value }
     }
 }

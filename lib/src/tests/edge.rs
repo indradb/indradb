@@ -7,7 +7,6 @@ use chrono::offset::Utc;
 use chrono::Timelike;
 use models;
 use std::collections::HashSet;
-use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
@@ -18,7 +17,7 @@ pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let key = models::EdgeKey::new(outbound_v.id.clone(), edge_t.clone(), inbound_v.id.clone());
 
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
@@ -50,13 +49,13 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(datastore: &mut D) {
         .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
             outbound_v.id,
             edge_t.clone(),
-            Uuid::default(),
+            models::Id::default(),
         )))
         .unwrap();;
     assert_eq!(e.len(), 0);
     let e = trans
         .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
-            Uuid::default(),
+            models::Id::default(),
             edge_t.clone(),
             inbound_v.id,
         )))
@@ -74,7 +73,7 @@ pub fn should_create_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let edge_t = models::Type::new("test_edge_type").unwrap();
 
     // Set the edge and check
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let key = models::EdgeKey::new(outbound_v.id.clone(), edge_t.clone(), inbound_v.id.clone());
     trans.create_edge(&key).unwrap();
     let e = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
     assert_eq!(e.len(), 1);
@@ -104,7 +103,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let outbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), Uuid::default());
+    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), models::Id::default());
     let result = trans.create_edge(&key);
     assert_eq!(result.unwrap(), false);
 }
@@ -135,7 +134,7 @@ pub fn should_not_delete_an_invalid_edge<D: Datastore>(datastore: &mut D) {
         .delete_edges(SpecificEdgeQuery::single(EdgeKey::new(
             outbound_v.id,
             edge_t,
-            Uuid::default(),
+            models::Id::default(),
         )))
         .unwrap();
 }
@@ -163,7 +162,7 @@ pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore>(datastore: &mu
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
     let count = trans
-        .get_edge_count(Uuid::default(), Some(&t), EdgeDirection::Outbound)
+        .get_edge_count(models::Id::default(), Some(&t), EdgeDirection::Outbound)
         .unwrap();
     assert_eq!(count, 0);
 }
@@ -172,7 +171,7 @@ pub fn should_get_an_inbound_edge_count<D: Datastore>(datastore: &mut D) {
     let (_, inbound_ids) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let count = trans
-        .get_edge_count(inbound_ids[0], None, EdgeDirection::Inbound)
+        .get_edge_count(inbound_ids[0].clone(), None, EdgeDirection::Inbound)
         .unwrap();
     assert_eq!(count, 1);
 }
@@ -183,7 +182,7 @@ pub fn should_get_an_edge_range<D: Datastore>(datastore: &mut D) {
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .t(t)
                 .low(start_time)
@@ -198,7 +197,7 @@ pub fn should_get_edges_with_no_type<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .low(start_time)
                 .high(end_time),
@@ -213,7 +212,7 @@ pub fn should_get_no_edges_for_an_invalid_range<D: Datastore>(datastore: &mut D)
     let t = models::Type::new("foo").unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .t(t)
                 .low(start_time)
@@ -229,7 +228,7 @@ pub fn should_get_edges_with_no_high<D: Datastore>(datastore: &mut D) {
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .t(t)
                 .low(start_time),
@@ -244,7 +243,7 @@ pub fn should_get_edges_with_no_low<D: Datastore>(datastore: &mut D) {
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .t(t)
                 .high(end_time),
@@ -258,7 +257,7 @@ pub fn should_get_edges_with_no_time<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
-        .get_edges(SpecificVertexQuery::single(outbound_id).outbound(100).t(t))
+        .get_edges(SpecificVertexQuery::single(outbound_id.clone()).outbound(100).t(t))
         .unwrap();
     check_edge_range(&range, outbound_id, 15);
 }
@@ -269,7 +268,7 @@ pub fn should_get_no_edges_for_reversed_time<D: Datastore>(datastore: &mut D) {
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
         .get_edges(
-            SpecificVertexQuery::single(outbound_id)
+            SpecificVertexQuery::single(outbound_id.clone())
                 .outbound(10)
                 .t(t)
                 .low(end_time)
@@ -284,11 +283,11 @@ pub fn should_get_edges<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
     let q = SpecificEdgeQuery::new(vec![
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[0]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[1]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[2]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[3]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[4]),
+        EdgeKey::new(outbound_id.clone(), t.clone(), inbound_ids[0].clone()),
+        EdgeKey::new(outbound_id.clone(), t.clone(), inbound_ids[1].clone()),
+        EdgeKey::new(outbound_id.clone(), t.clone(), inbound_ids[2].clone()),
+        EdgeKey::new(outbound_id.clone(), t.clone(), inbound_ids[3].clone()),
+        EdgeKey::new(outbound_id.clone(), t.clone(), inbound_ids[4].clone()),
     ]);
     let range = trans.get_edges(q).unwrap();
     check_edge_range(&range, outbound_id, 5);
@@ -300,16 +299,16 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     let outbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
 
-    let inbound_id = create_edge_from(&trans, outbound_v.id);
+    let inbound_id = create_edge_from(&trans, outbound_v.id.clone());
 
-    let query_1 = SpecificVertexQuery::single(outbound_v.id)
+    let query_1 = SpecificVertexQuery::single(outbound_v.id.clone())
         .outbound(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(
         range[0].key,
-        models::EdgeKey::new(outbound_v.id, models::Type::new("test_edge_type").unwrap(), inbound_id)
+        models::EdgeKey::new(outbound_v.id.clone(), models::Type::new("test_edge_type").unwrap(), inbound_id.clone())
     );
 
     let query_2 = query_1
@@ -324,15 +323,15 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     );
 }
 
-fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {
+fn check_edge_range(range: &[models::Edge], expected_outbound_id: models::Id, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<models::Id> = HashSet::new();
     let t = models::Type::new("test_edge_type").unwrap();
 
     for edge in range {
         assert_eq!(edge.key.outbound_id, expected_outbound_id);
         assert_eq!(edge.key.t, t);
         assert!(!covered_ids.contains(&edge.key.inbound_id));
-        covered_ids.insert(edge.key.inbound_id);
+        covered_ids.insert(edge.key.inbound_id.clone());
     }
 }

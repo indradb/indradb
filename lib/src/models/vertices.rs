@@ -1,6 +1,6 @@
 use super::types::Type;
+use super::ids::Id;
 use util::generate_uuid_v1;
-use uuid::Uuid;
 
 /// A vertex.
 ///
@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Vertex {
     /// The id of the vertex.
-    pub id: Uuid,
+    pub id: Id,
 
     /// The type of the vertex.
     #[serde(rename = "type")]
@@ -26,7 +26,8 @@ impl Vertex {
     ///
     /// * `t` - The type of the vertex.
     pub fn new(t: Type) -> Self {
-        Self::with_id(generate_uuid_v1(), t)
+        let id = Id::new(generate_uuid_v1().to_hyphenated().to_string()).unwrap();
+        Self::with_id(id, t)
     }
 
     /// Creates a new vertex with a specified id.
@@ -35,7 +36,7 @@ impl Vertex {
     ///
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
-    pub fn with_id(id: Uuid, t: Type) -> Self {
+    pub fn with_id(id: Id, t: Type) -> Self {
         Vertex { id, t }
     }
 }

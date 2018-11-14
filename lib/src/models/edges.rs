@@ -1,20 +1,20 @@
 use super::types::Type;
+use super::ids::Id;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct EdgeKey {
     /// The id of the outbound vertex.
-    pub outbound_id: Uuid,
+    pub outbound_id: Id,
 
     /// The type of the edge.
     #[serde(rename = "type")]
     pub t: Type,
 
     /// The id of the inbound vertex.
-    pub inbound_id: Uuid,
+    pub inbound_id: Id,
 }
 
 impl EdgeKey {
@@ -25,7 +25,7 @@ impl EdgeKey {
     /// * `outbound_id` - The id of the outbound vertex.
     /// * `t` - The type of the edge.
     /// * `inbound_id` - The id of the inbound vertex.
-    pub fn new(outbound_id: Uuid, t: Type, inbound_id: Uuid) -> EdgeKey {
+    pub fn new(outbound_id: Id, t: Type, inbound_id: Id) -> EdgeKey {
         EdgeKey {
             outbound_id,
             t,
@@ -69,16 +69,19 @@ impl Edge {
 
 #[cfg(test)]
 mod tests {
-    use super::{Edge, EdgeKey};
+    use super::{Edge, EdgeKey, Id};
     use chrono::Utc;
     use models::Type;
-    use uuid::Uuid;
 
     #[test]
     fn should_create_edge_with_current_datetime() {
         let start_datetime = Utc::now();
 
-        let edge = Edge::new_with_current_datetime(EdgeKey::new(Uuid::default(), Type::default(), Uuid::default()));
+        let edge = Edge::new_with_current_datetime(EdgeKey::new(
+            Id::default(),
+            Type::default(),
+            Id::default(),
+        ));
 
         let end_datetime = Utc::now();
 
