@@ -73,12 +73,11 @@ before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
   - chmod -R a+r $TRAVIS_BUILD_DIR/target
-  - chmod -R a+r $HOME/kcov-35
 cache:
   directories:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
-  - $HOME/kcov-35
+  - /usr/local/bin/kcov
   # Increase default timeout of 3m
   timeout: 500
 

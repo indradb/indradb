@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ]; then
+if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ] && [ ! `command -v kcov` ] ; then
     if ! type $HOME/kcov-35 &> /dev/null; then
         pushd $HOME
             wget https://github.com/SimonKagstrom/kcov/archive/v35.tar.gz
@@ -18,9 +18,6 @@ if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ]; then
             sudo make install
         popd
     popd
-else
-    # Just make an empty directory so that caching doesn't fail
-    mkdir -p $HOME/kcov-35
 fi
 
 curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
