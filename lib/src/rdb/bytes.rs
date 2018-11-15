@@ -20,36 +20,36 @@ lazy_static! {
             .unwrap();
 }
 
-pub enum KeyComponent<'a> {
+pub enum Component<'a> {
     Uuid(Uuid),
     UnsizedString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
 }
 
-impl<'a> KeyComponent<'a> {
+impl<'a> Component<'a> {
     fn len(&self) -> usize {
         match *self {
-            KeyComponent::Uuid(_) => 16,
-            KeyComponent::UnsizedString(s) => s.len(),
-            KeyComponent::Type(t) => t.0.len() + 1,
-            KeyComponent::DateTime(_) => 8,
+            Component::Uuid(_) => 16,
+            Component::UnsizedString(s) => s.len(),
+            Component::Type(t) => t.0.len() + 1,
+            Component::DateTime(_) => 8,
         }
     }
 
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            KeyComponent::Uuid(uuid) => {
+            Component::Uuid(uuid) => {
                 cursor.write_all(uuid.as_bytes())?;
             }
-            KeyComponent::UnsizedString(s) => {
+            Component::UnsizedString(s) => {
                 cursor.write_all(s.as_bytes())?;
             }
-            KeyComponent::Type(t) => {
+            Component::Type(t) => {
                 cursor.write_all(&[t.0.len() as u8])?;
                 cursor.write_all(t.0.as_bytes())?;
             }
-            KeyComponent::DateTime(datetime) => {
+            Component::DateTime(datetime) => {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)?;
             }
@@ -59,13 +59,13 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: &[KeyComponent]) -> Vec<u8> {
+pub fn build(components: &[Component]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
     for component in components {
         if let Err(err) = component.write(&mut cursor) {
-            panic!("Could not build key: {}", err);
+            panic!("Could not write bytes: {}", err);
         }
     }
 
@@ -87,8 +87,11 @@ pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-    let s = str::from_utf8(&buf).unwrap().to_string();
-    models::Type::new(s).unwrap()
+
+    unsafe {
+        let s = str::from_utf8_unchecked(&buf).to_string();
+        models::Type::new_unchecked(s)
+    }
 }
 
 pub fn read_unsized_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {

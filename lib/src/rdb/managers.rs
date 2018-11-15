@@ -1,5 +1,4 @@
-use super::keys::*;
-use bincode;
+use super::bytes::*;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;
@@ -8,6 +7,7 @@ use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB}
 use serde_json;
 use serde_json::Value as JsonValue;
 use std::io::Cursor;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::u8;
 use uuid::Uuid;
@@ -38,7 +38,7 @@ impl VertexManager {
     }
 
     fn key(&self, id: Uuid) -> Vec<u8> {
-        build_key(&[KeyComponent::Uuid(id)])
+        build(&[Component::Uuid(id)])
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
@@ -47,7 +47,10 @@ impl VertexManager {
 
     pub fn get(&self, id: Uuid) -> Result<Option<models::Type>> {
         match self.db.get_cf(self.cf, &self.key(id))? {
-            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            Some(value_bytes) => {
+                let mut cursor = Cursor::new(value_bytes.deref());
+                Ok(Some(read_type(&mut cursor)))
+            }
             None => Ok(None),
         }
     }
@@ -62,13 +65,14 @@ impl VertexManager {
                 read_uuid(&mut cursor)
             };
 
-            let value: models::Type = bincode::deserialize(&v)?;
-            Ok((id, value))
+            let mut cursor = Cursor::new(v);
+            let t = read_type(&mut cursor);
+            Ok((id, t))
         }))
     }
 
     pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>>> {
-        let low_key = build_key(&[KeyComponent::Uuid(id)]);
+        let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
@@ -77,8 +81,7 @@ impl VertexManager {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        let value = bincode::serialize(&vertex.t, bincode::Infinite)?;
-        batch.put_cf(self.cf, &key, &value)?;
+        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]))?;
         Ok(())
     }
 
@@ -146,16 +149,19 @@ impl EdgeManager {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Vec<u8> {
-        build_key(&[
-            KeyComponent::Uuid(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::Uuid(inbound_id),
+        build(&[
+            Component::Uuid(outbound_id),
+            Component::Type(t),
+            Component::Uuid(inbound_id),
         ])
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<Option<DateTime<Utc>>> {
         match self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
-            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            Some(value_bytes) => {
+                let mut cursor = Cursor::new(value_bytes.deref());
+                Ok(Some(read_datetime(&mut cursor)))
+            }
             None => Ok(None),
         }
     }
@@ -177,9 +183,7 @@ impl EdgeManager {
         }
 
         let key = self.key(outbound_id, t, inbound_id);
-        let value = bincode::serialize(&new_update_datetime, bincode::Infinite)?;
-        batch.put_cf(self.cf, &key, &value)?;
-
+        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]))?;
         edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id)?;
         Ok(())
@@ -238,11 +242,11 @@ impl EdgeRangeManager {
     }
 
     fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
-        build_key(&[
-            KeyComponent::Uuid(first_id),
-            KeyComponent::Type(t),
-            KeyComponent::DateTime(update_datetime),
-            KeyComponent::Uuid(second_id),
+        build(&[
+            Component::Uuid(first_id),
+            Component::Type(t),
+            Component::DateTime(update_datetime),
+            Component::Uuid(second_id),
         ])
     }
 
@@ -269,19 +273,15 @@ impl EdgeRangeManager {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build_key(&[KeyComponent::Uuid(id), KeyComponent::Type(t)]);
-                let low_key = build_key(&[
-                    KeyComponent::Uuid(id),
-                    KeyComponent::Type(t),
-                    KeyComponent::DateTime(high),
-                ]);
+                let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
+                let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
-                let prefix = build_key(&[KeyComponent::Uuid(id)]);
+                let prefix = build(&[Component::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -308,7 +308,7 @@ impl EdgeRangeManager {
     }
 
     pub fn iterate_for_owner(&self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
-        let prefix = build_key(&[KeyComponent::Uuid(id)]);
+        let prefix = build(&[Component::Uuid(id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -355,11 +355,11 @@ impl VertexPropertyManager {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
-        build_key(&[KeyComponent::Uuid(vertex_id), KeyComponent::UnsizedString(name)])
+        build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>>> {
-        let prefix = build_key(&[KeyComponent::Uuid(vertex_id)]);
+        let prefix = build(&[Component::Uuid(vertex_id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -412,11 +412,11 @@ impl EdgePropertyManager {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Vec<u8> {
-        build_key(&[
-            KeyComponent::Uuid(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::Uuid(inbound_id),
-            KeyComponent::UnsizedString(name),
+        build(&[
+            Component::Uuid(outbound_id),
+            Component::Type(t),
+            Component::Uuid(inbound_id),
+            Component::UnsizedString(name),
         ])
     }
 
@@ -426,10 +426,10 @@ impl EdgePropertyManager {
         t: &'a models::Type,
         inbound_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build_key(&[
-            KeyComponent::Uuid(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::Uuid(inbound_id),
+        let prefix = build(&[
+            Component::Uuid(outbound_id),
+            Component::Type(t),
+            Component::Uuid(inbound_id),
         ]);
 
         let iterator = self

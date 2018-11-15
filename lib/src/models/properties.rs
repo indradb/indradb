@@ -3,7 +3,7 @@ use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 /// Represents a vertex property.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperty {
     /// The id of the vertex
     pub id: Uuid,
@@ -25,7 +25,7 @@ impl VertexProperty {
 }
 
 /// Represents an edge property.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
     /// The key to the edge.
     pub key: EdgeKey,

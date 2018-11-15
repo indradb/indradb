@@ -10,7 +10,7 @@ lazy_static! {
 ///
 /// Types must be less than 256 characters long, and can only contain letters,
 /// numbers, dashes and underscores.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd)]
 pub struct Type(pub String);
 
 impl Type {
@@ -33,6 +33,10 @@ impl Type {
         } else {
             Ok(Type(s))
         }
+    }
+
+    pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
+        Type(s.into())
     }
 }
 

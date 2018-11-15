@@ -4,13 +4,12 @@ use chrono::DateTime;
 use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct EdgeKey {
     /// The id of the outbound vertex.
     pub outbound_id: Uuid,
 
     /// The type of the edge.
-    #[serde(rename = "type")]
     pub t: Type,
 
     /// The id of the inbound vertex.
@@ -39,7 +38,7 @@ impl EdgeKey {
 /// Edges are how you would represent a verb or a relationship in the
 /// datastore. An example might be "liked" or "reviewed". Edges are typed
 /// and directed.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Edge {
     /// The key to the edge.
     pub key: EdgeKey,

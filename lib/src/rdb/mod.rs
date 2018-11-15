@@ -1,7 +1,7 @@
 //! The rocksdb datastore implementation.
 
+mod bytes;
 mod datastore;
-mod keys;
 mod managers;
 
 #[cfg(feature = "test-suite")]
