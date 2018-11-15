@@ -12,7 +12,6 @@ extern crate futures_cpupool;
 extern crate lazy_static;
 extern crate libc;
 extern crate regex;
-extern crate serde;
 extern crate serde_json;
 extern crate tokio_core;
 extern crate tokio_io;

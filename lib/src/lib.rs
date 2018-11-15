@@ -24,14 +24,9 @@ extern crate lazy_static;
 extern crate libc;
 extern crate rand;
 extern crate regex;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 extern crate uuid;
 
-#[cfg(feature = "rocksdb-datastore")]
-extern crate bincode;
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 
