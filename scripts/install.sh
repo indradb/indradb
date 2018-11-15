@@ -9,7 +9,7 @@ if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ] && [ ! -f $H
         wget https://github.com/SimonKagstrom/kcov/archive/v35.tar.gz
         tar xzf v35.tar.gz
 
-        pushd $kcov-35
+        pushd kcov-35
             mkdir -p build
             pushd build
                 cmake -DCMAKE_INSTALL_PREFIX=$HOME/bin ..
