@@ -87,7 +87,7 @@ pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-    
+
     unsafe {
         let s = str::from_utf8_unchecked(&buf).to_string();
         models::Type::new_unchecked(s)

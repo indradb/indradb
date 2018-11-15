@@ -7,10 +7,10 @@ use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB}
 use serde_json;
 use serde_json::Value as JsonValue;
 use std::io::Cursor;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::u8;
 use uuid::Uuid;
-use std::ops::Deref;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
 pub type VertexItem = (Uuid, models::Type);
@@ -50,7 +50,7 @@ impl VertexManager {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
                 Ok(Some(read_type(&mut cursor)))
-            },
+            }
             None => Ok(None),
         }
     }
@@ -161,7 +161,7 @@ impl EdgeManager {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
                 Ok(Some(read_datetime(&mut cursor)))
-            },
+            }
             None => Ok(None),
         }
     }
@@ -274,11 +274,7 @@ impl EdgeRangeManager {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
                 let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
-                let low_key = build(&[
-                    Component::Uuid(id),
-                    Component::Type(t),
-                    Component::DateTime(high),
-                ]);
+                let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
