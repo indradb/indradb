@@ -20,10 +20,13 @@ if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ] && [ ! `comm
     popd
 fi
 
-curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
-tar zxf capnproto-c++-0.6.1.tar.gz
-cd capnproto-c++-0.6.1
-./configure
-make -j6 check
-sudo make install
+if [ ! `command -v capnp` ] ; then
+    curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
+    tar zxf capnproto-c++-0.6.1.tar.gz
+    cd capnproto-c++-0.6.1
+    ./configure
+    make -j6 check
+    sudo make install
+then
+
 source ~/.cargo/env || true

@@ -78,6 +78,7 @@ cache:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
   - /usr/local/bin/kcov
+  - /usr/local/bin/capnp
   # Increase default timeout of 3m
   timeout: 500
 
