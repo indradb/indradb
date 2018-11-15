@@ -1,4 +1,4 @@
-use models::{EdgeDirection, EdgeKey, Type, Vertex, SpecificVertexQuery, SpecificEdgeQuery};
+use models::{EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
 use test::Bencher;
 use traits::{Datastore, Transaction};
 

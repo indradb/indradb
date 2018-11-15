@@ -19,7 +19,7 @@ lazy_static! {
             .unwrap();
 }
 
-pub enum KeyComponent<'a> {
+pub enum Component<'a> {
     SizedId(&'a models::Id),
     UnsizedId(&'a models::Id),
     UnsizedString(&'a str),
@@ -27,34 +27,34 @@ pub enum KeyComponent<'a> {
     DateTime(DateTime<Utc>),
 }
 
-impl<'a> KeyComponent<'a> {
+impl<'a> Component<'a> {
     fn len(&self) -> usize {
         match *self {
-            KeyComponent::SizedId(i) => i.0.len() + 2,
-            KeyComponent::UnsizedId(i) => i.0.len(),
-            KeyComponent::UnsizedString(s) => s.len(),
-            KeyComponent::Type(t) => t.0.len() + 1,
-            KeyComponent::DateTime(_) => 8,
+            Component::SizedId(i) => i.0.len() + 2,
+            Component::UnsizedId(i) => i.0.len(),
+            Component::UnsizedString(s) => s.len(),
+            Component::Type(t) => t.0.len() + 1,
+            Component::DateTime(_) => 8,
         }
     }
 
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            KeyComponent::SizedId(id) => {
+            Component::SizedId(id) => {
                 cursor.write_u16::<BigEndian>(id.0.len() as u16)?;
                 cursor.write_all(&id.0)?;
             }
-            KeyComponent::UnsizedId(id) => {
+            Component::UnsizedId(id) => {
                 cursor.write_all(&id.0)?;
             }
-            KeyComponent::UnsizedString(s) => {
+            Component::UnsizedString(s) => {
                 cursor.write_all(s.as_bytes())?;
             }
-            KeyComponent::Type(t) => {
+            Component::Type(t) => {
                 cursor.write_all(&[t.0.len() as u8])?;
                 cursor.write_all(t.0.as_bytes())?;
             }
-            KeyComponent::DateTime(datetime) => {
+            Component::DateTime(datetime) => {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)?;
             }
@@ -64,33 +64,33 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
+pub fn build(components: &[Component]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
     for component in components {
         if let Err(err) = component.write(&mut cursor) {
-            panic!("Could not build key: {}", err);
+            panic!("Could not write bytes: {}", err);
         }
     }
 
-    cursor.into_inner().into_boxed_slice()
+    cursor.into_inner()
 }
 
-pub fn read_sized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
+pub fn read_sized_id<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Id {
     let id_len = cursor.read_u16::<BigEndian>().unwrap() as usize;
     let mut buf = vec![0u8; id_len];
     cursor.read_exact(&mut buf).unwrap();
     models::Id::new(buf).unwrap()
 }
 
-pub fn read_unsized_id(cursor: &mut Cursor<Box<[u8]>>) -> models::Id {
+pub fn read_unsized_id<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Id {
     let mut buf = Vec::new();
     cursor.read_to_end(&mut buf).unwrap();
     models::Id::new(buf).unwrap()
 }
 
-pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
+pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -99,17 +99,20 @@ pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-    let s = str::from_utf8(&buf).unwrap().to_string();
-    models::Type::new(s).unwrap()
+
+    unsafe {
+        let s = str::from_utf8_unchecked(&buf).to_string();
+        models::Type::new_unchecked(s)
+    }
 }
 
-pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
+pub fn read_unsized_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
     let mut buf = String::new();
     cursor.read_to_string(&mut buf).unwrap();
     buf
 }
 
-pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<Utc> {
+pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
     *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)

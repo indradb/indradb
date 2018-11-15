@@ -2,7 +2,7 @@ use core::str::FromStr;
 use errors::{ValidationError, ValidationResult};
 use std::u16;
 
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize, Hash, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd)]
 pub struct Id(pub Vec<u8>);
 
 impl Id {

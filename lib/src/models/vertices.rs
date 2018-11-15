@@ -6,13 +6,12 @@ use util::generate_uuid_v1;
 ///
 /// Vertices are how you would represent nouns in the datastore. An example
 /// might be a user, or a movie. All vertices have a unique ID and a type.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Vertex {
     /// The id of the vertex.
     pub id: Id,
 
     /// The type of the vertex.
-    #[serde(rename = "type")]
     pub t: Type,
 }
 

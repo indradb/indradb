@@ -8,7 +8,6 @@ extern crate indradb;
 extern crate libc;
 extern crate num_cpus;
 extern crate regex;
-extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 

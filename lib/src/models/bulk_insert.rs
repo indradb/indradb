@@ -3,7 +3,7 @@ use super::vertices::Vertex;
 use super::ids::Id;
 use serde_json::Value as JsonValue;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),

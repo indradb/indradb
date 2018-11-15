@@ -1,14 +1,13 @@
-use super::keys::*;
-use bincode;
+use super::bytes::*;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;
 use models;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
-use serde::Serialize;
 use serde_json;
 use serde_json::Value as JsonValue;
 use std::io::Cursor;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::u8;
 
@@ -17,34 +16,7 @@ pub type VertexItem = (models::Id, models::Type);
 pub type EdgeRangeItem = (models::Id, models::Type, DateTime<Utc>, models::Id);
 pub type EdgePropertyItem = ((models::Id, models::Type, models::Id, String), JsonValue);
 
-fn bincode_serialize_value<T: Serialize>(value: &T) -> Result<Box<[u8]>> {
-    let result = bincode::serialize(value, bincode::Infinite)?;
-    Ok(result.into_boxed_slice())
-}
-
-fn json_serialize_value(value: &JsonValue) -> Result<Box<[u8]>> {
-    let result = serde_json::to_vec(value)?;
-    Ok(result.into_boxed_slice())
-}
-
-fn json_deserialize_value(value: &[u8]) -> Result<JsonValue> {
-    let result = serde_json::from_slice(value)?;
-    Ok(result)
-}
-
-fn set_bincode<T: Serialize>(batch: &mut WriteBatch, cf: ColumnFamily, key: &[u8], value: &T) -> Result<()> {
-    batch.put_cf(cf, key, &bincode_serialize_value(value)?)?;
-    Ok(())
-}
-
-fn get_json(db: &DB, cf: ColumnFamily, key: &[u8]) -> Result<Option<JsonValue>> {
-    match db.get_cf(cf, key)? {
-        Some(value_bytes) => Ok(Some(json_deserialize_value(&value_bytes)?)),
-        None => Ok(None),
-    }
-}
-
-fn take_while_prefixed(iterator: DBIterator, prefix: Box<[u8]>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> {
+fn take_while_prefixed(iterator: DBIterator, prefix: Vec<u8>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> {
     iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;
         k.starts_with(&prefix)
@@ -64,8 +36,8 @@ impl VertexManager {
         }
     }
 
-    fn key(&self, id: &models::Id) -> Box<[u8]> {
-        build_key(&[KeyComponent::UnsizedId(id)])
+    fn key(&self, id: &models::Id) -> Vec<u8> {
+        build(&[Component::UnsizedId(id)])
     }
 
     pub fn exists(&self, id: &models::Id) -> Result<bool> {
@@ -74,7 +46,10 @@ impl VertexManager {
 
     pub fn get(&self, id: &models::Id) -> Result<Option<models::Type>> {
         match self.db.get_cf(self.cf, &self.key(id))? {
-            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            Some(value_bytes) => {
+                let mut cursor = Cursor::new(value_bytes.deref());
+                Ok(Some(read_type(&mut cursor)))
+            }
             None => Ok(None),
         }
     }
@@ -89,13 +64,14 @@ impl VertexManager {
                 read_unsized_id(&mut cursor)
             };
 
-            let value: models::Type = bincode::deserialize(&v.to_owned()[..])?;
-            Ok((id, value))
+            let mut cursor = Cursor::new(v);
+            let t = read_type(&mut cursor);
+            Ok((id, t))
         }))
     }
 
     pub fn iterate_for_range(&self, id: &models::Id) -> Result<impl Iterator<Item = Result<VertexItem>>> {
-        let low_key = build_key(&[KeyComponent::UnsizedId(id)]);
+        let low_key = build(&[Component::UnsizedId(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
@@ -103,7 +79,9 @@ impl VertexManager {
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
-        set_bincode(batch, self.cf, &self.key(&vertex.id), &vertex.t)
+        let key = self.key(&vertex.id);
+        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]))?;
+        Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: &models::Id) -> Result<()> {
@@ -169,17 +147,20 @@ impl EdgeManager {
         }
     }
 
-    fn key(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id) -> Box<[u8]> {
-        build_key(&[
-            KeyComponent::SizedId(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::UnsizedId(inbound_id),
+    fn key(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id) -> Vec<u8> {
+        build(&[
+            Component::SizedId(outbound_id),
+            Component::Type(t),
+            Component::UnsizedId(inbound_id),
         ])
     }
 
     pub fn get(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id) -> Result<Option<DateTime<Utc>>> {
         match self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
-            Some(value_bytes) => Ok(Some(bincode::deserialize(&value_bytes)?)),
+            Some(value_bytes) => {
+                let mut cursor = Cursor::new(value_bytes.deref());
+                Ok(Some(read_datetime(&mut cursor)))
+            }
             None => Ok(None),
         }
     }
@@ -201,8 +182,7 @@ impl EdgeManager {
         }
 
         let key = self.key(outbound_id, t, inbound_id);
-
-        set_bincode(batch, self.cf, &key, &new_update_datetime)?;
+        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]))?;
         edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id)?;
         Ok(())
@@ -260,16 +240,16 @@ impl EdgeRangeManager {
         }
     }
 
-    fn key(&self, first_id: &models::Id, t: &models::Type, update_datetime: DateTime<Utc>, second_id: &models::Id) -> Box<[u8]> {
-        build_key(&[
-            KeyComponent::SizedId(first_id),
-            KeyComponent::Type(t),
-            KeyComponent::DateTime(update_datetime),
-            KeyComponent::UnsizedId(second_id),
+    fn key(&self, first_id: &models::Id, t: &models::Type, update_datetime: DateTime<Utc>, second_id: &models::Id) -> Vec<u8> {
+        build(&[
+            Component::SizedId(first_id),
+            Component::Type(t),
+            Component::DateTime(update_datetime),
+            Component::UnsizedId(second_id),
         ])
     }
 
-    fn iterate(&self, iterator: DBIterator, prefix: Box<[u8]>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
+    fn iterate(&self, iterator: DBIterator, prefix: Vec<u8>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
         let filtered = take_while_prefixed(iterator, prefix);
 
         Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
@@ -292,19 +272,18 @@ impl EdgeRangeManager {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build_key(&[KeyComponent::SizedId(id), KeyComponent::Type(t)]);
-                let low_key = build_key(&[
-                    KeyComponent::SizedId(id),
-                    KeyComponent::Type(t),
-                    KeyComponent::DateTime(high),
-                ]);
+
+                let prefix = build(&[Component::SizedId(id), Component::Type(t)]);
+                let low_key = build(&[Component::SizedId(id), Component::Type(t), Component::DateTime(high)]);
+
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
-                let prefix = build_key(&[KeyComponent::SizedId(id)]);
+                let prefix = build(&[Component::SizedId(id)]);
+
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -331,7 +310,7 @@ impl EdgeRangeManager {
     }
 
     pub fn iterate_for_owner(&self, id: &models::Id) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
-        let prefix = build_key(&[KeyComponent::SizedId(id)]);
+        let prefix = build(&[Component::SizedId(id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -347,8 +326,7 @@ impl EdgeRangeManager {
         second_id: &models::Id,
     ) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
-        let value = bincode_serialize_value(&())?;
-        batch.put_cf(self.cf, &key, &value)?;
+        batch.put_cf(self.cf, &key, &[])?;
         Ok(())
     }
 
@@ -378,12 +356,13 @@ impl VertexPropertyManager {
         }
     }
 
-    fn key(&self, vertex_id: &models::Id, name: &str) -> Box<[u8]> {
-        build_key(&[KeyComponent::SizedId(&vertex_id), KeyComponent::UnsizedString(name)])
+    fn key(&self, vertex_id: &models::Id, name: &str) -> Vec<u8> {
+        build(&[Component::SizedId(&vertex_id), Component::UnsizedString(name)])
     }
 
     pub fn iterate_for_owner(&self, vertex_id: &models::Id) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>>> {
-        let prefix = build_key(&[KeyComponent::SizedId(&vertex_id)]);
+        let prefix = build(&[Component::SizedId(&vertex_id)]);
+
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -397,18 +376,23 @@ impl VertexPropertyManager {
             let owner_id = read_sized_id(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
             let name = read_unsized_string(&mut cursor);
-            let value = json_deserialize_value(&v.to_owned()[..])?;
+            let value = serde_json::from_slice(&v)?;
             Ok(((owner_id, name), value))
         }))
     }
 
     pub fn get(&self, vertex_id: &models::Id, name: &str) -> Result<Option<JsonValue>> {
-        get_json(&self.db, self.cf, &self.key(vertex_id, name))
+        let key = self.key(vertex_id, name);
+
+        match self.db.get_cf(self.cf, &key)? {
+            Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn set(&self, batch: &mut WriteBatch, vertex_id: &models::Id, name: &str, value: &JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
-        let value_json = json_serialize_value(value)?;
+        let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json)?;
         Ok(())
     }
@@ -432,12 +416,12 @@ impl EdgePropertyManager {
         }
     }
 
-    fn key(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id, name: &str) -> Box<[u8]> {
-        build_key(&[
-            KeyComponent::SizedId(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::SizedId(inbound_id),
-            KeyComponent::UnsizedString(name),
+    fn key(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id, name: &str) -> Vec<u8> {
+        build(&[
+            Component::SizedId(outbound_id),
+            Component::Type(t),
+            Component::SizedId(inbound_id),
+            Component::UnsizedString(name),
         ])
     }
 
@@ -447,10 +431,10 @@ impl EdgePropertyManager {
         t: &'a models::Type,
         inbound_id: &models::Id,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build_key(&[
-            KeyComponent::SizedId(outbound_id),
-            KeyComponent::Type(t),
-            KeyComponent::SizedId(inbound_id),
+        let prefix = build(&[
+            Component::SizedId(outbound_id),
+            Component::Type(t),
+            Component::SizedId(inbound_id),
         ]);
 
         let iterator = self
@@ -476,7 +460,7 @@ impl EdgePropertyManager {
 
             let edge_property_name = read_unsized_string(&mut cursor);
 
-            let value = json_deserialize_value(&v.to_owned()[..])?;
+            let value = serde_json::from_slice(&v)?;
             Ok((
                 (
                     edge_property_outbound_id,
@@ -492,7 +476,12 @@ impl EdgePropertyManager {
     }
 
     pub fn get(&self, outbound_id: &models::Id, t: &models::Type, inbound_id: &models::Id, name: &str) -> Result<Option<JsonValue>> {
-        get_json(&self.db, self.cf, &self.key(outbound_id, t, inbound_id, name))
+        let key = self.key(outbound_id, t, inbound_id, name);
+
+        match self.db.get_cf(self.cf, &key)? {
+            Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn set(
@@ -505,7 +494,7 @@ impl EdgePropertyManager {
         value: &JsonValue,
     ) -> Result<()> {
         let key = self.key(outbound_id, t, inbound_id, name);
-        let value_json = json_serialize_value(value)?;
+        let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json)?;
         Ok(())
     }
