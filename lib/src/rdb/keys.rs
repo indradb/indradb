@@ -59,7 +59,7 @@ impl<'a> KeyComponent<'a> {
     }
 }
 
-pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
+pub fn build_key(components: &[KeyComponent]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
@@ -69,16 +69,16 @@ pub fn build_key(components: &[KeyComponent]) -> Box<[u8]> {
         }
     }
 
-    cursor.into_inner().into_boxed_slice()
+    cursor.into_inner()
 }
 
-pub fn read_uuid(cursor: &mut Cursor<Box<[u8]>>) -> Uuid {
+pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
     Uuid::from_slice(&buf).unwrap()
 }
 
-pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
+pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -91,13 +91,13 @@ pub fn read_type(cursor: &mut Cursor<Box<[u8]>>) -> models::Type {
     models::Type::new(s).unwrap()
 }
 
-pub fn read_unsized_string(cursor: &mut Cursor<Box<[u8]>>) -> String {
+pub fn read_unsized_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
     let mut buf = String::new();
     cursor.read_to_string(&mut buf).unwrap();
     buf
 }
 
-pub fn read_datetime(cursor: &mut Cursor<Box<[u8]>>) -> DateTime<Utc> {
+pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
     *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
