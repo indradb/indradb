@@ -59,7 +59,7 @@ impl<'a> Component<'a> {
     }
 }
 
-pub fn build(components: &[Component]) -> Box<[u8]> {
+pub fn build(components: &[Component]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
@@ -69,7 +69,7 @@ pub fn build(components: &[Component]) -> Box<[u8]> {
         }
     }
 
-    cursor.into_inner().into_boxed_slice()
+    cursor.into_inner()
 }
 
 pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
