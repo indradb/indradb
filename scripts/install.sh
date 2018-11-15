@@ -29,4 +29,5 @@ if [ ! -f $HOME/bin/capnp ] ; then
     sudo make install
 fi
 
+ls -l $HOME/bin
 source ~/.cargo/env || true
