@@ -24,7 +24,7 @@ matrix:
       rust: stable
       env:
       - TARGET=x86_64-apple-darwin
-      - PATH=$HOME/Library/Python/2.7/bin:$HOME/bin:$PATH
+      - PATH=$HOME/Library/Python/2.7/bin:$PATH
 
     # Rust beta
     - rust: beta
@@ -48,7 +48,7 @@ matrix:
 env:
   global:
     - RUST_BACKTRACE=1
-    - PATH=$HOME/.local/bin:$HOME/bin:$PATH
+    - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
 script: ./scripts/test.py
@@ -69,12 +69,12 @@ before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
   - chmod -R a+r $TRAVIS_BUILD_DIR/target
-  - chmod -R a+r $HOME/bin
+  - chmod -R a+r $HOME/cached-deps
 cache:
   directories:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
-  - $HOME/bin
+  - $HOME/cached-deps
   # Increase default timeout of 3m
   timeout: 500
 
