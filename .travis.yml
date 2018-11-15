@@ -19,27 +19,24 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
+      - RUSTFLAGS="-C link-dead-code"
     - os: osx
       rust: stable
       env:
       - TARGET=x86_64-apple-darwin
-      - PATH=$HOME/Library/Python/2.7/bin:$HOME/kcov-35/build:$PATH
+      - PATH=$HOME/Library/Python/2.7/bin:$PATH
 
     # Rust beta
     - rust: beta
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
 
     # Rust nightly
     - rust: nightly
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
-      - RUSTFLAGS="-C link-dead-code"
 
   allow_failures:
     # Rust nightly
@@ -47,12 +44,11 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - PATH=$HOME/.local/bin:$HOME/kcov-35/build:$PATH
-      - RUSTFLAGS="-C link-dead-code"
 
 env:
   global:
     - RUST_BACKTRACE=1
+    - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
 script: ./scripts/test.py
@@ -73,12 +69,12 @@ before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
   - chmod -R a+r $TRAVIS_BUILD_DIR/target
-  - chmod -R a+r $HOME/kcov-35
+  - chmod -R a+r $HOME/cached-deps
 cache:
   directories:
   - $HOME/.cargo
   - $TRAVIS_BUILD_DIR/target
-  - $HOME/kcov-35
+  - $HOME/cached-deps
   # Increase default timeout of 3m
   timeout: 500
 
