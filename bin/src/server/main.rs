@@ -5,9 +5,7 @@ extern crate common;
 extern crate core;
 extern crate futures;
 extern crate indradb;
-extern crate libc;
 extern crate num_cpus;
-extern crate regex;
 extern crate serde_json;
 extern crate uuid;
 
