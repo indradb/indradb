@@ -348,7 +348,7 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>> {
+    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Box<Iterator<Item=models::Vertex>>> {
         let iterator = self.vertex_query_to_iterator(q.into())?;
 
         let mapped = iterator.map(move |item| {
@@ -357,7 +357,8 @@ impl Transaction for RocksdbTransaction {
             Ok(vertex)
         });
 
-        mapped.collect()
+        let result: Result<Vec<models::Vertex>> = mapped.collect();
+        Ok(Box::new(result?.into_iter()))
     }
 
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
@@ -394,7 +395,7 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>> {
+    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Box<Iterator<Item=models::Edge>>> {
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         let mapped = iterator.map(move |item| {
@@ -404,7 +405,8 @@ impl Transaction for RocksdbTransaction {
             Ok(edge)
         });
 
-        mapped.collect()
+        let result: Result<Vec<models::Edge>> = mapped.collect();
+        Ok(Box::new(result?.into_iter()))
     }
 
     fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()> {
@@ -436,7 +438,7 @@ impl Transaction for RocksdbTransaction {
         Ok(count as u64)
     }
 
-    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
+    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Box<Iterator<Item=models::VertexProperty>>> {
         let manager = VertexPropertyManager::new(self.db.clone());
         let mut properties = Vec::new();
 
@@ -449,7 +451,7 @@ impl Transaction for RocksdbTransaction {
             }
         }
 
-        Ok(properties)
+        Ok(Box::new(properties.into_iter()))
     }
 
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
@@ -478,7 +480,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
+    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Box<Iterator<Item=models::EdgeProperty>>> {
         let manager = EdgePropertyManager::new(self.db.clone());
         let mut properties = Vec::new();
 
@@ -492,7 +494,7 @@ impl Transaction for RocksdbTransaction {
             }
         }
 
-        Ok(properties)
+        Ok(Box::new(properties.into_iter()))
     }
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {

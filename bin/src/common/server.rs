@@ -155,7 +155,9 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<Vertex>, CapnpError> { converters::map_capnp_err(trans.get_vertices(q)) })
+            .spawn_fn(move || -> Result<Vec<Vertex>, CapnpError> {
+                Ok(converters::map_capnp_err(trans.get_vertices(q))?.collect())
+            })
             .and_then(move |vertices| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(vertices.len() as u32);
 
@@ -241,7 +243,9 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<Edge>, CapnpError> { converters::map_capnp_err(trans.get_edges(q)) })
+            .spawn_fn(move || -> Result<Vec<Edge>, CapnpError> {
+                Ok(converters::map_capnp_err(trans.get_edges(q))?.collect())
+            })
             .and_then(move |edges| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(edges.len() as u32);
 
@@ -318,7 +322,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let f = self
             .pool
             .spawn_fn(move || -> Result<Vec<VertexProperty>, CapnpError> {
-                converters::map_capnp_err(trans.get_vertex_properties(q))
+                Ok(converters::map_capnp_err(trans.get_vertex_properties(q))?.collect())
             })
             .and_then(move |properties| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(properties.len() as u32);
@@ -394,7 +398,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         let f = self
             .pool
             .spawn_fn(move || -> Result<Vec<EdgeProperty>, CapnpError> {
-                converters::map_capnp_err(trans.get_edge_properties(q))
+                Ok(converters::map_capnp_err(trans.get_edge_properties(q))?.collect())
             })
             .and_then(move |properties| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(properties.len() as u32);

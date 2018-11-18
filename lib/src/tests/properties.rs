@@ -1,5 +1,5 @@
 use super::super::{
-    Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
+    Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt, EdgeProperty, VertexProperty
 };
 use serde_json::Value as JsonValue;
 use util::generate_random_secret;
@@ -14,26 +14,26 @@ pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
     let q = SpecificVertexQuery::single(v.id).property(name);
 
     // Check to make sure there's no initial value
-    let result = trans.get_vertex_properties(q.clone()).unwrap();
+    let result: Vec<VertexProperty> = trans.get_vertex_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
     trans.set_vertex_properties(q.clone(), &JsonValue::Bool(true)).unwrap();
-    let result = trans.get_vertex_properties(q.clone()).unwrap();
+    let result: Vec<VertexProperty> = trans.get_vertex_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
     trans.set_vertex_properties(q.clone(), &JsonValue::Bool(false)).unwrap();
-    let result = trans.get_vertex_properties(q.clone()).unwrap();
+    let result: Vec<VertexProperty> = trans.get_vertex_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
     assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_vertex_properties(q.clone()).unwrap();
-    let result = trans.get_vertex_properties(q).unwrap();
+    let result: Vec<VertexProperty> = trans.get_vertex_properties(q).unwrap().collect();
     assert_eq!(result.len(), 0);
 }
 
@@ -41,7 +41,7 @@ pub fn should_not_set_invalid_vertex_properties<D: Datastore>(datastore: &mut D)
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(Uuid::default()).property("foo");
     trans.set_vertex_properties(q.clone(), &JsonValue::Null).unwrap();
-    let result = trans.get_vertex_properties(q).unwrap();
+    let result: Vec<VertexProperty> = trans.get_vertex_properties(q).unwrap().collect();
     assert_eq!(result.len(), 0);
 }
 
@@ -72,26 +72,26 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.create_edge(&key).unwrap();
 
     // Check to make sure there's no initial value
-    let result = trans.get_edge_properties(q.clone()).unwrap();
+    let result: Vec<EdgeProperty> = trans.get_edge_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
     trans.set_edge_properties(q.clone(), &JsonValue::Bool(true)).unwrap();
-    let result = trans.get_edge_properties(q.clone()).unwrap();
+    let result: Vec<EdgeProperty> = trans.get_edge_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
     trans.set_edge_properties(q.clone(), &JsonValue::Bool(false)).unwrap();
-    let result = trans.get_edge_properties(q.clone()).unwrap();
+    let result: Vec<EdgeProperty> = trans.get_edge_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
     assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_edge_properties(q.clone()).unwrap();
-    let result = trans.get_edge_properties(q.clone()).unwrap();
+    let result: Vec<EdgeProperty> = trans.get_edge_properties(q.clone()).unwrap().collect();
     assert_eq!(result.len(), 0);
 }
 
@@ -100,7 +100,7 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
     let q = SpecificEdgeQuery::single(key).property("bar");
     trans.set_edge_properties(q.clone(), &JsonValue::Null).unwrap();
-    let result = trans.get_edge_properties(q).unwrap();
+    let result: Vec<EdgeProperty> = trans.get_edge_properties(q).unwrap().collect();
     assert_eq!(result.len(), 0);
 }
 

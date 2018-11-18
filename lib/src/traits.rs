@@ -2,7 +2,6 @@ use errors::Result;
 use models;
 use models::{EdgeQueryExt, VertexQueryExt};
 use serde_json::value::Value as JsonValue;
-use std::vec::Vec;
 use uuid::Uuid;
 
 /// Specifies a datastore implementation.
@@ -86,7 +85,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>>;
+    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Vertex>>>;
 
     /// Deletes existing vertices specified by a query.
     ///
@@ -110,7 +109,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>>;
+    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Edge>>>;
 
     /// Deletes a set of edges specified by a query.
     ///
@@ -131,7 +130,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The property name.
-    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
+    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Box<dyn Iterator<Item=models::VertexProperty>>>;
 
     /// Sets a vertex properties.
     ///
@@ -153,7 +152,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The property name.
-    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
+    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Box<dyn Iterator<Item=models::EdgeProperty>>>;
 
     /// Sets edge properties.
     ///

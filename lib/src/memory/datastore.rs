@@ -282,12 +282,12 @@ impl Transaction for MemoryTransaction {
         Ok(inserted)
     }
 
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>> {
+    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Vertex>>> {
         let vertex_values = self.datastore.read().unwrap().get_vertex_values_by_query(q.into())?;
         let iter = vertex_values
             .into_iter()
             .map(|(uuid, t)| models::Vertex::with_id(uuid, t));
-        Ok(iter.collect())
+        Ok(Box::new(iter))
     }
 
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
@@ -317,7 +317,7 @@ impl Transaction for MemoryTransaction {
         Ok(true)
     }
 
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>> {
+    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Edge>>> {
         let edge_values = {
             let datastore = self.datastore.read().unwrap();
             datastore.get_edge_values_by_query(q.into())?
@@ -326,7 +326,7 @@ impl Transaction for MemoryTransaction {
         let iter = edge_values
             .into_iter()
             .map(|(key, update_datetime)| models::Edge::new(key, update_datetime));
-        Ok(iter.collect())
+        Ok(Box::new(iter))
     }
 
     fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()> {
@@ -375,7 +375,7 @@ impl Transaction for MemoryTransaction {
         }
     }
 
-    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
+    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Box<dyn Iterator<Item=models::VertexProperty>>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q.inner)?;
@@ -388,7 +388,7 @@ impl Transaction for MemoryTransaction {
             }
         }
 
-        Ok(result)
+        Ok(Box::new(result.into_iter()))
     }
 
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
@@ -415,7 +415,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
+    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Box<dyn Iterator<Item=models::EdgeProperty>>> {
         let mut result = Vec::new();
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
@@ -428,7 +428,7 @@ impl Transaction for MemoryTransaction {
             }
         }
 
-        Ok(result)
+        Ok(Box::new(result.into_iter()))
     }
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {

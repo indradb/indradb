@@ -1,6 +1,6 @@
 use super::super::{
     BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
-    Vertex, VertexQueryExt,
+    Vertex, VertexQueryExt, VertexProperty, EdgeProperty, Edge
 };
 use chrono::offset::Utc;
 use chrono::Timelike;
@@ -44,9 +44,10 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     let end_time = Utc::now();
 
     let trans = datastore.transaction().unwrap();
-    let vertices = trans
+    let vertices: Vec<Vertex> = trans
         .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]))
-        .unwrap();
+        .unwrap()
+        .collect();
 
     assert_eq!(vertices.len(), 2);
     assert_eq!(vertices[0].id, outbound_v.id);
@@ -54,7 +55,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
+    let edges: Vec<Edge> = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap().collect();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].key.outbound_id, outbound_v.id);
@@ -63,9 +64,10 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert!(edges[0].created_datetime >= start_time);
     assert!(edges[0].created_datetime <= end_time);
 
-    let vertex_properties = trans
+    let vertex_properties: Vec<VertexProperty> = trans
         .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property("vertex_property_name"))
-        .unwrap();
+        .unwrap()
+        .collect();
 
     assert_eq!(vertex_properties.len(), 1);
     assert_eq!(vertex_properties[0].id, outbound_v.id);
@@ -74,9 +76,10 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         JsonValue::String("vertex_property_value".to_string())
     );
 
-    let edge_properties = trans
+    let edge_properties: Vec<EdgeProperty> = trans
         .get_edge_properties(SpecificEdgeQuery::single(key.clone()).property("edge_property_name"))
-        .unwrap();
+        .unwrap()
+        .collect();
 
     assert_eq!(edge_properties.len(), 1);
     assert_eq!(edge_properties[0].key, key);
