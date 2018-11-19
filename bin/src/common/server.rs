@@ -81,7 +81,7 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
     ) -> Promise<(), CapnpError> {
         let trans = pry!(converters::map_capnp_err(self.datastore.transaction()));
         let trans_server = Transaction::new(self.pool.clone(), trans);
-        let trans_client = autogen::transaction::ToClient::new(trans_server).from_server::<Server>();
+        let trans_client = autogen::transaction::ToClient::new(trans_server).into_client::<Server>();
         res.get().set_transaction(trans_client);
         Promise::ok(())
     }
@@ -465,7 +465,7 @@ where
     let handle = core.handle();
     let socket = TcpListener::bind(&addr, &handle)?;
 
-    let service = autogen::service::ToClient::new(Service::new(datastore, worker_count)).from_server::<Server>();
+    let service = autogen::service::ToClient::new(Service::new(datastore, worker_count)).into_client::<Server>();
 
     let done = socket.incoming().for_each(move |(socket, _)| {
         socket.set_nodelay(true)?;
