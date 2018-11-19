@@ -16,6 +16,7 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
+use std::vec::IntoIter;
 
 fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
@@ -117,6 +118,11 @@ impl ClientTransaction {
 }
 
 impl indradb::Transaction for ClientTransaction {
+    type VertexIterator = IntoIter<indradb::Vertex>;
+    type EdgeIterator = IntoIter<indradb::Edge>;
+    type VertexPropertyIterator = IntoIter<indradb::VertexProperty>;
+    type EdgePropertyIterator = IntoIter<indradb::EdgeProperty>;
+
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.create_vertex_request();
@@ -142,7 +148,7 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=indradb::Vertex>>, indradb::Error> {
+    fn get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Self::VertexIterator, indradb::Error> {
         let result = self.execute(move |trans| {
             let mut req = trans.get_vertices_request();
             converters::from_vertex_query(&q.into(), req.get().init_q());
@@ -157,7 +163,7 @@ impl indradb::Transaction for ClientTransaction {
             Box::new(f)
         });
 
-        Ok(Box::new(result?.into_iter()))
+        Ok(result?.into_iter())
     }
 
     fn delete_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
@@ -195,7 +201,7 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=indradb::Edge>>, indradb::Error> {
+    fn get_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Self::EdgeIterator, indradb::Error> {
         let result = self.execute(move |trans| {
             let mut req = trans.get_edges_request();
             converters::from_edge_query(&q.into(), req.get().init_q());
@@ -210,7 +216,7 @@ impl indradb::Transaction for ClientTransaction {
             Box::new(f)
         });
 
-        Ok(Box::new(result?.into_iter()))
+        Ok(result?.into_iter())
     }
 
     fn delete_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
@@ -252,7 +258,7 @@ impl indradb::Transaction for ClientTransaction {
     fn get_vertex_properties(
         &self,
         q: indradb::VertexPropertyQuery,
-    ) -> Result<Box<dyn Iterator<Item=indradb::VertexProperty>>, indradb::Error> {
+    ) -> Result<Self::VertexPropertyIterator, indradb::Error> {
         let result = self.execute(move |trans| {
             let mut req = trans.get_vertex_properties_request();
             converters::from_vertex_property_query(&q, req.get().init_q());
@@ -269,7 +275,7 @@ impl indradb::Transaction for ClientTransaction {
             Box::new(f)
         });
 
-        Ok(Box::new(result?.into_iter()))
+        Ok(result?.into_iter())
     }
 
     fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
@@ -301,7 +307,7 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Box<dyn Iterator<Item=indradb::EdgeProperty>>, indradb::Error> {
+    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Self::EdgePropertyIterator, indradb::Error> {
         let result = self.execute(move |trans| {
             let mut req = trans.get_edge_properties_request();
             converters::from_edge_property_query(&q, req.get().init_q());
@@ -318,7 +324,7 @@ impl indradb::Transaction for ClientTransaction {
             Box::new(f)
         });
 
-        Ok(Box::new(result?.into_iter()))
+        Ok(result?.into_iter())
     }
 
     fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {

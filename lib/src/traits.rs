@@ -57,6 +57,11 @@ pub trait Datastore {
 /// should be designed to not fail on commit; i.e. errors should occur when a
 /// method is actually called instead.
 pub trait Transaction {
+    type VertexIterator: Iterator<Item=models::Vertex>;
+    type EdgeIterator: Iterator<Item=models::Edge>;
+    type VertexPropertyIterator: Iterator<Item=models::VertexProperty>;
+    type EdgePropertyIterator: Iterator<Item=models::EdgeProperty>;
+
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same UUID
     /// already exists.
@@ -85,7 +90,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Vertex>>>;
+    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Self::VertexIterator>;
 
     /// Deletes existing vertices specified by a query.
     ///
@@ -109,7 +114,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q` - The query to run.
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Box<dyn Iterator<Item=models::Edge>>>;
+    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Self::EdgeIterator>;
 
     /// Deletes a set of edges specified by a query.
     ///
@@ -130,7 +135,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The property name.
-    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Box<dyn Iterator<Item=models::VertexProperty>>>;
+    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Self::VertexPropertyIterator>;
 
     /// Sets a vertex properties.
     ///
@@ -152,7 +157,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q` - The query to run.
     /// * `name` - The property name.
-    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Box<dyn Iterator<Item=models::EdgeProperty>>>;
+    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Self::EdgePropertyIterator>;
 
     /// Sets edge properties.
     ///
