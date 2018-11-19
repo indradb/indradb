@@ -41,6 +41,7 @@ mod errors;
 mod memory;
 mod models;
 mod traits;
+mod treelike;
 pub mod util;
 
 pub use errors::*;
