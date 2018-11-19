@@ -1,4 +1,4 @@
-use super::bytes::*;
+use ::serializer::*;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use errors::Result;

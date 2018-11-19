@@ -13,6 +13,7 @@
 #[cfg(feature = "bench-suite")]
 extern crate test;
 
+extern crate byteorder;
 extern crate chrono;
 extern crate core;
 #[macro_use]
@@ -26,8 +27,6 @@ extern crate uuid;
 
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
-#[cfg(feature = "rocksdb-datastore")]
-extern crate byteorder;
 
 #[cfg(feature = "test-suite")]
 #[macro_use]
@@ -40,6 +39,7 @@ pub mod benches;
 mod errors;
 mod memory;
 mod models;
+mod serializer;
 mod traits;
 pub mod util;
 

@@ -1,6 +1,5 @@
 //! The rocksdb datastore implementation.
 
-mod bytes;
 mod datastore;
 mod managers;
 
