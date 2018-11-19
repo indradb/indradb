@@ -2,7 +2,7 @@
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors::ValidationResult;
+use errors::{Result, ValidationResult};
 use rand::{OsRng, Rng};
 use std::env;
 use uuid::v1::Context;
@@ -87,6 +87,17 @@ pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     let timestamp = datetime.timestamp() as u64;
     let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());
     timestamp * 1_000_000_000 + nanoseconds
+}
+
+pub fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
+where
+    I: Iterator<Item = Result<Option<T>>>,
+{
+    iter.filter_map(|item| match item {
+        Err(err) => Some(Err(err)),
+        Ok(Some(value)) => Some(Ok(value)),
+        _ => None,
+    })
 }
 
 #[cfg(test)]

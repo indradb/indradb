@@ -5,165 +5,47 @@ use super::managers::*;
 use chrono::offset::Utc;
 use errors::Result;
 use models;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
-use std::i32;
-use std::sync::Arc;
 use std::u64;
 use std::usize;
 use util::{remove_nones_from_iterator, next_uuid};
 use uuid::Uuid;
+use std::path::{Path, PathBuf};
+use sled::Tree;
 
-const CF_NAMES: [&str; 6] = [
-    "vertices:v1",
-    "edges:v1",
-    "edge_ranges:v1",
-    "reversed_edge_ranges:v1",
-    "vertex_properties:v1",
-    "edge_properties:v1",
-];
-
-fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Options {
-    // Current tuning based off of the total ordered example, flash
-    // storage example on
-    // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-    // Some of the options for it were not available
-    let mut opts = Options::default();
-    opts.create_if_missing(true);
-    opts.set_compaction_style(DBCompactionStyle::Level);
-    opts.set_write_buffer_size(67_108_864); // 64mb
-    opts.set_max_write_buffer_number(3);
-    opts.set_target_file_size_base(67_108_864); // 64mb
-    opts.set_level_zero_file_num_compaction_trigger(8);
-    opts.set_level_zero_slowdown_writes_trigger(17);
-    opts.set_level_zero_stop_writes_trigger(24);
-    opts.set_num_levels(4);
-    opts.set_max_bytes_for_level_base(536_870_912); // 512mb
-    opts.set_max_bytes_for_level_multiplier(8.0);
-    opts.set_max_background_compactions(4);
-
-    if let Some(max_open_files) = max_open_files {
-        opts.set_max_open_files(max_open_files);
-    }
-
-    if bulk_load_optimized {
-        // Via https://github.com/facebook/rocksdb/wiki/RocksDB-FAQ
-        opts.set_allow_concurrent_memtable_write(false);
-        // opts.set_memtable_factory(MemtableFactory::Vector); // disabled as this seems to stall writes
-        opts.set_max_background_flushes(8);
-        opts.set_disable_auto_compactions(true);
-        opts.set_level_zero_file_num_compaction_trigger(1024);
-        opts.set_level_zero_slowdown_writes_trigger(1024 * 5);
-        opts.set_level_zero_stop_writes_trigger(1024 * 6);
-    }
-
-    opts
-}
-
-/// A datastore that is backed by rocksdb.
+/// A datastore that is backed by sled.
 #[derive(Debug)]
-pub struct RocksdbDatastore {
-    db: Arc<DB>,
+pub struct SledDatastore {
+    db: Database
 }
 
-impl RocksdbDatastore {
-    /// Creates a new rocksdb datastore.
+impl SledDatastore {
+    /// Creates a new sled datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the rocksdb database.
-    /// * `max_open_files` - The maximum number of open files to have. If
-    ///   `None`, the default will be used.
-    /// * `bulk_load_optimized` - Whether to configure the database to
-    ///   optimize for bulk loading, based off of suggestions from the RocksDB
-    ///   FAQ.
-    pub fn new(path: &str, max_open_files: Option<i32>, bulk_load_optimized: bool) -> Result<RocksdbDatastore> {
-        let opts = get_options(max_open_files, bulk_load_optimized);
-
-        let db = match DB::open_cf(&opts, path, &CF_NAMES) {
-            Ok(db) => db,
-            Err(_) => {
-                let mut db = DB::open(&opts, path)?;
-
-                for cf_name in &CF_NAMES {
-                    db.create_cf(cf_name, &opts)?;
-                }
-
-                db
-            }
-        };
-
-        Ok(RocksdbDatastore { db: Arc::new(db) })
-    }
-
-    /// Runs a repair operation on the rocksdb database.
-    ///
-    /// # Arguments
-    /// * `path` - The file path to the rocksdb database.
-    /// * `max_open_files` - The maximum number of open files to have. If
-    ///   `None`, the default will be used.
-    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
-        let opts = get_options(max_open_files, false);
-        DB::repair(opts, path)?;
-        Ok(())
+    /// * `path` - The file path to the sled database.
+    pub fn new<P: Into<PathBuf>>(path: P) -> Result<Self> {
+        Ok(Self { db: Database::new(path)? })
     }
 }
 
-impl Datastore for RocksdbDatastore {
-    type Trans = RocksdbTransaction;
-
-    // We override the default `bulk_insert` implementation because further
-    // optimization can be done by using `WriteBatch`s.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where
-        I: Iterator<Item = models::BulkInsertItem>,
-    {
-        let vertex_manager = VertexManager::new(self.db.clone());
-        let edge_manager = EdgeManager::new(self.db.clone());
-        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
-        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
-
-        for item in items {
-            match item {
-                models::BulkInsertItem::Vertex(ref vertex) => {
-                    vertex_manager.create(&mut batch, vertex)?;
-                }
-                models::BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
-                }
-                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
-                    vertex_property_manager.set(&mut batch, id, name, value)?;
-                }
-                models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
-                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
-                }
-            }
-        }
-
-        // NOTE: syncing and WAL are disabled for bulk inserts to maximimze
-        // performance
-        let mut opts = WriteOptions::default();
-        opts.set_sync(false);
-        opts.disable_wal(true);
-
-        self.db.write_opt(batch, &opts)?;
-        Ok(())
-    }
+impl Datastore for SledDatastore {
+    type Trans = SledTransaction;
 
     fn transaction(&self) -> Result<Self::Trans> {
-        RocksdbTransaction::new(self.db.clone())
+        Ok(SledTransaction::new(self.db.clone()))
     }
 }
 
-/// A transaction that is backed by rocksdb.
+/// A transaction that is backed by sled.
 #[derive(Debug)]
-pub struct RocksdbTransaction {
-    db: Arc<DB>,
+pub struct SledTransaction {
+    db: Database
 }
 
-impl RocksdbTransaction {
-    fn new(db: Arc<DB>) -> Result<Self> {
-        Ok(RocksdbTransaction { db })
+impl SledTransaction {
+    fn new(db: Database) -> Self {
+        Self { db }
     }
 
     fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>> {
@@ -187,7 +69,7 @@ impl RocksdbTransaction {
                 };
 
                 let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                    Box::new(vertex_manager.iterate_for_range(next_uuid).into_iter());
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -277,7 +159,7 @@ impl RocksdbTransaction {
 
                 for item in vertex_iterator {
                     let (id, _) = item?;
-                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
+                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high);
 
                     for item in edge_iterator {
                         match item {
@@ -323,16 +205,14 @@ impl RocksdbTransaction {
     }
 }
 
-impl Transaction for RocksdbTransaction {
+impl Transaction for SledTransaction {
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
         let vertex_manager = VertexManager::new(self.db.clone());
 
         if vertex_manager.exists(vertex.id)? {
             Ok(false)
         } else {
-            let mut batch = WriteBatch::default();
-            vertex_manager.create(&mut batch, vertex)?;
-            self.db.write(batch)?;
+            vertex_manager.create(vertex)?;
             Ok(true)
         }
     }
@@ -352,21 +232,19 @@ impl Transaction for RocksdbTransaction {
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
         let iterator = self.vertex_query_to_iterator(q.into())?;
         let vertex_manager = VertexManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
 
         for item in iterator {
             let (id, _) = item?;
-            vertex_manager.delete(&mut batch, id)?;
+            vertex_manager.delete(id)?;
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 
     fn get_vertex_count(&self) -> Result<u64> {
         let vertex_manager = VertexManager::new(self.db.clone());
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
-        Ok(iterator.count() as u64)
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
+        Ok(iterator.len() as u64)
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
@@ -376,9 +254,7 @@ impl Transaction for RocksdbTransaction {
             Ok(false)
         } else {
             let edge_manager = EdgeManager::new(self.db.clone());
-            let mut batch = WriteBatch::default();
-            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
-            self.db.write(batch)?;
+            edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
             Ok(true)
         }
     }
@@ -400,17 +276,15 @@ impl Transaction for RocksdbTransaction {
         let edge_manager = EdgeManager::new(self.db.clone());
         let vertex_manager = VertexManager::new(self.db.clone());
         let iterator = self.edge_query_to_iterator(q.into())?;
-        let mut batch = WriteBatch::default();
 
         for item in iterator {
             let (outbound_id, t, update_datetime, inbound_id) = item?;
 
             if vertex_manager.get(outbound_id)?.is_some() {
-                edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
+                edge_manager.delete(outbound_id, &t, inbound_id, update_datetime)?;
             };
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 
@@ -420,7 +294,7 @@ impl Transaction for RocksdbTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.db.clone()),
         };
 
-        let count = edge_range_manager.iterate_for_range(id, t, None)?.count();
+        let count = edge_range_manager.iterate_for_range(id, t, None).count();
 
         Ok(count as u64)
     }
@@ -443,27 +317,23 @@ impl Transaction for RocksdbTransaction {
 
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let manager = VertexPropertyManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
-            manager.set(&mut batch, id, &q.name, value)?;
+            manager.set(id, &q.name, value)?;
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let manager = VertexPropertyManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
-            manager.delete(&mut batch, id, &q.name)?;
+            manager.delete(id, &q.name)?;
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 
@@ -486,27 +356,23 @@ impl Transaction for RocksdbTransaction {
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
         let manager = EdgePropertyManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
-            manager.set(&mut batch, outbound_id, &t, inbound_id, &q.name, value)?;
+            manager.set(outbound_id, &t, inbound_id, &q.name, value)?;
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
         let manager = EdgePropertyManager::new(self.db.clone());
-        let mut batch = WriteBatch::default();
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
-            manager.delete(&mut batch, outbound_id, &t, inbound_id, &q.name)?;
+            manager.delete(outbound_id, &t, inbound_id, &q.name)?;
         }
 
-        self.db.write(batch)?;
         Ok(())
     }
 }

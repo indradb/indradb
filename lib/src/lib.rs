@@ -28,6 +28,9 @@ extern crate uuid;
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 
+#[cfg(feature = "sled-datastore")]
+extern crate sled;
+
 #[cfg(feature = "test-suite")]
 #[macro_use]
 pub mod tests;
@@ -52,3 +55,8 @@ pub use traits::*;
 mod rdb;
 #[cfg(feature = "rocksdb-datastore")]
 pub use rdb::{RocksdbDatastore, RocksdbTransaction};
+
+#[cfg(feature = "sled-datastore")]
+mod sld;
+#[cfg(feature = "sled-datastore")]
+pub use sld::{SledDatastore, SledTransaction};
