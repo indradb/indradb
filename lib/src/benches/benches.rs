@@ -23,7 +23,7 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let q = SpecificVertexQuery::single(id);
+        let q = SpecificVertexQuery::single(id.clone());
         trans.get_vertices(q).unwrap();
     });
 }
@@ -42,7 +42,7 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let k = EdgeKey::new(outbound_id, t.clone(), inbound_id);
+        let k = EdgeKey::new(outbound_id.clone(), t.clone(), inbound_id.clone());
         trans.create_edge(&k).unwrap();
     });
 }
@@ -77,7 +77,7 @@ pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
         let inbound_v = Vertex::new(t.clone());
         trans.create_vertex(&outbound_v).unwrap();
         trans.create_vertex(&inbound_v).unwrap();
-        let key = EdgeKey::new(outbound_v.id, t.clone(), inbound_v.id);
+        let key = EdgeKey::new(outbound_v.id.clone(), t.clone(), inbound_v.id);
         trans.create_edge(&key).unwrap();
         outbound_v.id
     };
@@ -85,7 +85,7 @@ pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
         trans
-            .get_edge_count(outbound_id, Some(&t), EdgeDirection::Outbound)
+            .get_edge_count(outbound_id.clone(), Some(&t), EdgeDirection::Outbound)
             .unwrap();
     });
 }
