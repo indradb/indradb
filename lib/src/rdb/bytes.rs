@@ -30,7 +30,13 @@ pub enum Component<'a> {
 impl<'a> Component<'a> {
     fn len(&self) -> usize {
         match *self {
-            Component::SizedId(i) => i.0.len() + 2,
+            Component::SizedId(i) => {
+                if i.0.len() >= 0xFF {
+                    i.0.len() + 3
+                } else {
+                    i.0.len() + 2
+                }
+            },
             Component::UnsizedId(i) => i.0.len(),
             Component::UnsizedString(s) => s.len(),
             Component::Type(t) => t.0.len() + 1,
@@ -40,8 +46,13 @@ impl<'a> Component<'a> {
 
     fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            Component::SizedId(id) => {
+            Component::SizedId(id) if id.0.len() >= 0xFF => {
+                cursor.write_u8(0xFFu8)?;
                 cursor.write_u16::<BigEndian>(id.0.len() as u16)?;
+                cursor.write_all(&id.0)?;
+            }
+            Component::SizedId(id) => {
+                cursor.write_u8(id.0.len() as u8)?;
                 cursor.write_all(&id.0)?;
             }
             Component::UnsizedId(id) => {
@@ -78,7 +89,14 @@ pub fn build(components: &[Component]) -> Vec<u8> {
 }
 
 pub fn read_sized_id<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Id {
-    let id_len = cursor.read_u16::<BigEndian>().unwrap() as usize;
+    let short_id_len = cursor.read_u8().unwrap();
+
+    let id_len = if short_id_len == 0xFFu8 {
+        cursor.read_u16::<BigEndian>().unwrap() as usize
+    } else {
+        short_id_len as usize
+    };
+
     let mut buf = vec![0u8; id_len];
     cursor.read_exact(&mut buf).unwrap();
     models::Id::new(buf).unwrap()
