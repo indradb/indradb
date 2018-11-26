@@ -1,4 +1,4 @@
-use models::{EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
+use models::{Edge, EdgeDirection, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
 use test::Bencher;
 use traits::{Datastore, Transaction};
 
@@ -42,7 +42,7 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let k = EdgeKey::new(outbound_id, t.clone(), inbound_id);
+        let k = Edge::new(outbound_id, t.clone(), inbound_id);
         trans.create_edge(&k).unwrap();
     });
 }
@@ -50,20 +50,20 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_get_edges").unwrap();
 
-    let key = {
+    let edge = {
         let trans = datastore.transaction().unwrap();
         let outbound_v = Vertex::new(t.clone());
         let inbound_v = Vertex::new(t.clone());
         trans.create_vertex(&outbound_v).unwrap();
         trans.create_vertex(&inbound_v).unwrap();
-        let key = EdgeKey::new(outbound_v.id, t.clone(), inbound_v.id);
-        trans.create_edge(&key).unwrap();
-        key
+        let edge = Edge::new(outbound_v.id, t.clone(), inbound_v.id);
+        trans.create_edge(&edge).unwrap();
+        edge
     };
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
-        let q = SpecificEdgeQuery::single(key.clone());
+        let q = SpecificEdgeQuery::single(edge.clone());
         trans.get_edges(q).unwrap();
     });
 }
@@ -77,8 +77,8 @@ pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
         let inbound_v = Vertex::new(t.clone());
         trans.create_vertex(&outbound_v).unwrap();
         trans.create_vertex(&inbound_v).unwrap();
-        let key = EdgeKey::new(outbound_v.id, t.clone(), inbound_v.id);
-        trans.create_edge(&key).unwrap();
+        let edge = Edge::new(outbound_v.id, t.clone(), inbound_v.id);
+        trans.create_edge(&edge).unwrap();
         outbound_v.id
     };
 
