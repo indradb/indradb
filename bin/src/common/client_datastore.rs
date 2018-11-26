@@ -182,10 +182,10 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
+    fn create_edge(&self, e: &indradb::Edge) -> Result<bool, indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.create_edge_request();
-            converters::from_edge_key(e, req.get().init_key());
+            converters::from_edge(e, req.get().init_edge());
 
             let f = req.send().promise.and_then(move |res| Ok(res.get()?.get_result()));
 

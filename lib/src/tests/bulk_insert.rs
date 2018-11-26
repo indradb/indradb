@@ -1,9 +1,7 @@
 use super::super::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
+    BulkInsertItem, Datastore, Edge, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
     Vertex, VertexQueryExt,
 };
-use chrono::offset::Utc;
-use chrono::Timelike;
 use serde_json::Value as JsonValue;
 
 pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
@@ -18,30 +16,24 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
 
     datastore.bulk_insert(items.into_iter()).unwrap();
 
-    // Record the start and end time. Round off the the nanoseconds off the
-    // start time, since some implementations may not have that level of
-    // accuracy.
-    let start_time = Utc::now().with_nanosecond(0).unwrap();
     let edge_t = Type::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let edge = Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
     let items = vec![
-        BulkInsertItem::Edge(key.clone()),
+        BulkInsertItem::Edge(edge.clone()),
         BulkInsertItem::VertexProperty(
             outbound_v.id,
             "vertex_property_name".to_string(),
             JsonValue::String("vertex_property_value".to_string()),
         ),
         BulkInsertItem::EdgeProperty(
-            key.clone(),
+            edge.clone(),
             "edge_property_name".to_string(),
             JsonValue::String("edge_property_value".to_string()),
         ),
     ];
 
     datastore.bulk_insert(items.into_iter()).unwrap();
-
-    let end_time = Utc::now();
 
     let trans = datastore.transaction().unwrap();
     let vertices = trans
@@ -54,14 +46,12 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
+    let edges = trans.get_edges(SpecificEdgeQuery::single(edge.clone())).unwrap();
 
     assert_eq!(edges.len(), 1);
-    assert_eq!(edges[0].key.outbound_id, outbound_v.id);
-    assert_eq!(edges[0].key.t, edge_t);
-    assert_eq!(edges[0].key.inbound_id, inbound_v.id);
-    assert!(edges[0].created_datetime >= start_time);
-    assert!(edges[0].created_datetime <= end_time);
+    assert_eq!(edges[0].outbound_id, outbound_v.id);
+    assert_eq!(edges[0].t, edge_t);
+    assert_eq!(edges[0].inbound_id, inbound_v.id);
 
     let vertex_properties = trans
         .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property("vertex_property_name"))
@@ -75,11 +65,11 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     );
 
     let edge_properties = trans
-        .get_edge_properties(SpecificEdgeQuery::single(key.clone()).property("edge_property_name"))
+        .get_edge_properties(SpecificEdgeQuery::single(edge.clone()).property("edge_property_name"))
         .unwrap();
 
     assert_eq!(edge_properties.len(), 1);
-    assert_eq!(edge_properties[0].key, key);
+    assert_eq!(edge_properties[0].edge, edge);
     assert_eq!(
         edge_properties[0].value,
         JsonValue::String("edge_property_value".to_string())
@@ -110,8 +100,8 @@ pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
 
     let edge_t = Type::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v1.id, edge_t.clone(), v2.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t.clone(), v1.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v2.id, edge_t.clone(), v1.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
 }

@@ -1,5 +1,5 @@
 use super::super::{
-    Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
+    Datastore, Edge, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
 };
 use serde_json::Value as JsonValue;
 use util::generate_random_secret;
@@ -66,10 +66,10 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = Type::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
-    let q = SpecificEdgeQuery::single(key.clone()).property(format!("edge-properties-{}", generate_random_secret(8)));
+    let edge = Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let q = SpecificEdgeQuery::single(edge.clone()).property(format!("edge-properties-{}", generate_random_secret(8)));
 
-    trans.create_edge(&key).unwrap();
+    trans.create_edge(&edge).unwrap();
 
     // Check to make sure there's no initial value
     let result = trans.get_edge_properties(q.clone()).unwrap();
@@ -79,14 +79,14 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.set_edge_properties(q.clone(), &JsonValue::Bool(true)).unwrap();
     let result = trans.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].edge, edge);
     assert_eq!(result[0].value, JsonValue::Bool(true));
 
     // Set and get the value as false
     trans.set_edge_properties(q.clone(), &JsonValue::Bool(false)).unwrap();
     let result = trans.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].edge, edge);
     assert_eq!(result[0].value, JsonValue::Bool(false));
 
     // Delete & check that it's deleted
@@ -97,8 +97,8 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
-    let q = SpecificEdgeQuery::single(key).property("bar");
+    let edge = Edge::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let q = SpecificEdgeQuery::single(edge).property("bar");
     trans.set_edge_properties(q.clone(), &JsonValue::Null).unwrap();
     let result = trans.get_edge_properties(q).unwrap();
     assert_eq!(result.len(), 0);
@@ -106,9 +106,9 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let edge = Edge::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
     trans
-        .delete_edge_properties(SpecificEdgeQuery::single(key).property("bar"))
+        .delete_edge_properties(SpecificEdgeQuery::single(edge).property("bar"))
         .unwrap();
 
     let outbound_v = Vertex::new(Type::new("foo").unwrap());
@@ -116,9 +116,9 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
 
-    let key = EdgeKey::new(outbound_v.id, Type::new("baz").unwrap(), inbound_v.id);
-    trans.create_edge(&key).unwrap();
+    let edge = Edge::new(outbound_v.id, Type::new("baz").unwrap(), inbound_v.id);
+    trans.create_edge(&edge).unwrap();
     trans
-        .delete_edge_properties(SpecificEdgeQuery::single(key).property("bleh"))
+        .delete_edge_properties(SpecificEdgeQuery::single(edge).property("bleh"))
         .unwrap();
 }

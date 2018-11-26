@@ -36,7 +36,6 @@ tokio-core = "0.1.17"
 tokio-io = "0.1.10"
 futures-cpupool = "0.1.8"
 num_cpus = "1.8.0"
-chrono = "0.4.6"
 uuid = "~0.7.1"
 
 [dependencies.indradb-lib]

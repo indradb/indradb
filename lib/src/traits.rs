@@ -103,8 +103,8 @@ pub trait Transaction {
     /// is missing.
     ///
     /// # Arguments
-    /// * `key`: The edge to create.
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool>;
+    /// * `edge`: The edge to create.
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool>;
 
     /// Gets a range of edges specified by a query.
     ///

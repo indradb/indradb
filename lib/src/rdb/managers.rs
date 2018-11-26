@@ -1,6 +1,4 @@
 use super::bytes::*;
-use chrono::offset::Utc;
-use chrono::DateTime;
 use errors::Result;
 use models;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
@@ -14,7 +12,7 @@ use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
 pub type VertexItem = (Uuid, models::Type);
-pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
+pub type EdgeRangeItem = (Uuid, models::Type, Uuid);
 pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
 fn take_while_prefixed(iterator: DBIterator, prefix: Vec<u8>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> {
@@ -94,126 +92,31 @@ impl VertexManager {
             vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name[..])?;
         }
 
-        let edge_manager = EdgeManager::new(self.db.clone());
-
-        {
-            let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-            for item in edge_range_manager.iterate_for_owner(id)? {
-                let (edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id) = item?;
-                debug_assert_eq!(edge_range_outbound_id, id);
-                edge_manager.delete(
-                    &mut batch,
-                    edge_range_outbound_id,
-                    &edge_range_t,
-                    edge_range_inbound_id,
-                    edge_range_update_datetime,
-                )?;
-            }
-        }
-
-        {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-            for item in reversed_edge_range_manager.iterate_for_owner(id)? {
-                let (
-                    reversed_edge_range_inbound_id,
-                    reversed_edge_range_t,
-                    reversed_edge_range_update_datetime,
-                    reversed_edge_range_outbound_id,
-                ) = item?;
-                debug_assert_eq!(reversed_edge_range_inbound_id, id);
-                edge_manager.delete(
-                    &mut batch,
-                    reversed_edge_range_outbound_id,
-                    &reversed_edge_range_t,
-                    reversed_edge_range_inbound_id,
-                    reversed_edge_range_update_datetime,
-                )?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-pub struct EdgeManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
-}
-
-impl EdgeManager {
-    pub fn new(db: Arc<DB>) -> Self {
-        EdgeManager {
-            cf: db.cf_handle("edges:v1").unwrap(),
-            db,
-        }
-    }
-
-    fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Vec<u8> {
-        build(&[
-            Component::Uuid(outbound_id),
-            Component::Type(t),
-            Component::Uuid(inbound_id),
-        ])
-    }
-
-    pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<Option<DateTime<Utc>>> {
-        match self.db.get_cf(self.cf, &self.key(outbound_id, t, inbound_id))? {
-            Some(value_bytes) => {
-                let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(read_datetime(&mut cursor)))
-            }
-            None => Ok(None),
-        }
-    }
-
-    pub fn set(
-        &self,
-        mut batch: &mut WriteBatch,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-        new_update_datetime: DateTime<Utc>,
-    ) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-
-        if let Some(update_datetime) = self.get(outbound_id, t, inbound_id)? {
-            edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
-            reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
-        }
-
-        let key = self.key(outbound_id, t, inbound_id);
-        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]))?;
-        edge_range_manager.set(&mut batch, outbound_id, t, new_update_datetime, inbound_id)?;
-        reversed_edge_range_manager.set(&mut batch, inbound_id, t, new_update_datetime, outbound_id)?;
-        Ok(())
-    }
-
-    pub fn delete(
-        &self,
-        mut batch: &mut WriteBatch,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-        update_datetime: DateTime<Utc>,
-    ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id))?;
-
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        edge_range_manager.delete(&mut batch, outbound_id, t, update_datetime, inbound_id)?;
-
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
-        reversed_edge_range_manager.delete(&mut batch, inbound_id, t, update_datetime, outbound_id)?;
-
-        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
-        for item in edge_property_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
-            let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) = item?;
-            edge_property_manager.delete(
+        for item in edge_range_manager.iterate_for_owner(id)? {
+            let (edge_range_outbound_id, edge_range_t, edge_range_inbound_id) = item?;
+            debug_assert_eq!(edge_range_outbound_id, id);
+            edge_range_manager.delete(
                 &mut batch,
-                edge_property_outbound_id,
-                &edge_property_t,
-                edge_property_inbound_id,
-                &edge_property_name[..],
+                edge_range_outbound_id,
+                &edge_range_t,
+                edge_range_inbound_id,
+            )?;
+        }
+
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+        for item in reversed_edge_range_manager.iterate_for_owner(id)? {
+            let (
+                reversed_edge_range_inbound_id,
+                reversed_edge_range_t,
+                reversed_edge_range_outbound_id,
+            ) = item?;
+            debug_assert_eq!(reversed_edge_range_inbound_id, id);
+            reversed_edge_range_manager.delete(
+                &mut batch,
+                reversed_edge_range_outbound_id,
+                &reversed_edge_range_t,
+                reversed_edge_range_inbound_id,
             )?;
         }
 
@@ -241,11 +144,10 @@ impl EdgeRangeManager {
         }
     }
 
-    fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
+    fn key(&self, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Vec<u8> {
         build(&[
             Component::Uuid(first_id),
             Component::Type(t),
-            Component::DateTime(update_datetime),
             Component::Uuid(second_id),
         ])
     }
@@ -258,9 +160,8 @@ impl EdgeRangeManager {
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
             let t = read_type(&mut cursor);
-            let update_datetime = read_datetime(&mut cursor);
             let second_id = read_uuid(&mut cursor);
-            Ok((first_id, t, update_datetime, second_id))
+            Ok((first_id, t, second_id))
         }))
     }
 
@@ -268,41 +169,21 @@ impl EdgeRangeManager {
         &self,
         id: Uuid,
         t: Option<&models::Type>,
-        high: Option<DateTime<Utc>>,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
+    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
         match t {
             Some(t) => {
-                let high = high.unwrap_or_else(|| *MAX_DATETIME);
                 let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
-                let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
-                Ok(Box::new(self.iterate(iterator, prefix)?))
+                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+                Ok(self.iterate(iterator, prefix)?)
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-                let mapped = self.iterate(iterator, prefix)?;
-
-                if let Some(high) = high {
-                    // We can filter out `update_datetime`s greater than
-                    // `high` via key prefix filtering, so instead we handle
-                    // it here - after the key has been deserialized.
-                    let filtered = mapped.filter(move |item| {
-                        if let Ok((_, _, update_datetime, _)) = *item {
-                            update_datetime <= high
-                        } else {
-                            true
-                        }
-                    });
-
-                    Ok(Box::new(filtered))
-                } else {
-                    Ok(Box::new(mapped))
-                }
+                Ok(self.iterate(iterator, prefix)?)
             }
         }
     }
@@ -315,15 +196,18 @@ impl EdgeRangeManager {
         self.iterate(iterator, prefix)
     }
 
+    pub fn exists(&self, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<bool> {
+        Ok(self.db.get_cf(self.cf, &self.key(first_id, t, second_id))?.is_some())
+    }
+
     pub fn set(
         &self,
         batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
-        update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
-        let key = self.key(first_id, t, update_datetime, second_id);
+        let key = self.key(first_id, t, second_id);
         batch.put_cf(self.cf, &key, &[])?;
         Ok(())
     }
@@ -333,10 +217,9 @@ impl EdgeRangeManager {
         batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Type,
-        update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
+        batch.delete_cf(self.cf, &self.key(first_id, t, second_id))?;
         Ok(())
     }
 }

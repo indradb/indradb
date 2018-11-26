@@ -1,7 +1,5 @@
-use super::edges::EdgeKey;
+use super::edges::Edge;
 use super::types::Type;
-use chrono::offset::Utc;
-use chrono::DateTime;
 use errors;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -308,28 +306,27 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 /// Gets a specific set of edges.
 #[derive(PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
-    /// The keys of the edges to get.
-    pub keys: Vec<EdgeKey>,
+    /// The edges to get.
+    pub edges: Vec<Edge>,
 }
 
 impl EdgeQueryExt for SpecificEdgeQuery {}
 
 impl SpecificEdgeQuery {
-    /// Creates a new edge query for getting a list of edges by their
-    /// keys.
+    /// Creates a new edge query for getting a list of specific edges.
     ///
     /// Arguments
-    /// * `keys` - The keys of the edges to get.
-    pub fn new(keys: Vec<EdgeKey>) -> Self {
-        Self { keys }
+    /// * `edges` - The edges to get.
+    pub fn new(edges: Vec<Edge>) -> Self {
+        Self { edges }
     }
 
     /// Creates a new edge query for getting a single edge.
     ///
     /// Arguments
-    /// * `key` - The key of the edge to get.
-    pub fn single(key: EdgeKey) -> Self {
-        Self { keys: vec![key] }
+    /// * `edge` - The edge to get.
+    pub fn single(edge: Edge) -> Self {
+        Self { edges: vec![edge] }
     }
 }
 
@@ -350,12 +347,6 @@ pub struct PipeEdgeQuery {
 
     /// Filters the type of edges returned.
     pub t: Option<Type>,
-
-    /// Specifies the newest update datetime for returned edges.
-    pub high: Option<DateTime<Utc>>,
-
-    /// Specifies the oldest update datetime for returned edges.
-    pub low: Option<DateTime<Utc>>,
 }
 
 impl EdgeQueryExt for PipeEdgeQuery {}
@@ -374,8 +365,6 @@ impl PipeEdgeQuery {
             direction,
             limit,
             t: None,
-            high: None,
-            low: None,
         }
     }
 
@@ -389,38 +378,6 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
-            high: self.high,
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `high` - The newest update datetime for the edges returned.
-    pub fn high(self, high: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: Some(high),
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `low` - The oldest update datetime for the edges returned.
-    pub fn low(self, low: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: self.high,
-            low: Some(low),
         }
     }
 }

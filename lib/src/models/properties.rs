@@ -1,4 +1,4 @@
-use super::edges::EdgeKey;
+use super::edges::Edge;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -27,8 +27,8 @@ impl VertexProperty {
 /// Represents an edge property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
-    /// The key to the edge.
-    pub key: EdgeKey,
+    /// The edge that this property is associated with.
+    pub edge: Edge,
 
     /// The property value.
     pub value: JsonValue,
@@ -39,9 +39,9 @@ impl EdgeProperty {
     ///
     /// # Arguments
     ///
-    /// * `key` - The key to the edge.
+    /// * `edge` - The edge that this property is associated with.
     /// * `value` - The property value.
-    pub fn new(key: EdgeKey, value: JsonValue) -> Self {
-        Self { key, value }
+    pub fn new(edge: Edge, value: JsonValue) -> Self {
+        Self { edge, value }
     }
 }

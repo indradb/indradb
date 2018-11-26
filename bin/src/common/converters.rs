@@ -3,14 +3,11 @@
 use autogen;
 use capnp;
 use capnp::Error as CapnpError;
-use chrono::{DateTime, TimeZone, Utc};
 use indradb;
 use serde_json;
 use std::fmt::Display;
 use std::vec::IntoIter;
 use uuid::Uuid;
-
-const NANOS_PER_SEC: u64 = 1_000_000_000;
 
 pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Error> {
     result.map_err(|err| capnp::Error::failed(format!("{}", err)))
@@ -27,29 +24,17 @@ pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Ve
     Ok(indradb::Vertex::with_id(id, t))
 }
 
-pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: autogen::edge::Builder<'a>) -> Result<(), CapnpError> {
-    builder.set_created_datetime(edge.created_datetime.timestamp() as u64);
-    from_edge_key(&edge.key, builder.init_key());
-    Ok(())
+pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: autogen::edge::Builder<'a>) {
+    builder.set_outbound_id(edge.outbound_id.as_bytes());
+    builder.set_t(&edge.t.0);
+    builder.set_inbound_id(edge.inbound_id.as_bytes());
 }
 
 pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, CapnpError> {
-    let key = to_edge_key(&reader.get_key()?)?;
-    let created_datetime = Utc.timestamp(reader.get_created_datetime() as i64, 0);
-    Ok(indradb::Edge::new(key, created_datetime))
-}
-
-pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
-    builder.set_outbound_id(key.outbound_id.as_bytes());
-    builder.set_t(&key.t.0);
-    builder.set_inbound_id(key.inbound_id.as_bytes());
-}
-
-pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
     let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
     let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
-    Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
+    Ok(indradb::Edge::new(outbound_id, t, inbound_id))
 }
 
 pub fn from_vertex_property<'a>(
@@ -70,13 +55,13 @@ pub fn to_vertex_property<'a>(
 
 pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: autogen::edge_property::Builder<'a>) {
     builder.set_value(&property.value.to_string());
-    from_edge_key(&property.key, builder.init_key());
+    from_edge(&property.edge, builder.init_edge());
 }
 
 pub fn to_edge_property<'a>(reader: &autogen::edge_property::Reader<'a>) -> Result<indradb::EdgeProperty, CapnpError> {
-    let key = to_edge_key(&reader.get_key()?)?;
+    let edge = to_edge(&reader.get_edge()?)?;
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
-    Ok(indradb::EdgeProperty::new(key, value))
+    Ok(indradb::EdgeProperty::new(edge, value))
 }
 
 pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {
@@ -175,10 +160,10 @@ pub fn to_vertex_property_query<'a>(
 pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query::Builder<'a>) {
     match q {
         indradb::EdgeQuery::Specific(specific) => {
-            let mut builder = builder.init_specific().init_keys(specific.keys.len() as u32);
+            let mut builder = builder.init_specific().init_edges(specific.edges.len() as u32);
 
-            for (i, key) in specific.keys.iter().enumerate() {
-                from_edge_key(key, builder.reborrow().get(i as u32));
+            for (i, edge) in specific.edges.iter().enumerate() {
+                from_edge(edge, builder.reborrow().get(i as u32));
             }
         }
         indradb::EdgeQuery::Pipe(pipe) => {
@@ -187,14 +172,6 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query:
 
             if let Some(t) = &pipe.t {
                 builder.set_t(&t.0);
-            }
-
-            if let Some(high) = pipe.high {
-                builder.set_high(high.timestamp_nanos() as u64);
-            }
-
-            if let Some(low) = pipe.low {
-                builder.set_low(low.timestamp_nanos() as u64);
             }
 
             builder.set_limit(pipe.limit);
@@ -206,12 +183,12 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query:
 pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
     match reader.which()? {
         autogen::edge_query::Specific(params) => {
-            let keys: Result<Vec<indradb::EdgeKey>, CapnpError> = params
-                .get_keys()?
+            let edges: Result<Vec<indradb::Edge>, CapnpError> = params
+                .get_edges()?
                 .into_iter()
-                .map(|reader| to_edge_key(&reader))
+                .map(|reader| to_edge(&reader))
                 .collect();
-            Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(keys?)))
+            Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(edges?)))
         }
         autogen::edge_query::Pipe(params) => {
             let inner = Box::new(to_vertex_query(&params.get_inner()?)?);
@@ -222,14 +199,6 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
             let t = params.get_t()?;
             if t != "" {
                 pipe = pipe.t(map_capnp_err(indradb::Type::new(t))?);
-            }
-
-            if let Some(high) = to_optional_datetime(params.get_high()) {
-                pipe = pipe.high(high);
-            }
-
-            if let Some(low) = to_optional_datetime(params.get_low()) {
-                pipe = pipe.low(low);
             }
 
             Ok(indradb::EdgeQuery::Pipe(pipe))
@@ -267,7 +236,7 @@ pub fn from_bulk_insert_items<'a>(
             }
             indradb::BulkInsertItem::Edge(edge) => {
                 let mut builder = builder.init_edge();
-                from_edge_key(edge, builder.get_key()?);
+                from_edge(edge, builder.get_edge()?);
             }
             indradb::BulkInsertItem::VertexProperty(id, name, value) => {
                 let mut builder = builder.init_vertex_property();
@@ -275,11 +244,11 @@ pub fn from_bulk_insert_items<'a>(
                 builder.set_name(name);
                 builder.set_value(&value.to_string());
             }
-            indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
+            indradb::BulkInsertItem::EdgeProperty(edge, name, value) => {
                 let mut builder = builder.init_edge_property();
                 builder.set_name(name);
                 builder.set_value(&value.to_string());
-                from_edge_key(key, builder.get_key()?);
+                from_edge(edge, builder.get_edge()?);
             }
         }
     }
@@ -298,8 +267,8 @@ pub fn to_bulk_insert_items<'a>(
                 Ok(indradb::BulkInsertItem::Vertex(vertex))
             }
             autogen::bulk_insert_item::Edge(params) => {
-                let edge_key = to_edge_key(&params.get_key()?)?;
-                Ok(indradb::BulkInsertItem::Edge(edge_key))
+                let edge = to_edge(&params.get_edge()?)?;
+                Ok(indradb::BulkInsertItem::Edge(edge))
             }
             autogen::bulk_insert_item::VertexProperty(params) => {
                 let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
@@ -308,10 +277,10 @@ pub fn to_bulk_insert_items<'a>(
                 Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
             }
             autogen::bulk_insert_item::EdgeProperty(params) => {
-                let key = to_edge_key(&params.get_key()?)?;
+                let edge = to_edge(&params.get_edge()?)?;
                 let name = params.get_name()?.to_string();
                 let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
-                Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
+                Ok(indradb::BulkInsertItem::EdgeProperty(edge, name, value))
             }
         })
         .collect();
@@ -329,15 +298,5 @@ pub fn to_edge_direction(direction: autogen::EdgeDirection) -> indradb::EdgeDire
     match direction {
         autogen::EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
         autogen::EdgeDirection::Inbound => indradb::EdgeDirection::Inbound,
-    }
-}
-
-pub fn to_optional_datetime(timestamp: u64) -> Option<DateTime<Utc>> {
-    if timestamp == 0 {
-        None
-    } else {
-        let secs = timestamp / NANOS_PER_SEC;
-        let nanos = timestamp % NANOS_PER_SEC;
-        Some(Utc.timestamp(secs as i64, nanos as u32))
     }
 }

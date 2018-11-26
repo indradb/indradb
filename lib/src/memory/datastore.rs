@@ -1,10 +1,8 @@
 use super::super::{Datastore, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery};
-use chrono::offset::Utc;
-use chrono::DateTime;
 use errors::Result;
 use models;
 use serde_json::Value as JsonValue;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
@@ -14,8 +12,8 @@ use uuid::Uuid;
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug)]
 struct InternalMemoryDatastore {
-    edge_properties: BTreeMap<(models::EdgeKey, String), JsonValue>,
-    edges: BTreeMap<models::EdgeKey, DateTime<Utc>>,
+    edge_properties: BTreeMap<(models::Edge, String), JsonValue>,
+    edges: BTreeSet<models::Edge>,
     vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, models::Type>,
 }
@@ -54,8 +52,8 @@ impl InternalMemoryDatastore {
                 let edge_values = self.get_edge_values_by_query(*pipe.inner)?.into_iter();
 
                 let iter: Box<dyn Iterator<Item = Uuid>> = match pipe.direction {
-                    models::EdgeDirection::Outbound => Box::new(edge_values.map(|(key, _)| key.outbound_id)),
-                    models::EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
+                    models::EdgeDirection::Outbound => Box::new(edge_values.map(|edge| edge.outbound_id)),
+                    models::EdgeDirection::Inbound => Box::new(edge_values.map(|edge| edge.inbound_id)),
                 };
 
                 let mut iter: Box<dyn Iterator<Item = (Uuid, &models::Type)>> = Box::new(
@@ -72,16 +70,14 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<Vec<(models::EdgeKey, DateTime<Utc>)>> {
+    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<Vec<models::Edge>> {
         match q {
             EdgeQuery::Specific(specific) => {
                 let mut results = Vec::new();
 
-                for key in specific.keys {
-                    let value = self.edges.get(&key);
-
-                    if let Some(update_datetime) = value {
-                        results.push((key.clone(), *update_datetime));
+                for edge in specific.edges {
+                    if self.edges.contains(&edge) {
+                        results.push(edge);
                     }
                 }
 
@@ -99,37 +95,25 @@ impl InternalMemoryDatastore {
                     models::EdgeDirection::Outbound => {
                         for (id, _) in vertex_values {
                             let lower_bound = match &pipe.t {
-                                Some(t) => models::EdgeKey::new(id, t.clone(), Uuid::default()),
+                                Some(t) => models::Edge::new(id, t.clone(), Uuid::default()),
                                 None => {
                                     let empty_type = models::Type::default();
-                                    models::EdgeKey::new(id, empty_type, Uuid::default())
+                                    models::Edge::new(id, empty_type, Uuid::default())
                                 }
                             };
 
-                            for (key, update_datetime) in self.edges.range(lower_bound..) {
-                                if key.outbound_id != id {
+                            for edge in self.edges.range(lower_bound..) {
+                                if edge.outbound_id != id {
                                     break;
                                 }
 
                                 if let Some(t) = &pipe.t {
-                                    if &key.t != t {
+                                    if &edge.t != t {
                                         break;
                                     }
                                 }
 
-                                if let Some(high) = &pipe.high {
-                                    if update_datetime > high {
-                                        continue;
-                                    }
-                                }
-
-                                if let Some(low) = &pipe.low {
-                                    if update_datetime < low {
-                                        continue;
-                                    }
-                                }
-
-                                results.push((key.clone(), *update_datetime));
+                                results.push(edge.clone());
 
                                 if results.len() == pipe.limit as usize {
                                     return Ok(results);
@@ -138,35 +122,23 @@ impl InternalMemoryDatastore {
                         }
                     }
                     models::EdgeDirection::Inbound => {
-                        let mut candidate_ids = HashSet::new();
+                        let mut candidate_ids = BTreeSet::new();
                         for (id, _) in vertex_values {
                             candidate_ids.insert(id);
                         }
 
-                        for (key, update_datetime) in &self.edges {
-                            if !candidate_ids.contains(&key.inbound_id) {
+                        for edge in &self.edges {
+                            if !candidate_ids.contains(&edge.inbound_id) {
                                 continue;
                             }
 
                             if let Some(t) = &pipe.t {
-                                if &key.t != t {
+                                if &edge.t != t {
                                     continue;
                                 }
                             }
 
-                            if let Some(high) = &pipe.high {
-                                if update_datetime > high {
-                                    continue;
-                                }
-                            }
-
-                            if let Some(low) = &pipe.low {
-                                if update_datetime < low {
-                                    continue;
-                                }
-                            }
-
-                            results.push((key.clone(), *update_datetime));
+                            results.push(edge.clone());
 
                             if results.len() == pipe.limit as usize {
                                 return Ok(results);
@@ -200,11 +172,11 @@ impl InternalMemoryDatastore {
                 self.vertex_properties.remove(&property_key);
             }
 
-            let mut deletable_edges: Vec<models::EdgeKey> = Vec::new();
+            let mut deletable_edges: Vec<models::Edge> = Vec::new();
 
-            for edge_key in self.edges.keys() {
-                if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
-                    deletable_edges.push(edge_key.clone());
+            for edge in &self.edges {
+                if edge.outbound_id == vertex_id || edge.inbound_id == vertex_id {
+                    deletable_edges.push(edge.clone());
                 }
             }
 
@@ -212,16 +184,16 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn delete_edges(&mut self, edges: Vec<models::EdgeKey>) {
-        for edge_key in edges {
-            self.edges.remove(&edge_key);
+    fn delete_edges(&mut self, edges: Vec<models::Edge>) {
+        for edge in edges {
+            self.edges.remove(&edge);
 
-            let mut deletable_edge_properties: Vec<(models::EdgeKey, String)> = Vec::new();
+            let mut deletable_edge_properties: Vec<(models::Edge, String)> = Vec::new();
 
-            for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
-                let &(ref property_edge_key, _) = property_key;
+            for (property_key, _) in self.edge_properties.range((edge.clone(), "".to_string())..) {
+                let &(ref property_edge, _) = property_key;
 
-                if &edge_key != property_edge_key {
+                if &edge != property_edge {
                     break;
                 }
 
@@ -245,7 +217,7 @@ impl MemoryDatastore {
         Self {
             0: Arc::new(RwLock::new(InternalMemoryDatastore {
                 edge_properties: BTreeMap::new(),
-                edges: BTreeMap::new(),
+                edges: BTreeSet::new(),
                 vertex_properties: BTreeMap::new(),
                 vertices: BTreeMap::new(),
             })),
@@ -306,36 +278,25 @@ impl Transaction for MemoryTransaction {
         Ok(datastore.vertices.len() as u64)
     }
 
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
 
-        if !datastore.vertices.contains_key(&key.outbound_id) || !datastore.vertices.contains_key(&key.inbound_id) {
+        if !datastore.vertices.contains_key(&edge.outbound_id) || !datastore.vertices.contains_key(&edge.inbound_id) {
             return Ok(false);
         }
 
-        datastore.edges.insert(key.clone(), Utc::now());
+        datastore.edges.insert(edge.clone());
         Ok(true)
     }
 
     fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>> {
-        let edge_values = {
-            let datastore = self.datastore.read().unwrap();
-            datastore.get_edge_values_by_query(q.into())?
-        };
-
-        let iter = edge_values
-            .into_iter()
-            .map(|(key, update_datetime)| models::Edge::new(key, update_datetime));
-        Ok(iter.collect())
+        let datastore = self.datastore.read().unwrap();
+        datastore.get_edge_values_by_query(q.into())
     }
 
     fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<models::EdgeKey> = datastore
-            .get_edge_values_by_query(q.into())?
-            .into_iter()
-            .map(|(k, _)| k)
-            .collect();
+        let deletable_edges: Vec<models::Edge> = datastore.get_edge_values_by_query(q.into())?;
         datastore.delete_edges(deletable_edges);
         Ok(())
     }
@@ -345,29 +306,29 @@ impl Transaction for MemoryTransaction {
 
         if direction == models::EdgeDirection::Outbound {
             let lower_bound = match t {
-                Some(t) => models::EdgeKey::new(id, t.clone(), Uuid::default()),
+                Some(t) => models::Edge::new(id, t.clone(), Uuid::default()),
                 None => {
                     let empty_type = models::Type::default();
-                    models::EdgeKey::new(id, empty_type, Uuid::default())
+                    models::Edge::new(id, empty_type, Uuid::default())
                 }
             };
             let range = datastore.edges.range(lower_bound..);
 
-            let range = range.take_while(|&(k, _)| {
+            let range = range.take_while(|&e| {
                 if let Some(t) = t {
-                    k.outbound_id == id && &k.t == t
+                    e.outbound_id == id && &e.t == t
                 } else {
-                    k.outbound_id == id
+                    e.outbound_id == id
                 }
             });
 
             Ok(range.count() as u64)
         } else {
-            let range = datastore.edges.iter().filter(|&(k, _)| {
+            let range = datastore.edges.iter().filter(|&e| {
                 if let Some(t) = t {
-                    k.inbound_id == id && &k.t == t
+                    e.inbound_id == id && &e.t == t
                 } else {
-                    k.inbound_id == id
+                    e.inbound_id == id
                 }
             });
 
@@ -420,11 +381,11 @@ impl Transaction for MemoryTransaction {
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
-        for (key, _) in edge_values {
-            let property_value = datastore.edge_properties.get(&(key.clone(), q.name.clone()));
+        for edge in edge_values {
+            let property_value = datastore.edge_properties.get(&(edge.clone(), q.name.clone()));
 
             if let Some(property_value) = property_value {
-                result.push(models::EdgeProperty::new(key, property_value.clone()));
+                result.push(models::EdgeProperty::new(edge, property_value.clone()));
             }
         }
 
@@ -436,8 +397,8 @@ impl Transaction for MemoryTransaction {
 
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
-        for (key, _) in edge_values {
-            datastore.edge_properties.insert((key, q.name.clone()), value.clone());
+        for edge in edge_values {
+            datastore.edge_properties.insert((edge, q.name.clone()), value.clone());
         }
 
         Ok(())
@@ -448,8 +409,8 @@ impl Transaction for MemoryTransaction {
 
         let edge_values = datastore.get_edge_values_by_query(q.inner)?;
 
-        for (key, _) in edge_values {
-            datastore.edge_properties.remove(&(key, q.name.clone()));
+        for edge in edge_values {
+            datastore.edge_properties.remove(&(edge, q.name.clone()));
         }
 
         Ok(())

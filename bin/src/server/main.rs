@@ -1,6 +1,5 @@
 #![recursion_limit = "1024"]
 
-extern crate chrono;
 extern crate common;
 extern crate core;
 extern crate futures;

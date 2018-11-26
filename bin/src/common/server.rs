@@ -216,12 +216,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         mut res: autogen::transaction::CreateEdgeResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
-        let cnp_edge_key = pry!(pry!(req.get()).get_key());
-        let edge_key = pry!(converters::to_edge_key(&cnp_edge_key));
+        let cnp_edge = pry!(pry!(req.get()).get_edge());
+        let edge = pry!(converters::to_edge(&cnp_edge));
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<bool, CapnpError> { converters::map_capnp_err(trans.create_edge(&edge_key)) })
+            .spawn_fn(move || -> Result<bool, CapnpError> { converters::map_capnp_err(trans.create_edge(&edge)) })
             .and_then(move |created| -> Result<(), CapnpError> {
                 res.get().set_result(created);
                 Ok(())
@@ -246,7 +246,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
                 let mut res = res.get().init_result(edges.len() as u32);
 
                 for (i, edge) in edges.into_iter().enumerate() {
-                    converters::from_edge(&edge, res.reborrow().get(i as u32))?;
+                    converters::from_edge(&edge, res.reborrow().get(i as u32));
                 }
 
                 Ok(())

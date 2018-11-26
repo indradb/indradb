@@ -1,7 +1,6 @@
 extern crate capnp;
 #[macro_use]
 extern crate capnp_rpc;
-extern crate chrono;
 extern crate core;
 #[macro_use]
 extern crate error_chain;
