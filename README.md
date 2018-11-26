@@ -17,8 +17,6 @@ IndraDB consists of a server and an underlying library. Most users would use the
 * Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for properties.
-
 For more details, see the [homepage](https://indradb.github.io).
 
 ## Getting started
