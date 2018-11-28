@@ -72,10 +72,6 @@ def main():
             "target/kcov", "target/kcov",
         ])
     elif os.environ["TRAVIS_OS_NAME"] == "osx":
-        # As of around Nov 27 2018, there seems to be some changes to TravisCI that drop the open file limit on macOS.
-        # Test runs with default parallelism fail because they open too many files. To accomodate this, we disable
-        # parallel test execution on macOS.
-        # FIXME: audit IndraDB and find out why so many files are opened
         run_tests("--", "--test-threads=1")
     else:
         run_tests()
