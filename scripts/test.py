@@ -28,16 +28,19 @@ def get_test_file_name(test_name):
 
     raise Exception("No file matching the pattern `%s` in `target/debug`" % test_file_pattern)
 
-def run(args, cwd="."):
+def run(args, cwd=".", env=None):
     print("%s => %s" % (cwd, args))
-    subprocess.check_call(args, cwd=cwd)
+    subprocess.check_call(args, cwd=cwd, env=env)
 
 def main():
+    test_bin_env = os.environ.copy()
+    test_bin_env["ROCKSDB_MAX_OPEN_FILES"] = "1"
+
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "stable":
         shutil.rmtree("target/kcov", ignore_errors=True)
 
         run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin")
+        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=test_bin_env)
 
         for lib_test in LIB_TESTS:
             run([
@@ -63,7 +66,7 @@ def main():
         ])
     else:
         run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite"], cwd="bin")
+        run(["cargo", "test", "--features=test-suite"], cwd="bin", env=test_bin_env)
 
 if __name__ == "__main__":
     main()
