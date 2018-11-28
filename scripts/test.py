@@ -32,15 +32,22 @@ def run(args, cwd=".", env=None):
     print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd, env=env)
 
-def main():
+def run_tests(*args):
     test_bin_env = os.environ.copy()
     test_bin_env["ROCKSDB_MAX_OPEN_FILES"] = "1"
 
+    lib_args = ["cargo", "test", "--features=test-suite,rocksdb-datastore"]
+    lib_args.extend(args)
+    run(lib_args, cwd="lib")
+
+    bin_args = ["cargo", "test", "--features=test-suite"]
+    bin_args.extend(args)
+    run(bin_args, cwd="bin", env=test_bin_env)
+
+def main():
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "stable":
         shutil.rmtree("target/kcov", ignore_errors=True)
-
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=test_bin_env)
+        run_tests("--no-run")
 
         for lib_test in LIB_TESTS:
             run([
@@ -64,9 +71,10 @@ def main():
             "--coveralls-id=%s" % os.environ["TRAVIS_JOB_ID"],
             "target/kcov", "target/kcov",
         ])
+    elif os.environ["TRAVIS_OS_NAME"] == "osx":
+        run_tests("--", "--test-threads=1")
     else:
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite"], cwd="bin", env=test_bin_env)
+        run_tests()
 
 if __name__ == "__main__":
     main()
