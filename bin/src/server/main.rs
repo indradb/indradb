@@ -1,13 +1,8 @@
 #![recursion_limit = "1024"]
 
-extern crate chrono;
 extern crate common;
-extern crate core;
-extern crate futures;
 extern crate indradb;
 extern crate num_cpus;
-extern crate serde_json;
-extern crate uuid;
 
 use std::env;
 
