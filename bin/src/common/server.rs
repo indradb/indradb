@@ -1,29 +1,20 @@
 use autogen;
 use capnp::capability::Promise;
 use capnp::Error as CapnpError;
-use capnp_rpc::rpc_twoparty_capnp::Side;
-use capnp_rpc::twoparty::VatNetwork;
-use capnp_rpc::{RpcSystem, Server};
+use capnp_rpc::Server;
 use converters;
-use errors;
-use futures::{Future, Stream};
+use futures::Future;
 use futures_cpupool::CpuPool;
 use indradb;
 use indradb::{
-    Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
+    Datastore as IndraDbDatastore, Edge, EdgeProperty,
     Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
 };
 use serde_json;
-use std::env;
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs;
 use std::sync::Arc;
-use tokio_core::net::TcpListener;
-use tokio_core::reactor::Core;
-use tokio_io::AsyncRead;
 use uuid::Uuid;
 
-struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {
+pub struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {
     datastore: Arc<D>,
     pool: CpuPool,
 }
@@ -31,7 +22,7 @@ struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraD
 impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static>
     Service<D, T>
 {
-    fn new(datastore: D, worker_count: usize) -> Self {
+    pub fn new(datastore: D, worker_count: usize) -> Self {
         Self {
             datastore: Arc::new(datastore),
             pool: CpuPool::new(worker_count),
@@ -453,58 +444,5 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
             });
 
         Promise::from_future(f)
-    }
-}
-
-fn run<D, T>(addr: SocketAddr, datastore: D, worker_count: usize) -> Result<(), errors::Error>
-where
-    D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
-    T: IndraDbTransaction + Send + Sync + 'static,
-{
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let socket = TcpListener::bind(&addr, &handle)?;
-
-    let service = autogen::service::ToClient::new(Service::new(datastore, worker_count)).into_client::<Server>();
-
-    let done = socket.incoming().for_each(move |(socket, _)| {
-        socket.set_nodelay(true)?;
-        let (reader, writer) = socket.split();
-        let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
-        let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(service.clone().client));
-        handle.spawn(rpc_system.map_err(|_| ()));
-        Ok(())
-    });
-
-    core.run(done).unwrap();
-    Ok(())
-}
-
-pub fn start(binding: &str, connection_string: &str, worker_count: usize) -> Result<(), errors::Error> {
-    let addr = binding
-        .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| -> errors::Error { "Could not parse binding".into() })?;
-
-    if connection_string.starts_with("rocksdb://") {
-        let path = &connection_string[10..connection_string.len()];
-
-        let max_open_files_str = env::var("ROCKSDB_MAX_OPEN_FILES").unwrap_or_else(|_| "512".to_string());
-        let max_open_files = max_open_files_str.parse::<i32>().expect(
-            "Could not parse environment variable `ROCKSDB_MAX_OPEN_FILES`: must be an \
-             i32",
-        );
-
-        let bulk_load_optimized = env::var("ROCKSDB_BULK_LOAD_OPTIMIZED").unwrap_or_else(|_| "".to_string()) == "true";
-
-        let datastore = RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
-            .expect("Expected to be able to create the RocksDB datastore");
-
-        run(addr, datastore, worker_count)
-    } else if connection_string == "memory://" {
-        let datastore = MemoryDatastore::default();
-        run(addr, datastore, worker_count)
-    } else {
-        panic!("Cannot parse environment variable `DATABASE_URL`");
     }
 }

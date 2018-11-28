@@ -1,11 +1,9 @@
 use client_datastore::ClientDatastore;
-use indradb::util::generate_temporary_path;
-use indradb::{Datastore, Transaction};
-use server;
-use std::panic::catch_unwind;
+use executor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::thread::spawn;
+use std::net::{SocketAddr, IpAddr, Ipv4Addr};
 
 const START_PORT: u16 = 27616;
 
@@ -15,29 +13,12 @@ lazy_static! {
 
 full_test_impl!({
     let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
-    spawn(move || server::start(&format!("127.0.0.1:{}", port), "memory://", 1));
-    ClientDatastore::new(port as u16)
-});
-
-#[test]
-fn should_create_rocksdb_datastore() {
-    let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
 
     spawn(move || {
-        let connection_string = format!("rocksdb://{}", generate_temporary_path());
-        server::start(&format!("127.0.0.1:{}", port), &connection_string, 1)
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port as u16);
+        let datastore = indradb::MemoryDatastore::default();
+        executor::run(addr, 1, datastore).expect("Server did not start");
     });
-
-    // Just make sure we can run a command
-    let datastore = ClientDatastore::new(port as u16);
-    let trans = datastore.transaction().unwrap();
-    let count = trans.get_vertex_count().unwrap();
-
-    assert_eq!(count, 0);
-}
-
-#[test]
-fn should_panic_on_bad_connection_string() {
-    let result = catch_unwind(|| server::start("127.0.0.1:9999", "foo://", 1));
-    assert!(result.is_err());
-}
+    
+    ClientDatastore::new(port as u16)
+});
