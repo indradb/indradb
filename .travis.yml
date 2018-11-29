@@ -51,7 +51,7 @@ env:
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
-script: ./scripts/test.py
+script: ulimit -n 1024 && ./scripts/test.py
 before_deploy: ./scripts/before_deploy.sh
 
 deploy:
