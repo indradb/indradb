@@ -3,11 +3,29 @@
 extern crate common;
 extern crate indradb;
 extern crate num_cpus;
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_signal;
 
+use futures::{Future, Stream};
 use std::env;
+use std::io::Error as IoError;
 use std::net::ToSocketAddrs;
 
 const DEFAULT_PORT: u16 = 27615;
+
+#[cfg(unix)]
+fn interrupt_stream() -> Box<dyn Stream<Item=(), Error=IoError>> {
+    use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
+    let sigint = Signal::new(SIGINT).flatten_stream();
+    let sigterm = Signal::new(SIGTERM).flatten_stream();
+    Box::new(sigint.select(sigterm).map(|_| ()))
+}
+
+#[cfg(not(unix))]
+fn interrupt_stream() -> Box<dyn Stream<Item=(), Error=IoError>> {
+    Box::new(empty())
+}
 
 fn main() {
     let port = match env::var("PORT") {
@@ -45,10 +63,10 @@ fn main() {
 
         let bulk_load_optimized = env::var("ROCKSDB_BULK_LOAD_OPTIMIZED").unwrap_or_else(|_| "".to_string()) == "true";
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized).expect("Could not create RocksDB datastore");
-        common::executor::run(addr, worker_count, datastore).expect("Server failed to run");
+        common::executor::run(addr, worker_count, datastore, interrupt_stream()).expect("Server failed to run");
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        common::executor::run(addr, worker_count, datastore).expect("Server failed to run");
+        common::executor::run(addr, worker_count, datastore, interrupt_stream()).expect("Server failed to run");
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     };
