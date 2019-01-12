@@ -7,11 +7,11 @@ extern crate futures;
 extern crate indradb;
 extern crate num_cpus;
 extern crate serde_json;
-extern crate uuid;
 extern crate tokio_signal;
+extern crate uuid;
 
-use std::env;
 use futures::{Future, Stream};
+use std::env;
 
 const DEFAULT_PORT: u16 = 27615;
 
@@ -40,5 +40,6 @@ fn main() {
         .map(|_| {})
         .map_err(|(err, _)| err.into());
 
-    common::server::run_until(&binding, &connection_string, worker_count, shutdown_signal).expect("Expected to be able to start the server");
+    common::server::run_until(&binding, &connection_string, worker_count, shutdown_signal)
+        .expect("Expected to be able to start the server");
 }

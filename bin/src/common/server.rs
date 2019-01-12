@@ -1,3 +1,4 @@
+use super::errors::Error;
 use autogen;
 use capnp::capability::Promise;
 use capnp::Error as CapnpError;
@@ -13,7 +14,6 @@ use indradb::{
     Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
     Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
 };
-use super::errors::Error;
 use serde_json;
 use std::env;
 use std::net::SocketAddr;
@@ -457,11 +457,16 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-fn run_with_datastore_until<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_signal: F) -> Result<(), errors::Error>
+fn run_with_datastore_until<D, T, F>(
+    addr: SocketAddr,
+    datastore: D,
+    worker_count: usize,
+    shutdown_signal: F,
+) -> Result<(), errors::Error>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
-    F: Future<Item=(), Error=Error>
+    F: Future<Item = (), Error = Error>,
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -478,15 +483,22 @@ where
     });
 
     match core.run(shutdown_signal.select(server.map_err(|err| err.into()))) {
-        Ok(_) => {},
-        Err((err, _)) => return Err(err)
+        Ok(_) => {}
+        Err((err, _)) => return Err(err),
     };
 
     Ok(())
 }
 
-pub fn run_until<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_signal: F) -> Result<(), errors::Error>
-where F: Future<Item=(), Error=Error> {
+pub fn run_until<F>(
+    binding: &str,
+    connection_string: &str,
+    worker_count: usize,
+    shutdown_signal: F,
+) -> Result<(), errors::Error>
+where
+    F: Future<Item = (), Error = Error>,
+{
     let addr = binding
         .to_socket_addrs()?
         .next()

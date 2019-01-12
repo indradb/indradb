@@ -25,9 +25,9 @@ extern crate serde_json;
 extern crate uuid;
 
 #[cfg(feature = "rocksdb-datastore")]
-extern crate rocksdb;
-#[cfg(feature = "rocksdb-datastore")]
 extern crate byteorder;
+#[cfg(feature = "rocksdb-datastore")]
+extern crate rocksdb;
 
 #[cfg(feature = "test-suite")]
 #[macro_use]

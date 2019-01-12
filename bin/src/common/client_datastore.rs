@@ -1,8 +1,10 @@
+use super::server;
 use autogen;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use converters;
+use futures::sync::mpsc::{channel, Sender};
 use futures::{Future, Sink, Stream};
 use indradb;
 use serde_json::value::Value as JsonValue;
@@ -11,14 +13,12 @@ use std::fmt::Debug;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 use std::thread::sleep;
+use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
-use std::thread::{spawn, JoinHandle};
-use super::server;
-use futures::sync::mpsc::{channel, Sender};
 
 fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
@@ -28,7 +28,7 @@ pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
     client: autogen::service::Client,
     shutdown_sender: Option<Sender<()>>,
-    server_thread: Option<JoinHandle<()>>
+    server_thread: Option<JoinHandle<()>>,
 }
 
 impl ClientDatastore {
@@ -39,11 +39,9 @@ impl ClientDatastore {
         let (shutdown_sender, shutdown_receiver) = channel::<()>(1);
 
         let server_thread = spawn(move || {
-            let shutdown_receiver = shutdown_receiver
-                .into_future()
-                .map(|_| {})
-                .map_err(|_| unreachable!());
-            server::run_until(&addr.to_string(), &connection_string, 1, shutdown_receiver).expect("Could not start server");
+            let shutdown_receiver = shutdown_receiver.into_future().map(|_| {}).map_err(|_| unreachable!());
+            server::run_until(&addr.to_string(), &connection_string, 1, shutdown_receiver)
+                .expect("Could not start server");
         });
 
         for _ in 0..5 {
@@ -68,7 +66,7 @@ impl ClientDatastore {
                         core: Rc::new(RefCell::new(core)),
                         client,
                         shutdown_sender: Some(shutdown_sender),
-                        server_thread: Some(server_thread)
+                        server_thread: Some(server_thread),
                     };
                 }
             }
@@ -367,4 +365,3 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 }
-
