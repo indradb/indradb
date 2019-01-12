@@ -13,13 +13,15 @@ use indradb::{
     Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
     Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
 };
+use super::errors::Error;
 use serde_json;
 use std::env;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
+use std::time::Duration;
 use std::sync::Arc;
 use tokio_core::net::TcpListener;
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Core, Timeout};
 use tokio_io::AsyncRead;
 use uuid::Uuid;
 
@@ -456,18 +458,18 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-fn run<D, T>(addr: SocketAddr, datastore: D, worker_count: usize) -> Result<(), errors::Error>
+fn run<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
+    F: Future<Item=(), Error=Error>
 {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let socket = TcpListener::bind(&addr, &handle)?;
-
     let service = autogen::service::ToClient::new(Service::new(datastore, worker_count)).into_client::<Server>();
 
-    let done = socket.incoming().for_each(move |(socket, _)| {
+    let server = socket.incoming().for_each(move |(socket, _)| {
         socket.set_nodelay(true)?;
         let (reader, writer) = socket.split();
         let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
@@ -476,11 +478,25 @@ where
         Ok(())
     });
 
-    core.run(done).unwrap();
+    match core.run(shutdown_signal.select(server.map_err(|err| err.into()))) {
+        Ok(_) => {},
+        Err((err, _)) => return Err(err)
+    };
+
+    println!("Shutdown signal received, cleaning up...");
+
+    let timeout = Timeout::new(shutdown_timeout, &core.handle())?;
+
+    match core.run(timeout) {
+        Ok(_) => {},
+        Err(err) => return Err(err.into())
+    };
+
     Ok(())
 }
 
-pub fn start(binding: &str, connection_string: &str, worker_count: usize) -> Result<(), errors::Error> {
+pub fn start<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
+where F: Future<Item=(), Error=Error> {
     let addr = binding
         .to_socket_addrs()?
         .next()
@@ -500,10 +516,10 @@ pub fn start(binding: &str, connection_string: &str, worker_count: usize) -> Res
         let datastore = RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        run(addr, datastore, worker_count)
+        run(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
-        run(addr, datastore, worker_count)
+        run(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     }

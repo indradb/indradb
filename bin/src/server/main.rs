@@ -8,8 +8,11 @@ extern crate indradb;
 extern crate num_cpus;
 extern crate serde_json;
 extern crate uuid;
+extern crate tokio_signal;
 
 use std::env;
+use std::time::Duration;
+use futures::{Future, Stream};
 
 const DEFAULT_PORT: u16 = 27615;
 
@@ -32,5 +35,20 @@ fn main() {
         Err(_) => num_cpus::get() * 2,
     };
 
-    common::server::start(&binding, &connection_string, worker_count).expect("Expected to be able to start the server");
+    let shutdown_timeout_secs = match env::var("SHUTDOWN_TIMEOUT") {
+        Ok(value) => value
+            .parse::<u16>()
+            .expect("Could not parse environment variable `SHUTDOWN_TIMEOUT`"),
+        Err(_) => 1
+    };
+
+    let shutdown_timeout = Duration::from_secs(shutdown_timeout_secs.into());
+
+    let shutdown_signal = tokio_signal::ctrl_c()
+        .flatten_stream()
+        .into_future()
+        .map(|_| {})
+        .map_err(|(err, _)| err.into());
+
+    common::server::start(&binding, &connection_string, worker_count, shutdown_timeout, shutdown_signal).expect("Expected to be able to start the server");
 }
