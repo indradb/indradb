@@ -18,10 +18,9 @@ use serde_json;
 use std::env;
 use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
-use std::time::Duration;
 use std::sync::Arc;
 use tokio_core::net::TcpListener;
-use tokio_core::reactor::{Core, Timeout};
+use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
 
@@ -458,7 +457,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-fn run_with_datastore_until<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
+fn run_with_datastore_until<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_signal: F) -> Result<(), errors::Error>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
@@ -483,19 +482,10 @@ where
         Err((err, _)) => return Err(err)
     };
 
-    println!("Shutdown signal received, cleaning up...");
-
-    let timeout = Timeout::new(shutdown_timeout, &core.handle())?;
-
-    match core.run(timeout) {
-        Ok(_) => {},
-        Err(err) => return Err(err.into())
-    };
-
     Ok(())
 }
 
-pub fn run_until<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
+pub fn run_until<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_signal: F) -> Result<(), errors::Error>
 where F: Future<Item=(), Error=Error> {
     let addr = binding
         .to_socket_addrs()?
@@ -516,10 +506,10 @@ where F: Future<Item=(), Error=Error> {
         let datastore = RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        run_with_datastore_until(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
+        run_with_datastore_until(addr, datastore, worker_count, shutdown_signal)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
-        run_with_datastore_until(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
+        run_with_datastore_until(addr, datastore, worker_count, shutdown_signal)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     }

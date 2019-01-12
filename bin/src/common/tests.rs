@@ -5,7 +5,6 @@ use server;
 use std::panic::catch_unwind;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::time::Duration;
 use futures::{Future, Stream};
 use futures::sync::mpsc::channel;
 
@@ -34,15 +33,13 @@ fn should_create_rocksdb_datastore() {
 
 #[test]
 fn should_panic_on_bad_connection_string() {
-    let zero = Duration::from_secs(0);
-
     let result = catch_unwind(|| {
         let (_, shutdown_receiver) = channel::<()>(1);
         let shutdown_receiver = shutdown_receiver
             .into_future()
             .map(|_| {})
             .map_err(|_| unreachable!());
-        server::run_until("127.0.0.1:9999", "foo://", 1, zero, shutdown_receiver)
+        server::run_until("127.0.0.1:9999", "foo://", 1, shutdown_receiver)
     });
 
     assert!(result.is_err());

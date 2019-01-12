@@ -36,7 +36,6 @@ impl ClientDatastore {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
         let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
-        let zero = Duration::from_secs(0);
         let (shutdown_sender, shutdown_receiver) = channel::<()>(1);
 
         let server_thread = spawn(move || {
@@ -44,7 +43,7 @@ impl ClientDatastore {
                 .into_future()
                 .map(|_| {})
                 .map_err(|_| unreachable!());
-            server::run_until(&addr.to_string(), &connection_string, 1, zero, shutdown_receiver).expect("Could not start server");
+            server::run_until(&addr.to_string(), &connection_string, 1, shutdown_receiver).expect("Could not start server");
         });
 
         for _ in 0..5 {
