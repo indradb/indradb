@@ -44,7 +44,7 @@ impl ClientDatastore {
                 .into_future()
                 .map(|_| {})
                 .map_err(|_| unreachable!());
-            server::start(&addr.to_string(), &connection_string, 1, zero, shutdown_receiver).expect("Could not start server");
+            server::run_until(&addr.to_string(), &connection_string, 1, zero, shutdown_receiver).expect("Could not start server");
         });
 
         for _ in 0..5 {

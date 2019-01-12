@@ -458,7 +458,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-fn run<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
+fn run_with_datastore_until<D, T, F>(addr: SocketAddr, datastore: D, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
@@ -495,7 +495,7 @@ where
     Ok(())
 }
 
-pub fn start<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
+pub fn run_until<F>(binding: &str, connection_string: &str, worker_count: usize, shutdown_timeout: Duration, shutdown_signal: F) -> Result<(), errors::Error>
 where F: Future<Item=(), Error=Error> {
     let addr = binding
         .to_socket_addrs()?
@@ -516,10 +516,10 @@ where F: Future<Item=(), Error=Error> {
         let datastore = RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        run(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
+        run_with_datastore_until(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
     } else if connection_string == "memory://" {
         let datastore = MemoryDatastore::default();
-        run(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
+        run_with_datastore_until(addr, datastore, worker_count, shutdown_timeout, shutdown_signal)
     } else {
         panic!("Cannot parse environment variable `DATABASE_URL`");
     }

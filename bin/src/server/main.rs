@@ -50,5 +50,5 @@ fn main() {
         .map(|_| {})
         .map_err(|(err, _)| err.into());
 
-    common::server::start(&binding, &connection_string, worker_count, shutdown_timeout, shutdown_signal).expect("Expected to be able to start the server");
+    common::server::run_until(&binding, &connection_string, worker_count, shutdown_timeout, shutdown_signal).expect("Expected to be able to start the server");
 }

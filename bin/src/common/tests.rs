@@ -42,7 +42,7 @@ fn should_panic_on_bad_connection_string() {
             .into_future()
             .map(|_| {})
             .map_err(|_| unreachable!());
-        server::start("127.0.0.1:9999", "foo://", 1, zero, shutdown_receiver)
+        server::run_until("127.0.0.1:9999", "foo://", 1, zero, shutdown_receiver)
     });
 
     assert!(result.is_err());
