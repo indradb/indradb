@@ -3,7 +3,7 @@ use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use converters;
-use futures::Future;
+use futures::{Future, Sink, Stream};
 use indradb;
 use serde_json::value::Value as JsonValue;
 use std::cell::RefCell;
@@ -16,6 +16,9 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
+use std::thread::{spawn, JoinHandle};
+use super::server;
+use futures::sync::mpsc::{channel, Sender};
 
 fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
     result.map_err(|err| format!("{:?}", err).into())
@@ -24,13 +27,25 @@ fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Er
 pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
     client: autogen::service::Client,
+    shutdown_sender: Option<Sender<()>>,
+    server_thread: Option<JoinHandle<()>>
 }
 
 impl ClientDatastore {
-    pub fn new(port: u16) -> Self {
+    pub fn new(port: u16, connection_string: String) -> Self {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
         let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
+        let zero = Duration::from_secs(0);
+        let (shutdown_sender, shutdown_receiver) = channel::<()>(1);
+
+        let server_thread = spawn(move || {
+            let shutdown_receiver = shutdown_receiver
+                .into_future()
+                .map(|_| {})
+                .map_err(|_| unreachable!());
+            server::start(&addr.to_string(), &connection_string, 1, zero, shutdown_receiver).expect("Could not start server");
+        });
 
         for _ in 0..5 {
             if let Ok(stream) = core.run(TcpStream::connect(&addr, &handle)) {
@@ -53,6 +68,8 @@ impl ClientDatastore {
                     return Self {
                         core: Rc::new(RefCell::new(core)),
                         client,
+                        shutdown_sender: Some(shutdown_sender),
+                        server_thread: Some(server_thread)
                     };
                 }
             }
@@ -89,6 +106,15 @@ impl indradb::Datastore for ClientDatastore {
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         Ok(ClientTransaction::new(self.core.clone(), trans))
+    }
+}
+
+impl Drop for ClientDatastore {
+    fn drop(&mut self) {
+        if let (Some(shutdown_sender), Some(server_thread)) = (self.shutdown_sender.take(), self.server_thread.take()) {
+            shutdown_sender.send(()).wait().expect("Could not initiate shutdown");
+            server_thread.join().expect("Could not join server thread");
+        }
     }
 }
 
@@ -342,3 +368,4 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 }
+
