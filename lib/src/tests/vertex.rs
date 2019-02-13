@@ -1,6 +1,6 @@
 use super::super::{Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
 use super::util::{create_edge_from, create_edges};
-use models;
+use crate::models;
 use std::collections::HashSet;
 use std::u32;
 use uuid::Uuid;

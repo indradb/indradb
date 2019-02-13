@@ -31,4 +31,4 @@ pub mod server;
 #[cfg(test)]
 mod tests;
 
-pub use client_datastore::ClientDatastore;
+pub use crate::client_datastore::ClientDatastore;

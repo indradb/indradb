@@ -43,12 +43,12 @@ mod models;
 mod traits;
 pub mod util;
 
-pub use errors::*;
-pub use memory::{MemoryDatastore, MemoryTransaction};
-pub use models::*;
-pub use traits::*;
+pub use crate::errors::*;
+pub use crate::memory::{MemoryDatastore, MemoryTransaction};
+pub use crate::models::*;
+pub use crate::traits::*;
 
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
 #[cfg(feature = "rocksdb-datastore")]
-pub use rdb::{RocksdbDatastore, RocksdbTransaction};
+pub use crate::rdb::{RocksdbDatastore, RocksdbTransaction};

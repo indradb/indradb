@@ -1,8 +1,8 @@
-use autogen;
+use crate::autogen;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
-use converters;
+use crate::converters;
 use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;

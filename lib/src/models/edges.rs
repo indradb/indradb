@@ -70,7 +70,7 @@ impl Edge {
 mod tests {
     use super::{Edge, EdgeKey};
     use chrono::Utc;
-    use models::Type;
+    use crate::models::Type;
     use uuid::Uuid;
 
     #[test]

@@ -1,6 +1,6 @@
 //! Converts between cnp and native IndraDB models
 
-use autogen;
+use crate::autogen;
 use capnp;
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};

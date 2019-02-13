@@ -1,5 +1,5 @@
 use super::types::Type;
-use util::generate_uuid_v1;
+use crate::util::generate_uuid_v1;
 use uuid::Uuid;
 
 /// A vertex.

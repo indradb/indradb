@@ -2,7 +2,7 @@ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors;
+use crate::errors;
 use std::str::FromStr;
 use uuid::Uuid;
 

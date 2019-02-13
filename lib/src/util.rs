@@ -2,7 +2,7 @@
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors::ValidationResult;
+use crate::errors::ValidationResult;
 use rand::{OsRng, Rng};
 use std::env;
 use uuid::v1::Context;

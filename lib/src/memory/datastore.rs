@@ -1,8 +1,8 @@
 use super::super::{Datastore, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery};
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors::Result;
-use models;
+use crate::errors::Result;
+use crate::models;
 use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, RwLock};
