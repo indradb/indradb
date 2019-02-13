@@ -4,7 +4,7 @@ extern crate capnp_rpc;
 extern crate chrono;
 extern crate core;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate futures;
 extern crate futures_cpupool;
 #[cfg(test)]

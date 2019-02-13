@@ -16,7 +16,7 @@ extern crate test;
 extern crate chrono;
 extern crate core;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;

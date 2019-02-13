@@ -27,9 +27,9 @@ impl Type {
         let s = s.into();
 
         if s.len() > 255 {
-            Err("Type is too long".into())
+            Err(ValidationError::ValueTooLong)
         } else if !TYPE_VALIDATOR.is_match(&s[..]) {
-            Err("Invalid type".into())
+            Err(ValidationError::InvalidValue)
         } else {
             Ok(Type(s))
         }

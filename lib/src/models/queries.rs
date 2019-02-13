@@ -27,7 +27,7 @@ impl FromStr for EdgeDirection {
         match s {
             "outbound" => Ok(EdgeDirection::Outbound),
             "inbound" => Ok(EdgeDirection::Inbound),
-            _ => Err("invalid value".into()),
+            _ => Err(errors::ValidationError::InvalidValue),
         }
     }
 }
