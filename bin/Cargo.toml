@@ -9,6 +9,7 @@ keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 build = "build.rs"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "indradb/indradb", branch = "master" }
