@@ -2,7 +2,7 @@
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors::ValidationResult;
+use crate::errors::{ValidationError, ValidationResult};
 use rand::{OsRng, Rng};
 use std::env;
 use uuid::v1::Context;
@@ -76,7 +76,7 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
         }
     }
 
-    Err("Could not increment the UUID".into())
+    Err(ValidationError::CannotIncrementUuid)
 }
 
 /// Gets the number of nanoseconds since unix epoch for a given datetime.

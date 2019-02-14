@@ -1,6 +1,6 @@
-use errors::Result;
-use models;
-use models::{EdgeQueryExt, VertexQueryExt};
+use crate::errors::{Error, Result};
+use crate::models;
+use crate::models::{EdgeQueryExt, VertexQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 use uuid::Uuid;
@@ -76,7 +76,7 @@ pub trait Transaction {
         let v = models::Vertex::new(t);
 
         if !self.create_vertex(&v)? {
-            Err("UUID already taken".into())
+            Err(Error::UuidTaken)
         } else {
             Ok(v.id)
         }

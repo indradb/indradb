@@ -5,7 +5,7 @@ use super::super::{
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use chrono::offset::Utc;
 use chrono::Timelike;
-use models;
+use crate::models;
 use std::collections::HashSet;
 use uuid::Uuid;
 

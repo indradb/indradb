@@ -1,13 +1,12 @@
-use autogen;
+use crate::autogen;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
-use converters;
+use crate::converters;
 use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
 use std::cell::RefCell;
-use std::fmt::Debug;
 use std::net::ToSocketAddrs;
 use std::rc::Rc;
 use std::thread::sleep;
@@ -16,10 +15,6 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use tokio_io::AsyncRead;
 use uuid::Uuid;
-
-fn map_indradb_error<T, E: Debug>(result: Result<T, E>) -> Result<T, indradb::Error> {
-    result.map_err(|err| format!("{:?}", err).into())
-}
 
 pub struct ClientDatastore {
     core: Rc<RefCell<Core>>,
@@ -73,17 +68,18 @@ impl indradb::Datastore for ClientDatastore {
     {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
         let mut req = self.client.bulk_insert_request();
-        map_indradb_error(converters::from_bulk_insert_items(
+
+        converters::from_bulk_insert_items(
             &items,
             req.get().init_items(items.len() as u32),
-        ))?;
+        ).unwrap();
 
         let f = req.send().promise.and_then(move |res| {
             res.get()?;
             Ok(())
         });
 
-        map_indradb_error(self.core.borrow_mut().run(f))
+        Ok(self.core.borrow_mut().run(f).unwrap())
     }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
@@ -112,7 +108,7 @@ impl ClientTransaction {
         F: FnOnce(&mut autogen::transaction::Client) -> Box<Future<Item = G, Error = CapnpError>>,
     {
         let future = f(&mut self.trans.borrow_mut());
-        map_indradb_error(self.core.borrow_mut().run(future))
+        Ok(self.core.borrow_mut().run(future).unwrap())
     }
 }
 

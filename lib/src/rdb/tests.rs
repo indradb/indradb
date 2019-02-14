@@ -1,7 +1,7 @@
 #[test]
 fn should_repair() {
     use super::RocksdbDatastore;
-    use util::generate_temporary_path;
+    use crate::util::generate_temporary_path;
 
     let path = generate_temporary_path();
 

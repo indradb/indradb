@@ -1,5 +1,5 @@
 use core::str::FromStr;
-use errors::{ValidationError, ValidationResult};
+use crate::errors::{ValidationError, ValidationResult};
 use regex::Regex;
 
 lazy_static! {
@@ -27,9 +27,9 @@ impl Type {
         let s = s.into();
 
         if s.len() > 255 {
-            Err("Type is too long".into())
+            Err(ValidationError::ValueTooLong)
         } else if !TYPE_VALIDATOR.is_match(&s[..]) {
-            Err("Invalid type".into())
+            Err(ValidationError::InvalidValue)
         } else {
             Ok(Type(s))
         }
@@ -58,7 +58,7 @@ impl FromStr for Type {
 mod tests {
     use super::Type;
     use std::str::FromStr;
-    use util::generate_random_secret;
+    use crate::util::generate_random_secret;
 
     #[test]
     fn should_fail_for_invalid_types() {

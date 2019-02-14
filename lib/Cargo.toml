@@ -8,6 +8,7 @@ repository = "https://github.com/indradb/indradb"
 keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "indradb/indradb", branch = "master" }
@@ -23,13 +24,13 @@ test-suite = []
 bench-suite = []
 
 [dependencies]
-error-chain = "~0.12.0"
-serde_json = "^1.0.31"
+failure = "0.1.5"
+serde_json = "^1.0.38"
+lazy_static = "^1.2.0"
 rand = "~0.5.5"
-regex = "^1.0.5"
-lazy_static = "^1.1.0"
+regex = "^1.1.0"
 chrono = "0.4.6"
-uuid = { version = "~0.7.1", features = ["v1"] }
+uuid = { version = "~0.7.2", features = ["v1"] }
 
 # Rocksdb dependencies
 rocksdb = { version = "0.10.1", optional = true }

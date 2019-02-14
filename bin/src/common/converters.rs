@@ -1,6 +1,6 @@
 //! Converts between cnp and native IndraDB models
 
-use autogen;
+use crate::autogen;
 use capnp;
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
@@ -258,15 +258,15 @@ pub fn from_bulk_insert_items<'a>(
     mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>,
 ) -> Result<(), CapnpError> {
     for (i, item) in items.iter().enumerate() {
-        let mut builder = builder.reborrow().get(i as u32);
+        let builder = builder.reborrow().get(i as u32);
 
         match item {
             indradb::BulkInsertItem::Vertex(vertex) => {
-                let mut builder = builder.init_vertex();
+                let builder = builder.init_vertex();
                 from_vertex(vertex, builder.get_vertex()?);
             }
             indradb::BulkInsertItem::Edge(edge) => {
-                let mut builder = builder.init_edge();
+                let builder = builder.init_edge();
                 from_edge_key(edge, builder.get_key()?);
             }
             indradb::BulkInsertItem::VertexProperty(id, name, value) => {

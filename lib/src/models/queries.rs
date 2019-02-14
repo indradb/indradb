@@ -2,7 +2,7 @@ use super::edges::EdgeKey;
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors;
+use crate::errors;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -27,7 +27,7 @@ impl FromStr for EdgeDirection {
         match s {
             "outbound" => Ok(EdgeDirection::Outbound),
             "inbound" => Ok(EdgeDirection::Inbound),
-            _ => Err("invalid value".into()),
+            _ => Err(errors::ValidationError::InvalidValue),
         }
     }
 }
