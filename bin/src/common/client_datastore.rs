@@ -1,8 +1,8 @@
 use crate::autogen;
+use crate::converters;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
-use crate::converters;
 use futures::Future;
 use indradb;
 use serde_json::value::Value as JsonValue;
@@ -69,10 +69,7 @@ impl indradb::Datastore for ClientDatastore {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
         let mut req = self.client.bulk_insert_request();
 
-        converters::from_bulk_insert_items(
-            &items,
-            req.get().init_items(items.len() as u32),
-        ).unwrap();
+        converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)).unwrap();
 
         let f = req.send().promise.and_then(move |res| {
             res.get()?;

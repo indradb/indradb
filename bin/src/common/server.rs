@@ -1,11 +1,11 @@
 use crate::autogen;
+use crate::converters;
+use crate::errors;
 use capnp::capability::Promise;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::twoparty::VatNetwork;
 use capnp_rpc::{RpcSystem, Server};
-use crate::converters;
-use crate::errors;
 use futures::{Future, Stream};
 use futures_cpupool::CpuPool;
 use indradb;

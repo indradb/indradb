@@ -1,8 +1,8 @@
 use super::super::{
     Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
 };
-use serde_json::Value as JsonValue;
 use crate::util::generate_random_secret;
+use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {

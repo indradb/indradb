@@ -1,8 +1,8 @@
 use super::edges::EdgeKey;
 use super::types::Type;
+use crate::errors;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use crate::errors;
 use std::str::FromStr;
 use uuid::Uuid;
 

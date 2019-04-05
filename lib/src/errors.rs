@@ -30,7 +30,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug, Fail)]
 pub enum ValidationError {
-	#[fail(display = "invalid value")]
+    #[fail(display = "invalid value")]
     InvalidValue,
     #[fail(display = "value too long")]
     ValueTooLong,

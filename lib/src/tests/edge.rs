@@ -3,9 +3,9 @@ use super::super::{
     VertexQueryExt,
 };
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
+use crate::models;
 use chrono::offset::Utc;
 use chrono::Timelike;
-use crate::models;
 use std::collections::HashSet;
 use uuid::Uuid;
 

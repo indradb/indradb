@@ -1,6 +1,6 @@
 use crate::models::{EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
-use test::Bencher;
 use crate::traits::{Datastore, Transaction};
+use test::Bencher;
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_create_vertex").unwrap();
