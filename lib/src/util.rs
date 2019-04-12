@@ -1,8 +1,8 @@
 //! Utility functions.
 
+use crate::errors::{ValidationError, ValidationResult};
 use chrono::offset::Utc;
 use chrono::DateTime;
-use crate::errors::{ValidationError, ValidationResult};
 use rand::{OsRng, Rng};
 use std::env;
 use uuid::v1::Context;

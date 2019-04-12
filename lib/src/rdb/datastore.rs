@@ -2,16 +2,16 @@ use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
 };
 use super::managers::*;
-use chrono::offset::Utc;
 use crate::errors::Result;
 use crate::models;
+use crate::util::next_uuid;
+use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 use std::i32;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
-use crate::util::next_uuid;
 use uuid::Uuid;
 
 const CF_NAMES: [&str; 6] = [

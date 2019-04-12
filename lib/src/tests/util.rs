@@ -1,7 +1,7 @@
 use super::super::{Datastore, Transaction};
+use crate::models;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use crate::models;
 use uuid::Uuid;
 
 pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid {

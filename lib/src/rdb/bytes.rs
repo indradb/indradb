@@ -1,8 +1,9 @@
+use crate::models;
+use crate::util::nanos_since_epoch;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{Duration, Timelike};
-use crate::models;
 use std::i32;
 use std::i64;
 use std::io::Read;
@@ -10,7 +11,6 @@ use std::io::Write;
 use std::io::{Cursor, Error as IoError};
 use std::str;
 use std::u8;
-use crate::util::nanos_since_epoch;
 use uuid::Uuid;
 
 lazy_static! {

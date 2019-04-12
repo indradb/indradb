@@ -1,5 +1,5 @@
-use core::str::FromStr;
 use crate::errors::{ValidationError, ValidationResult};
+use core::str::FromStr;
 use regex::Regex;
 
 lazy_static! {
@@ -57,8 +57,8 @@ impl FromStr for Type {
 #[cfg(test)]
 mod tests {
     use super::Type;
-    use std::str::FromStr;
     use crate::util::generate_random_secret;
+    use std::str::FromStr;
 
     #[test]
     fn should_fail_for_invalid_types() {

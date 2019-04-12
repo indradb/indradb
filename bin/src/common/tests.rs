@@ -1,7 +1,7 @@
 use crate::client_datastore::ClientDatastore;
+use crate::server;
 use indradb::util::generate_temporary_path;
 use indradb::{Datastore, Transaction};
-use crate::server;
 use std::panic::catch_unwind;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
