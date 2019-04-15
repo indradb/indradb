@@ -38,7 +38,6 @@ def main():
 
     if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "stable":
         shutil.rmtree("target/kcov", ignore_errors=True)
-        test_bin_env["RUSTFLAGS"] = "-C link-dead-code %s" % os.environ.get("RUSTFLAGS", "")
 
         run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
         run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=test_bin_env)
