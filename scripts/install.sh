@@ -6,10 +6,10 @@ mkdir -p $HOME/cached-deps
 
 if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ] && [ ! -f $HOME/cached-deps/bin/kcov ] ; then
     pushd $HOME
-        wget https://github.com/SimonKagstrom/kcov/archive/v35.tar.gz
-        tar xzf v35.tar.gz
+        wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz
+        tar xzf v36.tar.gz
 
-        pushd kcov-35
+        pushd kcov-36
             mkdir -p build
             pushd build
                 cmake -DCMAKE_INSTALL_PREFIX=$HOME/cached-deps ..
