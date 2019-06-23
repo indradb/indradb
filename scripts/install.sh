@@ -4,7 +4,7 @@ set -ex
 
 mkdir -p $HOME/cached-deps
 
-if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = stable ] && [ ! -f $HOME/cached-deps/bin/kcov ] ; then
+if [ $TRAVIS_OS_NAME = linux ] && [ $TRAVIS_RUST_VERSION = nightly ] && [ ! -f $HOME/cached-deps/bin/kcov ] ; then
     pushd $HOME
         wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz
         tar xzf v36.tar.gz

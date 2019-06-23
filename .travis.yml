@@ -19,7 +19,6 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - RUSTFLAGS="-C link-dead-code -Ccodegen-units=1 -Zno-landing-pads"
     - os: osx
       rust: stable
       env:

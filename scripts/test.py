@@ -28,19 +28,20 @@ def get_test_file_name(test_name):
 
     raise Exception("No file matching the pattern `%s` in `target/debug`" % test_file_pattern)
 
-def run(args, cwd=".", env=None):
+def run(args, cwd, env):
     print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd, env=env)
 
 def main():
-    test_bin_env = os.environ.copy()
-    test_bin_env["ROCKSDB_MAX_OPEN_FILES"] = "1"
+    env = os.environ.copy()
+    env["ROCKSDB_MAX_OPEN_FILES"] = "1"
 
-    if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "stable":
+    if os.environ["TRAVIS_OS_NAME"] == "linux" and os.environ["TRAVIS_RUST_VERSION"] == "nightly":
+        env["RUSTFLAGS"] = "-C link-dead-code -Ccodegen-units=1 -Zno-landing-pads"
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=test_bin_env)
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib", env=env)
+        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=env)
 
         for lib_test in LIB_TESTS:
             run([
@@ -48,7 +49,7 @@ def main():
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(lib_test),
-            ], cwd="lib")
+            ], cwd="lib", env=env)
 
         for bin_test in BIN_TESTS:
             run([
@@ -56,7 +57,7 @@ def main():
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(bin_test),
-            ], cwd="bin")
+            ], cwd="bin", env=env)
 
         run([
             "kcov", "--merge", "--verify",
@@ -65,8 +66,8 @@ def main():
             "target/kcov", "target/kcov",
         ])
     else:
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib")
-        run(["cargo", "test", "--features=test-suite"], cwd="bin", env=test_bin_env)
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib", env=env)
+        run(["cargo", "test", "--features=test-suite"], cwd="bin", env=env)
 
 if __name__ == "__main__":
     main()
