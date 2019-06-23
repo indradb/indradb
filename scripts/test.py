@@ -30,7 +30,7 @@ def get_test_file_name(test_name):
 
 def run(args, cwd, env):
     print("%s => %s" % (cwd, args))
-    subprocess.check_call(args, cwd=cwd, env=env)
+    subprocess.check_call(args, cwd, env=env)
 
 def main():
     env = os.environ.copy()
@@ -40,8 +40,8 @@ def main():
         env["RUSTFLAGS"] = "-C link-dead-code -Ccodegen-units=1 -Zno-landing-pads"
         shutil.rmtree("target/kcov", ignore_errors=True)
 
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], cwd="lib", env=env)
-        run(["cargo", "test", "--features=test-suite", "--no-run"], cwd="bin", env=env)
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore", "--no-run"], "lib", env)
+        run(["cargo", "test", "--features=test-suite", "--no-run"], "bin", env)
 
         for lib_test in LIB_TESTS:
             run([
@@ -49,7 +49,7 @@ def main():
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(lib_test),
-            ], cwd="lib", env=env)
+            ], "lib", env)
 
         for bin_test in BIN_TESTS:
             run([
@@ -57,17 +57,17 @@ def main():
                 "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
                 "../target/kcov",
                 "../target/debug/%s" % get_test_file_name(bin_test),
-            ], cwd="bin", env=env)
+            ], "bin", env)
 
         run([
             "kcov", "--merge", "--verify",
             "--exclude-pattern=%s" % ",".join(EXCLUDE_PATTERNS),
             "--coveralls-id=%s" % os.environ["TRAVIS_JOB_ID"],
             "target/kcov", "target/kcov",
-        ])
+        ], ".", env)
     else:
-        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], cwd="lib", env=env)
-        run(["cargo", "test", "--features=test-suite"], cwd="bin", env=env)
+        run(["cargo", "test", "--features=test-suite,rocksdb-datastore"], "lib", env)
+        run(["cargo", "test", "--features=test-suite"], "bin", env)
 
 if __name__ == "__main__":
     main()
