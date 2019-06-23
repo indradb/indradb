@@ -30,7 +30,7 @@ def get_test_file_name(test_name):
 
 def run(args, cwd, env):
     print("%s => %s" % (cwd, args))
-    subprocess.check_call(args, cwd, env=env)
+    subprocess.check_call(args, cwd=cwd, env=env)
 
 def main():
     env = os.environ.copy()
