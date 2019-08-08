@@ -10,8 +10,8 @@ use futures::{Future, Stream};
 use futures_cpupool::CpuPool;
 use indradb;
 use indradb::{
-    Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
-    Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
+    Datastore as IndraDbDatastore, Edge, EdgeProperties, EdgeProperty, MemoryDatastore, RocksdbDatastore,
+    Transaction as IndraDbTransaction, Type, Vertex, VertexProperties, VertexProperty,
 };
 use serde_json;
 use std::env;
@@ -333,6 +333,32 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         Promise::from_future(f)
     }
 
+    fn get_all_vertex_properties(
+        &mut self,
+        req: autogen::transaction::GetAllVertexPropertiesParams,
+        mut res: autogen::transaction::GetAllVertexPropertiesResults,
+    ) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_vertex_query(&cnp_q));
+
+        let f = self
+            .pool
+            .spawn_fn(move || -> Result<Vec<VertexProperties>, CapnpError> {
+                converters::map_capnp_err(trans.get_all_vertex_properties(q))
+            })
+            .and_then(move |vertex_props| -> Result<(), CapnpError> {
+                let mut res = res.get().init_result(vertex_props.len() as u32);
+
+                for (i, vertex) in vertex_props.into_iter().enumerate() {
+                    converters::from_vertex_properties(&vertex, &mut res.reborrow().get(i as u32));
+                }
+                Ok(())
+            });
+
+        Promise::from_future(f)
+    }
+
     fn set_vertex_properties(
         &mut self,
         req: autogen::transaction::SetVertexPropertiesParams,
@@ -403,6 +429,32 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
                     converters::from_edge_property(&property, res.reborrow().get(i as u32));
                 }
 
+                Ok(())
+            });
+
+        Promise::from_future(f)
+    }
+
+    fn get_all_edge_properties(
+        &mut self,
+        req: autogen::transaction::GetAllEdgePropertiesParams,
+        mut res: autogen::transaction::GetAllEdgePropertiesResults,
+    ) -> Promise<(), CapnpError> {
+        let trans = self.trans.clone();
+        let cnp_q = pry!(pry!(req.get()).get_q());
+        let q = pry!(converters::to_edge_query(&cnp_q));
+
+        let f = self
+            .pool
+            .spawn_fn(move || -> Result<Vec<EdgeProperties>, CapnpError> {
+                converters::map_capnp_err(trans.get_all_edge_properties(q))
+            })
+            .and_then(move |edge_props| -> Result<(), CapnpError> {
+                let mut res = res.get().init_result(edge_props.len() as u32);
+
+                for (i, edge) in edge_props.into_iter().enumerate() {
+                    converters::from_edge_properties(&edge, &mut res.reborrow().get(i as u32));
+                }
                 Ok(())
             });
 

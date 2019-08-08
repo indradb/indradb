@@ -3,8 +3,8 @@ use super::super::{
 };
 use super::managers::*;
 use crate::errors::Result;
-use crate::models;
 use crate::util::next_uuid;
+use crate::{models, EdgeKey, EdgeProperties, NamedProperty, VertexProperties};
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
@@ -452,6 +452,27 @@ impl Transaction for RocksdbTransaction {
         Ok(properties)
     }
 
+    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
+        let iterator = self.vertex_query_to_iterator(q.into())?;
+        let manager = VertexPropertyManager::new(self.db.clone());
+
+        let mapped = iterator.map(move |item| {
+            let (id, t) = item?;
+            let vertex = models::Vertex::with_id(id, t);
+
+            let it = manager.iterate_for_owner(id)?;
+            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props_iter = props?.into_iter();
+            let props = props_iter
+                .map(|((_, name), value)| NamedProperty::new(name, value))
+                .collect();
+
+            Ok(VertexProperties::new(vertex, props))
+        });
+
+        mapped.collect()
+    }
+
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let manager = VertexPropertyManager::new(self.db.clone());
         let mut batch = WriteBatch::default();
@@ -493,6 +514,27 @@ impl Transaction for RocksdbTransaction {
         }
 
         Ok(properties)
+    }
+
+    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
+        let iterator = self.edge_query_to_iterator(q.into())?;
+        let manager = EdgePropertyManager::new(self.db.clone());
+
+        let mapped = iterator.map(move |item| {
+            let (out_id, t, time, in_id) = item?;
+            let edge = models::Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+
+            let it = manager.iterate_for_owner(out_id, &t, in_id)?;
+            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props_iter = props?.into_iter();
+            let props = props_iter
+                .map(|((_, _, _, name), value)| NamedProperty::new(name, value))
+                .collect();
+
+            Ok(EdgeProperties::new(edge, props))
+        });
+
+        mapped.collect()
     }
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {

@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::errors::Result;
 use crate::models;
+use crate::models::{EdgeProperties, NamedProperty, VertexProperties};
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -392,6 +393,27 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
+    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
+        let datastore = self.datastore.read().unwrap();
+        let vertex_values = datastore.get_vertex_values_by_query(q.into())?;
+
+        let mut result = Vec::new();
+        for (id, t) in vertex_values {
+            let from = &(id, "".to_string());
+            let to = &(crate::util::next_uuid(id).unwrap(), "".to_string());
+
+            let properties = datastore.vertex_properties.range(from..to);
+            result.push(VertexProperties::new(
+                models::Vertex::with_id(id, t),
+                properties
+                    .map(|(n, p)| NamedProperty::new(n.1.clone(), p.clone()))
+                    .collect(),
+            ));
+        }
+
+        Ok(result)
+    }
+
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
@@ -427,6 +449,29 @@ impl Transaction for MemoryTransaction {
             if let Some(property_value) = property_value {
                 result.push(models::EdgeProperty::new(key, property_value.clone()));
             }
+        }
+
+        Ok(result)
+    }
+
+    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
+        let datastore = self.datastore.read().unwrap();
+        let edge_values = datastore.get_edge_values_by_query(q.into())?;
+
+        let mut result = Vec::new();
+        for (id, t) in edge_values {
+            let from = &(id.clone(), "".to_string());
+
+            let properties = datastore
+                .edge_properties
+                .range(from..)
+                .take_while(|((key, _name), _value)| *key == id);
+            result.push(EdgeProperties::new(
+                models::Edge::new(id.clone(), t),
+                properties
+                    .map(|(n, p)| NamedProperty::new(n.1.clone(), p.clone()))
+                    .collect(),
+            ));
         }
 
         Ok(result)

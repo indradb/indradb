@@ -7,7 +7,7 @@ mod vertices;
 
 pub use self::bulk_insert::BulkInsertItem;
 pub use self::edges::{Edge, EdgeKey};
-pub use self::properties::{EdgeProperty, VertexProperty};
+pub use self::properties::{EdgeProperties, EdgeProperty, NamedProperty, VertexProperties, VertexProperty};
 pub use self::queries::*;
 pub use self::types::Type;
 pub use self::vertices::Vertex;
