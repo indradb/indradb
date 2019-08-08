@@ -259,6 +259,23 @@ impl indradb::Transaction for ClientTransaction {
         })
     }
 
+    fn get_all_vertex_properties<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Vec<indradb::VertexProperties>, indradb::Error> {
+
+        self.execute(move |trans| {
+            let mut req = trans.get_all_vertex_properties_request();
+            converters::from_vertex_query(&q.into(), req.get().init_q());
+
+            let f = req.send().promise.and_then(move |res| {
+                let list = res.get()?.get_result()?;
+                let list: Result<Vec<indradb::VertexProperties>, CapnpError> =
+                    list.into_iter().map(|reader| converters::to_vertex_properties(&reader)).collect();
+                list
+            });
+
+            Box::new(f)
+        })
+    }
+
     fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
         self.execute(move |trans| {
             let mut req = trans.set_vertex_properties_request();
@@ -299,6 +316,23 @@ impl indradb::Transaction for ClientTransaction {
                     .into_iter()
                     .map(|reader| converters::to_edge_property(&reader))
                     .collect();
+                list
+            });
+
+            Box::new(f)
+        })
+    }
+
+    fn get_all_edge_properties<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Vec<indradb::EdgeProperties>, indradb::Error> {
+
+        self.execute(move |trans| {
+            let mut req = trans.get_all_edge_properties_request();
+            converters::from_edge_query(&q.into(), req.get().init_q());
+
+            let f = req.send().promise.and_then(move |res| {
+                let list = res.get()?.get_result()?;
+                let list: Result<Vec<indradb::EdgeProperties>, CapnpError> =
+                    list.into_iter().map(|reader| converters::to_edge_properties(&reader)).collect();
                 list
             });
 
