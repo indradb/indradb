@@ -1,7 +1,7 @@
 use super::edges::EdgeKey;
+use crate::{Edge, Vertex};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
-use crate::{Vertex, Edge};
 
 /// Represents a vertex property.
 #[derive(Clone, Debug, PartialEq)]

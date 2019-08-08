@@ -10,9 +10,8 @@ use futures::{Future, Stream};
 use futures_cpupool::CpuPool;
 use indradb;
 use indradb::{
-    Datastore as IndraDbDatastore, Edge, EdgeProperty, MemoryDatastore, RocksdbDatastore,
-    Transaction as IndraDbTransaction, Type, Vertex, VertexProperty,
-    VertexProperties, EdgeProperties,
+    Datastore as IndraDbDatastore, Edge, EdgeProperties, EdgeProperty, MemoryDatastore, RocksdbDatastore,
+    Transaction as IndraDbTransaction, Type, Vertex, VertexProperties, VertexProperty,
 };
 use serde_json;
 use std::env;
@@ -345,7 +344,9 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<VertexProperties>, CapnpError> { converters::map_capnp_err(trans.get_all_vertex_properties(q)) })
+            .spawn_fn(move || -> Result<Vec<VertexProperties>, CapnpError> {
+                converters::map_capnp_err(trans.get_all_vertex_properties(q))
+            })
             .and_then(move |vertex_props| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(vertex_props.len() as u32);
 
@@ -445,7 +446,9 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
         let f = self
             .pool
-            .spawn_fn(move || -> Result<Vec<EdgeProperties>, CapnpError> { converters::map_capnp_err(trans.get_all_edge_properties(q)) })
+            .spawn_fn(move || -> Result<Vec<EdgeProperties>, CapnpError> {
+                converters::map_capnp_err(trans.get_all_edge_properties(q))
+            })
             .and_then(move |edge_props| -> Result<(), CapnpError> {
                 let mut res = res.get().init_result(edge_props.len() as u32);
 

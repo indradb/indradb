@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::errors::Result;
 use crate::models;
-use crate::models::{NamedProperty, VertexProperties, EdgeProperties};
+use crate::models::{EdgeProperties, NamedProperty, VertexProperties};
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -394,7 +394,6 @@ impl Transaction for MemoryTransaction {
     }
 
     fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
-
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q.into())?;
 
@@ -406,8 +405,10 @@ impl Transaction for MemoryTransaction {
             let properties = datastore.vertex_properties.range(from..to);
             result.push(VertexProperties::new(
                 models::Vertex::with_id(id, t),
-                properties.map(|(n,p)| NamedProperty::new(n.1.clone(),p.clone())).collect())
-            );
+                properties
+                    .map(|(n, p)| NamedProperty::new(n.1.clone(), p.clone()))
+                    .collect(),
+            ));
         }
 
         Ok(result)
@@ -454,7 +455,6 @@ impl Transaction for MemoryTransaction {
     }
 
     fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
-
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q.into())?;
 
@@ -462,13 +462,16 @@ impl Transaction for MemoryTransaction {
         for (id, t) in edge_values {
             let from = &(id.clone(), "".to_string());
 
-            let properties = datastore.edge_properties
+            let properties = datastore
+                .edge_properties
                 .range(from..)
-                .take_while(|((key,_name),_value)| *key == id);
+                .take_while(|((key, _name), _value)| *key == id);
             result.push(EdgeProperties::new(
                 models::Edge::new(id.clone(), t),
-                properties.map(|(n,p)| NamedProperty::new(n.1.clone(),p.clone())).collect())
-            );
+                properties
+                    .map(|(n, p)| NamedProperty::new(n.1.clone(), p.clone()))
+                    .collect(),
+            ));
         }
 
         Ok(result)

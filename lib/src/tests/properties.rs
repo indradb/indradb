@@ -56,8 +56,12 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     assert_eq!(all_result[0].props.len(), 0);
 
     // Set and get some properties for v2
-    trans.set_vertex_properties(q2.clone().property("a"), &JsonValue::Bool(false)).unwrap();
-    trans.set_vertex_properties(q2.clone().property("b"), &JsonValue::Bool(true)).unwrap();
+    trans
+        .set_vertex_properties(q2.clone().property("a"), &JsonValue::Bool(false))
+        .unwrap();
+    trans
+        .set_vertex_properties(q2.clone().property("b"), &JsonValue::Bool(true))
+        .unwrap();
 
     let result_1 = trans.get_all_vertex_properties(q1.clone()).unwrap();
     assert_eq!(result_1.len(), 1);
