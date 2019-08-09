@@ -47,6 +47,9 @@ pub use crate::models::*;
 pub use crate::traits::*;
 
 #[cfg(feature = "rocksdb-datastore")]
+mod bytes;
+#[cfg(feature = "rocksdb-datastore")]
 mod rdb;
+
 #[cfg(feature = "rocksdb-datastore")]
 pub use crate::rdb::{RocksdbDatastore, RocksdbTransaction};
