@@ -20,6 +20,7 @@ path = "src/lib.rs"
 [features]
 default = []
 rocksdb-datastore = ["rocksdb", "byteorder"]
+sled-datastore = ["sled", "byteorder"]
 test-suite = []
 bench-suite = []
 
@@ -35,3 +36,6 @@ uuid = { version = "~0.7.2", features = ["v1"] }
 # Rocksdb dependencies
 rocksdb = { version = "0.10.1", optional = true }
 byteorder = { version = "^1.2.6", optional = true }
+
+# Sled dependencies
+sled = { version = "0.24.1", optional = true }
