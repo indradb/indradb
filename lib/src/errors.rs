@@ -20,6 +20,7 @@ impl From<JsonError> for Error {
     }
 }
 
+#[cfg(feature = "rocksdb-datastore")]
 impl From<RocksDbError> for Error {
     fn from(err: RocksDbError) -> Self {
         Error::Rocksdb { inner: err }
