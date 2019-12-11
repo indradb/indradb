@@ -52,7 +52,7 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(datastore: &mut D) {
             edge_t.clone(),
             Uuid::default(),
         )))
-        .unwrap();;
+        .unwrap();
     assert_eq!(e.len(), 0);
     let e = trans
         .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
