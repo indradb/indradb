@@ -13,7 +13,7 @@ use crate::{
 };
 
 use chrono::offset::Utc;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB, MemtableFactory};
+use rocksdb::{DBCompactionStyle, MemtableFactory, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 

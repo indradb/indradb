@@ -1,8 +1,8 @@
-use crate::models::{EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex, BulkInsertItem};
+use crate::models::{BulkInsertItem, EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
 use crate::traits::{Datastore, Transaction};
 
-use test::Bencher;
 use serde_json::Value as JsonValue;
+use test::Bencher;
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let t = Type::new("bench_create_vertex").unwrap();
@@ -112,15 +112,22 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let mut items = Vec::with_capacity(2 * vertices.len() + 2 * edge_keys.len());
     for vertex in vertices.into_iter() {
         items.push(BulkInsertItem::Vertex(vertex.clone()));
-        items.push(BulkInsertItem::VertexProperty(vertex.id, "is_benchmark".to_string(), JsonValue::Bool(true)));
+        items.push(BulkInsertItem::VertexProperty(
+            vertex.id,
+            "is_benchmark".to_string(),
+            JsonValue::Bool(true),
+        ));
     }
     for edge_key in edge_keys.into_iter() {
         items.push(BulkInsertItem::Edge(edge_key.clone()));
-        items.push(BulkInsertItem::EdgeProperty(edge_key, "is_benchmark".to_string(), JsonValue::Bool(true)));
+        items.push(BulkInsertItem::EdgeProperty(
+            edge_key,
+            "is_benchmark".to_string(),
+            JsonValue::Bool(true),
+        ));
     }
 
     b.iter(|| {
         datastore.bulk_insert(items.clone().into_iter()).unwrap();
     });
 }
-
