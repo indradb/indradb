@@ -25,7 +25,7 @@ full_test_impl!({
     let spawner = exec.spawner();
     let f = server::run(addr, indradb::MemoryDatastore::default(), exec.spawner());
     spawner.spawn_local_obj(Box::pin(f.map_err(|err| panic!(err)).map(|_|())).into()).unwrap();
-    ClientDatastore::new(port as u16, spawner)
+    ClientDatastore::new(port as u16, exec)
 });
 
 #[test]
@@ -40,7 +40,7 @@ fn should_create_rocksdb_datastore() {
     spawner.spawn_local_obj(Box::pin(f.map_err(|err| panic!(err)).map(|_|())).into()).unwrap();
 
     // Just make sure we can run a command
-    let datastore = ClientDatastore::new(port as u16, spawner);
+    let datastore = ClientDatastore::new(port as u16, exec);
     let trans = datastore.transaction().unwrap();
     let count = trans.get_vertex_count().unwrap();
 
