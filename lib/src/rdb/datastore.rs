@@ -289,20 +289,28 @@ impl Datastore for RocksdbDatastore {
         let vertex_property_manager = VertexPropertyManager::new(&db);
         let edge_property_manager = EdgePropertyManager::new(&db);
         let mut batch = WriteBatch::default();
+        let mut compact_vertices = false;
+        let mut compact_edges = false;
+        let mut compact_vertex_properties = false;
+        let mut compact_edge_properties = false;
 
         for item in items {
             match item {
                 BulkInsertItem::Vertex(ref vertex) => {
                     vertex_manager.create(&mut batch, vertex)?;
+                    compact_vertices = true;
                 }
                 BulkInsertItem::Edge(ref key) => {
                     edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                    compact_edges = true;
                 }
                 BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(&mut batch, id, name, value)?;
+                    compact_vertex_properties = true;
                 }
                 BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
                     edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
+                    compact_edge_properties = true;
                 }
             }
         }
@@ -312,8 +320,22 @@ impl Datastore for RocksdbDatastore {
         let mut opts = WriteOptions::default();
         opts.set_sync(false);
         opts.disable_wal(true);
-
         self.db.write_opt(batch, &opts)?;
+
+        // manually compact
+        if compact_vertices {
+            vertex_manager.compact();
+        }
+        if compact_edges {
+            edge_manager.compact();
+        }
+        if compact_vertex_properties {
+            vertex_property_manager.compact();
+        }
+        if compact_edge_properties {
+            edge_property_manager.compact();
+        }
+
         Ok(())
     }
 

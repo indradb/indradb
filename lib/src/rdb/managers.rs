@@ -127,6 +127,10 @@ impl<'a> VertexManager<'a> {
 
         Ok(())
     }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+    }
 }
 
 pub struct EdgeManager<'a> {
@@ -208,6 +212,12 @@ impl<'a> EdgeManager<'a> {
         }
 
         Ok(())
+    }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        EdgeRangeManager::new(self.db).compact();
+        EdgeRangeManager::new_reversed(self.db).compact();
     }
 }
 
@@ -336,6 +346,10 @@ impl<'a> EdgeRangeManager<'a> {
         batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
         Ok(())
     }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+    }
 }
 
 pub struct VertexPropertyManager<'a> {
@@ -400,6 +414,10 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
         Ok(())
+    }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
     }
 }
 
@@ -506,5 +524,9 @@ impl<'a> EdgePropertyManager<'a> {
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name))?;
         Ok(())
+    }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
     }
 }
