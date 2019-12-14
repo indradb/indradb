@@ -3,12 +3,14 @@ use std::sync::Arc;
 use std::u64;
 use std::usize;
 
-use crate::{
-    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery, BulkInsertItem, Vertex, Edge, EdgeProperty, VertexProperty, Type, EdgeKey, EdgeProperties, NamedProperty, VertexProperties
-};
+use super::managers::*;
 use crate::errors::Result;
 use crate::util::next_uuid;
-use super::managers::*;
+use crate::{
+    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
+    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    VertexQuery,
+};
 
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};

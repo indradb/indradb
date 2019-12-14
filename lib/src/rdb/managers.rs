@@ -2,9 +2,9 @@ use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 
+use super::bytes::*;
 use crate::errors::Result;
 use crate::models;
-use super::bytes::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -143,11 +143,7 @@ impl<'a> EdgeManager<'a> {
     }
 
     fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Vec<u8> {
-        build(&[
-            Component::Uuid(out_id),
-            Component::Type(t),
-            Component::Uuid(in_id),
-        ])
+        build(&[Component::Uuid(out_id), Component::Type(t), Component::Uuid(in_id)])
     }
 
     pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
@@ -244,7 +240,11 @@ impl<'a> EdgeRangeManager<'a> {
         ])
     }
 
-    fn iterate(&'a self, iterator: DBIterator<'a>, prefix: Vec<u8>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
+    fn iterate(
+        &'a self,
+        iterator: DBIterator<'a>,
+        prefix: Vec<u8>,
+    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
             k.starts_with(&prefix)
@@ -355,9 +355,12 @@ impl<'a> VertexPropertyManager<'a> {
         build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
     }
 
-    pub fn iterate_for_owner(&'a self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
+    pub fn iterate_for_owner(
+        &'a self,
+        vertex_id: Uuid,
+    ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
         let prefix = build(&[Component::Uuid(vertex_id)]);
-        
+
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
@@ -428,11 +431,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &'a models::Type,
         in_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build(&[
-            Component::Uuid(out_id),
-            Component::Type(t),
-            Component::Uuid(in_id),
-        ]);
+        let prefix = build(&[Component::Uuid(out_id), Component::Type(t), Component::Uuid(in_id)]);
 
         let iterator = self
             .db
