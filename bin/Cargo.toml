@@ -40,6 +40,7 @@ chrono = "0.4.10"
 
 [dependencies.indradb-lib]
 path = "../lib"
+version = "1.0.0"
 features = ["test-suite", "rocksdb-datastore"]
 
 [build-dependencies]
