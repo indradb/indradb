@@ -1,10 +1,9 @@
-use super::super::{
-    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
+use crate::{
+    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery, BulkInsertItem, Vertex, Edge, EdgeProperty, VertexProperty, Type, EdgeKey, EdgeProperties, NamedProperty, VertexProperties
 };
 use super::managers::*;
 use crate::errors::Result;
 use crate::util::next_uuid;
-use crate::{models, EdgeKey, EdgeProperties, NamedProperty, VertexProperties};
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
@@ -58,6 +57,170 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     }
 
     opts
+}
+
+fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
+    match q {
+        VertexQuery::Range(q) => {
+            let vertex_manager = VertexManager::new(db);
+
+            let next_uuid = match q.start_id {
+                Some(start_id) => {
+                    match next_uuid(start_id) {
+                        Ok(next_uuid) => next_uuid,
+                        // If we get an error back, it's because
+                        // `start_id` is the maximum possible value. We
+                        // know that no vertices exist whose ID is greater
+                        // than the maximum possible value, so just return
+                        // an empty list.
+                        Err(_) => return Ok(vec![]),
+                    }
+                }
+                None => Uuid::default(),
+            };
+
+            let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
+                Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+
+            if let Some(ref t) = q.t {
+                iter = Box::new(iter.filter(move |item| match item {
+                    Ok((_, v)) => v == t,
+                    Err(_) => true,
+                }));
+            }
+
+            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
+            vertices
+        }
+        VertexQuery::Specific(q) => {
+            let vertex_manager = VertexManager::new(db);
+
+            let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
+                Some(value) => Ok(Some((id, value))),
+                None => Ok(None),
+            });
+
+            let iter = iter.filter_map(|item| match item {
+                Err(err) => Some(Err(err)),
+                Ok(Some(value)) => Some(Ok(value)),
+                _ => None,
+            });
+
+            let vertices: Result<Vec<VertexItem>> = iter.collect();
+            vertices
+        }
+        VertexQuery::Pipe(q) => {
+            let vertex_manager = VertexManager::new(db);
+            let iter = execute_edge_query(db, *q.inner)?.into_iter();
+            let direction = q.direction;
+
+            let iter = iter.map(move |(out_id, _, _, in_id)| {
+                let id = match direction {
+                    EdgeDirection::Outbound => out_id,
+                    EdgeDirection::Inbound => in_id,
+                };
+
+                match vertex_manager.get(id)? {
+                    Some(value) => Ok(Some((id, value))),
+                    None => Ok(None),
+                }
+            });
+
+            let iter = iter.filter_map(|item| match item {
+                Err(err) => Some(Err(err)),
+                Ok(Some(value)) => Some(Ok(value)),
+                _ => None,
+            });
+
+            let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(iter);
+
+            if let Some(ref t) = q.t {
+                iter = Box::new(iter.filter(move |item| match item {
+                    Ok((_, v)) => v == t,
+                    Err(_) => true,
+                }));
+            }
+
+            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
+            vertices
+        }
+    }
+}
+
+fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
+    match q {
+        EdgeQuery::Specific(q) => {
+            let edge_manager = EdgeManager::new(&db);
+
+            let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
+                match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                    Some(update_datetime) => {
+                        Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                    }
+                    None => Ok(None),
+                }
+            });
+
+            let iter = iter.filter_map(|item| match item {
+                Err(err) => Some(Err(err)),
+                Ok(Some(value)) => Some(Ok(value)),
+                _ => None,
+            });
+
+            let edges: Result<Vec<EdgeRangeItem>> = iter.collect();
+            edges
+        }
+        EdgeQuery::Pipe(q) => {
+            let vertices = execute_vertex_query(db, *q.inner)?;
+
+            let edge_range_manager = match q.direction {
+                EdgeDirection::Outbound => EdgeRangeManager::new(&db),
+                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&db),
+            };
+
+            // Ideally we'd use iterators all the way down, but things
+            // start breaking apart due to conditional expressions not
+            // returning the same type signature, issues with `Result`s
+            // and some of the iterators, etc. So at this point, we'll
+            // just resort to building a vector.
+            let mut edges: Vec<EdgeRangeItem> = Vec::new();
+
+            for (id, _) in vertices.into_iter() {
+                let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
+
+                for item in edge_iterator {
+                    let (edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id) = item?;
+
+                    if let Some(low) = q.low {
+                        if edge_range_update_datetime < low {
+                            break;
+                        }
+                    }
+
+                    edges.push(match q.direction {
+                        EdgeDirection::Outbound => (
+                            edge_range_first_id,
+                            edge_range_t,
+                            edge_range_update_datetime,
+                            edge_range_second_id,
+                        ),
+                        EdgeDirection::Inbound => (
+                            edge_range_second_id,
+                            edge_range_t,
+                            edge_range_update_datetime,
+                            edge_range_first_id,
+                        ),
+                    });
+
+                    if edges.len() == q.limit as usize {
+                        break;
+                    }
+                }
+            }
+
+            Ok(edges)
+        }
+    }
 }
 
 /// A datastore that is backed by rocksdb.
@@ -115,7 +278,7 @@ impl Datastore for RocksdbDatastore {
     // optimization can be done by using `WriteBatch`s.
     fn bulk_insert<I>(&self, items: I) -> Result<()>
     where
-        I: Iterator<Item = models::BulkInsertItem>,
+        I: Iterator<Item = BulkInsertItem>,
     {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
@@ -126,16 +289,16 @@ impl Datastore for RocksdbDatastore {
 
         for item in items {
             match item {
-                models::BulkInsertItem::Vertex(ref vertex) => {
+                BulkInsertItem::Vertex(ref vertex) => {
                     vertex_manager.create(&mut batch, vertex)?;
                 }
-                models::BulkInsertItem::Edge(ref key) => {
+                BulkInsertItem::Edge(ref key) => {
                     edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
                 }
-                models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(&mut batch, id, name, value)?;
                 }
-                models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
+                BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
                     edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
                 }
             }
@@ -166,178 +329,10 @@ impl RocksdbTransaction {
     fn new(db: Arc<DB>) -> Result<Self> {
         Ok(RocksdbTransaction { db })
     }
-
-    fn execute_vertex_query(&self, q: VertexQuery) -> Result<Vec<VertexItem>> {
-        let db = self.db.clone();
-
-        match q {
-            VertexQuery::Range(q) => {
-                let vertex_manager = VertexManager::new(&db);
-
-                let next_uuid = match q.start_id {
-                    Some(start_id) => {
-                        match next_uuid(start_id) {
-                            Ok(next_uuid) => next_uuid,
-                            // If we get an error back, it's because
-                            // `start_id` is the maximum possible value. We
-                            // know that no vertices exist whose ID is greater
-                            // than the maximum possible value, so just return
-                            // an empty list.
-                            Err(_) => return Ok(Vec::default()),
-                        }
-                    }
-                    None => Uuid::default(),
-                };
-
-                let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
-
-                if let Some(ref t) = q.t {
-                    iter = Box::new(iter.filter(move |item| match item {
-                        Ok((_, v)) => v == t,
-                        Err(_) => true,
-                    }));
-                }
-
-                let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
-                vertices
-            }
-            VertexQuery::Specific(q) => {
-                let vertex_manager = VertexManager::new(&db);
-
-                let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
-                    Some(value) => Ok(Some((id, value))),
-                    None => Ok(None),
-                });
-
-                let iter = iter.filter_map(|item| match item {
-                    Err(err) => Some(Err(err)),
-                    Ok(Some(value)) => Some(Ok(value)),
-                    _ => None,
-                });
-
-                let vertices: Result<Vec<VertexItem>> = iter.collect();
-                vertices
-            }
-            VertexQuery::Pipe(q) => {
-                let vertex_manager = VertexManager::new(&db);
-                let iter = self.execute_edge_query(*q.inner)?.into_iter();
-                let direction = q.direction;
-
-                let iter = iter.map(move |(out_id, _, _, in_id)| {
-                    let id = match direction {
-                        EdgeDirection::Outbound => out_id,
-                        EdgeDirection::Inbound => in_id,
-                    };
-
-                    match vertex_manager.get(id)? {
-                        Some(value) => Ok(Some((id, value))),
-                        None => Ok(None),
-                    }
-                });
-
-                let iter = iter.filter_map(|item| match item {
-                    Err(err) => Some(Err(err)),
-                    Ok(Some(value)) => Some(Ok(value)),
-                    _ => None,
-                });
-
-                let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(iter);
-
-                if let Some(ref t) = q.t {
-                    iter = Box::new(iter.filter(move |item| match item {
-                        Ok((_, v)) => v == t,
-                        Err(_) => true,
-                    }));
-                }
-
-                let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
-                vertices
-            }
-        }
-    }
-
-    fn execute_edge_query(&self, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
-        let db = self.db.clone();
-
-        match q {
-            EdgeQuery::Specific(q) => {
-                let edge_manager = EdgeManager::new(&db);
-
-                let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
-                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                        Some(update_datetime) => {
-                            Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
-                        }
-                        None => Ok(None),
-                    }
-                });
-
-                let iter = iter.filter_map(|item| match item {
-                    Err(err) => Some(Err(err)),
-                    Ok(Some(value)) => Some(Ok(value)),
-                    _ => None,
-                });
-
-                let edges: Result<Vec<EdgeRangeItem>> = iter.collect();
-                edges
-            }
-            EdgeQuery::Pipe(q) => {
-                let vertices = self.execute_vertex_query(*q.inner)?;
-
-                let edge_range_manager = match q.direction {
-                    EdgeDirection::Outbound => EdgeRangeManager::new(&db),
-                    EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&db),
-                };
-
-                // Ideally we'd use iterators all the way down, but things
-                // start breaking apart due to conditional expressions not
-                // returning the same type signature, issues with `Result`s
-                // and some of the iterators, etc. So at this point, we'll
-                // just resort to building a vector.
-                let mut edges: Vec<EdgeRangeItem> = Vec::new();
-
-                for (id, _) in vertices.into_iter() {
-                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
-
-                    for item in edge_iterator {
-                        let (edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id) = item?;
-
-                        if let Some(low) = q.low {
-                            if edge_range_update_datetime < low {
-                                break;
-                            }
-                        }
-
-                        edges.push(match q.direction {
-                            EdgeDirection::Outbound => (
-                                edge_range_first_id,
-                                edge_range_t,
-                                edge_range_update_datetime,
-                                edge_range_second_id,
-                            ),
-                            EdgeDirection::Inbound => (
-                                edge_range_second_id,
-                                edge_range_t,
-                                edge_range_update_datetime,
-                                edge_range_first_id,
-                            ),
-                        });
-
-                        if edges.len() == q.limit as usize {
-                            break;
-                        }
-                    }
-                }
-
-                Ok(edges)
-            }
-        }
-    }
 }
 
 impl Transaction for RocksdbTransaction {
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+    fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
 
@@ -351,19 +346,21 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>> {
-        let iter = self.execute_vertex_query(q.into())?.into_iter();
+    fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
+        let db = self.db.clone();
+        let iter = execute_vertex_query(&db, q.into())?.into_iter();
 
         let iter = iter.map(move |(id, t)| {
-            let vertex = models::Vertex::with_id(id, t);
+            let vertex = Vertex::with_id(id, t);
             Ok(vertex)
         });
 
         iter.collect()
     }
 
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
-        let iter = self.execute_vertex_query(q.into())?.into_iter();
+    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+        let db = self.db.clone();
+        let iter = execute_vertex_query(&db, q.into())?.into_iter();
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
         let mut batch = WriteBatch::default();
@@ -383,7 +380,7 @@ impl Transaction for RocksdbTransaction {
         Ok(iterator.count() as u64)
     }
 
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
+    fn create_edge(&self, key: &EdgeKey) -> Result<bool> {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
 
@@ -398,23 +395,24 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>> {
-        let iter = self.execute_edge_query(q.into())?.into_iter();
+    fn get_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<Edge>> {
+        let db = self.db.clone();
+        let iter = execute_edge_query(&db, q.into())?.into_iter();
 
         let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
-            let key = models::EdgeKey::new(out_id, t, in_id);
-            let edge = models::Edge::new(key, update_datetime);
+            let key = EdgeKey::new(out_id, t, in_id);
+            let edge = Edge::new(key, update_datetime);
             Ok(edge)
         });
 
         iter.collect()
     }
 
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
         let db = self.db.clone();
         let edge_manager = EdgeManager::new(&db);
         let vertex_manager = VertexManager::new(&db);
-        let iter = self.execute_edge_query(q.into())?;
+        let iter = execute_edge_query(&db, q.into())?;
         let mut batch = WriteBatch::default();
 
         for (out_id, t, update_datetime, in_id) in iter {
@@ -427,7 +425,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
 
         let edge_range_manager = match direction {
@@ -440,29 +438,29 @@ impl Transaction for RocksdbTransaction {
         Ok(count as u64)
     }
 
-    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
+    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
         let db = self.db.clone();
         let manager = VertexPropertyManager::new(&db);
         let mut properties = Vec::new();
 
-        for (id, _) in self.execute_vertex_query(q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(&db, q.inner)?.into_iter() {
             let value = manager.get(id, &q.name)?;
 
             if let Some(value) = value {
-                properties.push(models::VertexProperty::new(id, value));
+                properties.push(VertexProperty::new(id, value));
             }
         }
 
         Ok(properties)
     }
 
-    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
-        let iter = self.execute_vertex_query(q.into())?.into_iter();
+    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<VertexProperties>> {
         let db = self.db.clone();
+        let iter = execute_vertex_query(&db, q.into())?.into_iter();
         let manager = VertexPropertyManager::new(&db);
 
         let iter = iter.map(move |(id, t)| {
-            let vertex = models::Vertex::with_id(id, t);
+            let vertex = Vertex::with_id(id, t);
 
             let it = manager.iterate_for_owner(id)?;
             let props: Result<Vec<_>> = it.map(|r| r).collect();
@@ -482,7 +480,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexPropertyManager::new(&db);
         let mut batch = WriteBatch::default();
 
-        for (id, _) in self.execute_vertex_query(q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(&db, q.inner)?.into_iter() {
             manager.set(&mut batch, id, &q.name, value)?;
         }
 
@@ -495,7 +493,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexPropertyManager::new(&db);
         let mut batch = WriteBatch::default();
 
-        for (id, _) in self.execute_vertex_query(q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(&db, q.inner)?.into_iter() {
             manager.delete(&mut batch, id, &q.name)?;
         }
 
@@ -503,30 +501,30 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
+    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
         let db = self.db.clone();
         let manager = EdgePropertyManager::new(&db);
         let mut properties = Vec::new();
 
-        for (out_id, t, _, in_id) in self.execute_edge_query(q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(&db, q.inner)?.into_iter() {
             let value = manager.get(out_id, &t, in_id, &q.name)?;
 
             if let Some(value) = value {
-                let key = models::EdgeKey::new(out_id, t, in_id);
-                properties.push(models::EdgeProperty::new(key, value));
+                let key = EdgeKey::new(out_id, t, in_id);
+                properties.push(EdgeProperty::new(key, value));
             }
         }
 
         Ok(properties)
     }
 
-    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
-        let iter = self.execute_edge_query(q.into())?.into_iter();
+    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
         let db = self.db.clone();
+        let iter = execute_edge_query(&db, q.into())?.into_iter();
         let manager = EdgePropertyManager::new(&db);
 
         let iter = iter.map(move |(out_id, t, time, in_id)| {
-            let edge = models::Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+            let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
             let it = manager.iterate_for_owner(out_id, &t, in_id)?;
             let props: Result<Vec<_>> = it.map(|r| r).collect();
             let props_iter = props?.into_iter();
@@ -545,7 +543,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgePropertyManager::new(&db);
         let mut batch = WriteBatch::default();
 
-        for (out_id, t, _, in_id) in self.execute_edge_query(q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(&db, q.inner)?.into_iter() {
             manager.set(&mut batch, out_id, &t, in_id, &q.name, value)?;
         }
 
@@ -558,7 +556,7 @@ impl Transaction for RocksdbTransaction {
         let manager = EdgePropertyManager::new(&db);
         let mut batch = WriteBatch::default();
 
-        for (out_id, t, _, in_id) in self.execute_edge_query(q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(&db, q.inner)?.into_iter() {
             manager.delete(&mut batch, out_id, &t, in_id, &q.name)?;
         }
 
