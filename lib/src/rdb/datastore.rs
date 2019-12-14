@@ -13,7 +13,7 @@ use crate::{
 };
 
 use chrono::offset::Utc;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB, MemtableFactory};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -51,7 +51,7 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     if bulk_load_optimized {
         // Via https://github.com/facebook/rocksdb/wiki/RocksDB-FAQ
         opts.set_allow_concurrent_memtable_write(false);
-        // opts.set_memtable_factory(MemtableFactory::Vector); // disabled as this seems to stall writes
+        opts.set_memtable_factory(MemtableFactory::Vector);
         opts.set_max_background_flushes(8);
         opts.set_disable_auto_compactions(true);
         opts.set_level_zero_file_num_compaction_trigger(1024);
