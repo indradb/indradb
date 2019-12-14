@@ -82,16 +82,16 @@ impl<'a> VertexManager<'a> {
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id))?;
 
-        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
+        let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
             vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name[..])?;
         }
 
-        let edge_manager = EdgeManager::new(self.db.clone());
+        let edge_manager = EdgeManager::new(self.db);
 
         {
-            let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+            let edge_range_manager = EdgeRangeManager::new(self.db);
             for item in edge_range_manager.iterate_for_owner(id)? {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
@@ -106,7 +106,7 @@ impl<'a> VertexManager<'a> {
         }
 
         {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
             for item in reversed_edge_range_manager.iterate_for_owner(id)? {
                 let (
                     reversed_edge_range_in_id,
@@ -168,8 +168,8 @@ impl<'a> EdgeManager<'a> {
         in_id: Uuid,
         new_update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+        let edge_range_manager = EdgeRangeManager::new(self.db);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
 
         if let Some(update_datetime) = self.get(out_id, t, in_id)? {
             edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
@@ -193,13 +193,13 @@ impl<'a> EdgeManager<'a> {
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id))?;
 
-        let edge_range_manager = EdgeRangeManager::new(self.db.clone());
+        let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
 
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
         reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
 
-        let edge_property_manager = EdgePropertyManager::new(self.db.clone());
+        let edge_property_manager = EdgePropertyManager::new(self.db);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
             let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
