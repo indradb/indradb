@@ -7,6 +7,7 @@
 //! layer.
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
+#![feature(generators, generator_trait)]
 
 #[cfg(feature = "bench-suite")]
 extern crate test;
