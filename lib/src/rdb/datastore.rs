@@ -307,7 +307,7 @@ impl Datastore for RocksdbDatastore {
             }
         }
 
-        // NOTE: syncing and WAL are disabled for bulk inserts to maximimze
+        // NOTE: syncing and WAL are disabled for bulk inserts to maximize
         // performance
         let mut opts = WriteOptions::default();
         opts.set_sync(false);
