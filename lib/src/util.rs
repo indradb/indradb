@@ -3,8 +3,8 @@
 use crate::errors::{ValidationError, ValidationResult};
 use chrono::offset::Utc;
 use chrono::DateTime;
-use rand::rngs::OsRng;
 use rand::prelude::*;
+use rand::rngs::OsRng;
 use std::env;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;

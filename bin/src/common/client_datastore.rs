@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::net::ToSocketAddrs;
-use std::time::Duration;
-use std::thread::sleep;
 use std::rc::Rc;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::autogen;
 use crate::converters;
@@ -10,12 +10,12 @@ use crate::converters;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
+use futures::executor::{LocalPool, LocalSpawner};
+use futures::prelude::*;
+use futures::task::LocalSpawn;
 use indradb;
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
-use futures::executor::{LocalPool, LocalSpawner};
-use futures::task::LocalSpawn;
-use futures::prelude::*;
 
 async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::service::Client, CapnpError> {
     let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
@@ -32,7 +32,8 @@ async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::serv
     let mut rpc_system = RpcSystem::new(rpc_network, None);
     let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
 
-    spawner.spawn_local_obj(Box::pin(rpc_system.map(|_|())).into())
+    spawner
+        .spawn_local_obj(Box::pin(rpc_system.map(|_| ())).into())
         .map_err(|err| CapnpError::failed(format!("spawn failed: {}", err)))?;
 
     let req = client.ping_request();
@@ -47,7 +48,7 @@ async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::serv
 
 pub struct ClientDatastore {
     client: autogen::service::Client,
-    exec: Rc<RefCell<LocalPool>>
+    exec: Rc<RefCell<LocalPool>>,
 }
 
 impl ClientDatastore {
@@ -103,7 +104,7 @@ impl indradb::Datastore for ClientDatastore {
 
 pub struct ClientTransaction {
     trans: RefCell<autogen::transaction::Client>,
-    exec: Rc<RefCell<LocalPool>>
+    exec: Rc<RefCell<LocalPool>>,
 }
 
 impl ClientTransaction {
@@ -133,7 +134,10 @@ impl ClientTransaction {
         Ok(Uuid::from_slice(bytes).unwrap())
     }
 
-    async fn async_get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Vec<indradb::Vertex>, CapnpError> {
+    async fn async_get_vertices<Q: Into<indradb::VertexQuery>>(
+        &self,
+        q: Q,
+    ) -> Result<Vec<indradb::Vertex>, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.get_vertices_request();
         converters::from_vertex_query(&q.into(), req.get().init_q());
@@ -243,7 +247,11 @@ impl ClientTransaction {
         list
     }
 
-    async fn async_set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), CapnpError> {
+    async fn async_set_vertex_properties(
+        &self,
+        q: indradb::VertexPropertyQuery,
+        value: &JsonValue,
+    ) -> Result<(), CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.set_vertex_properties_request();
         converters::from_vertex_property_query(&q, req.get().init_q());
@@ -264,7 +272,10 @@ impl ClientTransaction {
         Ok(())
     }
 
-    async fn async_get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, CapnpError> {
+    async fn async_get_edge_properties(
+        &self,
+        q: indradb::EdgePropertyQuery,
+    ) -> Result<Vec<indradb::EdgeProperty>, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.get_edge_properties_request();
         converters::from_edge_property_query(&q, req.get().init_q());
@@ -295,7 +306,11 @@ impl ClientTransaction {
         list
     }
 
-    async fn async_set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), CapnpError> {
+    async fn async_set_edge_properties(
+        &self,
+        q: indradb::EdgePropertyQuery,
+        value: &JsonValue,
+    ) -> Result<(), CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.set_edge_properties_request();
         converters::from_edge_property_query(&q, req.get().init_q());
@@ -323,7 +338,11 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_create_vertex_from_type(t)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_create_vertex_from_type(t))
+            .unwrap())
     }
 
     fn get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Vec<indradb::Vertex>, indradb::Error> {
@@ -356,47 +375,83 @@ impl indradb::Transaction for ClientTransaction {
         t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_get_edge_count(id, t, direction)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_get_edge_count(id, t, direction))
+            .unwrap())
     }
 
     fn get_vertex_properties(
         &self,
         q: indradb::VertexPropertyQuery,
     ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_get_vertex_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_get_vertex_properties(q))
+            .unwrap())
     }
 
     fn get_all_vertex_properties<Q: Into<indradb::VertexQuery>>(
         &self,
         q: Q,
     ) -> Result<Vec<indradb::VertexProperties>, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_get_all_vertex_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_get_all_vertex_properties(q))
+            .unwrap())
     }
 
     fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_set_vertex_properties(q, value)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_set_vertex_properties(q, value))
+            .unwrap())
     }
 
     fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_delete_vertex_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_delete_vertex_properties(q))
+            .unwrap())
     }
 
     fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_get_edge_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_get_edge_properties(q))
+            .unwrap())
     }
 
     fn get_all_edge_properties<Q: Into<indradb::EdgeQuery>>(
         &self,
         q: Q,
     ) -> Result<Vec<indradb::EdgeProperties>, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_get_all_edge_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_get_all_edge_properties(q))
+            .unwrap())
     }
 
     fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_set_edge_properties(q, value)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_set_edge_properties(q, value))
+            .unwrap())
     }
 
     fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_delete_edge_properties(q)).unwrap())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_delete_edge_properties(q))
+            .unwrap())
     }
 }
