@@ -1,12 +1,13 @@
 use std::io;
-use std::result::Result as StdResult;
 
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "i/o error: {}", inner)]
     Io { inner: io::Error },
-    #[fail(display = "could not parse")]
-    CouldNotParse,
+    #[fail(display = "could not parse address binding")]
+    CouldNotParseBinding,
+    #[fail(display = "could not parse database URL")]
+    CouldNotParseDatabaseURL,
 }
 
 impl From<io::Error> for Error {
@@ -14,5 +15,3 @@ impl From<io::Error> for Error {
         Error::Io { inner: err }
     }
 }
-
-pub type Result<T> = StdResult<T, Error>;

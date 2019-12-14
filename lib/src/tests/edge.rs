@@ -14,7 +14,7 @@ pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
 
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
@@ -27,7 +27,7 @@ pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
     trans.create_edge(&key).unwrap();
     let end_time = Utc::now();
 
-    let e = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
+    let e = trans.get_edges(SpecificEdgeQuery::single(key)).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(e[0].key.outbound_id, outbound_v.id);
     assert_eq!(e[0].key.t, edge_t);
@@ -41,7 +41,7 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(datastore: &mut D) {
 
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
@@ -52,12 +52,12 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(datastore: &mut D) {
             edge_t.clone(),
             Uuid::default(),
         )))
-        .unwrap();;
+        .unwrap();
     assert_eq!(e.len(), 0);
     let e = trans
         .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
             Uuid::default(),
-            edge_t.clone(),
+            edge_t,
             inbound_v.id,
         )))
         .unwrap();
@@ -68,13 +68,13 @@ pub fn should_create_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let trans = datastore.transaction().unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
 
     // Set the edge and check
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     trans.create_edge(&key).unwrap();
     let e = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
     assert_eq!(e.len(), 1);
@@ -104,7 +104,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let outbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), Uuid::default());
+    let key = models::EdgeKey::new(outbound_v.id, edge_t, Uuid::default());
     let result = trans.create_edge(&key);
     assert_eq!(result.unwrap(), false);
 }
@@ -113,22 +113,22 @@ pub fn should_delete_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_edge_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t.clone());
+    let inbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
 
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     trans.create_edge(&key).unwrap();
     trans.delete_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
-    let e = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
+    let e = trans.get_edges(SpecificEdgeQuery::single(key)).unwrap();
     assert_eq!(e.len(), 0);
 }
 
 pub fn should_not_delete_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_edge_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
+    let outbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
     trans
@@ -288,7 +288,7 @@ pub fn should_get_edges<D: Datastore>(datastore: &mut D) {
         EdgeKey::new(outbound_id, t.clone(), inbound_ids[1]),
         EdgeKey::new(outbound_id, t.clone(), inbound_ids[2]),
         EdgeKey::new(outbound_id, t.clone(), inbound_ids[3]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[4]),
+        EdgeKey::new(outbound_id, t, inbound_ids[4]),
     ]);
     let range = trans.get_edges(q).unwrap();
     check_edge_range(&range, outbound_id, 5);
