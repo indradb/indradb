@@ -93,7 +93,8 @@ impl indradb::Datastore for ClientDatastore {
     where
         I: Iterator<Item = indradb::BulkInsertItem>,
     {
-        Ok(self.exec.borrow_mut().run_until(self.async_bulk_insert(items)).unwrap())
+        self.exec.borrow_mut().run_until(self.async_bulk_insert(items)).unwrap();
+        Ok(())
     }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
@@ -350,7 +351,8 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn delete_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_delete_vertices(q)).unwrap())
+        self.exec.borrow_mut().run_until(self.async_delete_vertices(q)).unwrap();
+        Ok(())
     }
 
     fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
@@ -366,7 +368,8 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn delete_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<(), indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_delete_edges(q)).unwrap())
+        self.exec.borrow_mut().run_until(self.async_delete_edges(q)).unwrap();
+        Ok(())
     }
 
     fn get_edge_count(
@@ -405,19 +408,19 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
-        Ok(self
-            .exec
+        self.exec
             .borrow_mut()
             .run_until(self.async_set_vertex_properties(q, value))
-            .unwrap())
+            .unwrap();
+        Ok(())
     }
 
     fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
-        Ok(self
-            .exec
+        self.exec
             .borrow_mut()
             .run_until(self.async_delete_vertex_properties(q))
-            .unwrap())
+            .unwrap();
+        Ok(())
     }
 
     fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
@@ -440,18 +443,18 @@ impl indradb::Transaction for ClientTransaction {
     }
 
     fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
-        Ok(self
-            .exec
+        self.exec
             .borrow_mut()
             .run_until(self.async_set_edge_properties(q, value))
-            .unwrap())
+            .unwrap();
+        Ok(())
     }
 
     fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
-        Ok(self
-            .exec
+        self.exec
             .borrow_mut()
             .run_until(self.async_delete_edge_properties(q))
-            .unwrap())
+            .unwrap();
+        Ok(())
     }
 }

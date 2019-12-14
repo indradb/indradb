@@ -9,7 +9,7 @@ use serde_json::Value as JsonValue;
 pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     let vertex_t = Type::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
-    let inbound_v = Vertex::new(vertex_t.clone());
+    let inbound_v = Vertex::new(vertex_t);
 
     let items = vec![
         BulkInsertItem::Vertex(outbound_v.clone()),
@@ -89,12 +89,12 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
 // Bulk insert allows for redundant vertex insertion
 pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(datastore: &mut D) {
     let vertex_t = Type::new("test_vertex_type").unwrap();
-    let vertex = Vertex::new(vertex_t.clone());
+    let vertex = Vertex::new(vertex_t);
 
     let trans = datastore.transaction().unwrap();
     assert!(trans.create_vertex(&vertex).unwrap());
 
-    let items = vec![BulkInsertItem::Vertex(vertex.clone())];
+    let items = vec![BulkInsertItem::Vertex(vertex)];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
 }
 
@@ -103,7 +103,7 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(datastore: &mut D) {
 pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let vertex_t = Type::new("test_vertex_type").unwrap();
     let v1 = Vertex::new(vertex_t.clone());
-    let v2 = Vertex::new(vertex_t.clone());
+    let v2 = Vertex::new(vertex_t);
 
     let trans = datastore.transaction().unwrap();
     assert!(trans.create_vertex(&v1).unwrap());
@@ -112,6 +112,6 @@ pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
 
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t.clone(), v1.id))];
+    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t, v1.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
 }

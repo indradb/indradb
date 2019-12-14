@@ -93,7 +93,7 @@ pub fn from_named_property<'a>(property: &indradb::NamedProperty, mut builder: a
     builder.set_value(&property.value.to_string());
 }
 
-pub fn to_named_property<'a>(reader: autogen::property::Reader<'a>) -> Result<indradb::NamedProperty, CapnpError> {
+pub fn to_named_property(reader: autogen::property::Reader) -> Result<indradb::NamedProperty, CapnpError> {
     let name = map_capnp_err(reader.get_name())?.to_string();
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::NamedProperty::new(name, value))

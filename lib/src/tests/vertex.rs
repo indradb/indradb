@@ -134,7 +134,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .t(edge_t.clone())
         .inbound(1)
         .t(models::Type::new("test_inbound_vertex_type").unwrap());
-    let range = trans.get_vertices(query_2.clone()).unwrap();
+    let range = trans.get_vertices(query_2).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -144,7 +144,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .t(edge_t.clone())
         .inbound(1)
         .t(models::Type::new("foo").unwrap());
-    let range = trans.get_vertices(query_3.clone()).unwrap();
+    let range = trans.get_vertices(query_3).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
@@ -195,7 +195,7 @@ where
         models::Vertex::new(t.clone()),
         models::Vertex::new(t.clone()),
         models::Vertex::new(t.clone()),
-        models::Vertex::new(t.clone()),
+        models::Vertex::new(t),
     ];
 
     for vertex in &vertices {

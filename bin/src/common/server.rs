@@ -424,7 +424,7 @@ where
 
     while let Some(socket) = incoming.next().await {
         if let Ok(socket) = socket {
-            if let Err(_) = socket.set_nodelay(true) {
+            if socket.set_nodelay(true).is_err() {
                 eprintln!("could not set nodelay on client");
             }
 
