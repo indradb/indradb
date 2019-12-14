@@ -1,16 +1,18 @@
-use crate::{
-    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery, BulkInsertItem, Vertex, Edge, EdgeProperty, VertexProperty, Type, EdgeKey, EdgeProperties, NamedProperty, VertexProperties
-};
-use super::managers::*;
-use crate::errors::Result;
-use crate::util::next_uuid;
-use chrono::offset::Utc;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
-use serde_json::Value as JsonValue;
 use std::i32;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
+
+use crate::{
+    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery, BulkInsertItem, Vertex, Edge, EdgeProperty, VertexProperty, Type, EdgeKey, EdgeProperties, NamedProperty, VertexProperties
+};
+use crate::errors::Result;
+use crate::util::next_uuid;
+use super::managers::*;
+
+use chrono::offset::Utc;
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
+use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 const CF_NAMES: [&str; 6] = [
@@ -26,20 +28,19 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     // Current tuning based off of the total ordered example, flash
     // storage example on
     // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-    // Some of the options for it were not available
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.set_compaction_style(DBCompactionStyle::Level);
     opts.set_write_buffer_size(67_108_864); // 64mb
     opts.set_max_write_buffer_number(3);
     opts.set_target_file_size_base(67_108_864); // 64mb
+    opts.set_max_background_compactions(4);
     opts.set_level_zero_file_num_compaction_trigger(8);
     opts.set_level_zero_slowdown_writes_trigger(17);
     opts.set_level_zero_stop_writes_trigger(24);
     opts.set_num_levels(4);
     opts.set_max_bytes_for_level_base(536_870_912); // 512mb
     opts.set_max_bytes_for_level_multiplier(8.0);
-    opts.set_max_background_compactions(4);
 
     if let Some(max_open_files) = max_open_files {
         opts.set_max_open_files(max_open_files);

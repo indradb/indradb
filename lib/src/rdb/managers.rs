@@ -2,9 +2,9 @@ use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 
-use super::bytes::*;
 use crate::errors::Result;
 use crate::models;
+use super::bytes::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
