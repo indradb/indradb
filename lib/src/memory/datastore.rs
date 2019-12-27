@@ -207,7 +207,7 @@ impl InternalMemoryDatastore {
 }
 
 /// An in-memory-only datastore.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
 
 impl MemoryDatastore {
