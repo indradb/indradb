@@ -426,7 +426,7 @@ impl Arbitrary for DateTime {
     fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
         let t: i64 = u.arbitrary()?;
         let n: u32 = u.arbitrary()?;
-        let naive = chrono::NaiveDateTime::from_timestamp(t, n);
+        let naive = chrono::NaiveDateTime::from_timestamp_opt(t, n).ok_or(arbitrary::Error::IncorrectFormat)?;
         let dt = chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc);
         Ok(Self { 0: dt })
     }
