@@ -1,0 +1,30 @@
+
+[package]
+name = "indradb-lib-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "0.3", features = ["derive"] }
+chrono = "0.4.10"
+libfuzzer-sys = "0.2"
+serde_json = "^1.0.44"
+regex = "^1.3.1"
+uuid = { version = "~0.8.1", features = ["v1"] }
+
+[dependencies.indradb-lib]
+path = ".."
+features = ["rocksdb-datastore"]
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "compare"
+path = "fuzz_targets/compare.rs"

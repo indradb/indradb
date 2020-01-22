@@ -46,7 +46,7 @@ impl From<EdgeDirection> for String {
 /// Generally you shouldn't need to instantiate a `VertexQuery` directly, but
 /// rather one of the vertex query structs, and then call `.into()` on it to
 /// convert it to a `VertexQuery`.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum VertexQuery {
     Range(RangeVertexQuery),
     Specific(SpecificVertexQuery),
@@ -99,7 +99,7 @@ pub trait VertexQueryExt: Into<VertexQuery> {
 }
 
 /// Gets a range of vertices.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
     /// Limits the number of vertices to get.
     pub limit: u32,
@@ -152,7 +152,7 @@ impl RangeVertexQuery {
 }
 
 /// Gets a specific set of vertices.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
     pub ids: Vec<Uuid>,
@@ -183,7 +183,7 @@ impl SpecificVertexQuery {
 ///
 /// Generally, you shouldn't need to construct this directly, but rather call
 /// `.outbound()` or `.inbound()` on an edge query.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeVertexQuery {
     /// The edge query to build off of.
     pub inner: Box<EdgeQuery>,
@@ -232,7 +232,7 @@ impl PipeVertexQuery {
 }
 
 /// Gets property values associated with vertices.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexPropertyQuery {
     /// The vertex query to build off of.
     pub inner: VertexQuery,
@@ -260,7 +260,7 @@ impl VertexPropertyQuery {
 /// Generally you shouldn't need to instantiate an `EdgeQuery` directly, but
 /// rather one of the edge query structs, and then call `.into()` on it to
 /// convert it to an `EdgeQuery`.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub enum EdgeQuery {
     Specific(SpecificEdgeQuery),
     Pipe(PipeEdgeQuery),
@@ -306,7 +306,7 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 }
 
 /// Gets a specific set of edges.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
     /// The keys of the edges to get.
     pub keys: Vec<EdgeKey>,
@@ -337,7 +337,7 @@ impl SpecificEdgeQuery {
 ///
 /// Generally, you shouldn't need to construct this directly, but rather call
 /// `.outbound()` or `.inbound()` on a vertex query.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeEdgeQuery {
     /// The vertex query to build off of.
     pub inner: Box<VertexQuery>,
@@ -426,7 +426,7 @@ impl PipeEdgeQuery {
 }
 
 /// Gets property values associated with edges.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgePropertyQuery {
     /// The edge query to build off of.
     pub inner: EdgeQuery,
