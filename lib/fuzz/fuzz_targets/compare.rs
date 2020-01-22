@@ -535,6 +535,9 @@ fuzz_target!(|ops: Vec<Op>| {
     let rocksdb_path = generate_temporary_path();
     let d2 = RocksdbDatastore::new(&rocksdb_path, Some(1), false).unwrap();
 
+    let t1 = d1.transaction().unwrap();
+    let t2 = d2.transaction().unwrap();
+
     for op in ops {
         match op {
             Op::BulkInsert(items) => {
@@ -545,55 +548,41 @@ fuzz_target!(|ops: Vec<Op>| {
             },
             Op::CreateVertex(vertex) => {
                 let vertex = vertex.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.create_vertex(&vertex);
                 let v2 = t2.create_vertex(&vertex);
                 cmp!(v1, v2);
             },
             Op::GetVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_vertices(q.clone());
                 let v2 = t2.get_vertices(q);
                 cmp!(v1, v2);
             },
             Op::DeleteVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.delete_vertices(q.clone());
                 let v2 = t2.delete_vertices(q);
                 cmp!(v1, v2);
             },
             Op::GetVertexCount => {
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_vertex_count();
                 let v2 = t2.get_vertex_count();
                 cmp!(v1, v2);
             },
             Op::CreateEdge(key) => {
                 let key: indradb::EdgeKey = key.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.create_edge(&key);
                 let v2 = t2.create_edge(&key);
                 cmp!(v1, v2);
             },
             Op::GetEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_edges(q.clone());
                 let v2 = t2.get_edges(q);
                 cmp!(v1, v2);
             },
             Op::DeleteEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.delete_edges(q.clone());
                 let v2 = t2.delete_edges(q);
                 cmp!(v1, v2);
@@ -602,24 +591,18 @@ fuzz_target!(|ops: Vec<Op>| {
                 let id: uuid::Uuid = id.into();
                 let t: Option<indradb::Type> = t.map(|t| t.into());
                 let direction: indradb::EdgeDirection = direction.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_edge_count(id, t.as_ref(), direction);
                 let v2 = t2.get_edge_count(id, t.as_ref(), direction);
                 cmp!(v1, v2);
             },
             Op::GetVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_vertex_properties(q.clone());
                 let v2 = t2.get_vertex_properties(q);
                 cmp!(v1, v2);
             },
             Op::GetAllVertexProperties(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_all_vertex_properties(q.clone());
                 let v2 = t2.get_all_vertex_properties(q);
                 cmp!(v1, v2);
@@ -627,32 +610,24 @@ fuzz_target!(|ops: Vec<Op>| {
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
                 let value: serde_json::Value = value.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.set_vertex_properties(q.clone(), &value);
                 let v2 = t2.set_vertex_properties(q, &value);
                 cmp!(v1, v2);
             },
             Op::DeleteVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.delete_vertex_properties(q.clone());
                 let v2 = t2.delete_vertex_properties(q);
                 cmp!(v1, v2);
             },
             Op::GetEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_edge_properties(q.clone());
                 let v2 = t2.get_edge_properties(q);
                 cmp!(v1, v2);
             },
             Op::GetAllEdgeProperties(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.get_all_edge_properties(q.clone());
                 let v2 = t2.get_all_edge_properties(q);
                 cmp!(v1, v2);
@@ -660,16 +635,12 @@ fuzz_target!(|ops: Vec<Op>| {
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
                 let value: serde_json::Value = value.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.set_edge_properties(q.clone(), &value);
                 let v2 = t2.set_edge_properties(q, &value);
                 cmp!(v1, v2);
             },
             Op::DeleteEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let t1 = d1.transaction().unwrap();
-                let t2 = d2.transaction().unwrap();
                 let v1 = t1.delete_edge_properties(q.clone());
                 let v2 = t2.delete_edge_properties(q);
                 cmp!(v1, v2);
