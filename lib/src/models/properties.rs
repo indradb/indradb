@@ -49,7 +49,7 @@ impl NamedProperty {
 
 /// A vertex with properties.
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperties {
     pub vertex: Vertex,
     pub props: Vec<NamedProperty>,
@@ -69,7 +69,7 @@ impl VertexProperties {
 
 /// A vertex with properties.
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperties {
     pub edge: Edge,
     pub props: Vec<NamedProperty>,
