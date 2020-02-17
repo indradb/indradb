@@ -1,4 +1,4 @@
-@0xc656e2e7cbc5b02e;
+@0xa24c698a359c7c15;
 
 using Timestamp = UInt64;
 using Uuid = Data;
