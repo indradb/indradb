@@ -55,7 +55,7 @@ impl ClientDatastore {
     pub fn new(port: u16, mut exec: LocalPool) -> Self {
         let spawner = exec.spawner();
 
-        for _ in 0..5 {
+        for _ in 0..10 {
             if let Ok(client) = exec.run_until(build_client(port, &spawner)) {
                 return Self {
                     client,
