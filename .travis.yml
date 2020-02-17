@@ -51,7 +51,7 @@ env:
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
-script: ./scripts/test.py
+script: make test
 before_deploy: ./scripts/before_deploy.sh
 
 deploy:
