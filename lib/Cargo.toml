@@ -1,6 +1,6 @@
 [package]
 name = "indradb-lib"
-version = "1.0.2"
+version = "1.0.3"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database library"
 homepage = "https://indradb.github.io"
