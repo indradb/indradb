@@ -19,7 +19,6 @@ matrix:
       env:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - RUSTFLAGS="-C link-dead-code"
     - os: osx
       rust: stable
       env:
@@ -49,9 +48,18 @@ env:
   global:
     - RUST_BACKTRACE=1
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
+    - CARGO_INCREMENTAL=0
+    - RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
 
 install: ./scripts/install.sh
-script: make test
+script:
+- cargo build --verbose
+- cargo test --verbose
+- cargo fmt -- --check
+- |
+  zip -0 ccov.zip `find . \( -name "indradb*.gc*" \) -print`;
+  ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore "/*" -o lcov.info;
+  bash <(curl -s https://codecov.io/bash) -f lcov.info;
 before_deploy: ./scripts/before_deploy.sh
 
 deploy:

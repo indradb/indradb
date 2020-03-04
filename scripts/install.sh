@@ -13,5 +13,10 @@ if [ ! -f $HOME/cached-deps/bin/capnp ] ; then
     sudo make install
 fi
 
+if [ ! -f $HOME/cached-deps/bin/grcov ] ; then
+    curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-linux-x86_64.tar.bz2 | tar jxf -
+    mv grcov $HOME/cached-deps/bin/grcov
+fi
+
 ls -l $HOME/cached-deps/bin
 source ~/.cargo/env || true
