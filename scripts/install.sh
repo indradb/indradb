@@ -2,7 +2,7 @@
 
 set -ex
 
-mkdir -p $HOME/cached-deps
+mkdir -p $HOME/cached-deps/bin
 
 if [ ! -f $HOME/cached-deps/bin/capnp ] ; then
     curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
