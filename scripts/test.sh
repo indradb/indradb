@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
-cargo build --verbose
-cargo test --verbose
+set -ex
+cargo build
+cargo test
 cargo fmt -- --check
 
 if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "TRAVIS_RUST_VERSION" == "nightly" ]; then
