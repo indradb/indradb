@@ -37,6 +37,7 @@ matrix:
       - TARGET=x86_64-unknown-linux-gnu
       - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
       - RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
+      - CARGO_INCREMENTAL=0
 
   allow_failures:
     # Rust nightly
@@ -49,7 +50,6 @@ env:
   global:
     - RUST_BACKTRACE=1
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
-    - CARGO_INCREMENTAL=0
 
 install: ./scripts/install.sh
 script: ./scripts/test.sh
