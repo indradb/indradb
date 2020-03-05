@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 cargo build --verbose
 cargo test --verbose
 cargo fmt -- --check
