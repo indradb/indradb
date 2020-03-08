@@ -52,6 +52,7 @@ macro_rules! full_test_impl {
         define_test!(should_get_edges_with_no_time, $code);
         define_test!(should_get_no_edges_for_reversed_time, $code);
         define_test!(should_get_edges, $code);
+        define_test!(should_get_edges_piped, $code);
 
         // Properties
         define_test!(should_handle_vertex_properties, $code);
