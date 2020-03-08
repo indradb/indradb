@@ -4,7 +4,7 @@
 
 # [IndraDB](https://indradb.github.io) [![Build Status](https://travis-ci.org/indradb/indradb.svg?branch=master)](https://travis-ci.org/indradb/indradb)
 
-A graph database written in rust. This software is in the alpha state.
+A graph database written in rust.
 
 IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
@@ -47,7 +47,6 @@ Applications are configured via environment variables:
 
 * `DATABASE_URL`: The connection string to the underlying database.
 * `PORT`: The port to run the server on. Defaults to `27615`.
-* `WORKER_COUNT`: How many worker threads to have to satisfy client requests. Defaults to twice the number of CPUs.
 
 Additional environment variables available when using the RocksDB datastore:
 

@@ -35,6 +35,15 @@ impl Type {
         }
     }
 
+    /// Constructs a new type, without any checks that the name is valid.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The type, which must be less than 256 characters long.
+    ///
+    /// # Safety
+    /// This function is marked unsafe because there's no verification that
+    /// the type name is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
         Type(s.into())
     }

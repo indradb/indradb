@@ -133,6 +133,12 @@ pub trait Transaction {
     /// * `name` - The property name.
     fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
 
+    /// Gets all vertex properties.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>>;
+
     /// Sets a vertex properties.
     ///
     /// # Arguments
@@ -154,6 +160,12 @@ pub trait Transaction {
     /// * `q` - The query to run.
     /// * `name` - The property name.
     fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
+
+    /// Gets all edge properties.
+    ///
+    /// # Arguments
+    /// * `q` - The query to run.
+    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///

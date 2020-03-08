@@ -4,6 +4,7 @@ use super::super::{
 use super::managers::*;
 use crate::errors::Result;
 use crate::models;
+use crate::models::*;
 use crate::util::next_uuid;
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
@@ -79,10 +80,10 @@ impl Datastore for SledDatastore {
     where
         I: Iterator<Item = models::BulkInsertItem>,
     {
-        let vertex_manager = VertexManager::new(self.holder.clone());
-        let edge_manager = EdgeManager::new(self.holder.clone());
-        let vertex_property_manager = VertexPropertyManager::new(self.holder.vertex_properties.clone());
-        let edge_property_manager = EdgePropertyManager::new(self.holder.edge_properties.clone());
+        let vertex_manager = VertexManager::new(&self.holder);
+        let edge_manager = EdgeManager::new(&self.holder);
+        let vertex_property_manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let edge_property_manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in items {
             match item {
@@ -120,10 +121,10 @@ impl SledTransaction {
         Ok(SledTransaction { holder })
     }
 
-    fn vertex_query_to_iterator(&self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>> + '_>> {
+    fn vertex_query_to_iterator<'iter, 'trans: 'iter> (&'trans self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>> + 'iter>> {
         match q {
             VertexQuery::Range(q) => {
-                let vertex_manager = VertexManager::new(self.holder.clone());
+                let vertex_manager = VertexManager::new(&self.holder);
 
                 let next_uuid = match q.start_id {
                     Some(start_id) => {
@@ -154,7 +155,7 @@ impl SledTransaction {
                 Ok(Box::new(results.into_iter()))
             }
             VertexQuery::Specific(q) => {
-                let vertex_manager = VertexManager::new(self.holder.clone());
+                let vertex_manager = VertexManager::new(&self.holder);
 
                 let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
                     Some(value) => Ok(Some((id, value))),
@@ -164,7 +165,7 @@ impl SledTransaction {
                 Ok(Box::new(remove_nones_from_iterator(iter)))
             }
             VertexQuery::Pipe(q) => {
-                let vertex_manager = VertexManager::new(self.holder.clone());
+                let vertex_manager = VertexManager::new(&self.holder);
                 let edge_iterator = self.edge_query_to_iterator(*q.inner)?;
                 let direction = q.direction;
 
@@ -197,11 +198,11 @@ impl SledTransaction {
         }
     }
 
-    fn edge_query_to_iterator(&self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>> {
-        //Ok(Box::new(Vec::new().into_iter()))
+    fn edge_query_to_iterator<'iter, 'trans: 'iter>(&'trans self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
+        //Ok(Box::new(Vec::new().into_iter()))'
         match q {
             EdgeQuery::Specific(q) => {
-                let edge_manager = EdgeManager::new(self.holder.clone());
+                let edge_manager = EdgeManager::new(&self.holder);
 
                 let edges = q.keys.into_iter().map(move |key| {
                     match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
@@ -219,8 +220,8 @@ impl SledTransaction {
                 let vertex_iterator = self.vertex_query_to_iterator(*q.inner)?;
 
                 let edge_range_manager = match q.direction {
-                    EdgeDirection::Outbound => EdgeRangeManager::new(self.holder.clone()),
-                    EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.holder.clone()),
+                    EdgeDirection::Outbound => EdgeRangeManager::new(&self.holder),
+                    EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&self.holder),
                 };
 
                 // Ideally we'd use iterators all the way down, but things
@@ -280,7 +281,7 @@ impl SledTransaction {
 
 impl Transaction for SledTransaction {
     fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
-        let vertex_manager = VertexManager::new(self.holder.clone());
+        let vertex_manager = VertexManager::new(&self.holder);
 
         if vertex_manager.exists(vertex.id)? {
             Ok(false)
@@ -304,7 +305,7 @@ impl Transaction for SledTransaction {
 
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
         let iterator = self.vertex_query_to_iterator(q.into())?;
-        let vertex_manager = VertexManager::new(self.holder.clone());
+        let vertex_manager = VertexManager::new(&self.holder);
 
         for item in iterator {
             let (id, _) = item?;
@@ -315,18 +316,18 @@ impl Transaction for SledTransaction {
     }
 
     fn get_vertex_count(&self) -> Result<u64> {
-        let vertex_manager = VertexManager::new(self.holder.clone());
+        let vertex_manager = VertexManager::new(&self.holder);
         let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
         Ok(iterator.count() as u64)
     }
 
     fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
-        let vertex_manager = VertexManager::new(self.holder.clone());
+        let vertex_manager = VertexManager::new(&self.holder);
 
         if !vertex_manager.exists(key.outbound_id)? || !vertex_manager.exists(key.inbound_id)? {
             Ok(false)
         } else {
-            let edge_manager = EdgeManager::new(self.holder.clone());
+            let edge_manager = EdgeManager::new(&self.holder);
             edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
             Ok(true)
         }
@@ -346,8 +347,8 @@ impl Transaction for SledTransaction {
     }
 
     fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()> {
-        let edge_manager = EdgeManager::new(self.holder.clone());
-        let vertex_manager = VertexManager::new(self.holder.clone());
+        let edge_manager = EdgeManager::new(&self.holder);
+        let vertex_manager = VertexManager::new(&self.holder);
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         for item in iterator {
@@ -362,8 +363,8 @@ impl Transaction for SledTransaction {
 
     fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
         let edge_range_manager = match direction {
-            EdgeDirection::Outbound => EdgeRangeManager::new(self.holder.clone()),
-            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(self.holder.clone()),
+            EdgeDirection::Outbound => EdgeRangeManager::new(&self.holder),
+            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&self.holder),
         };
 
         let iter = edge_range_manager.iterate_for_range(id, t, None)?;
@@ -373,7 +374,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
-        let manager = VertexPropertyManager::new(self.holder.vertex_properties.clone());
+        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
         let mut properties = Vec::new();
 
         for item in self.vertex_query_to_iterator(q.inner)? {
@@ -388,8 +389,29 @@ impl Transaction for SledTransaction {
         Ok(properties)
     }
 
+    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
+        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let iterator = self.vertex_query_to_iterator(q.into())?;
+
+        let iter = iterator.map(move |item| {
+            let (id, t) = item?;
+            let vertex = models::Vertex::with_id(id, t);
+
+            let it = manager.iterate_for_owner(id)?;
+            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props_iter = props?.into_iter();
+            let props = props_iter
+                .map(|((_, name), value)| models::NamedProperty::new(name, value))
+                .collect();
+
+            Ok(models::VertexProperties::new(vertex, props))
+        });
+
+        iter.collect()
+    }
+
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
-        let manager = VertexPropertyManager::new(self.holder.vertex_properties.clone());
+        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
@@ -399,7 +421,7 @@ impl Transaction for SledTransaction {
     }
 
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
-        let manager = VertexPropertyManager::new(self.holder.vertex_properties.clone());
+        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
@@ -409,7 +431,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
-        let manager = EdgePropertyManager::new(self.holder.edge_properties.clone());
+        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
         let mut properties = Vec::new();
 
         for item in self.edge_query_to_iterator(q.inner)? {
@@ -425,8 +447,28 @@ impl Transaction for SledTransaction {
         Ok(properties)
     }
 
+    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let iterator = self.edge_query_to_iterator(q.into())?;
+
+        let iter = iterator.map(move |item| {
+            let (out_id, t, time, in_id) = item?;
+            let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+            let it = manager.iterate_for_owner(out_id, &t, in_id)?;
+            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props_iter = props?.into_iter();
+            let props = props_iter
+                .map(|((_, _, _, name), value)| NamedProperty::new(name, value))
+                .collect();
+
+            Ok(EdgeProperties::new(edge, props))
+        });
+
+        iter.collect()
+    }
+
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
-        let manager = EdgePropertyManager::new(self.holder.edge_properties.clone());
+        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
@@ -436,7 +478,7 @@ impl Transaction for SledTransaction {
     }
 
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
-        let manager = EdgePropertyManager::new(self.holder.edge_properties.clone());
+        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;

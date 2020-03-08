@@ -9,7 +9,6 @@ use serde_json;
 use serde_json::Value as JsonValue;
 use std::io::Cursor;
 use std::ops::Deref;
-use std::sync::Arc;
 use std::u8;
 use uuid::Uuid;
 use crate::sledds::datastore::SledHolder;
@@ -28,16 +27,16 @@ fn take_while_prefixed(iterator: DbIterator, prefix: Vec<u8>) -> impl Iterator<I
     })
 }
 
-pub struct VertexManager {
-    pub holder: Arc<SledHolder>,
-    pub cf: Arc<Tree>,
+pub struct VertexManager<'db: 'tree, 'tree> {
+    pub holder: &'db SledHolder,
+    pub cf: &'tree Tree,
 }
 
-impl VertexManager {
-    pub fn new(ds: Arc<SledHolder>) -> Self {
+impl <'db: 'tree, 'tree> VertexManager<'db, 'tree> {
+    pub fn new(ds: &'db SledHolder) -> Self {
         VertexManager {
-            holder: ds.clone(),
-            cf: ds.vertices.clone(),
+            holder: ds,
+            cf: &ds.vertices,
         }
     }
 
@@ -90,7 +89,7 @@ impl VertexManager {
     pub fn delete(&self, id: Uuid) -> Result<()> {
         self.cf.del(&self.key(id))?;
 
-        let vertex_property_manager = VertexPropertyManager::new(self.holder.vertex_properties.clone());
+        let vertex_property_manager = VertexPropertyManager::new(&self.holder.vertex_properties);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
             vertex_property_manager.delete(vertex_property_owner_id, &vertex_property_name[..])?;
@@ -99,7 +98,7 @@ impl VertexManager {
         let edge_manager = EdgeManager::new(self.holder.clone());
 
         {
-            let edge_range_manager = EdgeRangeManager::new(self.holder.clone());
+            let edge_range_manager = EdgeRangeManager::new(&self.holder);
             for item in edge_range_manager.iterate_for_owner(id)? {
                 let (edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
@@ -134,16 +133,16 @@ impl VertexManager {
     }
 }
 
-pub struct EdgeManager {
-    pub holder: Arc<SledHolder>,
-    pub cf: Arc<Tree>,
+pub struct EdgeManager<'db: 'tree, 'tree> {
+    pub holder: &'db SledHolder,
+    pub cf: &'tree Tree,
 }
 
-impl EdgeManager {
-    pub fn new(ds: Arc<SledHolder>) -> Self {
+impl <'db, 'tree> EdgeManager<'db, 'tree> {
+    pub fn new(ds: &'db SledHolder) -> Self {
         EdgeManager {
-            holder: ds.clone(),
-            cf: ds.edges.clone(),
+            holder: ds,
+            cf: &ds.edges,
         }
     }
 
@@ -196,13 +195,13 @@ impl EdgeManager {
     ) -> Result<()> {
         self.cf.del(&self.key(outbound_id, t, inbound_id))?;
 
-        let edge_range_manager = EdgeRangeManager::new(self.holder.clone());
+        let edge_range_manager = EdgeRangeManager::new(&self.holder);
         edge_range_manager.delete(outbound_id, t, update_datetime, inbound_id)?;
 
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder.clone());
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
         reversed_edge_range_manager.delete(inbound_id, t, update_datetime, outbound_id)?;
 
-        let edge_property_manager = EdgePropertyManager::new(self.holder.edge_properties.clone());
+        let edge_property_manager = EdgePropertyManager::new(&self.holder.edge_properties);
         for item in edge_property_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
             let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
@@ -216,20 +215,20 @@ impl EdgeManager {
     }
 }
 
-pub struct EdgeRangeManager {
-    pub cf: Arc<Tree>,
+pub struct EdgeRangeManager<'tree> {
+    pub cf: &'tree Tree,
 }
 
-impl EdgeRangeManager {
-    pub fn new(ds: Arc<SledHolder>) -> Self {
+impl <'tree>EdgeRangeManager<'tree> {
+    pub fn new<'db: 'tree> (ds: &'db SledHolder) -> Self {
         EdgeRangeManager {
-            cf: ds.edge_ranges.clone(),
+            cf: &ds.edge_ranges,
         }
     }
 
-    pub fn new_reversed(ds: Arc<SledHolder>) -> Self {
+    pub fn new_reversed<'db: 'tree>(ds: &'db SledHolder) -> Self {
         EdgeRangeManager {
-            cf: ds.reversed_edge_ranges.clone(),
+            cf: &ds.reversed_edge_ranges,
         }
     }
 
@@ -256,12 +255,12 @@ impl EdgeRangeManager {
         }))
     }
 
-    pub fn iterate_for_range(
-        &self,
+    pub fn iterate_for_range<'iter, 'trans: 'iter>(
+        &'trans self,
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + '_>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -295,7 +294,7 @@ impl EdgeRangeManager {
         }
     }
 
-    pub fn iterate_for_owner(&self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + '_> {
+    pub fn iterate_for_owner<'iter, 'trans: 'iter>(&'trans self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'iter> {
         let prefix = build(&[Component::Uuid(id)]);
         let iterator = self.cf.scan(&prefix);
         self.iterate(iterator, prefix)
@@ -326,12 +325,12 @@ impl EdgeRangeManager {
 
 }
 
-pub struct VertexPropertyManager {
-    pub cf: Arc<Tree>,
+pub struct VertexPropertyManager<'tree> {
+    pub cf: &'tree Tree,
 }
 
-impl VertexPropertyManager {
-    pub fn new(cf: Arc<Tree>) -> Self {
+impl <'tree> VertexPropertyManager<'tree> {
+    pub fn new(cf: &'tree Tree) -> Self {
         VertexPropertyManager {
             cf
         }
@@ -379,12 +378,12 @@ impl VertexPropertyManager {
     }
 }
 
-pub struct EdgePropertyManager {
-    pub cf: Arc<Tree>,
+pub struct EdgePropertyManager<'tree> {
+    pub cf: &'tree Tree,
 }
 
-impl EdgePropertyManager {
-    pub fn new(cf: Arc<Tree>) -> Self {
+impl <'tree> EdgePropertyManager<'tree> {
+    pub fn new(cf: &'tree Tree) -> Self {
         EdgePropertyManager {
             cf
         }

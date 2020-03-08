@@ -57,8 +57,10 @@ macro_rules! full_test_impl {
         define_test!(should_handle_vertex_properties, $code);
         define_test!(should_not_set_invalid_vertex_properties, $code);
         define_test!(should_not_delete_invalid_vertex_properties, $code);
+        define_test!(should_get_all_vertex_properties, $code);
         define_test!(should_handle_edge_properties, $code);
         define_test!(should_not_set_invalid_edge_properties, $code);
         define_test!(should_not_delete_invalid_edge_properties, $code);
+        define_test!(should_get_all_edge_properties, $code);
     };
 }

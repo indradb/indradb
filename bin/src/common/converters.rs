@@ -68,6 +68,57 @@ pub fn to_vertex_property<'a>(
     Ok(indradb::VertexProperty::new(id, value))
 }
 
+pub fn from_vertex_properties<'a>(
+    properties: &indradb::VertexProperties,
+    builder: &mut autogen::vertex_properties::Builder<'a>,
+) {
+    from_vertex(&properties.vertex, builder.reborrow().init_vertex());
+    let mut props_builder = builder.reborrow().init_props(properties.props.len() as u32);
+    for (i, prop) in properties.props.iter().enumerate() {
+        from_named_property(prop, props_builder.reborrow().get(i as u32));
+    }
+}
+
+pub fn to_vertex_properties<'a>(
+    reader: &autogen::vertex_properties::Reader<'a>,
+) -> Result<indradb::VertexProperties, CapnpError> {
+    let vertex = map_capnp_err(to_vertex(&reader.get_vertex()?))?;
+    let named_props: Result<Vec<indradb::NamedProperty>, CapnpError> =
+        reader.get_props()?.into_iter().map(to_named_property).collect();
+    Ok(indradb::VertexProperties::new(vertex, named_props?))
+}
+
+pub fn from_named_property<'a>(property: &indradb::NamedProperty, mut builder: autogen::property::Builder<'a>) {
+    builder.set_name(&property.name);
+    builder.set_value(&property.value.to_string());
+}
+
+pub fn to_named_property(reader: autogen::property::Reader) -> Result<indradb::NamedProperty, CapnpError> {
+    let name = map_capnp_err(reader.get_name())?.to_string();
+    let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
+    Ok(indradb::NamedProperty::new(name, value))
+}
+
+pub fn from_edge_properties<'a>(
+    properties: &indradb::EdgeProperties,
+    builder: &mut autogen::edge_properties::Builder<'a>,
+) {
+    from_edge(&properties.edge, builder.reborrow().init_edge()).unwrap();
+    let mut props_builder = builder.reborrow().init_props(properties.props.len() as u32);
+    for (i, prop) in properties.props.iter().enumerate() {
+        from_named_property(prop, props_builder.reborrow().get(i as u32));
+    }
+}
+
+pub fn to_edge_properties<'a>(
+    reader: &autogen::edge_properties::Reader<'a>,
+) -> Result<indradb::EdgeProperties, CapnpError> {
+    let edge = map_capnp_err(to_edge(&reader.get_edge()?))?;
+    let named_props: Result<Vec<indradb::NamedProperty>, CapnpError> =
+        reader.get_props()?.into_iter().map(to_named_property).collect();
+    Ok(indradb::EdgeProperties::new(edge, named_props?))
+}
+
 pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: autogen::edge_property::Builder<'a>) {
     builder.set_value(&property.value.to_string());
     from_edge_key(&property.key, builder.init_key());

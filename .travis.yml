@@ -51,7 +51,7 @@ env:
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
-script: ulimit -n 1024 && ./scripts/test.py
+script: make test
 before_deploy: ./scripts/before_deploy.sh
 
 deploy:
@@ -68,12 +68,10 @@ deploy:
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
-  - chmod -R a+r $TRAVIS_BUILD_DIR/target
   - chmod -R a+r $HOME/cached-deps
 cache:
   directories:
   - $HOME/.cargo
-  - $TRAVIS_BUILD_DIR/target
   - $HOME/cached-deps
   # Increase default timeout of 3m
   timeout: 500
