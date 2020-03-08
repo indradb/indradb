@@ -8,11 +8,11 @@ use crate::models::*;
 use crate::util::next_uuid;
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
+use sled::{Db, Tree};
 use std::sync::Arc;
 use std::u64;
 use std::usize;
 use uuid::Uuid;
-use sled::{Tree, Db};
 
 fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
 where
@@ -53,7 +53,6 @@ impl<'ds> SledHolder {
             db: Arc::new(db),
         })
     }
-
 }
 
 /// A datastore that is backed by Sled.
@@ -121,7 +120,10 @@ impl SledTransaction {
         Ok(SledTransaction { holder })
     }
 
-    fn vertex_query_to_iterator<'iter, 'trans: 'iter> (&'trans self, q: VertexQuery) -> Result<Box<dyn Iterator<Item = Result<VertexItem>> + 'iter>> {
+    fn vertex_query_to_iterator<'iter, 'trans: 'iter>(
+        &'trans self,
+        q: VertexQuery,
+    ) -> Result<Box<dyn Iterator<Item = Result<VertexItem>> + 'iter>> {
         match q {
             VertexQuery::Range(q) => {
                 let vertex_manager = VertexManager::new(&self.holder);
@@ -198,7 +200,10 @@ impl SledTransaction {
         }
     }
 
-    fn edge_query_to_iterator<'iter, 'trans: 'iter>(&'trans self, q: EdgeQuery) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
+    fn edge_query_to_iterator<'iter, 'trans: 'iter>(
+        &'trans self,
+        q: EdgeQuery,
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         //Ok(Box::new(Vec::new().into_iter()))'
         match q {
             EdgeQuery::Specific(q) => {

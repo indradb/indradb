@@ -1,8 +1,8 @@
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
+use serde_json::Error as JsonError;
 #[cfg(feature = "sled-datastore")]
 use sled::Error as SledError;
-use serde_json::Error as JsonError;
 use std::result::Result as StdResult;
 
 #[derive(Debug, Fail)]

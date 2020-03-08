@@ -1,17 +1,17 @@
 use super::super::bytes::*;
 use crate::errors::Result;
 use crate::models;
+use crate::sledds::datastore::SledHolder;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use sled::{Iter as DbIterator, Tree, IVec};
-use sled::Result as SledResult;
 use serde_json;
 use serde_json::Value as JsonValue;
+use sled::Result as SledResult;
+use sled::{IVec, Iter as DbIterator, Tree};
 use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 use uuid::Uuid;
-use crate::sledds::datastore::SledHolder;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
 pub type VertexItem = (Uuid, models::Type);
@@ -21,7 +21,7 @@ pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 fn take_while_prefixed(iterator: DbIterator, prefix: Vec<u8>) -> impl Iterator<Item = SledResult<(IVec, IVec)>> {
     iterator.take_while(move |item| -> bool {
         match item {
-            Ok((k,_)) => k.starts_with(&prefix),
+            Ok((k, _)) => k.starts_with(&prefix),
             Err(_) => false,
         }
     })
@@ -32,7 +32,7 @@ pub struct VertexManager<'db: 'tree, 'tree> {
     pub cf: &'tree Tree,
 }
 
-impl <'db: 'tree, 'tree> VertexManager<'db, 'tree> {
+impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
     pub fn new(ds: &'db SledHolder) -> Self {
         VertexManager {
             holder: ds,
@@ -76,8 +76,8 @@ impl <'db: 'tree, 'tree> VertexManager<'db, 'tree> {
 
     pub fn iterate_for_range<'me, 'it>(&'me self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'me> {
         let low_key = build(&[Component::Uuid(id)]);
-        let low_key_bytes : &[u8] = low_key.as_ref();
-        let iter = self.cf.range(low_key_bytes ..);
+        let low_key_bytes: &[u8] = low_key.as_ref();
+        let iter = self.cf.range(low_key_bytes..);
         Ok(self.iterate(iter))
     }
 
@@ -139,7 +139,7 @@ pub struct EdgeManager<'db: 'tree, 'tree> {
     pub cf: &'tree Tree,
 }
 
-impl <'db, 'tree> EdgeManager<'db, 'tree> {
+impl<'db, 'tree> EdgeManager<'db, 'tree> {
     pub fn new(ds: &'db SledHolder) -> Self {
         EdgeManager {
             holder: ds,
@@ -181,7 +181,8 @@ impl <'db, 'tree> EdgeManager<'db, 'tree> {
         }
 
         let key = self.key(outbound_id, t, inbound_id);
-        self.cf.insert(key, build(&[Component::DateTime(new_update_datetime)]))?;
+        self.cf
+            .insert(key, build(&[Component::DateTime(new_update_datetime)]))?;
         edge_range_manager.set(outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(inbound_id, t, new_update_datetime, outbound_id)?;
         Ok(())
@@ -220,11 +221,9 @@ pub struct EdgeRangeManager<'tree> {
     pub cf: &'tree Tree,
 }
 
-impl <'tree>EdgeRangeManager<'tree> {
-    pub fn new<'db: 'tree> (ds: &'db SledHolder) -> Self {
-        EdgeRangeManager {
-            cf: &ds.edge_ranges,
-        }
+impl<'tree> EdgeRangeManager<'tree> {
+    pub fn new<'db: 'tree>(ds: &'db SledHolder) -> Self {
+        EdgeRangeManager { cf: &ds.edge_ranges }
     }
 
     pub fn new_reversed<'db: 'tree>(ds: &'db SledHolder) -> Self {
@@ -242,7 +241,11 @@ impl <'tree>EdgeRangeManager<'tree> {
         ])
     }
 
-    fn iterate<'it>(&self, iterator: DbIterator, prefix: Vec<u8>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'it> {
+    fn iterate<'it>(
+        &self,
+        iterator: DbIterator,
+        prefix: Vec<u8>,
+    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'it> {
         let filtered = take_while_prefixed(iterator, prefix);
         Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item?;
@@ -266,14 +269,14 @@ impl <'tree>EdgeRangeManager<'tree> {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
                 let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
                 let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
-                let low_key_bytes :&[u8] = low_key.as_ref();
-                let iterator = self.cf.range(low_key_bytes ..);
+                let low_key_bytes: &[u8] = low_key.as_ref();
+                let iterator = self.cf.range(low_key_bytes..);
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
-                let prefix_bytes :&[u8] = prefix.as_ref();
-                let iterator = self.cf.range(prefix_bytes ..);
+                let prefix_bytes: &[u8] = prefix.as_ref();
+                let iterator = self.cf.range(prefix_bytes..);
                 let mapped = self.iterate(iterator, prefix)?;
 
                 if let Some(high) = high {
@@ -296,19 +299,16 @@ impl <'tree>EdgeRangeManager<'tree> {
         }
     }
 
-    pub fn iterate_for_owner<'iter, 'trans: 'iter>(&'trans self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'iter> {
-        let prefix:Vec<u8> = build(&[Component::Uuid(id)]);
+    pub fn iterate_for_owner<'iter, 'trans: 'iter>(
+        &'trans self,
+        id: Uuid,
+    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'iter> {
+        let prefix: Vec<u8> = build(&[Component::Uuid(id)]);
         let iterator = self.cf.scan_prefix(&prefix);
         self.iterate(iterator, prefix)
     }
 
-    pub fn set(
-        &self,
-        first_id: Uuid,
-        t: &models::Type,
-        update_datetime: DateTime<Utc>,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn set(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
         self.cf.insert(&key, &[])?;
         Ok(())
@@ -324,18 +324,15 @@ impl <'tree>EdgeRangeManager<'tree> {
         self.cf.remove(&self.key(first_id, t, update_datetime, second_id))?;
         Ok(())
     }
-
 }
 
 pub struct VertexPropertyManager<'tree> {
     pub cf: &'tree Tree,
 }
 
-impl <'tree> VertexPropertyManager<'tree> {
+impl<'tree> VertexPropertyManager<'tree> {
     pub fn new(cf: &'tree Tree) -> Self {
-        VertexPropertyManager {
-            cf
-        }
+        VertexPropertyManager { cf }
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
@@ -383,11 +380,9 @@ pub struct EdgePropertyManager<'tree> {
     pub cf: &'tree Tree,
 }
 
-impl <'tree> EdgePropertyManager<'tree> {
+impl<'tree> EdgePropertyManager<'tree> {
     pub fn new(cf: &'tree Tree) -> Self {
-        EdgePropertyManager {
-            cf
-        }
+        EdgePropertyManager { cf }
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Vec<u8> {
@@ -466,13 +461,7 @@ impl <'tree> EdgePropertyManager<'tree> {
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-        name: &str,
-    ) -> Result<()> {
+    pub fn delete(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<()> {
         self.cf.remove(&self.key(outbound_id, t, inbound_id, name))?;
         Ok(())
     }
