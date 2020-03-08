@@ -2,7 +2,7 @@
 
 set -ex
 
-mkdir -p $HOME/cached-deps
+mkdir -p $HOME/cached-deps/bin
 
 if [ ! -f $HOME/cached-deps/bin/capnp ] ; then
     curl -O https://capnproto.org/capnproto-c++-0.6.1.tar.gz
@@ -12,6 +12,13 @@ if [ ! -f $HOME/cached-deps/bin/capnp ] ; then
     make -j6 check
     sudo make install
 fi
+
+if [ ! -f $HOME/cached-deps/bin/grcov ] ; then
+    curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-linux-x86_64.tar.bz2 | tar jxf -
+    mv grcov $HOME/cached-deps/bin/grcov
+fi
+
+rustup component add rustfmt
 
 ls -l $HOME/cached-deps/bin
 source ~/.cargo/env || true

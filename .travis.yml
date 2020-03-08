@@ -18,8 +18,6 @@ matrix:
     - rust: stable
       env:
       - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-      - RUSTFLAGS="-C link-dead-code"
     - os: osx
       rust: stable
       env:
@@ -30,13 +28,13 @@ matrix:
     - rust: beta
       env:
       - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
 
     # Rust nightly
     - rust: nightly
       env:
       - TARGET=x86_64-unknown-linux-gnu
-      - PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+      - RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
+      - CARGO_INCREMENTAL=0
 
   allow_failures:
     # Rust nightly
@@ -51,7 +49,7 @@ env:
     - PATH=$HOME/.local/bin:$HOME/cached-deps/bin:$PATH
 
 install: ./scripts/install.sh
-script: make test
+script: ./scripts/test.sh
 before_deploy: ./scripts/before_deploy.sh
 
 deploy:
