@@ -8,6 +8,7 @@ use chrono::offset::Utc;
 use chrono::Timelike;
 use std::collections::HashSet;
 use uuid::Uuid;
+use serde_json::Value as JsonValue;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
@@ -120,8 +121,12 @@ pub fn should_delete_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let edge_t = models::Type::new("test_edge_type").unwrap();
     let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     trans.create_edge(&key).unwrap();
-    trans.delete_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
-    let e = trans.get_edges(SpecificEdgeQuery::single(key)).unwrap();
+
+    let q = SpecificEdgeQuery::single(key);
+    trans.set_edge_properties(q.clone().property("foo"), &JsonValue::Bool(true)).unwrap();
+    
+    trans.delete_edges(q.clone()).unwrap();
+    let e = trans.get_edges(q).unwrap();
     assert_eq!(e.len(), 0);
 }
 
