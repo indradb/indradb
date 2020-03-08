@@ -154,7 +154,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range[0], v);
 }
 
-pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
+pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(datastore: &mut D) {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(outbound_id);
@@ -164,6 +164,21 @@ pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
     let t = models::Type::new("test_edge_type").unwrap();
     let count = trans
         .get_edge_count(outbound_id, Some(&t), models::EdgeDirection::Outbound)
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(datastore: &mut D) {
+    let (_, inbound_ids) = create_edges(datastore);
+    let inbound_id = inbound_ids[0];
+    let trans = datastore.transaction().unwrap();
+    let q = SpecificVertexQuery::single(inbound_id);
+    trans.delete_vertices(q.clone()).unwrap();
+    let v = trans.get_vertices(q).unwrap();
+    assert_eq!(v.len(), 0);
+    let t = models::Type::new("test_edge_type").unwrap();
+    let count = trans
+        .get_edge_count(inbound_id, Some(&t), models::EdgeDirection::Inbound)
         .unwrap();
     assert_eq!(count, 0);
 }

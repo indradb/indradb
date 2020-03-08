@@ -30,7 +30,8 @@ macro_rules! full_test_impl {
         define_test!(should_get_vertices, $code);
         define_test!(should_get_vertices_piped, $code);
         define_test!(should_get_a_vertex_count, $code);
-        define_test!(should_delete_a_valid_vertex, $code);
+        define_test!(should_delete_a_valid_outbound_vertex, $code);
+        define_test!(should_delete_a_valid_inbound_vertex, $code);
         define_test!(should_not_delete_an_invalid_vertex, $code);
 
         // Edges
