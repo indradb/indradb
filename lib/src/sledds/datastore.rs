@@ -28,12 +28,12 @@ where
 /// The meat of a Sled datastore
 pub struct SledHolder {
     pub(crate) db: Arc<Db>,
-    pub(crate) vertices: Arc<Tree>,
-    pub(crate) edges: Arc<Tree>,
-    pub(crate) edge_ranges: Arc<Tree>,
-    pub(crate) reversed_edge_ranges: Arc<Tree>,
-    pub(crate) vertex_properties: Arc<Tree>,
-    pub(crate) edge_properties: Arc<Tree>,
+    pub(crate) vertices: Tree,
+    pub(crate) edges: Tree,
+    pub(crate) edge_ranges: Tree,
+    pub(crate) reversed_edge_ranges: Tree,
+    pub(crate) vertex_properties: Tree,
+    pub(crate) edge_properties: Tree,
 }
 
 impl<'ds> SledHolder {
@@ -42,7 +42,7 @@ impl<'ds> SledHolder {
     /// # Arguments
     /// * `path` - The file path to the Sled database.
     pub fn new(path: &str) -> Result<SledHolder> {
-        let db = Db::start_default(path)?;
+        let db = sled::open(path)?;
         Ok(SledHolder {
             vertices: db.open_tree("vertices")?,
             edges: db.open_tree("edges")?,
