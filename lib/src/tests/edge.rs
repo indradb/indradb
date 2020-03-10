@@ -6,6 +6,7 @@ use super::util::{create_edge_from, create_edges, create_time_range_queryable_ed
 use crate::models;
 use chrono::offset::Utc;
 use chrono::Timelike;
+use serde_json::Value as JsonValue;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -120,8 +121,14 @@ pub fn should_delete_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let edge_t = models::Type::new("test_edge_type").unwrap();
     let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     trans.create_edge(&key).unwrap();
-    trans.delete_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
-    let e = trans.get_edges(SpecificEdgeQuery::single(key)).unwrap();
+
+    let q = SpecificEdgeQuery::single(key);
+    trans
+        .set_edge_properties(q.clone().property("foo"), &JsonValue::Bool(true))
+        .unwrap();
+
+    trans.delete_edges(q.clone()).unwrap();
+    let e = trans.get_edges(q).unwrap();
     assert_eq!(e.len(), 0);
 }
 
