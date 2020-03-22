@@ -201,7 +201,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
             let mut res = res.get().init_result(edges.len() as u32);
 
             for (i, edge) in edges.into_iter().enumerate() {
-                converters::from_edge(&edge, res.reborrow().get(i as u32))?;
+                converters::from_edge(&edge, res.reborrow().get(i as u32));
             }
 
             Ok(())

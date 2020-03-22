@@ -1,4 +1,4 @@
-@0xa24c698a359c7c15;
+@0xbb7b3bc05534f26d;
 
 using Uuid = Data;
 using Type = Text;

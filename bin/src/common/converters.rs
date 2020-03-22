@@ -88,7 +88,7 @@ pub fn from_edge_properties<'a>(
     properties: &indradb::EdgeProperties,
     builder: &mut autogen::edge_properties::Builder<'a>,
 ) {
-    from_edge(&properties.edge, builder.reborrow().init_edge()).unwrap();
+    from_edge(&properties.edge, builder.reborrow().init_edge());
     let mut props_builder = builder.reborrow().init_props(properties.props.len() as u32);
     for (i, prop) in properties.props.iter().enumerate() {
         from_named_property(prop, props_builder.reborrow().get(i as u32));
@@ -286,7 +286,7 @@ pub fn from_bulk_insert_items<'a>(
                 from_vertex(vertex, builder.get_vertex()?);
             }
             indradb::BulkInsertItem::Edge(edge) => {
-                let mut builder = builder.init_edge();
+                let builder = builder.init_edge();
                 from_edge(edge, builder.get_edge()?);
             }
             indradb::BulkInsertItem::VertexProperty(id, name, value) => {
