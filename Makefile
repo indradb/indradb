@@ -11,7 +11,7 @@ bench:
 	cd bin && cargo +nightly bench --features=bench-suite $(TEST_NAME)
 
 fuzz:
-	cd lib && cargo fuzz run
+	cd lib && cargo +nightly fuzz run compare
 
 clippy:
 	cargo clippy
