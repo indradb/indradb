@@ -1,5 +1,6 @@
 use super::types::Type;
-use util::generate_uuid_v1;
+use crate::util::generate_uuid_v1;
+use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
 /// A vertex.
@@ -42,6 +43,12 @@ impl Vertex {
 impl PartialEq for Vertex {
     fn eq(&self, other: &Vertex) -> bool {
         self.id == other.id
+    }
+}
+
+impl Hash for Vertex {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 

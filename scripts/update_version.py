@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import re
@@ -55,9 +55,7 @@ def main():
     run(["git", "push", "origin", "master"])
     run(["git", "push", "origin", new_version_str])
 
-    run(["cargo", "package"], cwd="lib")
     run(["cargo", "publish"], cwd="lib")
-    run(["cargo", "package"], cwd="bin")
     run(["cargo", "publish"], cwd="bin")
 
 if __name__ == "__main__":

@@ -1,13 +1,14 @@
+use std::io::Cursor;
+use std::ops::Deref;
+use std::u8;
+
 use super::bytes::*;
-use errors::Result;
-use models;
+use crate::errors::Result;
+use crate::models;
+
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use serde_json;
 use serde_json::Value as JsonValue;
-use std::io::Cursor;
-use std::ops::Deref;
-use std::sync::Arc;
-use std::u8;
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
@@ -15,20 +16,13 @@ pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, Uuid);
 pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
-fn take_while_prefixed(iterator: DBIterator, prefix: Vec<u8>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> {
-    iterator.take_while(move |item| -> bool {
-        let (ref k, _) = *item;
-        k.starts_with(&prefix)
-    })
+pub struct VertexManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
 }
 
-pub struct VertexManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
-}
-
-impl VertexManager {
-    pub fn new(db: Arc<DB>) -> Self {
+impl<'a> VertexManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
         VertexManager {
             cf: db.cf_handle("vertices:v1").unwrap(),
             db,
@@ -53,7 +47,7 @@ impl VertexManager {
         }
     }
 
-    fn iterate(&self, iterator: DBIterator) -> Result<impl Iterator<Item = Result<VertexItem>>> {
+    fn iterate(&'a self, iterator: DBIterator<'a>) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
         Ok(iterator.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
 
@@ -69,7 +63,7 @@ impl VertexManager {
         }))
     }
 
-    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>>> {
+    pub fn iterate_for_range(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
         let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
@@ -86,7 +80,7 @@ impl VertexManager {
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id))?;
 
-        let vertex_property_manager = VertexPropertyManager::new(self.db.clone());
+        let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
             vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name[..])?;
@@ -122,22 +116,26 @@ impl VertexManager {
 
         Ok(())
     }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+    }
 }
 
-pub struct EdgeRangeManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
+pub struct EdgeRangeManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
 }
 
-impl EdgeRangeManager {
-    pub fn new(db: Arc<DB>) -> Self {
+impl<'a> EdgeRangeManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("edge_ranges:v1").unwrap(),
             db,
         }
     }
 
-    pub fn new_reversed(db: Arc<DB>) -> Self {
+    pub fn new_reversed(db: &'a DB) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("reversed_edge_ranges:v1").unwrap(),
             db,
@@ -152,8 +150,15 @@ impl EdgeRangeManager {
         ])
     }
 
-    fn iterate(&self, iterator: DBIterator, prefix: Vec<u8>) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
-        let filtered = take_while_prefixed(iterator, prefix);
+    fn iterate(
+        &'a self,
+        iterator: DBIterator<'a>,
+        prefix: Vec<u8>,
+    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
+        let filtered = iterator.take_while(move |item| -> bool {
+            let (ref k, _) = *item;
+            k.starts_with(&prefix)
+        });
 
         Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
@@ -166,29 +171,31 @@ impl EdgeRangeManager {
     }
 
     pub fn iterate_for_range(
-        &self,
+        &'a self,
         id: Uuid,
         t: Option<&models::Type>,
-    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
                 let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
+                let low_key = build(&[Component::Uuid(id), Component::Type(t)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-                Ok(self.iterate(iterator, prefix)?)
+                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+                Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-                Ok(self.iterate(iterator, prefix)?)
+                let mapped = self.iterate(iterator, prefix)?;
+                Ok(Box::new(mapped))
             }
         }
     }
 
-    pub fn iterate_for_owner(&self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>>> {
+    pub fn iterate_for_owner(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
         let prefix = build(&[Component::Uuid(id)]);
         let iterator = self
             .db
@@ -222,15 +229,19 @@ impl EdgeRangeManager {
         batch.delete_cf(self.cf, &self.key(first_id, t, second_id))?;
         Ok(())
     }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+    }
 }
 
-pub struct VertexPropertyManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
+pub struct VertexPropertyManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
 }
 
-impl VertexPropertyManager {
-    pub fn new(db: Arc<DB>) -> Self {
+impl<'a> VertexPropertyManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
         VertexPropertyManager {
             cf: db.cf_handle("vertex_properties:v1").unwrap(),
             db,
@@ -241,12 +252,20 @@ impl VertexPropertyManager {
         build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>>> {
+    pub fn iterate_for_owner(
+        &'a self,
+        vertex_id: Uuid,
+    ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
         let prefix = build(&[Component::Uuid(vertex_id)]);
+
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-        let filtered = take_while_prefixed(iterator, prefix);
+
+        let filtered = iterator.take_while(move |item| -> bool {
+            let (ref k, _) = *item;
+            k.starts_with(&prefix)
+        });
 
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item;
@@ -279,68 +298,72 @@ impl VertexPropertyManager {
         batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
         Ok(())
     }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+    }
 }
 
-pub struct EdgePropertyManager {
-    pub db: Arc<DB>,
-    pub cf: ColumnFamily,
+pub struct EdgePropertyManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
 }
 
-impl EdgePropertyManager {
-    pub fn new(db: Arc<DB>) -> Self {
+impl<'a> EdgePropertyManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
         EdgePropertyManager {
             cf: db.cf_handle("edge_properties:v1").unwrap(),
             db,
         }
     }
 
-    fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Vec<u8> {
+    fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Vec<u8> {
         build(&[
-            Component::Uuid(outbound_id),
+            Component::Uuid(out_id),
             Component::Type(t),
-            Component::Uuid(inbound_id),
+            Component::Uuid(in_id),
             Component::UnsizedString(name),
         ])
     }
 
-    pub fn iterate_for_owner<'a>(
-        &self,
-        outbound_id: Uuid,
+    pub fn iterate_for_owner(
+        &'a self,
+        out_id: Uuid,
         t: &'a models::Type,
-        inbound_id: Uuid,
+        in_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build(&[
-            Component::Uuid(outbound_id),
-            Component::Type(t),
-            Component::Uuid(inbound_id),
-        ]);
+        let prefix = build(&[Component::Uuid(out_id), Component::Type(t), Component::Uuid(in_id)]);
 
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-        let filtered = take_while_prefixed(iterator, prefix);
+
+        let filtered = iterator.take_while(move |item| -> bool {
+            let (ref k, _) = *item;
+            k.starts_with(&prefix)
+        });
 
         let mapped = filtered.map(move |item| -> Result<EdgePropertyItem> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_outbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_outbound_id, outbound_id);
+            let edge_property_out_id = read_uuid(&mut cursor);
+            debug_assert_eq!(edge_property_out_id, out_id);
 
             let edge_property_t = read_type(&mut cursor);
             debug_assert_eq!(&edge_property_t, t);
 
-            let edge_property_inbound_id = read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_inbound_id, inbound_id);
+            let edge_property_in_id = read_uuid(&mut cursor);
+            debug_assert_eq!(edge_property_in_id, in_id);
 
             let edge_property_name = read_unsized_string(&mut cursor);
 
             let value = serde_json::from_slice(&v)?;
             Ok((
                 (
-                    edge_property_outbound_id,
+                    edge_property_out_id,
                     edge_property_t,
-                    edge_property_inbound_id,
+                    edge_property_in_id,
                     edge_property_name,
                 ),
                 value,
@@ -350,8 +373,8 @@ impl EdgePropertyManager {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
-        let key = self.key(outbound_id, t, inbound_id, name);
+    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+        let key = self.key(out_id, t, in_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
@@ -362,13 +385,13 @@ impl EdgePropertyManager {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
-        outbound_id: Uuid,
+        out_id: Uuid,
         t: &models::Type,
-        inbound_id: Uuid,
+        in_id: Uuid,
         name: &str,
         value: &JsonValue,
     ) -> Result<()> {
-        let key = self.key(outbound_id, t, inbound_id, name);
+        let key = self.key(out_id, t, in_id, name);
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json)?;
         Ok(())
@@ -377,12 +400,16 @@ impl EdgePropertyManager {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        outbound_id: Uuid,
+        out_id: Uuid,
         t: &models::Type,
-        inbound_id: Uuid,
+        in_id: Uuid,
         name: &str,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(outbound_id, t, inbound_id, name))?;
+        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name))?;
         Ok(())
+    }
+
+    pub fn compact(&self) {
+        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
     }
 }

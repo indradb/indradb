@@ -1,5 +1,5 @@
+use crate::errors::{ValidationError, ValidationResult};
 use core::str::FromStr;
-use errors::{ValidationError, ValidationResult};
 use regex::Regex;
 
 lazy_static! {
@@ -27,14 +27,23 @@ impl Type {
         let s = s.into();
 
         if s.len() > 255 {
-            Err("Type is too long".into())
+            Err(ValidationError::ValueTooLong)
         } else if !TYPE_VALIDATOR.is_match(&s[..]) {
-            Err("Invalid type".into())
+            Err(ValidationError::InvalidValue)
         } else {
             Ok(Type(s))
         }
     }
 
+    /// Constructs a new type, without any checks that the name is valid.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The type, which must be less than 256 characters long.
+    ///
+    /// # Safety
+    /// This function is marked unsafe because there's no verification that
+    /// the type name is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
         Type(s.into())
     }
@@ -57,8 +66,8 @@ impl FromStr for Type {
 #[cfg(test)]
 mod tests {
     use super::Type;
+    use crate::util::generate_random_secret;
     use std::str::FromStr;
-    use util::generate_random_secret;
 
     #[test]
     fn should_fail_for_invalid_types() {

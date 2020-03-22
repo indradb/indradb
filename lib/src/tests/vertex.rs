@@ -1,6 +1,7 @@
 use super::super::{Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
 use super::util::{create_edge_from, create_edges};
-use models;
+use crate::models;
+use serde_json::Value as JsonValue;
 use std::collections::HashSet;
 use std::u32;
 use uuid::Uuid;
@@ -134,7 +135,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .t(edge_t.clone())
         .inbound(1)
         .t(models::Type::new("test_inbound_vertex_type").unwrap());
-    let range = trans.get_vertices(query_2.clone()).unwrap();
+    let range = trans.get_vertices(query_2).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -144,7 +145,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .t(edge_t.clone())
         .inbound(1)
         .t(models::Type::new("foo").unwrap());
-    let range = trans.get_vertices(query_3.clone()).unwrap();
+    let range = trans.get_vertices(query_3).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
@@ -154,16 +155,34 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
     assert_eq!(range[0], v);
 }
 
-pub fn should_delete_a_valid_vertex<D: Datastore>(datastore: &mut D) {
+pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(datastore: &mut D) {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(outbound_id);
+    trans
+        .set_vertex_properties(q.clone().property("foo"), &JsonValue::Bool(true))
+        .unwrap();
     trans.delete_vertices(q.clone()).unwrap();
     let v = trans.get_vertices(q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Type::new("test_edge_type").unwrap();
     let count = trans
         .get_edge_count(outbound_id, Some(&t), models::EdgeDirection::Outbound)
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(datastore: &mut D) {
+    let (_, inbound_ids) = create_edges(datastore);
+    let inbound_id = inbound_ids[0];
+    let trans = datastore.transaction().unwrap();
+    let q = SpecificVertexQuery::single(inbound_id);
+    trans.delete_vertices(q.clone()).unwrap();
+    let v = trans.get_vertices(q).unwrap();
+    assert_eq!(v.len(), 0);
+    let t = models::Type::new("test_edge_type").unwrap();
+    let count = trans
+        .get_edge_count(inbound_id, Some(&t), models::EdgeDirection::Inbound)
         .unwrap();
     assert_eq!(count, 0);
 }
@@ -195,7 +214,7 @@ where
         models::Vertex::new(t.clone()),
         models::Vertex::new(t.clone()),
         models::Vertex::new(t.clone()),
-        models::Vertex::new(t.clone()),
+        models::Vertex::new(t),
     ];
 
     for vertex in &vertices {

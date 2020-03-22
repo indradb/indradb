@@ -1,4 +1,4 @@
-@0xc656e2e7cbc5b02e;
+@0xa24c698a359c7c15;
 
 using Uuid = Data;
 using Type = Text;
@@ -73,9 +73,19 @@ struct VertexProperty {
     value @1 :Json;
 }
 
+struct VertexProperties {
+    vertex @0 :Vertex;
+    props @1 :List(Property);
+}
+
 struct EdgeProperty {
     edge @0 :Edge;
     value @1 :Json;
+}
+
+struct EdgeProperties {
+    edge @0 :Edge;
+    props @1 :List(Property);
 }
 
 struct BulkInsertItem {
@@ -209,4 +219,17 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The property name.
     deleteEdgeProperties @14 (q :EdgePropertyQuery) -> (result :Void);
+
+    # Gets vertexes and all properties for each vertex.
+    #
+    # Arguments
+    # * `q` - The query to run.
+    getAllVertexProperties @15 (q :VertexQuery) -> (result :List(VertexProperties));
+
+    # Gets edges and all properties for each edge.
+    #
+    # Arguments
+    # * `q` - The query to run.
+    getAllEdgeProperties @16 (q :EdgeQuery) -> (result :List(EdgeProperties));
+
 }

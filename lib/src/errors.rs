@@ -1,20 +1,42 @@
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
+use std::result::Result as StdResult;
 
-error_chain!{
-    types {
-        Error, ErrorKind, ResultExt, Result;
-    }
+#[derive(Debug, Fail)]
+pub enum Error {
+    #[fail(display = "json error: {}", inner)]
+    Json { inner: JsonError },
+    #[cfg(feature = "rocksdb-datastore")]
+    #[fail(display = "rocksdb error: {}", inner)]
+    Rocksdb { inner: RocksDbError },
+    #[fail(display = "UUID already taken")]
+    UuidTaken,
+}
 
-    foreign_links {
-        Json(JsonError);
-        RocksDb(RocksDbError) #[cfg(feature = "rocksdb-datastore")];
+impl From<JsonError> for Error {
+    fn from(err: JsonError) -> Self {
+        Error::Json { inner: err }
     }
 }
 
-error_chain! {
-    types {
-        ValidationError, ValidationErrorKind, ValidationResultExt, ValidationResult;
+#[cfg(feature = "rocksdb-datastore")]
+impl From<RocksDbError> for Error {
+    fn from(err: RocksDbError) -> Self {
+        Error::Rocksdb { inner: err }
     }
 }
+
+pub type Result<T> = StdResult<T, Error>;
+
+#[derive(Debug, Fail)]
+pub enum ValidationError {
+    #[fail(display = "invalid value")]
+    InvalidValue,
+    #[fail(display = "value too long")]
+    ValueTooLong,
+    #[fail(display = "could not increment the UUID")]
+    CannotIncrementUuid,
+}
+
+pub type ValidationResult<T> = StdResult<T, ValidationError>;

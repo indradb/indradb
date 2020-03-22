@@ -1,12 +1,13 @@
 //! Utility functions.
 
+use crate::errors::{ValidationError, ValidationResult};
+use rand::prelude::*;
+use rand::rngs::OsRng;
+use std::env;
+use uuid::v1::{Context, Timestamp};
+use uuid::Uuid;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use errors::ValidationResult;
-use rand::{OsRng, Rng};
-use std::env;
-use uuid::v1::Context;
-use uuid::Uuid;
 
 const TEMP_PATH_RANDOM_PART_LENGTH: usize = 8;
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
@@ -30,14 +31,8 @@ pub fn generate_temporary_path() -> String {
 /// to help ensure generated UUIDs are unique.
 pub fn generate_uuid_v1() -> Uuid {
     let now = Utc::now();
-
-    Uuid::new_v1(
-        &*CONTEXT,
-        now.timestamp() as u64,
-        now.timestamp_subsec_nanos(),
-        &NODE_ID,
-    )
-    .expect("Expected to be able to generate a UUID")
+    let ts = Timestamp::from_unix(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos());
+    Uuid::new_v1(ts, &NODE_ID).expect("Expected to be able to generate a UUID")
 }
 
 /// Generates a securely random string consisting of letters (uppercase and
@@ -45,10 +40,11 @@ pub fn generate_uuid_v1() -> Uuid {
 pub fn generate_random_secret(count: usize) -> String {
     let mut chars = vec![];
     let options = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let mut rng = OsRng::new().unwrap();
 
     for _ in 0..count {
-        let c: u8 = *rng.choose(options).unwrap();
+        // Don't use `choose_multiple`, because it shuffles the list (i.e.
+        // prevents duplicates)
+        let c: u8 = *options.choose(&mut OsRng).unwrap();
         chars.push(c);
     }
 
@@ -76,7 +72,7 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
         }
     }
 
-    Err("Could not increment the UUID".into())
+    Err(ValidationError::CannotIncrementUuid)
 }
 
 /// Gets the number of nanoseconds since unix epoch for a given datetime.
@@ -115,8 +111,8 @@ mod tests {
 
     #[test]
     fn should_generate_random_secret() {
-        let secret = generate_random_secret(8);
-        assert!(Regex::new(r"[a-zA-Z0-9]{8}").unwrap().is_match(&secret[..]));
+        let secret = generate_random_secret(62);
+        assert!(Regex::new(r"[a-zA-Z0-9]{62}").unwrap().is_match(&secret[..]));
     }
 
     #[test]

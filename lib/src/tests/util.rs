@@ -1,5 +1,5 @@
 use super::super::{Datastore, Transaction};
-use models;
+use crate::models;
 use uuid::Uuid;
 
 pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid {
