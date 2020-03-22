@@ -7,9 +7,8 @@ use super::managers::*;
 use crate::errors::Result;
 use crate::util::next_uuid;
 use crate::{
-    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
-    VertexQuery,
+    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery,
+    NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use rocksdb::{DBCompactionStyle, MemtableFactory, Options, WriteBatch, WriteOptions, DB};
@@ -192,16 +191,8 @@ fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
                     let (edge_range_first_id, edge_range_t, edge_range_second_id) = item?;
 
                     edges.push(match q.direction {
-                        EdgeDirection::Outbound => (
-                            edge_range_first_id,
-                            edge_range_t,
-                            edge_range_second_id,
-                        ),
-                        EdgeDirection::Inbound => (
-                            edge_range_second_id,
-                            edge_range_t,
-                            edge_range_first_id,
-                        ),
+                        EdgeDirection::Outbound => (edge_range_first_id, edge_range_t, edge_range_second_id),
+                        EdgeDirection::Inbound => (edge_range_second_id, edge_range_t, edge_range_first_id),
                     });
 
                     if edges.len() == q.limit as usize {
@@ -438,13 +429,15 @@ impl Transaction for RocksdbTransaction {
             reversed_edge_range_manager.delete(&mut batch, inbound_id, &t, outbound_id)?;
 
             for item in edge_property_manager.iterate_for_owner(outbound_id, &t, inbound_id)? {
-                let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) = item?;
+                let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) =
+                    item?;
                 edge_property_manager.delete(
                     &mut batch,
                     edge_property_outbound_id,
                     &edge_property_t,
                     edge_property_inbound_id,
-                    &edge_property_name)?;
+                    &edge_property_name,
+                )?;
             }
         }
 

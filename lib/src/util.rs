@@ -1,13 +1,13 @@
 //! Utility functions.
 
 use crate::errors::{ValidationError, ValidationResult};
+use chrono::offset::Utc;
+use chrono::DateTime;
 use rand::prelude::*;
 use rand::rngs::OsRng;
 use std::env;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
-use chrono::offset::Utc;
-use chrono::DateTime;
 
 const TEMP_PATH_RANDOM_PART_LENGTH: usize = 8;
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];

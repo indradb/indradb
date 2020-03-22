@@ -234,11 +234,8 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query:
 pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
     match reader.which()? {
         autogen::edge_query::Specific(params) => {
-            let edges: Result<Vec<indradb::Edge>, CapnpError> = params
-                .get_edges()?
-                .into_iter()
-                .map(|reader| to_edge(&reader))
-                .collect();
+            let edges: Result<Vec<indradb::Edge>, CapnpError> =
+                params.get_edges()?.into_iter().map(|reader| to_edge(&reader)).collect();
             Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(edges?)))
         }
         autogen::edge_query::Pipe(params) => {

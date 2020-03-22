@@ -90,21 +90,12 @@ impl<'a> VertexManager<'a> {
         for item in edge_range_manager.iterate_for_owner(id)? {
             let (edge_range_outbound_id, edge_range_t, edge_range_inbound_id) = item?;
             debug_assert_eq!(edge_range_outbound_id, id);
-            edge_range_manager.delete(
-                &mut batch,
-                edge_range_outbound_id,
-                &edge_range_t,
-                edge_range_inbound_id,
-            )?;
+            edge_range_manager.delete(&mut batch, edge_range_outbound_id, &edge_range_t, edge_range_inbound_id)?;
         }
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db.clone());
         for item in reversed_edge_range_manager.iterate_for_owner(id)? {
-            let (
-                reversed_edge_range_inbound_id,
-                reversed_edge_range_t,
-                reversed_edge_range_outbound_id,
-            ) = item?;
+            let (reversed_edge_range_inbound_id, reversed_edge_range_t, reversed_edge_range_outbound_id) = item?;
             debug_assert_eq!(reversed_edge_range_inbound_id, id);
             reversed_edge_range_manager.delete(
                 &mut batch,
@@ -207,25 +198,13 @@ impl<'a> EdgeRangeManager<'a> {
         Ok(self.db.get_cf(self.cf, &self.key(first_id, t, second_id))?.is_some())
     }
 
-    pub fn set(
-        &self,
-        batch: &mut WriteBatch,
-        first_id: Uuid,
-        t: &models::Type,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<()> {
         let key = self.key(first_id, t, second_id);
         batch.put_cf(self.cf, &key, &[])?;
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        batch: &mut WriteBatch,
-        first_id: Uuid,
-        t: &models::Type,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(first_id, t, second_id))?;
         Ok(())
     }

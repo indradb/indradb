@@ -1,6 +1,5 @@
 use super::super::{
-    Datastore, Edge, EdgeDirection, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
-    VertexQueryExt,
+    Datastore, Edge, EdgeDirection, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, VertexQueryExt,
 };
 use super::util::{create_edge_from, create_edges};
 use crate::models;

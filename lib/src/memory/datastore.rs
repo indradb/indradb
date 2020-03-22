@@ -86,7 +86,7 @@ impl InternalMemoryDatastore {
                         .edges
                         .into_iter()
                         .filter_map(move |edge| self.edges.get(&edge))
-                        .cloned()
+                        .cloned(),
                 );
 
                 Ok(iter)
