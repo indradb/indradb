@@ -1,12 +1,15 @@
-use super::edges::EdgeKey;
-use super::vertices::Vertex;
+use crate::{Edge, Type};
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum BulkInsertItem {
-    Vertex(Vertex),
-    Edge(EdgeKey),
-    VertexProperty(Uuid, String, JsonValue),
-    EdgeProperty(EdgeKey, String, JsonValue),
+    Vertex(Type),
+    Edge(Edge),
+    VertexProperty(u64, String, JsonValue),
+    EdgeProperty(Edge, String, JsonValue),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BulkInsertResult {
+    pub id_range: Option<(u64, u64)>,
 }

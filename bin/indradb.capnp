@@ -1,23 +1,17 @@
-@0xa24c698a359c7c15;
+@0x9f3d0bfdd2b7ebff;
 
-using Timestamp = UInt64;
-using Uuid = Data;
+using VertexId = UInt64;
 using Type = Text;
 using Json = Text;
 
 struct Edge {
-    key @0 :EdgeKey;
-    createdDatetime @1 :Timestamp;
-}
-
-struct EdgeKey {
-    outboundId @0 :Uuid;
+    outboundId @0 :VertexId;
     t @1 :Type;
-    inboundId @2 :Uuid;
+    inboundId @2 :VertexId;
 }
 
 struct Vertex {
-    id @0 :Uuid;
+    id @0 :VertexId;
     t @1 :Type;
 }
 
@@ -26,10 +20,10 @@ struct VertexQuery {
         range :group {
             limit @0 :UInt32;
             t @1 :Type;
-            startId @2 :Uuid;
+            startId @2 :VertexId;
         }
         specific :group {
-            ids @3 :List(Uuid);
+            ids @3 :List(VertexId);
         }
         pipe :group {
             inner @4 :EdgeQuery;
@@ -48,15 +42,13 @@ struct VertexPropertyQuery {
 struct EdgeQuery {
     union {
         specific :group {
-            keys @0 :List(EdgeKey);
+            edges @0 :List(Edge);
         }
         pipe :group {
             inner @1 :VertexQuery;
             direction @2 :EdgeDirection;
             t @3 :Type;
-            high @4 :Timestamp;
-            low @5 :Timestamp;
-            limit @6 :UInt32;
+            limit @4 :UInt32;
         }
     }
 }
@@ -77,7 +69,7 @@ struct Property {
 }
 
 struct VertexProperty {
-    id @0 :Uuid;
+    id @0 :VertexId;
     value @1 :Json;
 }
 
@@ -87,7 +79,7 @@ struct VertexProperties {
 }
 
 struct EdgeProperty {
-    key @0 :EdgeKey;
+    edge @0 :Edge;
     value @1 :Json;
 }
 
@@ -99,82 +91,76 @@ struct EdgeProperties {
 struct BulkInsertItem {
     union {
         vertex :group {
-            vertex @0 :Vertex;
+            t @0 :Type;
         }
         edge :group {
-            key @1 :EdgeKey;
+            edge @1 :Edge;
         }
         vertexProperty :group {
-            id @2 :Uuid;
+            id @2 :VertexId;
             name @3 :Text;
             value @4 :Json;
         }
         edgeProperty :group {
-            key @5 :EdgeKey;
+            edge @5 :Edge;
             name @6 :Text;
             value @7 :Json;
         }
     }
 }
 
+struct BulkInsertResult {
+    startId @0 :VertexId;
+    endId @1 :VertexId;
+}
+
 interface Service {
     ping @0 () -> (ready :Bool);
     transaction @1 () -> (transaction :Transaction);
-    bulkInsert @2 (items :List(BulkInsertItem)) -> (result :Void);
+    bulkInsert @2 (items :List(BulkInsertItem)) -> (result :BulkInsertResult);
 }
 
 interface Transaction {
-    # Creates a new vertex. Returns whether the vertex was successfully
-    # created - if this is false, it's because a vertex with the same UUID
-    # already exists.
-    #
-    # Arguments
-    # * `vertex`: The vertex to create.
-    createVertex @0 (vertex :Vertex) -> (result :Bool);
-
-    # Creates a new vertex with just a type specification. As opposed to
-    # `createVertex`, this is used when you do not want to manually specify
-    # the vertex's UUID. Returns the new vertex's UUID.
+    # Creates a new vertex. Returns the new vertex's ID.
     #
     # Arguments
     # * `t`: The type of the vertex to create.
-    createVertexFromType @1 (t :Type) -> (result :Uuid);
+    createVertex @0 (t :Type) -> (result :VertexId);
 
     # Gets a range of vertices specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    getVertices @2 (q :VertexQuery) -> (result :List(Vertex));
+    getVertices @1 (q :VertexQuery) -> (result :List(Vertex));
 
     # Deletes existing vertices specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    deleteVertices @3 (q :VertexQuery) -> (result :Void);
+    deleteVertices @2 (q :VertexQuery) -> (result :Void);
 
     # Gets the number of vertices in the datastore..
-    getVertexCount @4 () -> (result :UInt64);
+    getVertexCount @3 () -> (result :UInt64);
 
-    # Creates a new edge. If the edge already exists, this will update it
-    # with a new update datetime. Returns whether the edge was successfully
+    # Creates a new edge. Returns whether the edge was successfully
     # created - if this is false, it's because one of the specified vertices
     # is missing.
     #
     # Arguments
-    # * `key`: The edge to create.
-    createEdge @5 (key :EdgeKey) -> (result :Bool);
+    # * `edge`: The edge to create.
+    createEdge @4 (edge :Edge) -> (result :Bool);
 
     # Gets a range of edges specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    getEdges @6 (q :EdgeQuery) -> (result :List(Edge));
+    getEdges @5 (q :EdgeQuery) -> (result :List(Edge));
 
     # Deletes a set of edges specified by a query.
     #
     # Arguments
     # * `q` - The query to run.
-    deleteEdges @7 (q :EdgeQuery) -> (result :Void);
+    deleteEdges @6 (q :EdgeQuery) -> (result :Void);
 
     # Gets the number of edges associated with a vertex.
     #
@@ -182,14 +168,14 @@ interface Transaction {
     # * `id` - The id of the vertex.
     # * `t` - Only get the count for a specified edge type.
     # * `direction`: The direction of edges to get.
-    getEdgeCount @8 (id :Uuid, t :Type, direction :EdgeDirection) -> (result :UInt64);
+    getEdgeCount @7 (id :VertexId, t :Type, direction :EdgeDirection) -> (result :UInt64);
 
     # Gets vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    getVertexProperties @9 (q :VertexPropertyQuery) -> (result :List(VertexProperty));
+    getVertexProperties @8 (q :VertexPropertyQuery) -> (result :List(VertexProperty));
 
     # Sets vertex properties.
     #
@@ -197,21 +183,21 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The property name.
     # * `value` - The property value.
-    setVertexProperties @10 (q :VertexPropertyQuery, value :Json) -> (result :Void);
+    setVertexProperties @9 (q :VertexPropertyQuery, value :Json) -> (result :Void);
 
     # Deletes vertex properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    deleteVertexProperties @11 (q :VertexPropertyQuery) -> (result :Void);
+    deleteVertexProperties @10 (q :VertexPropertyQuery) -> (result :Void);
 
     # Gets edge properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    getEdgeProperties @12 (q :EdgePropertyQuery) -> (result :List(EdgeProperty));
+    getEdgeProperties @11 (q :EdgePropertyQuery) -> (result :List(EdgeProperty));
 
     # Sets edge properties.
     #
@@ -219,25 +205,25 @@ interface Transaction {
     # * `q` - The query to run.
     # * `name` - The property name.
     # * `value` - The property value.
-    setEdgeProperties @13 (q :EdgePropertyQuery, value :Json) -> (result :Void);
+    setEdgeProperties @12 (q :EdgePropertyQuery, value :Json) -> (result :Void);
 
     # Deletes edge properties.
     #
     # Arguments
     # * `q` - The query to run.
     # * `name` - The property name.
-    deleteEdgeProperties @14 (q :EdgePropertyQuery) -> (result :Void);
+    deleteEdgeProperties @13 (q :EdgePropertyQuery) -> (result :Void);
 
     # Gets vertexes and all properties for each vertex.
     #
     # Arguments
     # * `q` - The query to run.
-    getAllVertexProperties @15 (q :VertexQuery) -> (result :List(VertexProperties));
+    getAllVertexProperties @14 (q :VertexQuery) -> (result :List(VertexProperties));
 
     # Gets edges and all properties for each edge.
     #
     # Arguments
     # * `q` - The query to run.
-    getAllEdgeProperties @16 (q :EdgeQuery) -> (result :List(EdgeProperties));
+    getAllEdgeProperties @15 (q :EdgeQuery) -> (result :List(EdgeProperties));
 
 }

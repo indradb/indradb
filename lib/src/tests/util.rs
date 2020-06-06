@@ -1,64 +1,26 @@
 use super::super::{Datastore, Transaction};
 use crate::models;
-use chrono::offset::Utc;
-use chrono::DateTime;
-use uuid::Uuid;
 
-pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: Uuid) -> Uuid {
+pub fn create_edge_from<T: Transaction>(trans: &T, outbound_id: u64) -> u64 {
     let inbound_vertex_t = models::Type::new("test_inbound_vertex_type").unwrap();
-    let inbound_v = models::Vertex::new(inbound_vertex_t);
-    trans.create_vertex(&inbound_v).unwrap();
+    let inbound_id = trans.create_vertex(&inbound_vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_id, edge_t, inbound_v.id);
-    trans.create_edge(&key).unwrap();
-    inbound_v.id
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
+    trans.create_edge(&edge).unwrap();
+    inbound_id
 }
 
-pub fn create_edges<D: Datastore>(datastore: &mut D) -> (Uuid, [Uuid; 5]) {
+pub fn create_edges<D: Datastore>(datastore: &mut D) -> (u64, [u64; 5]) {
     let trans = datastore.transaction().unwrap();
     let outbound_vertex_t = models::Type::new("test_outbound_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(outbound_vertex_t);
-    trans.create_vertex(&outbound_v).unwrap();
-    let inbound_ids: [Uuid; 5] = [
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
+    let outbound_id = trans.create_vertex(&outbound_vertex_t).unwrap();
+    let inbound_ids: [u64; 5] = [
+        create_edge_from(&trans, outbound_id),
+        create_edge_from(&trans, outbound_id),
+        create_edge_from(&trans, outbound_id),
+        create_edge_from(&trans, outbound_id),
+        create_edge_from(&trans, outbound_id),
     ];
 
-    (outbound_v.id, inbound_ids)
-}
-
-pub fn create_time_range_queryable_edges<D: Datastore>(
-    datastore: &mut D,
-) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5]) {
-    let trans = datastore.transaction().unwrap();
-    let outbound_vertex_t = models::Type::new("test_outbound_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(outbound_vertex_t);
-    trans.create_vertex(&outbound_v).unwrap();
-
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-
-    let start_time = Utc::now();
-    let inbound_ids = [
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-        create_edge_from(&trans, outbound_v.id),
-    ];
-    let end_time = Utc::now();
-
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-    create_edge_from(&trans, outbound_v.id);
-
-    (outbound_v.id, start_time, end_time, inbound_ids)
+    (outbound_id, inbound_ids)
 }

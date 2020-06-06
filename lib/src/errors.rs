@@ -10,8 +10,6 @@ pub enum Error {
     #[cfg(feature = "rocksdb-datastore")]
     #[fail(display = "rocksdb error: {}", inner)]
     Rocksdb { inner: RocksDbError },
-    #[fail(display = "UUID already taken")]
-    UuidTaken,
 }
 
 impl From<JsonError> for Error {
@@ -35,8 +33,6 @@ pub enum ValidationError {
     InvalidValue,
     #[fail(display = "value too long")]
     ValueTooLong,
-    #[fail(display = "could not increment the UUID")]
-    CannotIncrementUuid,
 }
 
 pub type ValidationResult<T> = StdResult<T, ValidationError>;

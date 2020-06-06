@@ -1,10 +1,7 @@
-use super::edges::EdgeKey;
+use super::edges::Edge;
 use super::types::Type;
 use crate::errors;
-use chrono::offset::Utc;
-use chrono::DateTime;
 use std::str::FromStr;
-use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -108,7 +105,7 @@ pub struct RangeVertexQuery {
     pub t: Option<Type>,
 
     /// Sets the lowest vertex ID to return.
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<u64>,
 }
 
 impl VertexQueryExt for RangeVertexQuery {}
@@ -142,7 +139,7 @@ impl RangeVertexQuery {
     ///
     /// # Arguments
     /// * `start_id` - The lowest vertex ID to return.
-    pub fn start_id(self, start_id: Uuid) -> Self {
+    pub fn start_id(self, start_id: u64) -> Self {
         Self {
             limit: self.limit,
             t: self.t,
@@ -155,7 +152,7 @@ impl RangeVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<u64>,
 }
 
 impl VertexQueryExt for SpecificVertexQuery {}
@@ -166,7 +163,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `ids` - The IDs of the vertices to get.
-    pub fn new(ids: Vec<Uuid>) -> Self {
+    pub fn new(ids: Vec<u64>) -> Self {
         Self { ids }
     }
 
@@ -174,7 +171,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `id` - The ID of the vertex to get.
-    pub fn single(id: Uuid) -> Self {
+    pub fn single(id: u64) -> Self {
         Self { ids: vec![id] }
     }
 }
@@ -308,8 +305,8 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
-    /// The keys of the edges to get.
-    pub keys: Vec<EdgeKey>,
+    /// The edges to get.
+    pub edges: Vec<Edge>,
 }
 
 impl EdgeQueryExt for SpecificEdgeQuery {}
@@ -320,16 +317,16 @@ impl SpecificEdgeQuery {
     ///
     /// Arguments
     /// * `keys` - The keys of the edges to get.
-    pub fn new(keys: Vec<EdgeKey>) -> Self {
-        Self { keys }
+    pub fn new(edges: Vec<Edge>) -> Self {
+        Self { edges }
     }
 
     /// Creates a new edge query for getting a single edge.
     ///
     /// Arguments
     /// * `key` - The key of the edge to get.
-    pub fn single(key: EdgeKey) -> Self {
-        Self { keys: vec![key] }
+    pub fn single(edge: Edge) -> Self {
+        Self { edges: vec![edge] }
     }
 }
 
@@ -350,12 +347,6 @@ pub struct PipeEdgeQuery {
 
     /// Filters the type of edges returned.
     pub t: Option<Type>,
-
-    /// Specifies the newest update datetime for returned edges.
-    pub high: Option<DateTime<Utc>>,
-
-    /// Specifies the oldest update datetime for returned edges.
-    pub low: Option<DateTime<Utc>>,
 }
 
 impl EdgeQueryExt for PipeEdgeQuery {}
@@ -374,8 +365,6 @@ impl PipeEdgeQuery {
             direction,
             limit,
             t: None,
-            high: None,
-            low: None,
         }
     }
 
@@ -389,38 +378,6 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
-            high: self.high,
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `high` - The newest update datetime for the edges returned.
-    pub fn high(self, high: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: Some(high),
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `low` - The oldest update datetime for the edges returned.
-    pub fn low(self, low: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: self.high,
-            low: Some(low),
         }
     }
 }

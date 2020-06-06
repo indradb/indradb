@@ -21,6 +21,7 @@ macro_rules! full_bench_impl {
         define_bench!(bench_create_edge, $code);
         define_bench!(bench_get_edges, $code);
         define_bench!(bench_get_edge_count, $code);
-        define_bench!(bench_bulk_insert, $code);
+        define_bench!(bench_bulk_insert_vertices, $code);
+        define_bench!(bench_bulk_insert_edges, $code);
     };
 }

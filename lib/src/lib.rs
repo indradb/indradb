@@ -11,7 +11,6 @@
 #[cfg(feature = "bench-suite")]
 extern crate test;
 
-extern crate chrono;
 extern crate core;
 #[macro_use]
 extern crate failure;
@@ -20,7 +19,6 @@ extern crate lazy_static;
 extern crate rand;
 extern crate regex;
 extern crate serde_json;
-extern crate uuid;
 
 #[cfg(feature = "rocksdb-datastore")]
 extern crate byteorder;

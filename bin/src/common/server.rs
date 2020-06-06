@@ -18,7 +18,6 @@ use futures::task::LocalSpawn;
 use indradb;
 use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Type};
 use serde_json;
-use uuid::Uuid;
 
 struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {
     datastore: Arc<D>,
@@ -56,8 +55,14 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
         let items = pry!(converters::to_bulk_insert_items(&cnp_items));
 
         Promise::from_future(async move {
-            spawn_blocking(move || converters::map_capnp_err(datastore.bulk_insert(items))).await?;
-            res.get().set_result(());
+            let result = spawn_blocking(move || converters::map_capnp_err(datastore.bulk_insert(items))).await?;
+
+            if let Some((start_id, end_id)) = result.id_range {
+                let mut res = res.get().init_result();
+                res.set_start_id(start_id);
+                res.set_end_id(end_id);
+            }
+
             Ok(())
         })
     }
@@ -92,28 +97,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         mut res: autogen::transaction::CreateVertexResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
-        let cnp_vertex = pry!(pry!(req.get()).get_vertex());
-        let vertex = pry!(converters::to_vertex(&cnp_vertex));
-
-        Promise::from_future(async move {
-            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_vertex(&vertex))).await?;
-            res.get().set_result(created);
-            Ok(())
-        })
-    }
-
-    fn create_vertex_from_type(
-        &mut self,
-        req: autogen::transaction::CreateVertexFromTypeParams,
-        mut res: autogen::transaction::CreateVertexFromTypeResults,
-    ) -> Promise<(), CapnpError> {
-        let trans = self.trans.clone();
         let cnp_t = pry!(pry!(req.get()).get_t());
         let t = pry!(converters::map_capnp_err(indradb::Type::new(cnp_t)));
 
         Promise::from_future(async move {
-            let id = spawn_blocking(move || converters::map_capnp_err(trans.create_vertex_from_type(t))).await?;
-            res.get().set_result(id.as_bytes());
+            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_vertex(&t))).await?;
+            res.get().set_result(created);
             Ok(())
         })
     }
@@ -176,11 +165,11 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
         mut res: autogen::transaction::CreateEdgeResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
-        let cnp_edge_key = pry!(pry!(req.get()).get_key());
-        let edge_key = pry!(converters::to_edge_key(&cnp_edge_key));
+        let cnp_edge = pry!(pry!(req.get()).get_edge());
+        let edge = pry!(converters::to_edge(&cnp_edge));
 
         Promise::from_future(async move {
-            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_edge(&edge_key))).await?;
+            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_edge(&edge))).await?;
             res.get().set_result(created);
             Ok(())
         })
@@ -201,7 +190,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
             let mut res = res.get().init_result(edges.len() as u32);
 
             for (i, edge) in edges.into_iter().enumerate() {
-                converters::from_edge(&edge, res.reborrow().get(i as u32))?;
+                converters::from_edge(&edge, res.reborrow().get(i as u32));
             }
 
             Ok(())
@@ -231,7 +220,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
-        let id = pry!(converters::map_capnp_err(Uuid::from_slice(pry!(params.get_id()))));
+        let id = params.get_id();
         let t = match pry!(params.get_t()) {
             "" => None,
             value => Some(pry!(converters::map_capnp_err(Type::new(value)))),

@@ -15,7 +15,6 @@ use futures::prelude::*;
 use futures::task::LocalSpawn;
 use indradb;
 use serde_json::value::Value as JsonValue;
-use uuid::Uuid;
 
 async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::service::Client, CapnpError> {
     let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
@@ -71,30 +70,37 @@ impl ClientDatastore {
 }
 
 impl ClientDatastore {
-    async fn async_bulk_insert<I>(&self, items: I) -> Result<(), CapnpError>
+    async fn async_bulk_insert<I>(&self, items: I) -> Result<indradb::BulkInsertResult, CapnpError>
     where
         I: Iterator<Item = indradb::BulkInsertItem>,
     {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
         let mut req = self.client.bulk_insert_request();
-
         converters::from_bulk_insert_items(&items, req.get().init_items(items.len() as u32)).unwrap();
-
         let res = req.send().promise.await?;
-        res.get()?;
-        Ok(())
+        let reader = res.get()?.get_result()?;
+        Ok(indradb::BulkInsertResult {
+            id_range: if reader.get_start_id() == 0 {
+                None
+            } else {
+                Some((reader.get_start_id(), reader.get_end_id()))
+            }
+        })
     }
 }
 
 impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
-    fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
+    fn bulk_insert<I>(&self, items: I) -> Result<indradb::BulkInsertResult, indradb::Error>
     where
         I: Iterator<Item = indradb::BulkInsertItem>,
     {
-        self.exec.borrow_mut().run_until(self.async_bulk_insert(items)).unwrap();
-        Ok(())
+        Ok(self
+            .exec
+            .borrow_mut()
+            .run_until(self.async_bulk_insert(items))
+            .unwrap())
     }
 
     fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
@@ -118,21 +124,13 @@ impl ClientTransaction {
 }
 
 impl ClientTransaction {
-    async fn async_create_vertex(&self, v: &indradb::Vertex) -> Result<bool, CapnpError> {
+    async fn async_create_vertex(&self, t: &indradb::Type) -> Result<u64, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.create_vertex_request();
-        converters::from_vertex(v, req.get().init_vertex());
-        let res = req.send().promise.await?;
-        Ok(res.get()?.get_result())
-    }
-
-    async fn async_create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.create_vertex_from_type_request();
         req.get().set_t(&t.0);
         let res = req.send().promise.await?;
-        let bytes = res.get()?.get_result()?;
-        Ok(Uuid::from_slice(bytes).unwrap())
+        let id = res.get()?.get_result();
+        Ok(id)
     }
 
     async fn async_get_vertices<Q: Into<indradb::VertexQuery>>(
@@ -165,10 +163,10 @@ impl ClientTransaction {
         Ok(res.get()?.get_result())
     }
 
-    async fn async_create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, CapnpError> {
+    async fn async_create_edge(&self, e: &indradb::Edge) -> Result<bool, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.create_edge_request();
-        converters::from_edge_key(e, req.get().init_key());
+        converters::from_edge(e, req.get().init_edge());
         let res = req.send().promise.await?;
         Ok(res.get()?.get_result())
     }
@@ -196,13 +194,13 @@ impl ClientTransaction {
 
     async fn async_get_edge_count(
         &self,
-        id: Uuid,
+        id: u64,
         t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.get_edge_count_request();
-        req.get().set_id(id.as_bytes());
+        req.get().set_id(id);
 
         if let Some(t) = t {
             req.get().set_t(&t.0);
@@ -334,16 +332,8 @@ impl ClientTransaction {
 }
 
 impl indradb::Transaction for ClientTransaction {
-    fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        Ok(self.exec.borrow_mut().run_until(self.async_create_vertex(v)).unwrap())
-    }
-
-    fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
-        Ok(self
-            .exec
-            .borrow_mut()
-            .run_until(self.async_create_vertex_from_type(t))
-            .unwrap())
+    fn create_vertex(&self, t: &indradb::Type) -> Result<u64, indradb::Error> {
+        Ok(self.exec.borrow_mut().run_until(self.async_create_vertex(t)).unwrap())
     }
 
     fn get_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<Vec<indradb::Vertex>, indradb::Error> {
@@ -359,7 +349,7 @@ impl indradb::Transaction for ClientTransaction {
         Ok(self.exec.borrow_mut().run_until(self.async_get_vertex_count()).unwrap())
     }
 
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
+    fn create_edge(&self, e: &indradb::Edge) -> Result<bool, indradb::Error> {
         Ok(self.exec.borrow_mut().run_until(self.async_create_edge(e)).unwrap())
     }
 
@@ -374,7 +364,7 @@ impl indradb::Transaction for ClientTransaction {
 
     fn get_edge_count(
         &self,
-        id: Uuid,
+        id: u64,
         t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {

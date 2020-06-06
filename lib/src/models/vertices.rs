@@ -1,7 +1,5 @@
 use super::types::Type;
-use crate::util::generate_uuid_v1;
 use std::hash::{Hash, Hasher};
-use uuid::Uuid;
 
 /// A vertex.
 ///
@@ -10,32 +8,20 @@ use uuid::Uuid;
 #[derive(Clone, Debug)]
 pub struct Vertex {
     /// The id of the vertex.
-    pub id: Uuid,
+    pub id: u64,
 
     /// The type of the vertex.
     pub t: Type,
 }
 
 impl Vertex {
-    /// Creates a new vertex with an ID generated via UUIDv1. These vertex IDs
-    /// are trivially guessable and consequently less secure, but likely index
-    /// better depending on the datastore. This method is suggested unless you
-    /// need vertex IDs to not be trivially guessable.
-    ///
-    /// # Arguments
-    ///
-    /// * `t` - The type of the vertex.
-    pub fn new(t: Type) -> Self {
-        Self::with_id(generate_uuid_v1(), t)
-    }
-
-    /// Creates a new vertex with a specified id.
+    /// Creates a new vertex.
     ///
     /// # Arguments
     ///
     /// * `id` - The id of the vertex.
     /// * `t` - The type of the vertex.
-    pub fn with_id(id: Uuid, t: Type) -> Self {
+    pub fn new(id: u64, t: Type) -> Self {
         Vertex { id, t }
     }
 }

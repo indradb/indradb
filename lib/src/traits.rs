@@ -1,9 +1,8 @@
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::models;
 use crate::models::{EdgeQueryExt, VertexQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
-use uuid::Uuid;
 
 /// Specifies a datastore implementation.
 ///
@@ -20,16 +19,21 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `items`: The items to insert.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
+    fn bulk_insert<I>(&self, items: I) -> Result<models::BulkInsertResult>
     where
         I: Iterator<Item = models::BulkInsertItem>,
     {
         let trans = self.transaction()?;
+        let mut id_range = None;
 
         for item in items {
             match item {
-                models::BulkInsertItem::Vertex(vertex) => {
-                    trans.create_vertex(&vertex)?;
+                models::BulkInsertItem::Vertex(t) => {
+                    let id = trans.create_vertex(&t)?;
+                    id_range = match id_range {
+                        Some((start_id, _)) => Some((start_id, id)),
+                        None => Some((id, id)),
+                    };
                 }
                 models::BulkInsertItem::Edge(edge_key) => {
                     trans.create_edge(&edge_key)?;
@@ -45,7 +49,7 @@ pub trait Datastore {
             }
         }
 
-        Ok(())
+        Ok(models::BulkInsertResult { id_range })
     }
 }
 
@@ -58,29 +62,11 @@ pub trait Datastore {
 /// should be designed to not fail on commit; i.e. errors should occur when a
 /// method is actually called instead.
 pub trait Transaction {
-    /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
-    /// already exists.
-    ///
-    /// # Arguments
-    /// * `vertex`: The vertex to create.
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool>;
-
-    /// Creates a new vertex with just a type specification. As opposed to
-    /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
+    /// Creates a new vertex. Returns the new vertex's ID.
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
-        let v = models::Vertex::new(t);
-
-        if !self.create_vertex(&v)? {
-            Err(Error::UuidTaken)
-        } else {
-            Ok(v.id)
-        }
-    }
+    fn create_vertex(&self, t: &models::Type) -> Result<u64>;
 
     /// Gets a range of vertices specified by a query.
     ///
@@ -97,14 +83,13 @@ pub trait Transaction {
     /// Gets the number of vertices in the datastore..
     fn get_vertex_count(&self) -> Result<u64>;
 
-    /// Creates a new edge. If the edge already exists, this will update it
-    /// with a new update datetime. Returns whether the edge was successfully
+    /// Creates a new edge. Returns whether the edge was successfully
     /// created - if this is false, it's because one of the specified vertices
     /// is missing.
     ///
     /// # Arguments
     /// * `key`: The edge to create.
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool>;
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool>;
 
     /// Gets a range of edges specified by a query.
     ///
@@ -124,7 +109,7 @@ pub trait Transaction {
     /// * `id` - The id of the vertex.
     /// * `t` - Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
-    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
+    fn get_edge_count(&self, id: u64, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets vertex properties.
     ///
