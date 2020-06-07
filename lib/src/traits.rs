@@ -28,19 +28,21 @@ pub trait Datastore {
 
         for item in items {
             match item {
-                models::BulkInsertItem::Vertex(vertex) => {
+                models::BulkInsertItem::Vertex(vertex, properties) => {
                     trans.create_vertex(&vertex)?;
+
+                    for property in properties.into_iter() {
+                        let query = models::SpecificVertexQuery::single(vertex.id).property(property.name);
+                        trans.set_vertex_properties(query, &property.value)?;
+                    }
                 }
-                models::BulkInsertItem::Edge(edge_key) => {
+                models::BulkInsertItem::Edge(edge_key, properties) => {
                     trans.create_edge(&edge_key)?;
-                }
-                models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
-                    trans.set_vertex_properties(query, &value)?;
-                }
-                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    trans.set_edge_properties(query, &value)?;
+
+                    for property in properties.into_iter() {
+                        let query = models::SpecificEdgeQuery::single(edge_key.clone()).property(property.name);
+                        trans.set_edge_properties(query, &property.value)?;
+                    }
                 }
             }
         }

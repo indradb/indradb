@@ -296,21 +296,23 @@ impl Datastore for RocksdbDatastore {
 
         for item in items {
             match item {
-                BulkInsertItem::Vertex(ref vertex) => {
-                    vertex_manager.create(&mut batch, vertex)?;
+                BulkInsertItem::Vertex(vertex, properties) => {
+                    vertex_manager.create(&mut batch, &vertex)?;
                     compact_vertices = true;
+
+                    for property in properties.into_iter() {
+                        vertex_property_manager.set(&mut batch, vertex.id, &property.name, &property.value)?;
+                        compact_vertex_properties = true;
+                    }
                 }
-                BulkInsertItem::Edge(ref key) => {
+                BulkInsertItem::Edge(key, properties) => {
                     edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
                     compact_edges = true;
-                }
-                BulkInsertItem::VertexProperty(id, ref name, ref value) => {
-                    vertex_property_manager.set(&mut batch, id, name, value)?;
-                    compact_vertex_properties = true;
-                }
-                BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
-                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
-                    compact_edge_properties = true;
+
+                    for property in properties.into_iter() {
+                        edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, &property.name, &property.value)?;
+                        compact_edge_properties = true;
+                    }
                 }
             }
         }

@@ -100,19 +100,11 @@ struct BulkInsertItem {
     union {
         vertex :group {
             vertex @0 :Vertex;
+            properties @1 :List(Property);
         }
         edge :group {
-            key @1 :EdgeKey;
-        }
-        vertexProperty :group {
-            id @2 :Uuid;
-            name @3 :Text;
-            value @4 :Json;
-        }
-        edgeProperty :group {
-            key @5 :EdgeKey;
-            name @6 :Text;
-            value @7 :Json;
+            key @2 :EdgeKey;
+            properties @3 :List(Property);
         }
     }
 }

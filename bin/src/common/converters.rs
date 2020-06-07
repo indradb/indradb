@@ -1,13 +1,15 @@
 //! Converts between cnp and native IndraDB models
 
+use std::fmt::Display;
+use std::vec::IntoIter;
+
 use crate::autogen;
+
 use capnp;
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
 use indradb;
 use serde_json;
-use std::fmt::Display;
-use std::vec::IntoIter;
 use uuid::Uuid;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
@@ -312,30 +314,29 @@ pub fn from_bulk_insert_items<'a>(
         let builder = builder.reborrow().get(i as u32);
 
         match item {
-            indradb::BulkInsertItem::Vertex(vertex) => {
-                let builder = builder.init_vertex();
-                from_vertex(vertex, builder.get_vertex()?);
+            indradb::BulkInsertItem::Vertex(vertex, properties) => {
+                let mut builder = builder.init_vertex();
+                from_vertex(vertex, builder.reborrow().get_vertex()?);
+                from_properties(properties, builder.reborrow().init_properties(properties.len() as u32));
             }
-            indradb::BulkInsertItem::Edge(edge) => {
-                let builder = builder.init_edge();
-                from_edge_key(edge, builder.get_key()?);
-            }
-            indradb::BulkInsertItem::VertexProperty(id, name, value) => {
-                let mut builder = builder.init_vertex_property();
-                builder.set_id(id.as_bytes());
-                builder.set_name(name);
-                builder.set_value(&value.to_string());
-            }
-            indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
-                let mut builder = builder.init_edge_property();
-                builder.set_name(name);
-                builder.set_value(&value.to_string());
-                from_edge_key(key, builder.get_key()?);
+            indradb::BulkInsertItem::Edge(edge, properties) => {
+                let mut builder = builder.init_edge();
+                from_edge_key(edge, builder.reborrow().get_key()?);
+                from_properties(properties, builder.reborrow().init_properties(properties.len() as u32));
             }
         }
     }
 
     Ok(())
+}
+
+fn from_properties<'a>(
+    properties: &[indradb::NamedProperty],
+    mut builder: capnp::struct_list::Builder<'a, autogen::property::Owned>,
+) {
+    for (i, prop) in properties.iter().enumerate() {
+        from_named_property(prop, builder.reborrow().get(i as u32));
+    }
 }
 
 pub fn to_bulk_insert_items<'a>(
@@ -346,23 +347,13 @@ pub fn to_bulk_insert_items<'a>(
         .map(|item| match item.which()? {
             autogen::bulk_insert_item::Vertex(params) => {
                 let vertex = to_vertex(&params.get_vertex()?)?;
-                Ok(indradb::BulkInsertItem::Vertex(vertex))
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_properties()?.into_iter().map(to_named_property).collect();
+                Ok(indradb::BulkInsertItem::Vertex(vertex, props?))
             }
             autogen::bulk_insert_item::Edge(params) => {
                 let edge_key = to_edge_key(&params.get_key()?)?;
-                Ok(indradb::BulkInsertItem::Edge(edge_key))
-            }
-            autogen::bulk_insert_item::VertexProperty(params) => {
-                let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
-                let name = params.get_name()?.to_string();
-                let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
-                Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
-            }
-            autogen::bulk_insert_item::EdgeProperty(params) => {
-                let key = to_edge_key(&params.get_key()?)?;
-                let name = params.get_name()?.to_string();
-                let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
-                Ok(indradb::BulkInsertItem::EdgeProperty(key, name, value))
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_properties()?.into_iter().map(to_named_property).collect();
+                Ok(indradb::BulkInsertItem::Edge(edge_key, props?))
             }
         })
         .collect();
