@@ -5,7 +5,7 @@ use super::managers::*;
 use crate::errors::Result;
 use crate::models;
 use crate::models::*;
-use crate::util::next_uuid;
+use crate::util::{next_uuid, remove_nones_from_iterator};
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use sled::{Db, Tree};
@@ -13,17 +13,6 @@ use std::sync::Arc;
 use std::u64;
 use std::usize;
 use uuid::Uuid;
-
-fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
-where
-    I: Iterator<Item = Result<Option<T>>>,
-{
-    iter.filter_map(|item| match item {
-        Err(err) => Some(Err(err)),
-        Ok(Some(value)) => Some(Ok(value)),
-        _ => None,
-    })
-}
 
 /// The meat of a Sled datastore
 pub struct SledHolder {
