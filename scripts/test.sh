@@ -3,7 +3,7 @@ set -ex
 
 make test
 
-if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
     cargo fmt -- --check
 fi
 
