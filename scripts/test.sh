@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
-cargo build
-cargo test
+
+make test
 
 if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
     cargo fmt -- --check
