@@ -18,7 +18,9 @@ if [ ! -f $HOME/cached-deps/bin/grcov ] ; then
     mv grcov $HOME/cached-deps/bin/grcov
 fi
 
-rustup component add rustfmt
+if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+    rustup component add rustfmt
+fi
 
 ls -l $HOME/cached-deps/bin
 source ~/.cargo/env || true
