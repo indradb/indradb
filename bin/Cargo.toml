@@ -41,7 +41,7 @@ chrono = "0.4.10"
 [dependencies.indradb-lib]
 path = "../lib"
 version = "1.0.3"
-features = ["test-suite", "rocksdb-datastore"]
+features = ["test-suite", "rocksdb-datastore", "sled-datastore"]
 
 [build-dependencies]
 capnpc = "0.11.0"

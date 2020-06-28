@@ -27,6 +27,9 @@ extern crate byteorder;
 #[cfg(feature = "rocksdb-datastore")]
 extern crate rocksdb;
 
+#[cfg(feature = "sled-datastore")]
+extern crate sled;
+
 #[cfg(feature = "test-suite")]
 #[macro_use]
 pub mod tests;
@@ -46,10 +49,12 @@ pub use crate::memory::{MemoryDatastore, MemoryTransaction};
 pub use crate::models::*;
 pub use crate::traits::*;
 
-#[cfg(feature = "rocksdb-datastore")]
+#[cfg(any(feature = "rocksdb-datastore", feature = "sled-datastore"))]
 mod bytes;
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
+#[cfg(feature = "sled-datastore")]
+mod sledds;
 
 #[cfg(feature = "rocksdb-datastore")]
 pub use crate::rdb::{RocksdbDatastore, RocksdbTransaction};
