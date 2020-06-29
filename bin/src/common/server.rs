@@ -14,9 +14,7 @@ use capnp_rpc::{RpcSystem, Server};
 use futures::executor::LocalSpawner;
 use futures::prelude::*;
 use futures::task::LocalSpawn;
-use indradb;
 use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Type};
-use serde_json;
 use uuid::Uuid;
 
 struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {

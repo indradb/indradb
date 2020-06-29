@@ -13,7 +13,6 @@ use capnp_rpc::{twoparty, RpcSystem};
 use futures::executor::{LocalPool, LocalSpawner};
 use futures::prelude::*;
 use futures::task::LocalSpawn;
-use indradb;
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 
