@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate capnp_rpc;
 #[cfg(test)]
-
 #[cfg(test)]
 #[macro_use]
 extern crate indradb;

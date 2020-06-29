@@ -25,9 +25,7 @@ fn main() -> Result<(), errors::Error> {
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
-    let listener = exec.run_until(async {
-        TcpListener::bind(&addr).await
-    })?;
+    let listener = exec.run_until(async { TcpListener::bind(&addr).await })?;
     println!("{}", listener.local_addr()?);
 
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
