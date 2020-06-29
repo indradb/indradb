@@ -6,6 +6,7 @@ mod errors;
 use std::env;
 use std::net::ToSocketAddrs;
 
+use async_std::net::TcpListener;
 use futures::executor::LocalPool;
 
 const DEFAULT_PORT: u16 = 27615;
@@ -24,6 +25,8 @@ fn main() -> Result<(), errors::Error> {
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
+    let listener = exec.run_until(async { TcpListener::bind(&addr).await })?;
+    println!("{}", listener.local_addr()?);
 
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
 
@@ -41,11 +44,11 @@ fn main() -> Result<(), errors::Error> {
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else {
         Err(errors::Error::CouldNotParseDatabaseURL)

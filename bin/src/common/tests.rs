@@ -1,45 +1,40 @@
 use std::net::ToSocketAddrs;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
 
 use crate::client_datastore::ClientDatastore;
 use crate::server;
 
+use async_std::net::TcpListener;
 use futures::executor::LocalPool;
 use futures::prelude::*;
 use futures::task::LocalSpawn;
 use indradb::util::generate_temporary_path;
 use indradb::{Datastore, Transaction};
 
-const START_PORT: u16 = 27616;
-
-lazy_static! {
-    static ref CURRENT_PORT: AtomicUsize = AtomicUsize::new(START_PORT as usize);
-}
-
 full_test_impl!({
-    let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
-    let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
+    let mut exec = LocalPool::new();
 
-    let exec = LocalPool::new();
-    let spawner = exec.spawner();
-    let f = server::run(addr, indradb::MemoryDatastore::default(), exec.spawner());
-    spawner
+    let addr = "127.0.0.1:0".to_socket_addrs().unwrap().next().unwrap();
+    let listener = exec.run_until(async { TcpListener::bind(&addr).await }).unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    let f = server::run(listener, indradb::MemoryDatastore::default(), exec.spawner());
+    exec.spawner()
         .spawn_local_obj(Box::pin(f.map_err(|err| panic!(err)).map(|_| ())).into())
         .unwrap();
-    ClientDatastore::new(port as u16, exec)
+    ClientDatastore::new(port, exec)
 });
 
 #[test]
 fn should_create_rocksdb_datastore() {
-    let port = (*CURRENT_PORT).fetch_add(1, Ordering::SeqCst);
-    let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
+    let mut exec = LocalPool::new();
 
-    let exec = LocalPool::new();
-    let spawner = exec.spawner();
+    let addr = "127.0.0.1:0".to_socket_addrs().unwrap().next().unwrap();
+    let listener = exec.run_until(async { TcpListener::bind(&addr).await }).unwrap();
+    let port = listener.local_addr().unwrap().port();
+
     let datastore = indradb::RocksdbDatastore::new(&generate_temporary_path(), None, false).unwrap();
-    let f = server::run(addr, datastore, exec.spawner());
-    spawner
+    let f = server::run(listener, datastore, exec.spawner());
+    exec.spawner()
         .spawn_local_obj(Box::pin(f.map_err(|err| panic!(err)).map(|_| ())).into())
         .unwrap();
 
@@ -47,6 +42,5 @@ fn should_create_rocksdb_datastore() {
     let datastore = ClientDatastore::new(port as u16, exec);
     let trans = datastore.transaction().unwrap();
     let count = trans.get_vertex_count().unwrap();
-
     assert_eq!(count, 0);
 }
