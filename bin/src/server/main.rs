@@ -4,24 +4,12 @@ extern crate failure;
 mod errors;
 
 use std::env;
-use std::net::{SocketAddr, ToSocketAddrs};
-
-use indradb::{Datastore, Transaction};
+use std::net::ToSocketAddrs;
 
 use async_std::net::TcpListener;
-use async_std::io::Error as AsyncIoError;
-use futures::executor::{LocalPool, LocalSpawner};
+use futures::executor::LocalPool;
 
 const DEFAULT_PORT: u16 = 27615;
-
-async fn run<D, T>(addr: SocketAddr, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
-where
-    D: Datastore<Trans = T> + Send + Sync + 'static,
-    T: Transaction + Send + Sync + 'static,
-{
-    let listener = TcpListener::bind(&addr).await?;
-    common::server::run(listener, datastore, spawner).await
-}
 
 fn main() -> Result<(), errors::Error> {
     let mut exec = LocalPool::new();
@@ -37,6 +25,10 @@ fn main() -> Result<(), errors::Error> {
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
+    let listener = exec.run_until(async {
+        TcpListener::bind(&addr).await
+    })?;
+    println!("{}", listener.local_addr()?);
 
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
 
@@ -54,11 +46,11 @@ fn main() -> Result<(), errors::Error> {
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        exec.run_until(run(addr, datastore, exec.spawner()))?;
+        exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        exec.run_until(run(addr, datastore, exec.spawner()))?;
+        exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else {
         Err(errors::Error::CouldNotParseDatabaseURL)
