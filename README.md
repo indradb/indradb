@@ -14,7 +14,7 @@ IndraDB consists of a server and an underlying library. Most users would use the
 * Support for queries with multiple hops.
 * Cross-language support via Cap'n Proto, or direct embedding as a library.
 * Support for JSON-based properties tied to vertices and edges.
-* Pluggable underlying datastores, with built-in support for in-memory-only and rocksdb. [Postgresql is available separately](https://github.com/indradb/postgres).
+* Pluggable underlying datastores, with built-in support for in-memory-only, rocksdb and Sled. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust!
 
 IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for properties.
@@ -40,6 +40,12 @@ datastore, do not set the `DATABASE_URL`, or just set it to `memory://`. e.g.:
 
 If you want to use the rocksdb-backed datastore, set the `DATABASE_URL`
 environment variable; e.g.: `DATABASE_URL=rocksdb://database.rdb indradb`.
+
+### Sled
+
+If you want to a datastore based on [Sled](http://sled.rs/), set the `DATABASE_URL`
+environment variable; e.g.: `DATABASE_URL=sled://sled_dir indradb`. If `sled_dir`
+does not exist, it will be created.
 
 ## Environment variables
 
