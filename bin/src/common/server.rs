@@ -1,7 +1,6 @@
 use crate::autogen;
 use crate::converters;
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_std::io::Error as AsyncIoError;
@@ -411,15 +410,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-pub async fn run<D, T>(addr: SocketAddr, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
+pub async fn run<D, T>(listener: TcpListener, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
 {
-    let listener = TcpListener::bind(&addr).await?;
-
     let service = autogen::service::ToClient::new(Service::new(datastore)).into_client::<Server>();
-
     let mut incoming = listener.incoming();
 
     while let Some(socket) = incoming.next().await {

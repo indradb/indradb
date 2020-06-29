@@ -4,11 +4,24 @@ extern crate failure;
 mod errors;
 
 use std::env;
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 
-use futures::executor::LocalPool;
+use indradb::{Datastore, Transaction};
+
+use async_std::net::TcpListener;
+use async_std::io::Error as AsyncIoError;
+use futures::executor::{LocalPool, LocalSpawner};
 
 const DEFAULT_PORT: u16 = 27615;
+
+async fn run<D, T>(addr: SocketAddr, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
+where
+    D: Datastore<Trans = T> + Send + Sync + 'static,
+    T: Transaction + Send + Sync + 'static,
+{
+    let listener = TcpListener::bind(&addr).await?;
+    common::server::run(listener, datastore, spawner).await
+}
 
 fn main() -> Result<(), errors::Error> {
     let mut exec = LocalPool::new();
@@ -41,11 +54,11 @@ fn main() -> Result<(), errors::Error> {
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        exec.run_until(run(addr, datastore, exec.spawner()))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        exec.run_until(run(addr, datastore, exec.spawner()))?;
         Ok(())
     } else {
         Err(errors::Error::CouldNotParseDatabaseURL)
