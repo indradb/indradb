@@ -7,6 +7,7 @@ use std::env;
 use std::net::ToSocketAddrs;
 
 use async_std::task::block_on;
+use async_std::net::TcpListener;
 
 const DEFAULT_PORT: u16 = 27615;
 
@@ -22,6 +23,8 @@ fn main() -> Result<(), errors::Error> {
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
+    let listener = block_on(async { TcpListener::bind(&addr).await })?;
+    println!("{}", listener.local_addr()?);
 
     let connection_string = env::var("DATABASE_URL").unwrap_or_else(|_| "memory://".to_string());
 
@@ -39,11 +42,11 @@ fn main() -> Result<(), errors::Error> {
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        block_on(common::server::run(addr, datastore))?;
+        block_on(common::server::run(listener, datastore))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        block_on(common::server::run(addr, datastore))?;
+        block_on(common::server::run(listener, datastore))?;
         Ok(())
     } else {
         Err(errors::Error::CouldNotParseDatabaseURL)

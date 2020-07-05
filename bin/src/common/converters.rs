@@ -1,11 +1,8 @@
 //! Converts between cnp and native IndraDB models
 
 use crate::autogen;
-use capnp;
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
-use indradb;
-use serde_json;
 use std::fmt::Display;
 use std::vec::IntoIter;
 use uuid::Uuid;
