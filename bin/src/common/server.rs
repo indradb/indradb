@@ -6,15 +6,13 @@ use std::sync::Arc;
 
 use async_std::io::Error as AsyncIoError;
 use async_std::net::TcpListener;
-use async_std::task::spawn_blocking;
+use async_std::task::{spawn_local, spawn_blocking};
 use capnp::capability::Promise;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::twoparty::VatNetwork;
 use capnp_rpc::{RpcSystem, Server};
-use futures::executor::LocalSpawner;
 use futures::prelude::*;
-use futures::task::LocalSpawn;
 use indradb;
 use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Type};
 use serde_json;
@@ -411,7 +409,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-pub async fn run<D, T>(addr: SocketAddr, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
+pub async fn run<D, T>(addr: SocketAddr, datastore: D) -> Result<(), AsyncIoError>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
@@ -432,16 +430,9 @@ where
             let rpc_network = VatNetwork::new(reader, writer, Side::Server, Default::default());
             let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(service.clone().client));
 
-            spawner
-                .spawn_local_obj(
-                    Box::pin(
-                        rpc_system
-                            .map_err(|err| eprintln!("error handling request: {:?}", err))
-                            .map(|_| ()),
-                    )
-                    .into(),
-                )
-                .expect("Expected to be able to spawn a request handler")
+            spawn_local(Box::pin(rpc_system
+                .map_err(|err| eprintln!("error handling request: {:?}", err))
+                .map(|_| ())));
         } else {
             eprintln!("connection setup failed");
         }

@@ -6,13 +6,11 @@ mod errors;
 use std::env;
 use std::net::ToSocketAddrs;
 
-use futures::executor::LocalPool;
+use async_std::task::block_on;
 
 const DEFAULT_PORT: u16 = 27615;
 
 fn main() -> Result<(), errors::Error> {
-    let mut exec = LocalPool::new();
-
     let port = match env::var("PORT") {
         Ok(value) => value
             .parse::<u16>()
@@ -41,11 +39,11 @@ fn main() -> Result<(), errors::Error> {
         let datastore = indradb::RocksdbDatastore::new(path, Some(max_open_files), bulk_load_optimized)
             .expect("Expected to be able to create the RocksDB datastore");
 
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        block_on(common::server::run(addr, datastore))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        block_on(common::server::run(addr, datastore))?;
         Ok(())
     } else {
         Err(errors::Error::CouldNotParseDatabaseURL)
