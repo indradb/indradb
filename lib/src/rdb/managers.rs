@@ -9,7 +9,6 @@ use crate::models;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
-use serde_json;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 

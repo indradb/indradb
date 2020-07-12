@@ -48,10 +48,8 @@ fn main() -> Result<(), errors::Error> {
         Ok(())
     } else if connection_string.starts_with("sled://") {
         let path = &connection_string[7..connection_string.len()];
-
         let datastore = indradb::SledDatastore::new(path).expect("Expected to be able to create the Sled datastore");
-
-        exec.run_until(common::server::run(addr, datastore, exec.spawner()))?;
+        exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else if connection_string == "memory://" {
         let datastore = indradb::MemoryDatastore::default();
