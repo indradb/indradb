@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 
-use super::bytes::*;
+use super::super::bytes::*;
 use crate::errors::Result;
 use crate::models;
 
