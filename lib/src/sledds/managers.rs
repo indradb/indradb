@@ -4,7 +4,6 @@ use crate::models;
 use crate::sledds::datastore::SledHolder;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use serde_json;
 use serde_json::Value as JsonValue;
 use sled::Result as SledResult;
 use sled::{IVec, Iter as DbIterator, Tree};
@@ -58,7 +57,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         }
     }
 
-    fn iterate<'a, 'b: 'a>(&'b self, iterator: DbIterator) -> impl Iterator<Item = Result<VertexItem>> + '_ {
+    fn iterate(&self, iterator: DbIterator) -> impl Iterator<Item = Result<VertexItem>> + '_ {
         iterator.map(move |item| -> Result<VertexItem> {
             let (k, v) = item?;
 
@@ -74,7 +73,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         })
     }
 
-    pub fn iterate_for_range<'me, 'it>(&'me self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'me> {
+    pub fn iterate_for_range<'a>(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
         let low_key = build(&[Component::Uuid(id)]);
         let low_key_bytes: &[u8] = low_key.as_ref();
         let iter = self.cf.range(low_key_bytes..);
@@ -96,7 +95,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
             vertex_property_manager.delete(vertex_property_owner_id, &vertex_property_name[..])?;
         }
 
-        let edge_manager = EdgeManager::new(self.holder.clone());
+        let edge_manager = EdgeManager::new(&self.holder);
 
         {
             let edge_range_manager = EdgeRangeManager::new(&self.holder);
@@ -113,7 +112,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         }
 
         {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder.clone());
+            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
             for item in reversed_edge_range_manager.iterate_for_owner(id)? {
                 let (
                     reversed_edge_range_inbound_id,
@@ -172,8 +171,8 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
         inbound_id: Uuid,
         new_update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        let edge_range_manager = EdgeRangeManager::new(self.holder.clone());
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder.clone());
+        let edge_range_manager = EdgeRangeManager::new(&self.holder);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
 
         if let Some(update_datetime) = self.get(outbound_id, t, inbound_id)? {
             edge_range_manager.delete(outbound_id, t, update_datetime, inbound_id)?;

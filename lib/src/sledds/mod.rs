@@ -3,9 +3,6 @@
 mod datastore;
 mod managers;
 
-#[cfg(feature = "test-suite")]
-mod tests;
-
 pub use self::datastore::{SledDatastore, SledTransaction};
 
 #[cfg(feature = "bench-suite")]
