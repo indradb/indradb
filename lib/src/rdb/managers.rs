@@ -68,18 +68,18 @@ impl<'a> VertexManager<'a> {
         let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
         self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]))?;
+        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]));
         Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(id))?;
+        batch.delete_cf(self.cf, &self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
@@ -176,7 +176,7 @@ impl<'a> EdgeManager<'a> {
         }
 
         let key = self.key(out_id, t, in_id);
-        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]))?;
+        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]));
         edge_range_manager.set(&mut batch, out_id, t, new_update_datetime, in_id)?;
         reversed_edge_range_manager.set(&mut batch, in_id, t, new_update_datetime, out_id)?;
         Ok(())
@@ -190,7 +190,7 @@ impl<'a> EdgeManager<'a> {
         in_id: Uuid,
         update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id))?;
+        batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
@@ -283,14 +283,14 @@ impl<'a> EdgeRangeManager<'a> {
                 let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
                 let mapped = self.iterate(iterator, prefix)?;
 
                 if let Some(high) = high {
@@ -317,7 +317,7 @@ impl<'a> EdgeRangeManager<'a> {
         let prefix = build(&[Component::Uuid(id)]);
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iterator, prefix)
     }
 
@@ -330,7 +330,7 @@ impl<'a> EdgeRangeManager<'a> {
         second_id: Uuid,
     ) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
-        batch.put_cf(self.cf, &key, &[])?;
+        batch.put_cf(self.cf, &key, &[]);
         Ok(())
     }
 
@@ -342,7 +342,7 @@ impl<'a> EdgeRangeManager<'a> {
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id))?;
+        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id));
         Ok(())
     }
 
@@ -376,7 +376,7 @@ impl<'a> VertexPropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
@@ -406,12 +406,12 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
+        batch.put_cf(self.cf, &key, &value_json);
         Ok(())
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
+        batch.delete_cf(self.cf, &self.key(vertex_id, name));
         Ok(())
     }
 
@@ -452,7 +452,7 @@ impl<'a> EdgePropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
@@ -509,7 +509,7 @@ impl<'a> EdgePropertyManager<'a> {
     ) -> Result<()> {
         let key = self.key(out_id, t, in_id, name);
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
+        batch.put_cf(self.cf, &key, &value_json);
         Ok(())
     }
 
@@ -521,7 +521,7 @@ impl<'a> EdgePropertyManager<'a> {
         in_id: Uuid,
         name: &str,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name))?;
+        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name));
         Ok(())
     }
 

@@ -27,15 +27,15 @@ name = "common"
 path = "src/common/lib.rs"
 
 [dependencies]
-failure = "0.1.7"
-serde_json = "^1.0.44"
+failure = "0.1.8"
+serde_json = "^1.0.57"
 uuid = "0.8.1"
 capnp = "0.11.0"
 capnp-rpc = "0.11.0"
 futures = "0.3.0"
 async-std = { version = "1.0", features = ["unstable"] }
 num_cpus = "1.11.1"
-chrono = "0.4.10"
+chrono = "0.4.15"
 
 [dependencies.indradb-lib]
 path = "../lib"
