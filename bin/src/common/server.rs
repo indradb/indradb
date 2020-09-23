@@ -10,7 +10,7 @@ use capnp::capability::Promise;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::twoparty::VatNetwork;
-use capnp_rpc::{RpcSystem, Server};
+use capnp_rpc::RpcSystem;
 use futures::executor::LocalSpawner;
 use futures::prelude::*;
 use futures::task::LocalSpawn;
@@ -64,10 +64,8 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
         _: autogen::service::TransactionParams,
         mut res: autogen::service::TransactionResults,
     ) -> Promise<(), CapnpError> {
-        let trans = pry!(converters::map_capnp_err(self.datastore.transaction()));
-        let trans_server = Transaction::new(trans);
-        let trans_client = autogen::transaction::ToClient::new(trans_server).into_client::<Server>();
-        res.get().set_transaction(trans_client);
+        let trans = Transaction::new(pry!(converters::map_capnp_err(self.datastore.transaction())));
+        res.get().set_transaction(capnp_rpc::new_client(trans));
         Promise::ok(())
     }
 }
@@ -413,7 +411,7 @@ where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
 {
-    let service = autogen::service::ToClient::new(Service::new(datastore)).into_client::<Server>();
+    let service: autogen::service::Client = capnp_rpc::new_client(Service::new(datastore));
     let mut incoming = listener.incoming();
 
     while let Some(socket) = incoming.next().await {
