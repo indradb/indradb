@@ -1,6 +1,12 @@
 # Changelog
 
-## 1.0.3 (2/17/2019)
+## 1.1.0 (7/13/2020)
+
+* Sled datastore (PR #89, #91)
+* Bin tests/benchmarks now use random, OS-allocated ports (PR #90)
+* Added some convenience `Makefile` targets (PR #86)
+
+## 1.0.3 (2/17/2020)
 
 * Fixed bad cap'n proto ID (PR #77)
 
