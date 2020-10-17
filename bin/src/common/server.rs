@@ -11,7 +11,6 @@ use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::twoparty::VatNetwork;
 use capnp_rpc::RpcSystem;
-use futures::executor::LocalSpawner;
 use futures::prelude::*;
 use indradb;
 use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Type};
