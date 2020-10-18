@@ -1,7 +1,6 @@
 use crate::autogen;
 use crate::converters;
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_std::io::Error as AsyncIoError;
@@ -11,13 +10,11 @@ use capnp::capability::Promise;
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::twoparty::VatNetwork;
-use capnp_rpc::{RpcSystem, Server};
+use capnp_rpc::RpcSystem;
 use futures::executor::LocalSpawner;
 use futures::prelude::*;
 use futures::task::LocalSpawn;
-use indradb;
 use indradb::{Datastore as IndraDbDatastore, Transaction as IndraDbTransaction, Type};
-use serde_json;
 use uuid::Uuid;
 
 struct Service<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static> {
@@ -67,10 +64,8 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
         _: autogen::service::TransactionParams,
         mut res: autogen::service::TransactionResults,
     ) -> Promise<(), CapnpError> {
-        let trans = pry!(converters::map_capnp_err(self.datastore.transaction()));
-        let trans_server = Transaction::new(trans);
-        let trans_client = autogen::transaction::ToClient::new(trans_server).into_client::<Server>();
-        res.get().set_transaction(trans_client);
+        let trans = Transaction::new(pry!(converters::map_capnp_err(self.datastore.transaction())));
+        res.get().set_transaction(capnp_rpc::new_client(trans));
         Promise::ok(())
     }
 }
@@ -411,15 +406,12 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
     }
 }
 
-pub async fn run<D, T>(addr: SocketAddr, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
+pub async fn run<D, T>(listener: TcpListener, datastore: D, spawner: LocalSpawner) -> Result<(), AsyncIoError>
 where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
 {
-    let listener = TcpListener::bind(&addr).await?;
-
-    let service = autogen::service::ToClient::new(Service::new(datastore)).into_client::<Server>();
-
+    let service: autogen::service::Client = capnp_rpc::new_client(Service::new(datastore));
     let mut incoming = listener.incoming();
 
     while let Some(socket) = incoming.next().await {

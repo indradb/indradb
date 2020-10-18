@@ -1,8 +1,11 @@
 #!/bin/bash
 set -ex
-cargo build
-cargo test
-cargo fmt -- --check
+
+make test
+
+if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+    cargo fmt -- --check
+fi
 
 if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
     zip -0 ccov.zip `find . \( -name "indradb*.gc*" \) -print`
