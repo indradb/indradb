@@ -1,4 +1,4 @@
-@0xa24c698a359c7c15;
+@0x8c6320575f4b9483;
 
 using Timestamp = UInt64;
 using Uuid = Data;
@@ -100,11 +100,11 @@ struct BulkInsertItem {
     union {
         vertex :group {
             vertex @0 :Vertex;
-            properties @1 :List(Property);
+            props @1 :List(Property);
         }
         edge :group {
             key @2 :EdgeKey;
-            properties @3 :List(Property);
+            props @3 :List(Property);
         }
     }
 }

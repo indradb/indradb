@@ -313,12 +313,12 @@ pub fn from_bulk_insert_items<'a>(
             indradb::BulkInsertItem::Vertex(vertex, properties) => {
                 let mut builder = builder.init_vertex();
                 from_vertex(vertex, builder.reborrow().get_vertex()?);
-                from_properties(properties, builder.reborrow().init_properties(properties.len() as u32));
+                from_properties(properties, builder.reborrow().init_props(properties.len() as u32));
             }
             indradb::BulkInsertItem::Edge(edge, properties) => {
                 let mut builder = builder.init_edge();
                 from_edge_key(edge, builder.reborrow().get_key()?);
-                from_properties(properties, builder.reborrow().init_properties(properties.len() as u32));
+                from_properties(properties, builder.reborrow().init_props(properties.len() as u32));
             }
         }
     }
@@ -343,12 +343,12 @@ pub fn to_bulk_insert_items<'a>(
         .map(|item| match item.which()? {
             autogen::bulk_insert_item::Vertex(params) => {
                 let vertex = to_vertex(&params.get_vertex()?)?;
-                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_properties()?.into_iter().map(to_named_property).collect();
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_props()?.into_iter().map(to_named_property).collect();
                 Ok(indradb::BulkInsertItem::Vertex(vertex, props?))
             }
             autogen::bulk_insert_item::Edge(params) => {
                 let edge_key = to_edge_key(&params.get_key()?)?;
-                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_properties()?.into_iter().map(to_named_property).collect();
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_props()?.into_iter().map(to_named_property).collect();
                 Ok(indradb::BulkInsertItem::Edge(edge_key, props?))
             }
         })
