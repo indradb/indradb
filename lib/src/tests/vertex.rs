@@ -72,7 +72,7 @@ pub fn should_get_single_vertex_nonexisting<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     trans.create_vertex(&vertex_t).unwrap();
-    let range = trans.get_vertices(SpecificVertexQuery::single(0)).unwrap();
+    let range = trans.get_vertices(SpecificVertexQuery::single(u64::max_value())).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -85,7 +85,7 @@ pub fn should_get_vertices<D: Datastore>(datastore: &mut D) {
             inserted_ids[0],
             inserted_ids[1],
             inserted_ids[2],
-            0,
+            u64::max_value(),
         ]))
         .unwrap();
 

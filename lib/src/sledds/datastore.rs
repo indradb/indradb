@@ -15,7 +15,6 @@ use std::usize;
 /// The meat of a Sled datastore
 pub struct SledHolder {
     pub(crate) db: Arc<Db>, // Derefs to Tree, holds the vertices
-    pub(crate) edges: Tree,
     pub(crate) edge_ranges: Tree,
     pub(crate) reversed_edge_ranges: Tree,
     pub(crate) vertex_properties: Tree,
@@ -30,7 +29,6 @@ impl<'ds> SledHolder {
     pub fn new(path: &str) -> Result<SledHolder> {
         let db = sled::open(path)?;
         Ok(SledHolder {
-            edges: db.open_tree("edges")?,
             edge_ranges: db.open_tree("edge_ranges")?,
             reversed_edge_ranges: db.open_tree("reversed_edge_ranges")?,
             vertex_properties: db.open_tree("vertex_properties")?,
@@ -201,10 +199,10 @@ impl SledTransaction {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match q {
             EdgeQuery::Specific(q) => {
-                let edge_manager = EdgeManager::new(&self.holder);
+                let edge_range_manager = EdgeRangeManager::new(&self.holder);
 
                 let edges = q.edges.into_iter().map(move |key| {
-                    if edge_manager.exists(key.outbound_id, &key.t, key.inbound_id)? {
+                    if edge_range_manager.exists(key.outbound_id, &key.t, key.inbound_id)? {
                         Ok(Some((key.outbound_id, key.t.clone(), key.inbound_id)))
                     } else {
                         Ok(None)

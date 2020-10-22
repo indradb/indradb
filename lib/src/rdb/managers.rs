@@ -150,44 +150,24 @@ impl<'a> VertexManager<'a> {
     }
 }
 
-// TODO: remove
 pub struct EdgeManager<'a> {
     pub db: &'a DB,
-    pub cf: &'a ColumnFamily,
 }
 
 impl<'a> EdgeManager<'a> {
     pub fn new(db: &'a DB) -> Self {
-        EdgeManager {
-            cf: db.cf_handle("edges:v1").unwrap(),
-            db,
-        }
-    }
-
-    fn key(&self, out_id: u64, t: &models::Type, in_id: u64) -> Vec<u8> {
-        build(&[Component::Id(out_id), Component::Type(t), Component::Id(in_id)])
-    }
-
-    pub fn exists(&self, out_id: u64, t: &models::Type, in_id: u64) -> Result<bool> {
-        Ok(self.db.get_cf(self.cf, &self.key(out_id, t, in_id))?.is_some())
+        EdgeManager { db }
     }
 
     pub fn set(&self, mut batch: &mut WriteBatch, out_id: u64, t: &models::Type, in_id: u64) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
-        edge_range_manager.delete(&mut batch, out_id, t, in_id)?;
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
-        reversed_edge_range_manager.delete(&mut batch, in_id, t, out_id)?;
-
-        let key = self.key(out_id, t, in_id);
-        batch.put_cf(self.cf, &key, &[]);
         edge_range_manager.set(&mut batch, out_id, t, in_id)?;
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
         reversed_edge_range_manager.set(&mut batch, in_id, t, out_id)?;
         Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, out_id: u64, t: &models::Type, in_id: u64) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
-
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(&mut batch, out_id, t, in_id)?;
 
@@ -210,7 +190,6 @@ impl<'a> EdgeManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
         EdgeRangeManager::new(self.db).compact();
         EdgeRangeManager::new_reversed(self.db).compact();
     }
@@ -284,6 +263,10 @@ impl<'a> EdgeRangeManager<'a> {
                 Ok(Box::new(mapped))
             }
         }
+    }
+
+    pub fn exists(&self, first_id: u64, t: &models::Type, second_id: u64) -> Result<bool> {
+        Ok(self.db.get_cf(self.cf, &self.key(first_id, t, second_id))?.is_some())
     }
 
     pub fn set(&self, batch: &mut WriteBatch, first_id: u64, t: &models::Type, second_id: u64) -> Result<()> {

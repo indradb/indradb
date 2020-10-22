@@ -14,10 +14,9 @@ use crate::{
 use rocksdb::{DBCompactionStyle, MemtableFactory, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 
-const CF_NAMES: [&str; 7] = [
+const CF_NAMES: [&str; 6] = [
     "meta:v1",
     "vertices:v1",
-    "edges:v1",
     "edge_ranges:v1",
     "reversed_edge_ranges:v1",
     "vertex_properties:v1",
@@ -149,10 +148,10 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
 fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
     match q {
         EdgeQuery::Specific(q) => {
-            let edge_manager = EdgeManager::new(&db);
+            let edge_range_manager = EdgeRangeManager::new(&db);
 
             let iter = q.edges.into_iter().map(move |edge| -> Result<Option<EdgeRangeItem>> {
-                if edge_manager.exists(edge.outbound_id, &edge.t, edge.inbound_id)? {
+                if edge_range_manager.exists(edge.outbound_id, &edge.t, edge.inbound_id)? {
                     Ok(Some((edge.outbound_id, edge.t, edge.inbound_id)))
                 } else {
                     Ok(None)

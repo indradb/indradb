@@ -79,7 +79,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let outbound_id = trans.create_vertex(&vertex_t).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::Edge::new(outbound_id, edge_t, 0);
+    let key = models::Edge::new(outbound_id, edge_t, u64::max_value());
     let result = trans.create_edge(&key);
     assert_eq!(result.unwrap(), false);
 }

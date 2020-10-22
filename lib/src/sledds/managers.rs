@@ -59,7 +59,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
             let (k, v) = item?;
 
             let id = {
-                debug_assert_eq!(k.len(), 16);
+                debug_assert_eq!(k.len(), 8);
                 let mut cursor = Cursor::new(k);
                 read_id(&mut cursor)
             };
@@ -127,49 +127,26 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
     }
 }
 
-// TODO: remove
-pub struct EdgeManager<'db: 'tree, 'tree> {
+pub struct EdgeManager<'db> {
     pub holder: &'db SledHolder,
-    pub cf: &'tree Tree,
 }
 
-impl<'db, 'tree> EdgeManager<'db, 'tree> {
+impl<'db> EdgeManager<'db> {
     pub fn new(ds: &'db SledHolder) -> Self {
         EdgeManager {
             holder: ds,
-            cf: &ds.edges,
         }
     }
 
-    fn key(&self, outbound_id: u64, t: &models::Type, inbound_id: u64) -> Vec<u8> {
-        build(&[
-            Component::Id(outbound_id),
-            Component::Type(t),
-            Component::Id(inbound_id),
-        ])
-    }
-
-    pub fn exists(&self, outbound_id: u64, t: &models::Type, inbound_id: u64) -> Result<bool> {
-        Ok(self.cf.get(self.key(outbound_id, t, inbound_id))?.is_some())
-    }
-
     pub fn set(&self, outbound_id: u64, t: &models::Type, inbound_id: u64) -> Result<()> {
-        // TODO: is it necessary to check for existence before deleting?
         let edge_range_manager = EdgeRangeManager::new(&self.holder);
-        edge_range_manager.delete(outbound_id, t, inbound_id)?;
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
-        edge_range_manager.delete(outbound_id, t, inbound_id)?;
-
-        let key = self.key(outbound_id, t, inbound_id);
-        self.cf.insert(key, build(&[]))?;
         edge_range_manager.set(outbound_id, t, inbound_id)?;
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
         reversed_edge_range_manager.set(inbound_id, t, outbound_id)?;
         Ok(())
     }
 
     pub fn delete(&self, outbound_id: u64, t: &models::Type, inbound_id: u64) -> Result<()> {
-        self.cf.remove(&self.key(outbound_id, t, inbound_id))?;
-
         let edge_range_manager = EdgeRangeManager::new(&self.holder);
         edge_range_manager.delete(outbound_id, t, inbound_id)?;
 
@@ -241,6 +218,10 @@ impl<'tree> EdgeRangeManager<'tree> {
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
         }
+    }
+
+    pub fn exists(&self, first_id: u64, t: &models::Type, second_id: u64) -> Result<bool> {
+        Ok(self.cf.get(self.key(first_id, t, second_id))?.is_some())
     }
 
     pub fn set(&self, first_id: u64, t: &models::Type, second_id: u64) -> Result<()> {
