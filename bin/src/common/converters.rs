@@ -1,7 +1,6 @@
 //! Converts between cnp and native IndraDB models
 
 use crate::autogen;
-use capnp;
 use capnp::Error as CapnpError;
 use indradb;
 use serde_json;

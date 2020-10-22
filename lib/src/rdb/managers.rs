@@ -2,12 +2,11 @@ use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 
-use super::bytes::*;
+use super::super::bytes::*;
 use crate::errors::Result;
 use crate::models;
 
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
-use serde_json;
 use serde_json::Value as JsonValue;
 
 pub type OwnedPropertyItem = ((u64, String), JsonValue);
@@ -39,7 +38,7 @@ impl<'a> MetaManager<'a> {
     }
 
     pub fn set_last_id(&self, batch: &mut WriteBatch, id: u64) -> Result<()> {
-        batch.put_cf(self.cf, "last_id", &build(&[Component::Id(id)]))?;
+        batch.put_cf(self.cf, "last_id", &build(&[Component::Id(id)]));
         Ok(())
     }
 
@@ -99,18 +98,18 @@ impl<'a> VertexManager<'a> {
         let low_key = build(&[Component::Id(id)]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
         self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]))?;
+        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]));
         Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, id: u64) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(id))?;
+        batch.delete_cf(self.cf, &self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
@@ -122,7 +121,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let edge_range_manager = EdgeRangeManager::new(self.db);
-            for item in edge_range_manager.iterate_for_owner(id)? {
+            for item in edge_range_manager.iterate_for_range(id, None)? {
                 let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(&mut batch, edge_range_out_id, &edge_range_t, edge_range_in_id)?;
@@ -131,7 +130,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
-            for item in reversed_edge_range_manager.iterate_for_owner(id)? {
+            for item in reversed_edge_range_manager.iterate_for_range(id, None)? {
                 let (reversed_edge_range_in_id, reversed_edge_range_t, reversed_edge_range_out_id) = item?;
                 debug_assert_eq!(reversed_edge_range_in_id, id);
                 edge_manager.delete(
@@ -151,6 +150,7 @@ impl<'a> VertexManager<'a> {
     }
 }
 
+// TODO: remove
 pub struct EdgeManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
@@ -179,14 +179,14 @@ impl<'a> EdgeManager<'a> {
         reversed_edge_range_manager.delete(&mut batch, in_id, t, out_id)?;
 
         let key = self.key(out_id, t, in_id);
-        batch.put_cf(self.cf, &key, &[])?;
+        batch.put_cf(self.cf, &key, &[]);
         edge_range_manager.set(&mut batch, out_id, t, in_id)?;
         reversed_edge_range_manager.set(&mut batch, in_id, t, out_id)?;
         Ok(())
     }
 
     pub fn delete(&self, mut batch: &mut WriteBatch, out_id: u64, t: &models::Type, in_id: u64) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id))?;
+        batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(&mut batch, out_id, t, in_id)?;
@@ -271,14 +271,14 @@ impl<'a> EdgeRangeManager<'a> {
                 let low_key = build(&[Component::Id(id), Component::Type(t)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward))?;
+                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 Ok(Box::new(self.iterate(iterator, prefix)?))
             }
             None => {
                 let prefix = build(&[Component::Id(id)]);
                 let iterator = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
                 let mapped = self.iterate(iterator, prefix)?;
 
                 Ok(Box::new(mapped))
@@ -286,22 +286,14 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    pub fn iterate_for_owner(&'a self, id: u64) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
-        let prefix = build(&[Component::Id(id)]);
-        let iterator = self
-            .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
-        self.iterate(iterator, prefix)
-    }
-
     pub fn set(&self, batch: &mut WriteBatch, first_id: u64, t: &models::Type, second_id: u64) -> Result<()> {
         let key = self.key(first_id, t, second_id);
-        batch.put_cf(self.cf, &key, &[])?;
+        batch.put_cf(self.cf, &key, &[]);
         Ok(())
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, first_id: u64, t: &models::Type, second_id: u64) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(first_id, t, second_id))?;
+        batch.delete_cf(self.cf, &self.key(first_id, t, second_id));
         Ok(())
     }
 
@@ -332,7 +324,7 @@ impl<'a> VertexPropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
@@ -362,12 +354,12 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn set(&self, batch: &mut WriteBatch, vertex_id: u64, name: &str, value: &JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
+        batch.put_cf(self.cf, &key, &value_json);
         Ok(())
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, vertex_id: u64, name: &str) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(vertex_id, name))?;
+        batch.delete_cf(self.cf, &self.key(vertex_id, name));
         Ok(())
     }
 
@@ -408,7 +400,7 @@ impl<'a> EdgePropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward))?;
+            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
@@ -465,12 +457,12 @@ impl<'a> EdgePropertyManager<'a> {
     ) -> Result<()> {
         let key = self.key(out_id, t, in_id, name);
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json)?;
+        batch.put_cf(self.cf, &key, &value_json);
         Ok(())
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, out_id: u64, t: &models::Type, in_id: u64, name: &str) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name))?;
+        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name));
         Ok(())
     }
 

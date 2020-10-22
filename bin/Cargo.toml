@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "1.0.3"
+version = "1.1.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -27,19 +27,18 @@ name = "common"
 path = "src/common/lib.rs"
 
 [dependencies]
-failure = "0.1.7"
-serde_json = "^1.0.44"
-lazy_static = "^1.4.0"
-capnp = "0.11.0"
-capnp-rpc = "0.11.0"
-futures = "0.3.0"
-async-std = { version = "1.0", features = ["unstable"] }
-num_cpus = "1.11.1"
+failure = "0.1.8"
+serde_json = "^1.0.57"
+capnp = "0.13.3"
+capnp-rpc = "0.13.1"
+futures = "0.3.5"
+async-std = { version = "1.6.4", features = ["unstable"] }
+num_cpus = "1.13.0"
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "1.0.3"
-features = ["test-suite", "rocksdb-datastore"]
+version = "1.1.0"
+features = ["test-suite", "rocksdb-datastore", "sled-datastore"]
 
 [build-dependencies]
-capnpc = "0.11.0"
+capnpc = "0.13.1"

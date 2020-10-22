@@ -1,5 +1,6 @@
 //! Utility functions.
 
+use crate::errors::Result;
 use rand::prelude::*;
 use rand::rngs::OsRng;
 use std::env;
@@ -31,6 +32,17 @@ pub fn generate_random_secret(count: usize) -> String {
     }
 
     String::from_utf8(chars).unwrap()
+}
+
+pub fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
+where
+    I: Iterator<Item = Result<Option<T>>>,
+{
+    iter.filter_map(|item| match item {
+        Err(err) => Some(Err(err)),
+        Ok(Some(value)) => Some(Ok(value)),
+        _ => None,
+    })
 }
 
 #[cfg(test)]
