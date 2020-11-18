@@ -191,7 +191,6 @@ impl SledTransaction {
         &'trans self,
         q: EdgeQuery,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
-        //Ok(Box::new(Vec::new().into_iter()))'
         match q {
             EdgeQuery::Specific(q) => {
                 let edge_manager = EdgeManager::new(&self.holder);
