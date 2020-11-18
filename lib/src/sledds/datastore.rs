@@ -8,7 +8,7 @@ use crate::models::*;
 use crate::util::{next_uuid, remove_nones_from_iterator};
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
-use sled::{Db, Tree};
+use sled::{Db, Tree, Config};
 use std::sync::Arc;
 use std::u64;
 use std::usize;
@@ -29,8 +29,18 @@ impl<'ds> SledHolder {
     ///
     /// # Arguments
     /// * `path` - The file path to the Sled database.
-    pub fn new(path: &str) -> Result<SledHolder> {
-        let db = sled::open(path)?;
+    /// * `compression_factor` - optional zstd compression factor, defaults to
+    ///   5.
+    pub fn new(path: &str, compression_factor: Option<i32>) -> Result<SledHolder> {
+        let mut config = Config::default()
+            .path(path)
+            .use_compression(true);
+        if let Some(compression_factor) = compression_factor {
+            config = config.compression_factor(compression_factor);
+        }
+
+        let db = config.open()?;
+
         Ok(SledHolder {
             edges: db.open_tree("edges")?,
             edge_ranges: db.open_tree("edge_ranges")?,
@@ -54,7 +64,19 @@ impl<'ds> SledDatastore {
     /// * `path` - The file path to the Sled database.
     pub fn new(path: &str) -> Result<SledDatastore> {
         Ok(SledDatastore {
-            holder: Arc::new(SledHolder::new(path)?),
+            holder: Arc::new(SledHolder::new(path, None)?),
+        })
+    }
+
+    /// Creates a new Sled datastore with specified options.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to the Sled database.
+    /// * `compression_factor` - optional zstd compression factor, defaults to
+    ///   5.
+    pub fn new_with_options(path: &str, compression_factor: Option<i32>) -> Result<SledDatastore> {
+        Ok(SledDatastore {
+            holder: Arc::new(SledHolder::new(path, compression_factor)?),
         })
     }
 }
