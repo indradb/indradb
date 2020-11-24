@@ -59,6 +59,12 @@ Additional environment variables available when using the RocksDB datastore:
 * `ROCKSDB_MAX_OPEN_FILES`: Sets the number of maximum open files to have open in RocksDB.
 * `ROCKSDB_BULK_LOAD_OPTIMIZED`: If set to `true`, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
 
+Additional environment variables available when using the Sled datastore:
+
+* `SLED_COMPRESSION`: If set to `true`, compression will be enabled at the
+default zstd factor of 5. If set to an integer, compression will be enabled at
+the zstd specified factor.
+
 ## Install from source
 
 If you don't want to use the pre-built releases, you can build/install from source:

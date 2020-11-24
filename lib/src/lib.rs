@@ -60,4 +60,4 @@ mod sledds;
 pub use crate::rdb::{RocksdbDatastore, RocksdbTransaction};
 
 #[cfg(feature = "sled-datastore")]
-pub use crate::sledds::{SledDatastore, SledTransaction};
+pub use crate::sledds::{SledConfig, SledDatastore, SledTransaction};

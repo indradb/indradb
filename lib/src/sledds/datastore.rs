@@ -8,11 +8,38 @@ use crate::models::*;
 use crate::util::{next_uuid, remove_nones_from_iterator};
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
-use sled::{Db, Tree};
+use sled::{Config, Db, Tree};
 use std::sync::Arc;
 use std::u64;
 use std::usize;
 use uuid::Uuid;
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct SledConfig {
+    use_compression: bool,
+    compression_factor: Option<i32>,
+}
+
+impl SledConfig {
+    /// Creates a new sled config with zstd compression enabled.
+    ///
+    /// # Arguments
+    /// * `factor` - The zstd compression factor to use. If unspecified, this
+    ///   will default to 5.
+    pub fn with_compression(factor: Option<i32>) -> SledConfig {
+        return SledConfig {
+            use_compression: true,
+            compression_factor: factor,
+        };
+    }
+
+    /// Creates a new sled datastore.
+    pub fn open(self, path: &str) -> Result<SledDatastore> {
+        Ok(SledDatastore {
+            holder: Arc::new(SledHolder::new(path, self)?),
+        })
+    }
+}
 
 /// The meat of a Sled datastore
 pub struct SledHolder {
@@ -29,8 +56,20 @@ impl<'ds> SledHolder {
     ///
     /// # Arguments
     /// * `path` - The file path to the Sled database.
-    pub fn new(path: &str) -> Result<SledHolder> {
-        let db = sled::open(path)?;
+    /// * `opts` - Sled options to pass in.
+    pub fn new(path: &str, opts: SledConfig) -> Result<SledHolder> {
+        let mut config = Config::default().path(path);
+
+        if opts.use_compression {
+            config = config.use_compression(true);
+        }
+
+        if let Some(compression_factor) = opts.compression_factor {
+            config = config.compression_factor(compression_factor);
+        }
+
+        let db = config.open()?;
+
         Ok(SledHolder {
             edges: db.open_tree("edges")?,
             edge_ranges: db.open_tree("edge_ranges")?,
@@ -54,7 +93,7 @@ impl<'ds> SledDatastore {
     /// * `path` - The file path to the Sled database.
     pub fn new(path: &str) -> Result<SledDatastore> {
         Ok(SledDatastore {
-            holder: Arc::new(SledHolder::new(path)?),
+            holder: Arc::new(SledHolder::new(path, SledConfig::default())?),
         })
     }
 }
@@ -191,7 +230,6 @@ impl SledTransaction {
         &'trans self,
         q: EdgeQuery,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
-        //Ok(Box::new(Vec::new().into_iter()))'
         match q {
             EdgeQuery::Specific(q) => {
                 let edge_manager = EdgeManager::new(&self.holder);
