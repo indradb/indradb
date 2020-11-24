@@ -14,6 +14,15 @@ use std::u64;
 use std::usize;
 use uuid::Uuid;
 
+#[derive(Copy, Clone, Default, Debug)]
+pub struct SledOptions {
+    /// Whether to disable zstd-based compression, which is enabled by
+    /// default.
+    pub disable_compression: bool,
+    /// Sets the zstd compression factor. Defaults to 5.
+    pub compression_factor: Option<i32>
+}
+
 /// The meat of a Sled datastore
 pub struct SledHolder {
     pub(crate) db: Arc<Db>, // Derefs to Tree, holds the vertices
@@ -29,13 +38,15 @@ impl<'ds> SledHolder {
     ///
     /// # Arguments
     /// * `path` - The file path to the Sled database.
-    /// * `compression_factor` - optional zstd compression factor, defaults to
-    ///   5.
-    pub fn new(path: &str, compression_factor: Option<i32>) -> Result<SledHolder> {
-        let mut config = Config::default()
-            .path(path)
-            .use_compression(true);
-        if let Some(compression_factor) = compression_factor {
+    /// * `opts` - Sled options to pass in.
+    pub fn new(path: &str, opts: SledOptions) -> Result<SledHolder> {
+        let mut config = Config::default().path(path);
+
+        if !opts.disable_compression {
+            config = config.use_compression(true);
+        }
+
+        if let Some(compression_factor) = opts.compression_factor {
             config = config.compression_factor(compression_factor);
         }
 
@@ -64,7 +75,7 @@ impl<'ds> SledDatastore {
     /// * `path` - The file path to the Sled database.
     pub fn new(path: &str) -> Result<SledDatastore> {
         Ok(SledDatastore {
-            holder: Arc::new(SledHolder::new(path, None)?),
+            holder: Arc::new(SledHolder::new(path, SledOptions::default())?),
         })
     }
 
@@ -72,11 +83,10 @@ impl<'ds> SledDatastore {
     ///
     /// # Arguments
     /// * `path` - The file path to the Sled database.
-    /// * `compression_factor` - optional zstd compression factor, defaults to
-    ///   5.
-    pub fn new_with_options(path: &str, compression_factor: Option<i32>) -> Result<SledDatastore> {
+    /// * `opts` - Sled options to pass in.
+    pub fn new_with_options(path: &str, opts: SledOptions) -> Result<SledDatastore> {
         Ok(SledDatastore {
-            holder: Arc::new(SledHolder::new(path, compression_factor)?),
+            holder: Arc::new(SledHolder::new(path, opts)?),
         })
     }
 }
