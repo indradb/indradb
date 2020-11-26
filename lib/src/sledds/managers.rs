@@ -89,7 +89,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
     pub fn delete(&self, id: Uuid) -> Result<()> {
         self.tree.remove(&self.key(id))?;
 
-        let vertex_property_manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let vertex_property_manager = VertexPropertyManager::new(&self.holder);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
             vertex_property_manager.delete(vertex_property_owner_id, &vertex_property_name[..])?;
@@ -202,7 +202,7 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
         reversed_edge_range_manager.delete(inbound_id, t, update_datetime, outbound_id)?;
 
-        let edge_property_manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let edge_property_manager = EdgePropertyManager::new(&self.holder);
         for item in edge_property_manager.iterate_for_owner(outbound_id, t, inbound_id)? {
             let ((edge_property_outbound_id, edge_property_t, edge_property_inbound_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
@@ -330,9 +330,10 @@ pub struct VertexPropertyManager<'tree> {
 }
 
 impl<'tree> VertexPropertyManager<'tree> {
-    pub fn new(tree: &'tree Tree) -> Self {
-        VertexPropertyManager { tree }
+    pub fn new<'db: 'tree>(ds: &'db SledHolder) -> Self {
+        VertexPropertyManager { tree: &ds.vertex_properties }
     }
+
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
         build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
@@ -380,8 +381,8 @@ pub struct EdgePropertyManager<'tree> {
 }
 
 impl<'tree> EdgePropertyManager<'tree> {
-    pub fn new(tree: &'tree Tree) -> Self {
-        EdgePropertyManager { tree }
+    pub fn new<'db: 'tree>(ds: &'db SledHolder) -> Self {
+        EdgePropertyManager { tree: &ds.edge_properties }
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Vec<u8> {

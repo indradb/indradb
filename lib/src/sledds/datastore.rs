@@ -111,8 +111,8 @@ impl Datastore for SledDatastore {
     {
         let vertex_manager = VertexManager::new(&self.holder);
         let edge_manager = EdgeManager::new(&self.holder);
-        let vertex_property_manager = VertexPropertyManager::new(&self.holder.vertex_properties);
-        let edge_property_manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let vertex_property_manager = VertexPropertyManager::new(&self.holder);
+        let edge_property_manager = EdgePropertyManager::new(&self.holder);
 
         for item in items {
             match item {
@@ -404,7 +404,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
-        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let manager = VertexPropertyManager::new(&self.holder);
         let mut properties = Vec::new();
 
         for item in self.vertex_query_to_iterator(q.inner)? {
@@ -420,7 +420,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
-        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let manager = VertexPropertyManager::new(&self.holder);
         let iterator = self.vertex_query_to_iterator(q.into())?;
 
         let iter = iterator.map(move |item| {
@@ -441,7 +441,7 @@ impl Transaction for SledTransaction {
     }
 
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
-        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let manager = VertexPropertyManager::new(&self.holder);
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
@@ -451,7 +451,7 @@ impl Transaction for SledTransaction {
     }
 
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
-        let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
+        let manager = VertexPropertyManager::new(&self.holder);
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
@@ -461,7 +461,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
-        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let manager = EdgePropertyManager::new(&self.holder);
         let mut properties = Vec::new();
 
         for item in self.edge_query_to_iterator(q.inner)? {
@@ -478,7 +478,7 @@ impl Transaction for SledTransaction {
     }
 
     fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
-        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let manager = EdgePropertyManager::new(&self.holder);
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         let iter = iterator.map(move |item| {
@@ -498,7 +498,7 @@ impl Transaction for SledTransaction {
     }
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
-        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let manager = EdgePropertyManager::new(&self.holder);
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
@@ -508,7 +508,7 @@ impl Transaction for SledTransaction {
     }
 
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
-        let manager = EdgePropertyManager::new(&self.holder.edge_properties);
+        let manager = EdgePropertyManager::new(&self.holder);
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
