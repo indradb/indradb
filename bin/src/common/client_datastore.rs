@@ -4,8 +4,7 @@ use std::rc::Rc;
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::autogen;
-use crate::converters;
+use indradb_proto::util as converters;
 
 use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
@@ -16,7 +15,7 @@ use futures::task::LocalSpawn;
 use serde_json::value::Value as JsonValue;
 use uuid::Uuid;
 
-async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::service::Client, CapnpError> {
+async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<indradb_proto::service::Client, CapnpError> {
     let addr = format!("127.0.0.1:{}", port).to_socket_addrs().unwrap().next().unwrap();
     let stream = async_std::net::TcpStream::connect(&addr).await?;
     stream.set_nodelay(true)?;
@@ -29,7 +28,7 @@ async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::serv
         Default::default(),
     ));
     let mut rpc_system = RpcSystem::new(rpc_network, None);
-    let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
+    let client: indradb_proto::service::Client = rpc_system.bootstrap(Side::Server);
 
     spawner
         .spawn_local_obj(Box::pin(rpc_system.map(|_| ())).into())
@@ -46,7 +45,7 @@ async fn build_client(port: u16, spawner: &LocalSpawner) -> Result<autogen::serv
 }
 
 pub struct ClientDatastore {
-    client: autogen::service::Client,
+    client: indradb_proto::service::Client,
     exec: Rc<RefCell<LocalPool>>,
 }
 
@@ -103,12 +102,12 @@ impl indradb::Datastore for ClientDatastore {
 }
 
 pub struct ClientTransaction {
-    trans: RefCell<autogen::transaction::Client>,
+    trans: RefCell<indradb_proto::transaction::Client>,
     exec: Rc<RefCell<LocalPool>>,
 }
 
 impl ClientTransaction {
-    fn new(trans: autogen::transaction::Client, exec: Rc<RefCell<LocalPool>>) -> Self {
+    fn new(trans: indradb_proto::transaction::Client, exec: Rc<RefCell<LocalPool>>) -> Self {
         ClientTransaction {
             trans: RefCell::new(trans),
             exec,

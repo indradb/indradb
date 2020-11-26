@@ -1,6 +1,5 @@
 //! Converts between cnp and native IndraDB models
 
-use crate::autogen;
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
 use std::fmt::Display;
@@ -13,52 +12,49 @@ pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Er
     result.map_err(|err| capnp::Error::failed(format!("{}", err)))
 }
 
-pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::Builder<'a>) {
+pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: crate::vertex::Builder<'a>) {
     builder.set_id(vertex.id.as_bytes());
     builder.set_t(&vertex.t.0);
 }
 
-pub fn to_vertex<'a>(reader: &autogen::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
+pub fn to_vertex<'a>(reader: &crate::vertex::Reader<'a>) -> Result<indradb::Vertex, CapnpError> {
     let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
     let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     Ok(indradb::Vertex::with_id(id, t))
 }
 
-pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: autogen::edge::Builder<'a>) -> Result<(), CapnpError> {
+pub fn from_edge<'a>(edge: &indradb::Edge, mut builder: crate::edge::Builder<'a>) -> Result<(), CapnpError> {
     builder.set_created_datetime(edge.created_datetime.timestamp() as u64);
     from_edge_key(&edge.key, builder.init_key());
     Ok(())
 }
 
-pub fn to_edge<'a>(reader: &autogen::edge::Reader<'a>) -> Result<indradb::Edge, CapnpError> {
+pub fn to_edge<'a>(reader: &crate::edge::Reader<'a>) -> Result<indradb::Edge, CapnpError> {
     let key = to_edge_key(&reader.get_key()?)?;
     let created_datetime = Utc.timestamp(reader.get_created_datetime() as i64, 0);
     Ok(indradb::Edge::new(key, created_datetime))
 }
 
-pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: autogen::edge_key::Builder<'a>) {
+pub fn from_edge_key<'a>(key: &indradb::EdgeKey, mut builder: crate::edge_key::Builder<'a>) {
     builder.set_outbound_id(key.outbound_id.as_bytes());
     builder.set_t(&key.t.0);
     builder.set_inbound_id(key.inbound_id.as_bytes());
 }
 
-pub fn to_edge_key<'a>(reader: &autogen::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
+pub fn to_edge_key<'a>(reader: &crate::edge_key::Reader<'a>) -> Result<indradb::EdgeKey, CapnpError> {
     let outbound_id = map_capnp_err(Uuid::from_slice(reader.get_outbound_id()?))?;
     let t = map_capnp_err(indradb::Type::new(reader.get_t()?))?;
     let inbound_id = map_capnp_err(Uuid::from_slice(reader.get_inbound_id()?))?;
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
-pub fn from_vertex_property<'a>(
-    property: &indradb::VertexProperty,
-    mut builder: autogen::vertex_property::Builder<'a>,
-) {
+pub fn from_vertex_property<'a>(property: &indradb::VertexProperty, mut builder: crate::vertex_property::Builder<'a>) {
     builder.set_id(property.id.as_bytes());
     builder.set_value(&property.value.to_string());
 }
 
 pub fn to_vertex_property<'a>(
-    reader: &autogen::vertex_property::Reader<'a>,
+    reader: &crate::vertex_property::Reader<'a>,
 ) -> Result<indradb::VertexProperty, CapnpError> {
     let id = map_capnp_err(Uuid::from_slice(reader.get_id()?))?;
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
@@ -67,7 +63,7 @@ pub fn to_vertex_property<'a>(
 
 pub fn from_vertex_properties<'a>(
     properties: &indradb::VertexProperties,
-    builder: &mut autogen::vertex_properties::Builder<'a>,
+    builder: &mut crate::vertex_properties::Builder<'a>,
 ) {
     from_vertex(&properties.vertex, builder.reborrow().init_vertex());
     let mut props_builder = builder.reborrow().init_props(properties.props.len() as u32);
@@ -77,7 +73,7 @@ pub fn from_vertex_properties<'a>(
 }
 
 pub fn to_vertex_properties<'a>(
-    reader: &autogen::vertex_properties::Reader<'a>,
+    reader: &crate::vertex_properties::Reader<'a>,
 ) -> Result<indradb::VertexProperties, CapnpError> {
     let vertex = map_capnp_err(to_vertex(&reader.get_vertex()?))?;
     let named_props: Result<Vec<indradb::NamedProperty>, CapnpError> =
@@ -85,12 +81,12 @@ pub fn to_vertex_properties<'a>(
     Ok(indradb::VertexProperties::new(vertex, named_props?))
 }
 
-pub fn from_named_property<'a>(property: &indradb::NamedProperty, mut builder: autogen::property::Builder<'a>) {
+pub fn from_named_property<'a>(property: &indradb::NamedProperty, mut builder: crate::property::Builder<'a>) {
     builder.set_name(&property.name);
     builder.set_value(&property.value.to_string());
 }
 
-pub fn to_named_property(reader: autogen::property::Reader) -> Result<indradb::NamedProperty, CapnpError> {
+pub fn to_named_property(reader: crate::property::Reader) -> Result<indradb::NamedProperty, CapnpError> {
     let name = map_capnp_err(reader.get_name())?.to_string();
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::NamedProperty::new(name, value))
@@ -98,7 +94,7 @@ pub fn to_named_property(reader: autogen::property::Reader) -> Result<indradb::N
 
 pub fn from_edge_properties<'a>(
     properties: &indradb::EdgeProperties,
-    builder: &mut autogen::edge_properties::Builder<'a>,
+    builder: &mut crate::edge_properties::Builder<'a>,
 ) {
     from_edge(&properties.edge, builder.reborrow().init_edge()).unwrap();
     let mut props_builder = builder.reborrow().init_props(properties.props.len() as u32);
@@ -108,7 +104,7 @@ pub fn from_edge_properties<'a>(
 }
 
 pub fn to_edge_properties<'a>(
-    reader: &autogen::edge_properties::Reader<'a>,
+    reader: &crate::edge_properties::Reader<'a>,
 ) -> Result<indradb::EdgeProperties, CapnpError> {
     let edge = map_capnp_err(to_edge(&reader.get_edge()?))?;
     let named_props: Result<Vec<indradb::NamedProperty>, CapnpError> =
@@ -116,18 +112,18 @@ pub fn to_edge_properties<'a>(
     Ok(indradb::EdgeProperties::new(edge, named_props?))
 }
 
-pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: autogen::edge_property::Builder<'a>) {
+pub fn from_edge_property<'a>(property: &indradb::EdgeProperty, mut builder: crate::edge_property::Builder<'a>) {
     builder.set_value(&property.value.to_string());
     from_edge_key(&property.key, builder.init_key());
 }
 
-pub fn to_edge_property<'a>(reader: &autogen::edge_property::Reader<'a>) -> Result<indradb::EdgeProperty, CapnpError> {
+pub fn to_edge_property<'a>(reader: &crate::edge_property::Reader<'a>) -> Result<indradb::EdgeProperty, CapnpError> {
     let key = to_edge_key(&reader.get_key()?)?;
     let value = map_capnp_err(serde_json::from_str(reader.get_value()?))?;
     Ok(indradb::EdgeProperty::new(key, value))
 }
 
-pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_query::Builder<'a>) {
+pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_query::Builder<'a>) {
     match q {
         indradb::VertexQuery::Range(q) => {
             let mut builder = builder.init_range();
@@ -163,9 +159,9 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: autogen::vertex_
     }
 }
 
-pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
+pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
     match reader.which()? {
-        autogen::vertex_query::Range(params) => {
+        crate::vertex_query::Range(params) => {
             let start_id_bytes = params.get_start_id()?;
             let t_str = params.get_t()?;
             let mut range = indradb::RangeVertexQuery::new(params.get_limit());
@@ -180,7 +176,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
 
             Ok(range.into())
         }
-        autogen::vertex_query::Specific(params) => {
+        crate::vertex_query::Specific(params) => {
             let ids: Result<Vec<Uuid>, CapnpError> = params
                 .get_ids()?
                 .into_iter()
@@ -188,7 +184,7 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
                 .collect();
             Ok(indradb::SpecificVertexQuery::new(ids?).into())
         }
-        autogen::vertex_query::Pipe(params) => {
+        crate::vertex_query::Pipe(params) => {
             let inner = Box::new(to_edge_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
@@ -206,21 +202,21 @@ pub fn to_vertex_query<'a>(reader: &autogen::vertex_query::Reader<'a>) -> Result
 
 pub fn from_vertex_property_query<'a>(
     q: &indradb::VertexPropertyQuery,
-    mut builder: autogen::vertex_property_query::Builder<'a>,
+    mut builder: crate::vertex_property_query::Builder<'a>,
 ) {
     builder.set_name(&q.name);
     from_vertex_query(&q.inner, builder.init_inner());
 }
 
 pub fn to_vertex_property_query<'a>(
-    reader: &autogen::vertex_property_query::Reader<'a>,
+    reader: &crate::vertex_property_query::Reader<'a>,
 ) -> Result<indradb::VertexPropertyQuery, CapnpError> {
     let inner = to_vertex_query(&reader.get_inner()?)?;
     let name = reader.get_name()?;
     Ok(indradb::VertexPropertyQuery::new(inner, name))
 }
 
-pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query::Builder<'a>) {
+pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::Builder<'a>) {
     match q {
         indradb::EdgeQuery::Specific(specific) => {
             let mut builder = builder.init_specific().init_keys(specific.keys.len() as u32);
@@ -251,9 +247,9 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: autogen::edge_query:
     }
 }
 
-pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
+pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
     match reader.which()? {
-        autogen::edge_query::Specific(params) => {
+        crate::edge_query::Specific(params) => {
             let keys: Result<Vec<indradb::EdgeKey>, CapnpError> = params
                 .get_keys()?
                 .into_iter()
@@ -261,7 +257,7 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
                 .collect();
             Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(keys?)))
         }
-        autogen::edge_query::Pipe(params) => {
+        crate::edge_query::Pipe(params) => {
             let inner = Box::new(to_vertex_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
@@ -287,14 +283,14 @@ pub fn to_edge_query<'a>(reader: &autogen::edge_query::Reader<'a>) -> Result<ind
 
 pub fn from_edge_property_query<'a>(
     q: &indradb::EdgePropertyQuery,
-    mut builder: autogen::edge_property_query::Builder<'a>,
+    mut builder: crate::edge_property_query::Builder<'a>,
 ) {
     builder.set_name(&q.name);
     from_edge_query(&q.inner, builder.init_inner());
 }
 
 pub fn to_edge_property_query<'a>(
-    reader: &autogen::edge_property_query::Reader<'a>,
+    reader: &crate::edge_property_query::Reader<'a>,
 ) -> Result<indradb::EdgePropertyQuery, CapnpError> {
     let inner = to_edge_query(&reader.get_inner()?)?;
     let name = reader.get_name()?;
@@ -303,7 +299,7 @@ pub fn to_edge_property_query<'a>(
 
 pub fn from_bulk_insert_items<'a>(
     items: &[indradb::BulkInsertItem],
-    mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>,
+    mut builder: capnp::struct_list::Builder<'a, crate::bulk_insert_item::Owned>,
 ) -> Result<(), CapnpError> {
     for (i, item) in items.iter().enumerate() {
         let builder = builder.reborrow().get(i as u32);
@@ -336,26 +332,26 @@ pub fn from_bulk_insert_items<'a>(
 }
 
 pub fn to_bulk_insert_items<'a>(
-    reader: &capnp::struct_list::Reader<'a, autogen::bulk_insert_item::Owned>,
+    reader: &capnp::struct_list::Reader<'a, crate::bulk_insert_item::Owned>,
 ) -> Result<IntoIter<indradb::BulkInsertItem>, CapnpError> {
     let items: Result<Vec<indradb::BulkInsertItem>, CapnpError> = reader
         .into_iter()
         .map(|item| match item.which()? {
-            autogen::bulk_insert_item::Vertex(params) => {
+            crate::bulk_insert_item::Vertex(params) => {
                 let vertex = to_vertex(&params.get_vertex()?)?;
                 Ok(indradb::BulkInsertItem::Vertex(vertex))
             }
-            autogen::bulk_insert_item::Edge(params) => {
+            crate::bulk_insert_item::Edge(params) => {
                 let edge_key = to_edge_key(&params.get_key()?)?;
                 Ok(indradb::BulkInsertItem::Edge(edge_key))
             }
-            autogen::bulk_insert_item::VertexProperty(params) => {
+            crate::bulk_insert_item::VertexProperty(params) => {
                 let id = map_capnp_err(Uuid::from_slice(params.get_id()?))?;
                 let name = params.get_name()?.to_string();
                 let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
                 Ok(indradb::BulkInsertItem::VertexProperty(id, name, value))
             }
-            autogen::bulk_insert_item::EdgeProperty(params) => {
+            crate::bulk_insert_item::EdgeProperty(params) => {
                 let key = to_edge_key(&params.get_key()?)?;
                 let name = params.get_name()?.to_string();
                 let value = map_capnp_err(serde_json::from_str(params.get_value()?))?;
@@ -366,17 +362,17 @@ pub fn to_bulk_insert_items<'a>(
     Ok(items?.into_iter())
 }
 
-pub fn from_edge_direction(direction: indradb::EdgeDirection) -> autogen::EdgeDirection {
+pub fn from_edge_direction(direction: indradb::EdgeDirection) -> crate::EdgeDirection {
     match direction {
-        indradb::EdgeDirection::Outbound => autogen::EdgeDirection::Outbound,
-        indradb::EdgeDirection::Inbound => autogen::EdgeDirection::Inbound,
+        indradb::EdgeDirection::Outbound => crate::EdgeDirection::Outbound,
+        indradb::EdgeDirection::Inbound => crate::EdgeDirection::Inbound,
     }
 }
 
-pub fn to_edge_direction(direction: autogen::EdgeDirection) -> indradb::EdgeDirection {
+pub fn to_edge_direction(direction: crate::EdgeDirection) -> indradb::EdgeDirection {
     match direction {
-        autogen::EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
-        autogen::EdgeDirection::Inbound => indradb::EdgeDirection::Inbound,
+        crate::EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
+        crate::EdgeDirection::Inbound => indradb::EdgeDirection::Inbound,
     }
 }
 
