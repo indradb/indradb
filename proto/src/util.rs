@@ -48,10 +48,7 @@ pub fn to_edge_key<'a>(reader: &crate::edge_key::Reader<'a>) -> Result<indradb::
     Ok(indradb::EdgeKey::new(outbound_id, t, inbound_id))
 }
 
-pub fn from_vertex_property<'a>(
-    property: &indradb::VertexProperty,
-    mut builder: crate::vertex_property::Builder<'a>,
-) {
+pub fn from_vertex_property<'a>(property: &indradb::VertexProperty, mut builder: crate::vertex_property::Builder<'a>) {
     builder.set_id(property.id.as_bytes());
     builder.set_value(&property.value.to_string());
 }
