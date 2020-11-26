@@ -1,6 +1,6 @@
 [package]
 name = "indradb-proto"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "Cap'n proto interface and auto-generated rust bindings for IndraDB"
 homepage = "https://indradb.github.io"
@@ -26,7 +26,7 @@ chrono = "0.4.15"
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "1.1.0"
+version = "1.2.0"
 features = ["test-suite", "rocksdb-datastore", "sled-datastore"]
 
 [build-dependencies]
