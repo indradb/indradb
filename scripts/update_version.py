@@ -59,8 +59,9 @@ def main():
     run(["git", "push", "origin", new_version_str])
 
     run(["cargo", "publish"], cwd="lib")
-    run(["cargo", "publish"], cwd="proto")
     time.sleep(15) # wait for lib to be accessible on crates.io
+    run(["cargo", "publish"], cwd="proto")
+    time.sleep(15) # wait for proto to be accessible on crates.io
     run(["cargo", "publish"], cwd="bin")
 
 if __name__ == "__main__":
