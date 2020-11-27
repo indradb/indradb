@@ -8,78 +8,10 @@ use crate::models::*;
 use crate::util::{next_uuid, remove_nones_from_iterator};
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
-use sled::{Config, Db, Tree};
 use std::sync::Arc;
 use std::u64;
 use std::usize;
 use uuid::Uuid;
-
-#[derive(Copy, Clone, Default, Debug)]
-pub struct SledConfig {
-    use_compression: bool,
-    compression_factor: Option<i32>,
-}
-
-impl SledConfig {
-    /// Creates a new sled config with zstd compression enabled.
-    ///
-    /// # Arguments
-    /// * `factor` - The zstd compression factor to use. If unspecified, this
-    ///   will default to 5.
-    pub fn with_compression(factor: Option<i32>) -> SledConfig {
-        return SledConfig {
-            use_compression: true,
-            compression_factor: factor,
-        };
-    }
-
-    /// Creates a new sled datastore.
-    pub fn open(self, path: &str) -> Result<SledDatastore> {
-        Ok(SledDatastore {
-            holder: Arc::new(SledHolder::new(path, self)?),
-        })
-    }
-}
-
-/// The meat of a Sled datastore
-pub struct SledHolder {
-    pub(crate) db: Arc<Db>, // Derefs to Tree, holds the vertices
-    pub(crate) edges: Tree,
-    pub(crate) edge_ranges: Tree,
-    pub(crate) reversed_edge_ranges: Tree,
-    pub(crate) vertex_properties: Tree,
-    pub(crate) edge_properties: Tree,
-}
-
-impl<'ds> SledHolder {
-    /// The meat of a Sled datastore.
-    ///
-    /// # Arguments
-    /// * `path` - The file path to the Sled database.
-    /// * `opts` - Sled options to pass in.
-    pub fn new(path: &str, opts: SledConfig) -> Result<SledHolder> {
-        let mut config = Config::default().path(path);
-
-        if opts.use_compression {
-            config = config.use_compression(true);
-        }
-
-        if let Some(compression_factor) = opts.compression_factor {
-            config = config.compression_factor(compression_factor);
-        }
-
-        let db = config.open()?;
-
-        Ok(SledHolder {
-            edges: db.open_tree("edges")?,
-            edge_ranges: db.open_tree("edge_ranges")?,
-            reversed_edge_ranges: db.open_tree("reversed_edge_ranges")?,
-            vertex_properties: db.open_tree("vertex_properties")?,
-            edge_properties: db.open_tree("edge_properties")?,
-            db: Arc::new(db),
-        })
-    }
-}
 
 /// A datastore that is backed by Sled.
 pub struct SledDatastore {
@@ -94,6 +26,17 @@ impl<'ds> SledDatastore {
     pub fn new(path: &str) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, SledConfig::default())?),
+        })
+    }
+
+    /// Creates a new Sled datastore.
+    ///
+    /// # Arguments
+    /// * `path` - The file path to the Sled database.
+    /// * `config` - Creates a new sled config with a given config.
+    pub fn new_with_config(path: &str, config: SledConfig) -> Result<SledDatastore> {
+        Ok(SledDatastore {
+            holder: Arc::new(SledHolder::new(path, config)?),
         })
     }
 }
@@ -113,6 +56,7 @@ impl Datastore for SledDatastore {
         let edge_manager = EdgeManager::new(&self.holder);
         let vertex_property_manager = VertexPropertyManager::new(&self.holder);
         let edge_property_manager = EdgePropertyManager::new(&self.holder);
+        let mut batch = UberBatch::default();
 
         for item in items {
             match item {
@@ -120,7 +64,7 @@ impl Datastore for SledDatastore {
                     vertex_manager.create(vertex)?;
                 }
                 models::BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
                 }
                 models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(id, name, value)?;
@@ -131,6 +75,7 @@ impl Datastore for SledDatastore {
             }
         }
 
+        batch.apply(&self.holder)?;
         self.holder.db.flush()?;
         Ok(())
     }
@@ -170,7 +115,7 @@ impl SledTransaction {
                 };
 
                 let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                    Box::new(vertex_manager.iterate_for_range(next_uuid));
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -263,7 +208,7 @@ impl SledTransaction {
 
                 for item in vertex_iterator {
                     let (id, _) = item?;
-                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
+                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high);
 
                     for item in edge_iterator {
                         match item {
@@ -336,18 +281,19 @@ impl Transaction for SledTransaction {
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()> {
         let iterator = self.vertex_query_to_iterator(q.into())?;
         let vertex_manager = VertexManager::new(&self.holder);
+        let mut batch = UberBatch::default();
 
         for item in iterator {
             let (id, _) = item?;
-            vertex_manager.delete(id)?;
+            vertex_manager.delete(&mut batch, id)?;
         }
 
-        Ok(())
+        batch.apply(&self.holder)
     }
 
     fn get_vertex_count(&self) -> Result<u64> {
         let vertex_manager = VertexManager::new(&self.holder);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
         Ok(iterator.count() as u64)
     }
 
@@ -357,8 +303,10 @@ impl Transaction for SledTransaction {
         if !vertex_manager.exists(key.outbound_id)? || !vertex_manager.exists(key.inbound_id)? {
             Ok(false)
         } else {
+            let mut batch = UberBatch::default();
             let edge_manager = EdgeManager::new(&self.holder);
-            edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            batch.apply(&self.holder)?;
             Ok(true)
         }
     }
@@ -380,15 +328,17 @@ impl Transaction for SledTransaction {
         let edge_manager = EdgeManager::new(&self.holder);
         let vertex_manager = VertexManager::new(&self.holder);
         let iterator = self.edge_query_to_iterator(q.into())?;
+        let mut batch = UberBatch::default();
 
         for item in iterator {
             let (outbound_id, t, update_datetime, inbound_id) = item?;
 
             if vertex_manager.get(outbound_id)?.is_some() {
-                edge_manager.delete(outbound_id, &t, inbound_id, update_datetime)?;
+                edge_manager.delete(&mut batch, outbound_id, &t, inbound_id, update_datetime)?;
             };
         }
-        Ok(())
+
+        batch.apply(&self.holder)
     }
 
     fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
@@ -397,7 +347,7 @@ impl Transaction for SledTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&self.holder),
         };
 
-        let iter = edge_range_manager.iterate_for_range(id, t, None)?;
+        let iter = edge_range_manager.iterate_for_range(id, t, None);
         let count = iter.count();
 
         Ok(count as u64)
@@ -427,7 +377,7 @@ impl Transaction for SledTransaction {
             let (id, t) = item?;
             let vertex = models::Vertex::with_id(id, t);
 
-            let it = manager.iterate_for_owner(id)?;
+            let it = manager.iterate_for_owner(id);
             let props: Result<Vec<_>> = it.map(|r| r).collect();
             let props_iter = props?.into_iter();
             let props = props_iter
@@ -452,12 +402,14 @@ impl Transaction for SledTransaction {
 
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let manager = VertexPropertyManager::new(&self.holder);
+        let mut batch = UberBatch::default();
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
-            manager.delete(id, &q.name)?;
+            manager.delete(&mut batch, id, &q.name);
         }
-        Ok(())
+
+        batch.apply(&self.holder)
     }
 
     fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
@@ -484,7 +436,7 @@ impl Transaction for SledTransaction {
         let iter = iterator.map(move |item| {
             let (out_id, t, time, in_id) = item?;
             let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
-            let it = manager.iterate_for_owner(out_id, &t, in_id)?;
+            let it = manager.iterate_for_owner(out_id, &t, in_id);
             let props: Result<Vec<_>> = it.map(|r| r).collect();
             let props_iter = props?.into_iter();
             let props = props_iter
@@ -509,11 +461,13 @@ impl Transaction for SledTransaction {
 
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
         let manager = EdgePropertyManager::new(&self.holder);
+        let mut batch = UberBatch::default();
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
-            manager.delete(outbound_id, &t, inbound_id, &q.name)?;
+            manager.delete(&mut batch, outbound_id, &t, inbound_id, &q.name);
         }
-        Ok(())
+        
+        batch.apply(&self.holder)
     }
 }

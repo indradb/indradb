@@ -3,7 +3,8 @@
 mod datastore;
 mod managers;
 
-pub use self::datastore::{SledConfig, SledDatastore, SledTransaction};
+pub use self::datastore::{SledDatastore, SledTransaction};
+pub use self::managers::SledConfig;
 
 mod normal_config {
     #[cfg(feature = "bench-suite")]
@@ -24,19 +25,15 @@ mod normal_config {
 mod compression_config {
     #[cfg(feature = "bench-suite")]
     full_bench_impl!({
-        use super::SledConfig;
+        use super::{SledDatastore, SledConfig};
         use crate::util::generate_temporary_path;
-        SledConfig::with_compression(None)
-            .open(&generate_temporary_path())
-            .unwrap()
+        SledDatastore::new_with_config(&generate_temporary_path(), SledConfig::with_compression(None)).unwrap()
     });
 
     #[cfg(feature = "test-suite")]
     full_test_impl!({
-        use super::SledConfig;
+        use super::{SledDatastore, SledConfig};
         use crate::util::generate_temporary_path;
-        SledConfig::with_compression(None)
-            .open(&generate_temporary_path())
-            .unwrap()
+        SledDatastore::new_with_config(&generate_temporary_path(), SledConfig::with_compression(None)).unwrap()
     });
 }
