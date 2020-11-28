@@ -22,6 +22,7 @@ lazy_static! {
 
 pub enum Component<'a> {
     Uuid(Uuid),
+    AsciiChar(char),
     UnsizedString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
@@ -31,6 +32,7 @@ impl<'a> Component<'a> {
     fn len(&self) -> usize {
         match *self {
             Component::Uuid(_) => 16,
+            Component::AsciiChar(_) => 1,
             Component::UnsizedString(s) => s.len(),
             Component::Type(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
@@ -41,6 +43,9 @@ impl<'a> Component<'a> {
         match *self {
             Component::Uuid(uuid) => {
                 cursor.write_all(uuid.as_bytes())?;
+            }
+            Component::AsciiChar(c) => {
+                cursor.write_all(&[c as u8])?;
             }
             Component::UnsizedString(s) => {
                 cursor.write_all(s.as_bytes())?;
@@ -70,6 +75,12 @@ pub fn build(components: &[Component]) -> Vec<u8> {
     }
 
     cursor.into_inner()
+}
+
+pub fn read_expected_char<T: AsRef<[u8]>>(cursor: &mut Cursor<T>, expected_char: char) {
+    let mut buf: [u8; 1] = [0; 1];
+    cursor.read_exact(&mut buf).unwrap();
+    debug_assert_eq!(buf[0] as char, expected_char);
 }
 
 pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
