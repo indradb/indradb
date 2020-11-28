@@ -40,10 +40,10 @@ impl SledConfig {
     /// * `factor` - The zstd compression factor to use. If unspecified, this
     ///   will default to 5.
     pub fn with_compression(factor: Option<i32>) -> SledConfig {
-        return SledConfig {
+        Self {
             use_compression: true,
             compression_factor: factor,
-        };
+        }
     }
 }
 
@@ -337,11 +337,7 @@ impl<'db> EdgeRangeManager<'db> {
 
     pub fn set(&self, batch: &mut Batch, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) {
         let key = self.key(first_id, t, update_datetime, second_id);
-        if self.reversed {
-            batch.insert(&key, &[]);
-        } else {
-            batch.insert(&key, &[]);
-        }
+        batch.insert(&key, &[]);
     }
 
     pub fn delete(
@@ -352,11 +348,7 @@ impl<'db> EdgeRangeManager<'db> {
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) {
-        if self.reversed {
-            batch.remove(&self.key(first_id, t, update_datetime, second_id));
-        } else {
-            batch.remove(&self.key(first_id, t, update_datetime, second_id));
-        }
+        batch.remove(&self.key(first_id, t, update_datetime, second_id));
     }
 }
 

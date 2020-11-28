@@ -393,7 +393,7 @@ impl Transaction for SledTransaction {
             let vertex = models::Vertex::with_id(id, t);
 
             let it = manager.iterate_for_owner(id);
-            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
                 .map(|((_, name), value)| models::NamedProperty::new(name, value))
@@ -453,7 +453,7 @@ impl Transaction for SledTransaction {
             let (out_id, t, time, in_id) = item?;
             let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
             let it = manager.iterate_for_owner(out_id, &t, in_id);
-            let props: Result<Vec<_>> = it.map(|r| r).collect();
+            let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
                 .map(|((_, _, _, name), value)| NamedProperty::new(name, value))
