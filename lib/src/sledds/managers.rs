@@ -98,10 +98,9 @@ impl<'db> VertexManager<'db> {
         self.iterate(iter)
     }
 
-    pub fn create(&self, vertex: &models::Vertex) -> Result<()> {
+    pub fn create(&self, batch: &mut Batch, vertex: &models::Vertex) {
         let key = self.key(vertex.id);
-        self.db.insert(&key, build(&[Component::Type(&vertex.t)]))?;
-        Ok(())
+        batch.insert(&key, build(&[Component::Type(&vertex.t)]));
     }
 
     pub fn delete(&self, batch: &mut Batch, id: Uuid) -> Result<()> {
@@ -406,10 +405,10 @@ impl<'db> VertexPropertyManager<'db> {
         }
     }
 
-    pub fn set(&self, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
+    pub fn set(&self, batch: &mut Batch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
-        self.db.insert(key, value_json.as_slice())?;
+        batch.insert(key, value_json.as_slice());
         Ok(())
     }
 
@@ -493,6 +492,7 @@ impl<'db> EdgePropertyManager<'db> {
 
     pub fn set(
         &self,
+        batch: &mut Batch,
         outbound_id: Uuid,
         t: &models::Type,
         inbound_id: Uuid,
@@ -501,7 +501,7 @@ impl<'db> EdgePropertyManager<'db> {
     ) -> Result<()> {
         let key = self.key(outbound_id, t, inbound_id, name);
         let value_json = serde_json::to_vec(value)?;
-        self.db.insert(key, value_json.as_slice())?;
+        batch.insert(key, value_json.as_slice());
         Ok(())
     }
 

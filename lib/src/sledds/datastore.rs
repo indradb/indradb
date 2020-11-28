@@ -74,16 +74,16 @@ impl Datastore for SledDatastore {
         for item in items {
             match item {
                 models::BulkInsertItem::Vertex(ref vertex) => {
-                    vertex_manager.create(vertex)?;
+                    vertex_manager.create(&mut batch, vertex);
                 }
                 models::BulkInsertItem::Edge(ref key) => {
                     edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
                 }
                 models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
-                    vertex_property_manager.set(id, name, value)?;
+                    vertex_property_manager.set(&mut batch, id, name, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
-                    edge_property_manager.set(key.outbound_id, &key.t, key.inbound_id, name, value)?;
+                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
                 }
             }
         }
@@ -274,7 +274,9 @@ impl Transaction for SledTransaction {
         if vertex_manager.exists(vertex.id)? {
             Ok(false)
         } else {
-            vertex_manager.create(vertex)?;
+            let mut batch = Batch::default();
+            vertex_manager.create(&mut batch, vertex);
+            self.db.apply_batch(batch)?;
             Ok(true)
         }
     }
@@ -410,7 +412,9 @@ impl Transaction for SledTransaction {
 
         for item in self.vertex_query_to_iterator(q.inner)? {
             let (id, _) = item?;
-            manager.set(id, &q.name, value)?;
+            let mut batch = Batch::default();
+            manager.set(&mut batch, id, &q.name, value)?;
+            self.db.apply_batch(batch)?;
         }
         Ok(())
     }
@@ -470,7 +474,9 @@ impl Transaction for SledTransaction {
 
         for item in self.edge_query_to_iterator(q.inner)? {
             let (outbound_id, t, _, inbound_id) = item?;
-            manager.set(outbound_id, &t, inbound_id, &q.name, value)?;
+            let mut batch = Batch::default();
+            manager.set(&mut batch, outbound_id, &t, inbound_id, &q.name, value)?;
+            self.db.apply_batch(batch)?;
         }
         Ok(())
     }
