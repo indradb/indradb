@@ -1,7 +1,3 @@
-// TODO:
-// - audit all lifetime uses and see if they can be simplified/removed
-// - audit all use of boxed dyn iters and see if they can be simplified
-
 use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
@@ -78,7 +74,7 @@ impl<'db> VertexManager<'db> {
         }
     }
 
-    fn iterate(&self, iterator: DbIterator) -> impl Iterator<Item = Result<VertexItem>> + '_ {
+    fn iterate(&self, iterator: DbIterator) -> impl Iterator<Item = Result<VertexItem>> {
         iterator.map(move |item| -> Result<VertexItem> {
             let (k, v) = item?;
 
@@ -95,7 +91,7 @@ impl<'db> VertexManager<'db> {
         })
     }
 
-    pub fn iterate_for_range<'a>(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
+    pub fn iterate_for_range(&self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> {
         let low_key = build(&[Component::AsciiChar('v'), Component::Uuid(id)]);
         let low_key_bytes: &[u8] = low_key.as_ref();
         let iter = self.db.range(low_key_bytes..);
@@ -289,12 +285,12 @@ impl<'db> EdgeRangeManager<'db> {
         })
     }
 
-    pub fn iterate_for_range<'iter, 'trans: 'iter>(
-        &'trans self,
+    pub fn iterate_for_range(
+        &self,
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter> {
+    ) -> Box<dyn Iterator<Item = Result<EdgeRangeItem>> + '_> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
@@ -330,10 +326,10 @@ impl<'db> EdgeRangeManager<'db> {
         }
     }
 
-    pub fn iterate_for_owner<'iter, 'trans: 'iter>(
-        &'trans self,
+    pub fn iterate_for_owner(
+        &self,
         id: Uuid,
-    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'iter {
+    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + '_ {
         let prefix: Vec<u8> = build(&[Component::AsciiChar(self.prefix()), Component::Uuid(id)]);
         let iterator = self.db.scan_prefix(&prefix);
         self.iterate(iterator, prefix)
@@ -378,7 +374,7 @@ impl<'db> VertexPropertyManager<'db> {
         build(&[Component::AsciiChar('1'), Component::Uuid(vertex_id), Component::UnsizedString(name)]).into()
     }
 
-    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> impl Iterator<Item = Result<OwnedPropertyItem>> + '_ {
+    pub fn iterate_for_owner(&self, vertex_id: Uuid) -> impl Iterator<Item = Result<OwnedPropertyItem>> {
         let prefix = build(&[Component::AsciiChar('1'), Component::Uuid(vertex_id)]);
         let iterator = self.db.scan_prefix(&prefix);
 
@@ -439,7 +435,7 @@ impl<'db> EdgePropertyManager<'db> {
         outbound_id: Uuid,
         t: &'a models::Type,
         inbound_id: Uuid,
-    ) -> Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a> {
+    ) -> impl Iterator<Item = Result<EdgePropertyItem>> + 'a {
         let prefix = build(&[
             Component::AsciiChar('2'),
             Component::Uuid(outbound_id),
@@ -449,7 +445,7 @@ impl<'db> EdgePropertyManager<'db> {
 
         let iterator = self.db.scan_prefix(&prefix);
 
-        let mapped = iterator.map(move |item| -> Result<EdgePropertyItem> {
+        iterator.map(move |item| -> Result<EdgePropertyItem> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
             read_expected_char(&mut cursor, '2');
@@ -475,9 +471,7 @@ impl<'db> EdgePropertyManager<'db> {
                 ),
                 value,
             ))
-        });
-
-        Box::new(mapped)
+        })
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
