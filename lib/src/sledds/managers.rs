@@ -10,7 +10,7 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use serde_json::Value as JsonValue;
 use sled::Result as SledResult;
-use sled::{IVec, Iter as DbIterator, Batch, Db};
+use sled::{Batch, Db, IVec, Iter as DbIterator};
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
@@ -48,7 +48,7 @@ impl SledConfig {
 }
 
 pub(crate) struct VertexManager<'db> {
-    pub db: &'db Db
+    pub db: &'db Db,
 }
 
 impl<'db> VertexManager<'db> {
@@ -154,7 +154,7 @@ impl<'db> VertexManager<'db> {
 }
 
 pub(crate) struct EdgeManager<'db> {
-    pub db: &'db Db
+    pub db: &'db Db,
 }
 
 impl<'db> EdgeManager<'db> {
@@ -168,7 +168,8 @@ impl<'db> EdgeManager<'db> {
             Component::Uuid(outbound_id),
             Component::Type(t),
             Component::Uuid(inbound_id),
-        ]).into()
+        ])
+        .into()
     }
 
     pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<Option<DateTime<Utc>>> {
@@ -237,7 +238,7 @@ impl<'db> EdgeManager<'db> {
 
 pub(crate) struct EdgeRangeManager<'db> {
     pub db: &'db Db,
-    reversed: bool
+    reversed: bool,
 }
 
 impl<'db> EdgeRangeManager<'db> {
@@ -264,14 +265,11 @@ impl<'db> EdgeRangeManager<'db> {
             Component::Type(t),
             Component::DateTime(update_datetime),
             Component::Uuid(second_id),
-        ]).into()
+        ])
+        .into()
     }
 
-    fn iterate(
-        &self,
-        iterator: DbIterator,
-        prefix: Vec<u8>,
-    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + '_ {
+    fn iterate(&self, iterator: DbIterator, prefix: Vec<u8>) -> impl Iterator<Item = Result<EdgeRangeItem>> + '_ {
         let filtered = take_while_prefixed(iterator, prefix);
         filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item?;
@@ -294,8 +292,17 @@ impl<'db> EdgeRangeManager<'db> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build(&[Component::AsciiChar(self.prefix()), Component::Uuid(id), Component::Type(t)]);
-                let low_key = build(&[Component::AsciiChar(self.prefix()), Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
+                let prefix = build(&[
+                    Component::AsciiChar(self.prefix()),
+                    Component::Uuid(id),
+                    Component::Type(t),
+                ]);
+                let low_key = build(&[
+                    Component::AsciiChar(self.prefix()),
+                    Component::Uuid(id),
+                    Component::Type(t),
+                    Component::DateTime(high),
+                ]);
                 let low_key_bytes: &[u8] = low_key.as_ref();
                 let iterator = self.db.range(low_key_bytes..);
                 Box::new(self.iterate(iterator, prefix))
@@ -326,16 +333,20 @@ impl<'db> EdgeRangeManager<'db> {
         }
     }
 
-    pub fn iterate_for_owner(
-        &self,
-        id: Uuid,
-    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + '_ {
+    pub fn iterate_for_owner(&self, id: Uuid) -> impl Iterator<Item = Result<EdgeRangeItem>> + '_ {
         let prefix: Vec<u8> = build(&[Component::AsciiChar(self.prefix()), Component::Uuid(id)]);
         let iterator = self.db.scan_prefix(&prefix);
         self.iterate(iterator, prefix)
     }
 
-    pub fn set(&self, batch: &mut Batch, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) {
+    pub fn set(
+        &self,
+        batch: &mut Batch,
+        first_id: Uuid,
+        t: &models::Type,
+        update_datetime: DateTime<Utc>,
+        second_id: Uuid,
+    ) {
         let key = self.key(first_id, t, update_datetime, second_id);
         batch.insert(&key, &[]);
     }
@@ -361,9 +372,13 @@ impl<'db> VertexPropertyManager<'db> {
         VertexPropertyManager { db }
     }
 
-
     fn key(&self, vertex_id: Uuid, name: &str) -> IVec {
-        build(&[Component::AsciiChar('1'), Component::Uuid(vertex_id), Component::UnsizedString(name)]).into()
+        build(&[
+            Component::AsciiChar('1'),
+            Component::Uuid(vertex_id),
+            Component::UnsizedString(name),
+        ])
+        .into()
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> impl Iterator<Item = Result<OwnedPropertyItem>> {
@@ -404,7 +419,7 @@ impl<'db> VertexPropertyManager<'db> {
 }
 
 pub(crate) struct EdgePropertyManager<'db> {
-    pub db: &'db Db
+    pub db: &'db Db,
 }
 
 impl<'db> EdgePropertyManager<'db> {
@@ -419,7 +434,8 @@ impl<'db> EdgePropertyManager<'db> {
             Component::Type(t),
             Component::Uuid(inbound_id),
             Component::UnsizedString(name),
-        ]).into()
+        ])
+        .into()
     }
 
     pub fn iterate_for_owner<'a>(

@@ -61,7 +61,8 @@ fn main() -> Result<(), errors::Error> {
             }
         };
 
-        let datastore = indradb::SledDatastore::new_with_config(path, sled_config).expect("Expected to be able to create the Sled datastore");
+        let datastore = indradb::SledDatastore::new_with_config(path, sled_config)
+            .expect("Expected to be able to create the Sled datastore");
 
         exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())

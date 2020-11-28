@@ -25,14 +25,14 @@ mod normal_config {
 mod compression_config {
     #[cfg(feature = "bench-suite")]
     full_bench_impl!({
-        use super::{SledDatastore, SledConfig};
+        use super::{SledConfig, SledDatastore};
         use crate::util::generate_temporary_path;
         SledDatastore::new_with_config(&generate_temporary_path(), SledConfig::with_compression(None)).unwrap()
     });
 
     #[cfg(feature = "test-suite")]
     full_test_impl!({
-        use super::{SledDatastore, SledConfig};
+        use super::{SledConfig, SledDatastore};
         use crate::util::generate_temporary_path;
         SledDatastore::new_with_config(&generate_temporary_path(), SledConfig::with_compression(None)).unwrap()
     });

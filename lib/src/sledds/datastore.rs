@@ -13,7 +13,7 @@ use crate::util::{next_uuid, remove_nones_from_iterator};
 
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
-use sled::{Db, Batch, Config};
+use sled::{Batch, Config, Db};
 use uuid::Uuid;
 
 /// A datastore that is backed by Sled.
@@ -483,7 +483,7 @@ impl Transaction for SledTransaction {
             let (outbound_id, t, _, inbound_id) = item?;
             manager.delete(&mut batch, outbound_id, &t, inbound_id, &q.name);
         }
-        
+
         self.db.apply_batch(batch)?;
         Ok(())
     }
