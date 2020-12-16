@@ -33,37 +33,34 @@ This should start an in-memory-only datastore, where all work will be wiped out 
 
 By default, IndraDB starts an in-memory datastore that does not persist to
 disk. This is useful for kicking the tires. If you want to use the in-memory
-datastore, do not set the `DATABASE_URL`, or just set it to `memory://`. e.g.:
-`DATABASE_URL=memory:// indradb`
+datastore, do not set the `database` flag, or just set it to `memory://`. e.g.:
+`indradb --database=memory://`
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, set the `DATABASE_URL`
-environment variable; e.g.: `DATABASE_URL=rocksdb://database.rdb indradb`.
+If you want to use the rocksdb-backed datastore, set the `database`
+CLI flag; e.g.: `indradb --database=rocksdb://database.rdb`.
 
 ### Sled
 
-If you want to a datastore based on [Sled](http://sled.rs/), set the `DATABASE_URL`
-environment variable; e.g.: `DATABASE_URL=sled://sled_dir indradb`. If `sled_dir`
+If you want to a datastore based on [Sled](http://sled.rs/), set the `database`
+environment variable; e.g.: `indradb --database=sled://sled_dir`. If `sled_dir`
 does not exist, it will be created.
 
-## Environment variables
+# CLI Options
+Applications are configured via CLI arguments:
 
-Applications are configured via environment variables:
+```
+  -d, --database string          The connection string to the underlying database.
+  -p, --port                     The port to run the server on. Defaults to 27615.
 
-* `DATABASE_URL`: The connection string to the underlying database.
-* `PORT`: The port to run the server on. Defaults to `27615`.
+  [RocksDB]
+  --max_open_files               Sets the number of maximum open files to have open in RocksDB.
+  --bulk_load_opt   			 If set to true, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
 
-Additional environment variables available when using the RocksDB datastore:
-
-* `ROCKSDB_MAX_OPEN_FILES`: Sets the number of maximum open files to have open in RocksDB.
-* `ROCKSDB_BULK_LOAD_OPTIMIZED`: If set to `true`, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
-
-Additional environment variables available when using the Sled datastore:
-
-* `SLED_COMPRESSION`: If set to `true`, compression will be enabled at the
-default zstd factor of 5. If set to an integer, compression will be enabled at
-the zstd specified factor.
+  [Sled]
+  --sled_compression			 If set to true, compression will be enabled at the default zstd factor of 5. If set to an integer, compression will be enabled at the zstd specified factor.
+```
 
 ## Install from source
 
