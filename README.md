@@ -33,32 +33,38 @@ This should start an in-memory-only datastore, where all work will be wiped out 
 
 By default, IndraDB starts an in-memory datastore that does not persist to
 disk. This is useful for kicking the tires. If you want to use the in-memory
-datastore, do not set the `database` flag, or just set it to `memory://`. e.g.:
-`indradb --database=memory://`
+datastore, simply start up an instance. e.g.: 
+```bash
+indradb [options] [subcommands]
+```
+
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, set the `database`
-CLI flag; e.g.: `indradb --database=rocksdb://database.rdb`.
+If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g
+```bash
+indradb rocksdb rocksdb://database.rdb [options]
+```
 
 ### Sled
 
-If you want to a datastore based on [Sled](http://sled.rs/), set the `database`
-environment variable; e.g.: `indradb --database=sled://sled_dir`. If `sled_dir`
-does not exist, it will be created.
+If you want to a datastore based on [Sled](http://sled.rs/), use the `sled` subcommand; e.g. 
+```bash
+indradb sled sled://sled_dir [options]
+```
+ If `sled_dir` does not exist, it will be created.
 
 # CLI Options
 Applications are configured via CLI arguments:
 
 ```
-  -d, --database string          The connection string to the underlying database.
   -p, --port                     The port to run the server on. Defaults to 27615.
 
-  [RocksDB]
+  [RocksDB options]
   --max_open_files               Sets the number of maximum open files to have open in RocksDB.
   --bulk_load_opt   			 If set to true, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
 
-  [Sled]
+  [Sled options]
   --sled_compression			 If set to true, compression will be enabled at the default zstd factor of 5. If set to an integer, compression will be enabled at the zstd specified factor.
 ```
 
