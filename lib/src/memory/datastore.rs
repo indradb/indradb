@@ -102,7 +102,7 @@ impl InternalMemoryDatastore {
                 let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = Box::new(iter.flat_map(move |(id, _)| {
                     let lower_bound = match &t {
                         Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-                        None => EdgeKey::new(id, Type::default(), Uuid::default())
+                        None => EdgeKey::new(id, Type::default(), Uuid::default()),
                     };
 
                     let iter = if direction == EdgeDirection::Outbound {
@@ -133,7 +133,7 @@ impl InternalMemoryDatastore {
                 } else {
                     Box::new(iter.map(move |(key, value)| (key.reversed(), *value)))
                 };
-                    
+
                 let iter = Box::new(iter);
                 Ok(iter)
             }
@@ -204,7 +204,7 @@ impl MemoryDatastore {
     /// Creates a new in-memory datastore.
     pub fn default() -> MemoryDatastore {
         Self {
-            0: Arc::new(RwLock::new(InternalMemoryDatastore::default()))
+            0: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
         }
     }
 }
@@ -297,7 +297,7 @@ impl Transaction for MemoryTransaction {
 
         let lower_bound = match t {
             Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-            None => EdgeKey::new(id, Type::default(), Uuid::default())
+            None => EdgeKey::new(id, Type::default(), Uuid::default()),
         };
 
         let range = if direction == EdgeDirection::Outbound {
