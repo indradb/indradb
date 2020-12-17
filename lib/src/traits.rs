@@ -18,6 +18,15 @@ pub trait Datastore {
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
+    /// Note that datastores have discretion on how to approach safeguard vs
+    /// performance tradeoffs. In particular:
+    /// * If the datastore is disk-backed, it may or may not flush before
+    ///   returning.
+    /// * The datastore might not verify for correctness; e.g., it might not
+    ///   ensure that the relevant vertices exist before inserting an edge.
+    /// If you want maximum protection, use the equivalent functions in
+    /// transactions, which will provide more safeguards.
+    ///
     /// # Arguments
     /// * `items`: The items to insert.
     fn bulk_insert<I>(&self, items: I) -> Result<()>
