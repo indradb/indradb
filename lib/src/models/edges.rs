@@ -31,6 +31,12 @@ impl EdgeKey {
             inbound_id,
         }
     }
+
+    /// Produces a new edge key that is a reversed version of this one; i.e.
+    /// it has the same type, but the outbound and inbound IDs are flipped.
+    pub fn reversed(&self) -> EdgeKey {
+        EdgeKey::new(self.inbound_id, self.t.clone(), self.outbound_id)
+    }
 }
 
 /// An edge.

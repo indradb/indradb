@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use crate::errors::Result;
@@ -16,12 +16,13 @@ use uuid::Uuid;
 // internally to the datastore itself. This way, we can wrap an rwlock around
 // the entire datastore, rather than on a per-data structure basis, as the
 // latter approach would risk deadlocking without extreme care.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct InternalMemoryDatastore {
-    edge_properties: BTreeMap<(EdgeKey, String), JsonValue>,
-    edges: BTreeMap<EdgeKey, DateTime<Utc>>,
-    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
     vertices: BTreeMap<Uuid, Type>,
+    edges: BTreeMap<EdgeKey, DateTime<Utc>>,
+    reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
+    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
+    edge_properties: BTreeMap<(EdgeKey, String), JsonValue>,
 }
 
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
@@ -95,40 +96,23 @@ impl InternalMemoryDatastore {
             EdgeQuery::Pipe(pipe) => {
                 let iter = self.get_vertex_values_by_query(*pipe.inner)?;
 
-                let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = match pipe.direction {
-                    EdgeDirection::Outbound => {
-                        let t = pipe.t.clone();
+                let t = pipe.t.clone();
+                let direction = pipe.direction;
 
-                        let iter = iter.flat_map(move |(id, _)| {
-                            let lower_bound = match &t {
-                                Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-                                None => {
-                                    let empty_type = Type::default();
-                                    EdgeKey::new(id, empty_type, Uuid::default())
-                                }
-                            };
+                let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = Box::new(iter.flat_map(move |(id, _)| {
+                    let lower_bound = match &t {
+                        Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
+                        None => EdgeKey::new(id, Type::default(), Uuid::default())
+                    };
 
-                            self.edges
-                                .range(lower_bound..)
-                                .take_while(move |(key, _)| key.outbound_id == id)
-                        });
+                    let iter = if direction == EdgeDirection::Outbound {
+                        self.edges.range(lower_bound..)
+                    } else {
+                        self.reversed_edges.range(lower_bound..)
+                    };
 
-                        Box::new(iter)
-                    }
-                    EdgeDirection::Inbound => {
-                        let mut candidate_ids = HashSet::new();
-                        for (id, _) in iter {
-                            candidate_ids.insert(id);
-                        }
-
-                        let iter = self
-                            .edges
-                            .iter()
-                            .filter(move |(key, _)| candidate_ids.contains(&key.inbound_id));
-
-                        Box::new(iter)
-                    }
-                };
+                    iter.take_while(move |(key, _)| key.outbound_id == id)
+                }));
 
                 if let Some(t) = pipe.t {
                     iter = Box::new(iter.filter(move |(key, _)| key.t == t));
@@ -142,9 +126,14 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, update_datetime)| update_datetime >= &&low));
                 }
 
-                let iter = iter
-                    .take(pipe.limit as usize)
-                    .map(move |(key, value)| (key.clone(), *value));
+                let iter = iter.take(pipe.limit as usize);
+
+                let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = if direction == EdgeDirection::Outbound {
+                    Box::new(iter.map(move |(key, value)| (key.clone(), *value)))
+                } else {
+                    Box::new(iter.map(move |(key, value)| (key.reversed(), *value)))
+                };
+                    
                 let iter = Box::new(iter);
                 Ok(iter)
             }
@@ -186,6 +175,7 @@ impl InternalMemoryDatastore {
     fn delete_edges(&mut self, edges: Vec<EdgeKey>) {
         for edge_key in edges {
             self.edges.remove(&edge_key);
+            self.reversed_edges.remove(&edge_key.reversed());
 
             let mut deletable_edge_properties: Vec<(EdgeKey, String)> = Vec::new();
 
@@ -214,12 +204,7 @@ impl MemoryDatastore {
     /// Creates a new in-memory datastore.
     pub fn default() -> MemoryDatastore {
         Self {
-            0: Arc::new(RwLock::new(InternalMemoryDatastore {
-                edge_properties: BTreeMap::new(),
-                edges: BTreeMap::new(),
-                vertex_properties: BTreeMap::new(),
-                vertices: BTreeMap::new(),
-            })),
+            0: Arc::new(RwLock::new(InternalMemoryDatastore::default()))
         }
     }
 }
@@ -283,6 +268,7 @@ impl Transaction for MemoryTransaction {
         }
 
         datastore.edges.insert(key.clone(), Utc::now());
+        datastore.reversed_edges.insert(key.reversed(), Utc::now());
         Ok(true)
     }
 
@@ -309,36 +295,26 @@ impl Transaction for MemoryTransaction {
     fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
-        if direction == EdgeDirection::Outbound {
-            let lower_bound = match t {
-                Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-                None => {
-                    let empty_type = Type::default();
-                    EdgeKey::new(id, empty_type, Uuid::default())
-                }
-            };
-            let range = datastore.edges.range(lower_bound..);
+        let lower_bound = match t {
+            Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
+            None => EdgeKey::new(id, Type::default(), Uuid::default())
+        };
 
-            let range = range.take_while(|&(k, _)| {
-                if let Some(t) = t {
-                    k.outbound_id == id && &k.t == t
-                } else {
-                    k.outbound_id == id
-                }
-            });
-
-            Ok(range.count() as u64)
+        let range = if direction == EdgeDirection::Outbound {
+            datastore.edges.range(lower_bound..)
         } else {
-            let range = datastore.edges.iter().filter(|&(k, _)| {
-                if let Some(t) = t {
-                    k.inbound_id == id && &k.t == t
-                } else {
-                    k.inbound_id == id
-                }
-            });
+            datastore.reversed_edges.range(lower_bound..)
+        };
 
-            Ok(range.count() as u64)
-        }
+        let range = range.take_while(|&(k, _)| {
+            if let Some(t) = t {
+                k.outbound_id == id && &k.t == t
+            } else {
+                k.outbound_id == id
+            }
+        });
+
+        Ok(range.count() as u64)
     }
 
     fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
