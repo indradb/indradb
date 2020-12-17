@@ -20,6 +20,7 @@ fi
 
 if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
     rustup component add rustfmt
+    rustup component add clippy
 fi
 
 ls -l $HOME/cached-deps/bin
