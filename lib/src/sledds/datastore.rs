@@ -122,12 +122,18 @@ impl Datastore for SledDatastore {
                     for property in properties.into_iter() {
                         vertex_property_manager.set(vertex.id, &property.name, &property.value)?;
                     }
-                },
+                }
                 models::BulkInsertItem::Edge(key, properties) => {
                     edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
 
                     for property in properties.into_iter() {
-                        edge_property_manager.set(key.outbound_id, &key.t, key.inbound_id, &property.name, &property.value)?;
+                        edge_property_manager.set(
+                            key.outbound_id,
+                            &key.t,
+                            key.inbound_id,
+                            &property.name,
+                            &property.value,
+                        )?;
                     }
                 }
             }

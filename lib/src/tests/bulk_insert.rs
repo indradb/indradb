@@ -1,6 +1,6 @@
 use super::super::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
-    Vertex, VertexQueryExt, NamedProperty
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, NamedProperty, SpecificEdgeQuery, SpecificVertexQuery,
+    Transaction, Type, Vertex, VertexQueryExt,
 };
 
 use chrono::offset::Utc;
@@ -19,19 +19,21 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
     let items = vec![
-        BulkInsertItem::Vertex(outbound_v.clone(), vec![
-            NamedProperty::new(
+        BulkInsertItem::Vertex(
+            outbound_v.clone(),
+            vec![NamedProperty::new(
                 "vertex_property_name".to_string(),
-                JsonValue::String("vertex_property_value".to_string())
-            )
-        ]),
+                JsonValue::String("vertex_property_value".to_string()),
+            )],
+        ),
         BulkInsertItem::Vertex(inbound_v.clone(), Vec::default()),
-        BulkInsertItem::Edge(key.clone(), vec![
-            NamedProperty::new(
+        BulkInsertItem::Edge(
+            key.clone(),
+            vec![NamedProperty::new(
                 "edge_property_name".to_string(),
-                JsonValue::String("edge_property_value".to_string())
-            )
-        ])
+                JsonValue::String("edge_property_value".to_string()),
+            )],
+        ),
     ];
 
     datastore.bulk_insert(items.into_iter()).unwrap();
@@ -105,7 +107,10 @@ pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
 
     let edge_t = Type::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id), Vec::default())];
+    let items = vec![BulkInsertItem::Edge(
+        EdgeKey::new(v1.id, edge_t.clone(), v2.id),
+        Vec::default(),
+    )];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t, v1.id), Vec::default())];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());

@@ -339,12 +339,14 @@ pub fn to_bulk_insert_items<'a>(
         .map(|item| match item.which()? {
             crate::bulk_insert_item::Vertex(params) => {
                 let vertex = to_vertex(&params.get_vertex()?)?;
-                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_props()?.into_iter().map(to_named_property).collect();
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> =
+                    params.get_props()?.into_iter().map(to_named_property).collect();
                 Ok(indradb::BulkInsertItem::Vertex(vertex, props?))
             }
             crate::bulk_insert_item::Edge(params) => {
                 let edge_key = to_edge_key(&params.get_key()?)?;
-                let props: Result<Vec<indradb::NamedProperty>, CapnpError> = params.get_props()?.into_iter().map(to_named_property).collect();
+                let props: Result<Vec<indradb::NamedProperty>, CapnpError> =
+                    params.get_props()?.into_iter().map(to_named_property).collect();
                 Ok(indradb::BulkInsertItem::Edge(edge_key, props?))
             }
         })

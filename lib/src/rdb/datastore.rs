@@ -308,7 +308,14 @@ impl Datastore for RocksdbDatastore {
                     compact_edges = true;
 
                     for property in properties.into_iter() {
-                        edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, &property.name, &property.value)?;
+                        edge_property_manager.set(
+                            &mut batch,
+                            key.outbound_id,
+                            &key.t,
+                            key.inbound_id,
+                            &property.name,
+                            &property.value,
+                        )?;
                         compact_edge_properties = true;
                     }
                 }
