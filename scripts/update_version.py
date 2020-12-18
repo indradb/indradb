@@ -45,17 +45,18 @@ def main():
     except:
         raise Exception("Invalid version specification")
 
-    run(["git", "checkout", "master"])
-    run(["git", "pull", "origin", "master"])
     update_version("lib/Cargo.toml", new_version)
     update_version("proto/Cargo.toml", new_version)
     update_version("bin/Cargo.toml", new_version)
+
+    run(["cargo", "check"], cwd="lib/fuzz")
+    run(["cargo", "fmt", "--", "--check"])
+    run(["cargo", "clippy"])
     run(["make", "test", "bench"])
 
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
     run(["git", "commit", "-m", new_version_str])
     run(["git", "tag", "-a", new_version_str, "-m", new_version_str])
-    run(["git", "push", "origin", "master"])
     run(["git", "push", "origin", new_version_str])
 
     run(["cargo", "publish"], cwd="lib")
