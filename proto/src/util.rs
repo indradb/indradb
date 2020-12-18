@@ -3,8 +3,6 @@
 use std::fmt::Display;
 use std::vec::IntoIter;
 
-use crate::autogen;
-
 use capnp::Error as CapnpError;
 use chrono::{DateTime, TimeZone, Utc};
 use uuid::Uuid;
@@ -326,7 +324,7 @@ pub fn from_bulk_insert_items<'a>(
 
 fn from_properties<'a>(
     properties: &[indradb::NamedProperty],
-    mut builder: capnp::struct_list::Builder<'a, autogen::property::Owned>,
+    mut builder: capnp::struct_list::Builder<'a, crate::property::Owned>,
 ) {
     for (i, prop) in properties.iter().enumerate() {
         from_named_property(prop, builder.reborrow().get(i as u32));
