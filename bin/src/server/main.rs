@@ -24,7 +24,7 @@ fn main() -> Result<(), errors::Error> {
     let addr = format!("127.0.0.1:{}", port)
         .to_socket_addrs()?
         .next()
-        .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
+        .ok_or(errors::Error::CouldNotParseBinding)?;
     let listener = exec.run_until(async { TcpListener::bind(&addr).await })?;
     println!("{}", listener.local_addr()?);
 
