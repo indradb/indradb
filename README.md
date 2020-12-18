@@ -43,14 +43,14 @@ indradb [options] [subcommands]
 
 If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g
 ```bash
-indradb rocksdb rocksdb://database.rdb [options]
+indradb rocksdb /path/to/rocksdb.rdb [options]
 ```
 
 ### Sled
 
 If you want to a datastore based on [Sled](http://sled.rs/), use the `sled` subcommand; e.g. 
 ```bash
-indradb sled sled://sled_dir [options]
+indradb sled sled_dir [options]
 ```
  If `sled_dir` does not exist, it will be created.
 
