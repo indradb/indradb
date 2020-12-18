@@ -6,8 +6,6 @@ pub enum Error {
     Io { inner: io::Error },
     #[fail(display = "could not parse address binding")]
     CouldNotParseBinding,
-    #[fail(display = "could not parse database URL")]
-    CouldNotParseDatabaseURL,
 }
 
 impl From<io::Error> for Error {
