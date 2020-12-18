@@ -1,5 +1,4 @@
-use crate::autogen;
-use crate::converters;
+use indradb_proto::{service, transaction, util as converters};
 
 use std::sync::Arc;
 
@@ -32,12 +31,12 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
 }
 
 impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransaction + Send + Sync + 'static>
-    autogen::service::Server for Service<D, T>
+    service::Server for Service<D, T>
 {
     fn ping(
         &mut self,
-        _: autogen::service::PingParams,
-        mut res: autogen::service::PingResults,
+        _: indradb_proto::service::PingParams,
+        mut res: indradb_proto::service::PingResults,
     ) -> Promise<(), CapnpError> {
         res.get().set_ready(true);
         Promise::ok(())
@@ -45,8 +44,8 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
 
     fn bulk_insert(
         &mut self,
-        req: autogen::service::BulkInsertParams,
-        mut res: autogen::service::BulkInsertResults,
+        req: service::BulkInsertParams,
+        mut res: service::BulkInsertResults,
     ) -> Promise<(), CapnpError> {
         let datastore = self.datastore.clone();
         let cnp_items = pry!(pry!(req.get()).get_items());
@@ -61,8 +60,8 @@ impl<D: IndraDbDatastore<Trans = T> + Send + Sync + 'static, T: IndraDbTransacti
 
     fn transaction(
         &mut self,
-        _: autogen::service::TransactionParams,
-        mut res: autogen::service::TransactionResults,
+        _: service::TransactionParams,
+        mut res: service::TransactionResults,
     ) -> Promise<(), CapnpError> {
         let trans = Transaction::new(pry!(converters::map_capnp_err(self.datastore.transaction())));
         res.get().set_transaction(capnp_rpc::new_client(trans));
@@ -80,11 +79,11 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> Transaction<T> {
     }
 }
 
-impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server for Transaction<T> {
+impl<T: IndraDbTransaction + Send + Sync + 'static> transaction::Server for Transaction<T> {
     fn create_vertex(
         &mut self,
-        req: autogen::transaction::CreateVertexParams,
-        mut res: autogen::transaction::CreateVertexResults,
+        req: transaction::CreateVertexParams,
+        mut res: transaction::CreateVertexResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_vertex = pry!(pry!(req.get()).get_vertex());
@@ -99,8 +98,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn create_vertex_from_type(
         &mut self,
-        req: autogen::transaction::CreateVertexFromTypeParams,
-        mut res: autogen::transaction::CreateVertexFromTypeResults,
+        req: transaction::CreateVertexFromTypeParams,
+        mut res: transaction::CreateVertexFromTypeResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_t = pry!(pry!(req.get()).get_t());
@@ -115,8 +114,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_vertices(
         &mut self,
-        req: autogen::transaction::GetVerticesParams,
-        mut res: autogen::transaction::GetVerticesResults,
+        req: transaction::GetVerticesParams,
+        mut res: transaction::GetVerticesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -137,8 +136,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn delete_vertices(
         &mut self,
-        req: autogen::transaction::DeleteVerticesParams,
-        mut res: autogen::transaction::DeleteVerticesResults,
+        req: transaction::DeleteVerticesParams,
+        mut res: transaction::DeleteVerticesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -153,8 +152,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_vertex_count(
         &mut self,
-        _: autogen::transaction::GetVertexCountParams,
-        mut res: autogen::transaction::GetVertexCountResults,
+        _: transaction::GetVertexCountParams,
+        mut res: transaction::GetVertexCountResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
 
@@ -167,8 +166,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn create_edge(
         &mut self,
-        req: autogen::transaction::CreateEdgeParams,
-        mut res: autogen::transaction::CreateEdgeResults,
+        req: transaction::CreateEdgeParams,
+        mut res: transaction::CreateEdgeResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_edge_key = pry!(pry!(req.get()).get_key());
@@ -183,8 +182,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_edges(
         &mut self,
-        req: autogen::transaction::GetEdgesParams,
-        mut res: autogen::transaction::GetEdgesResults,
+        req: transaction::GetEdgesParams,
+        mut res: transaction::GetEdgesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -205,8 +204,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn delete_edges(
         &mut self,
-        req: autogen::transaction::DeleteEdgesParams,
-        mut res: autogen::transaction::DeleteEdgesResults,
+        req: transaction::DeleteEdgesParams,
+        mut res: transaction::DeleteEdgesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -221,8 +220,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_edge_count(
         &mut self,
-        req: autogen::transaction::GetEdgeCountParams,
-        mut res: autogen::transaction::GetEdgeCountResults,
+        req: transaction::GetEdgeCountParams,
+        mut res: transaction::GetEdgeCountResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -244,8 +243,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_vertex_properties(
         &mut self,
-        req: autogen::transaction::GetVertexPropertiesParams,
-        mut res: autogen::transaction::GetVertexPropertiesResults,
+        req: transaction::GetVertexPropertiesParams,
+        mut res: transaction::GetVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -267,8 +266,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_all_vertex_properties(
         &mut self,
-        req: autogen::transaction::GetAllVertexPropertiesParams,
-        mut res: autogen::transaction::GetAllVertexPropertiesResults,
+        req: transaction::GetAllVertexPropertiesParams,
+        mut res: transaction::GetAllVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -289,8 +288,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn set_vertex_properties(
         &mut self,
-        req: autogen::transaction::SetVertexPropertiesParams,
-        mut res: autogen::transaction::SetVertexPropertiesResults,
+        req: transaction::SetVertexPropertiesParams,
+        mut res: transaction::SetVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -308,8 +307,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn delete_vertex_properties(
         &mut self,
-        req: autogen::transaction::DeleteVertexPropertiesParams,
-        mut res: autogen::transaction::DeleteVertexPropertiesResults,
+        req: transaction::DeleteVertexPropertiesParams,
+        mut res: transaction::DeleteVertexPropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -325,8 +324,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_edge_properties(
         &mut self,
-        req: autogen::transaction::GetEdgePropertiesParams,
-        mut res: autogen::transaction::GetEdgePropertiesResults,
+        req: transaction::GetEdgePropertiesParams,
+        mut res: transaction::GetEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -348,8 +347,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn get_all_edge_properties(
         &mut self,
-        req: autogen::transaction::GetAllEdgePropertiesParams,
-        mut res: autogen::transaction::GetAllEdgePropertiesResults,
+        req: transaction::GetAllEdgePropertiesParams,
+        mut res: transaction::GetAllEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let cnp_q = pry!(pry!(req.get()).get_q());
@@ -371,8 +370,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn set_edge_properties(
         &mut self,
-        req: autogen::transaction::SetEdgePropertiesParams,
-        mut res: autogen::transaction::SetEdgePropertiesResults,
+        req: transaction::SetEdgePropertiesParams,
+        mut res: transaction::SetEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -390,8 +389,8 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> autogen::transaction::Server
 
     fn delete_edge_properties(
         &mut self,
-        req: autogen::transaction::DeleteEdgePropertiesParams,
-        mut res: autogen::transaction::DeleteEdgePropertiesResults,
+        req: transaction::DeleteEdgePropertiesParams,
+        mut res: transaction::DeleteEdgePropertiesResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
         let params = pry!(req.get());
@@ -411,7 +410,7 @@ where
     D: IndraDbDatastore<Trans = T> + Send + Sync + 'static,
     T: IndraDbTransaction + Send + Sync + 'static,
 {
-    let service: autogen::service::Client = capnp_rpc::new_client(Service::new(datastore));
+    let service: service::Client = capnp_rpc::new_client(Service::new(datastore));
     let mut incoming = listener.incoming();
 
     while let Some(socket) = incoming.next().await {

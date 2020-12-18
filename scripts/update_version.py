@@ -7,6 +7,7 @@ import time
 import subprocess
 
 VERSION_MATCHER = re.compile(r'^version = "([^"]+)\.([^"]+)\.([^"]+)"$')
+VERSIONED_CATEGORIES = {"[package]", "[dependencies.indradb-lib]", "[dependencies.indradb-proto]"}
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
@@ -20,7 +21,7 @@ def update_version(path, new_version):
 
     for i, line in enumerate(contents):
         if line.startswith("["):
-            in_appropriate_category = line == "[package]" or line == "[dependencies.indradb-lib]"
+            in_appropriate_category = line in VERSIONED_CATEGORIES
         elif in_appropriate_category:
             match = VERSION_MATCHER.match(line)
 
@@ -47,6 +48,7 @@ def main():
     run(["git", "checkout", "master"])
     run(["git", "pull", "origin", "master"])
     update_version("lib/Cargo.toml", new_version)
+    update_version("proto/Cargo.toml", new_version)
     update_version("bin/Cargo.toml", new_version)
     run(["make", "test", "bench"])
 
@@ -58,6 +60,8 @@ def main():
 
     run(["cargo", "publish"], cwd="lib")
     time.sleep(15) # wait for lib to be accessible on crates.io
+    run(["cargo", "publish"], cwd="proto")
+    time.sleep(15) # wait for proto to be accessible on crates.io
     run(["cargo", "publish"], cwd="bin")
 
 if __name__ == "__main__":

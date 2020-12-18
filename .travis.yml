@@ -1,7 +1,6 @@
 dist: trusty
 language: rust
 services: docker
-sudo: required
 
 addons:
   apt:
@@ -74,7 +73,3 @@ cache:
   - $HOME/cached-deps
   # Increase default timeout of 3m
   timeout: 500
-
-notifications:
-  email:
-on_success: never

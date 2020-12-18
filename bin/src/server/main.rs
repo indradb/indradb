@@ -24,7 +24,7 @@ fn main() -> Result<(), errors::Error> {
     let addr = format!("127.0.0.1:{}", port)
         .to_socket_addrs()?
         .next()
-        .ok_or_else(|| -> errors::Error { errors::Error::CouldNotParseBinding })?;
+        .ok_or(errors::Error::CouldNotParseBinding)?;
     let listener = exec.run_until(async { TcpListener::bind(&addr).await })?;
     println!("{}", listener.local_addr()?);
 
@@ -48,7 +48,23 @@ fn main() -> Result<(), errors::Error> {
         Ok(())
     } else if connection_string.starts_with("sled://") {
         let path = &connection_string[7..connection_string.len()];
-        let datastore = indradb::SledDatastore::new(path).expect("Expected to be able to create the Sled datastore");
+
+        let sled_compression_str = env::var("SLEDDB_COMPRESSION").unwrap_or_else(|_| "".to_string());
+        let sled_config = match &sled_compression_str[..] {
+            "true" => indradb::SledConfig::with_compression(None),
+            "false" | "" => indradb::SledConfig::default(),
+            _ => {
+                let sled_compression = sled_compression_str
+                    .parse::<i32>()
+                    .expect("Could not parse environment variable `SLEDDB_COMPRESSION`: must be a bool or i32");
+                indradb::SledConfig::with_compression(Some(sled_compression))
+            }
+        };
+
+        let datastore = sled_config
+            .open(path)
+            .expect("Expected to be able to create the Sled datastore");
+
         exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
         Ok(())
     } else if connection_string == "memory://" {
