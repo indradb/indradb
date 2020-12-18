@@ -6,9 +6,9 @@ mod cli;
 mod errors;
 
 use async_std::net::TcpListener;
+use cli::CliDatastoreArgs;
 use futures::executor::LocalPool;
 use std::net::ToSocketAddrs;
-use cli::{CliDatastoreArgs};
 
 fn main() -> Result<(), errors::Error> {
     let mut exec = LocalPool::new();
@@ -22,16 +22,18 @@ fn main() -> Result<(), errors::Error> {
     let listener = exec.run_until(async { TcpListener::bind(&addr).await })?;
     println!("{}", listener.local_addr()?);
 
-    
     match args.datastore_args {
-        CliDatastoreArgs::Rocksdb { path, max_open_files, bulk_load_optimized } => {
-            let datastore =
-            indradb::RocksdbDatastore::new(&path, Some(max_open_files), bulk_load_optimized)
+        CliDatastoreArgs::Rocksdb {
+            path,
+            max_open_files,
+            bulk_load_optimized,
+        } => {
+            let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files), bulk_load_optimized)
                 .expect("Expected to be able to create the RocksDB datastore");
 
             exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
             Ok(())
-        },
+        }
         CliDatastoreArgs::Sled { path, sled_config } => {
             let datastore = sled_config
                 .open(&path)
@@ -39,7 +41,7 @@ fn main() -> Result<(), errors::Error> {
 
             exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;
             Ok(())
-        },
+        }
         CliDatastoreArgs::Memory => {
             let datastore = indradb::MemoryDatastore::default();
             exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;

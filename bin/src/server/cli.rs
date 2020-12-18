@@ -3,13 +3,20 @@ use indradb::SledConfig;
 
 pub struct CliArgs {
     pub port: u16,
-    pub datastore_args: CliDatastoreArgs
+    pub datastore_args: CliDatastoreArgs,
 }
 
 pub enum CliDatastoreArgs {
     Memory,
-    Rocksdb { path: String, max_open_files: i32, bulk_load_optimized: bool },
-    Sled { path: String, sled_config: SledConfig }
+    Rocksdb {
+        path: String,
+        max_open_files: i32,
+        bulk_load_optimized: bool,
+    },
+    Sled {
+        path: String,
+        sled_config: SledConfig,
+    },
 }
 
 const PORT: &str = "PORT";
@@ -65,23 +72,23 @@ pub fn parse_cli_args() -> CliArgs {
         .subcommand(sled_subcommand)
         .arg(&port)
         .get_matches();
-        
+
     let mut args = CliArgs {
         port: match matches.value_of(PORT) {
             Some(value) => value.parse::<u16>().expect("Could not parse argument `port`"),
             None => DEFAULT_PORT,
         },
-        datastore_args: CliDatastoreArgs::Memory
+        datastore_args: CliDatastoreArgs::Memory,
     };
 
-    if let Some(matches) = matches.subcommand_matches("rocksdb") {  
+    if let Some(matches) = matches.subcommand_matches("rocksdb") {
         args.datastore_args = CliDatastoreArgs::Rocksdb {
             path: String::from(matches.value_of(DATABASE_PATH).unwrap()),
             max_open_files: matches.value_of(ROCKSDB_MAX_OPEN_FILES).unwrap().parse::<i32>().expect(
                 "Could not parse argument `max_open_files`: must be an \
                  i32",
             ),
-            bulk_load_optimized: matches.value_of(ROCKSDB_BULK_LOAD_OPTIMIZED).unwrap() == "true"
+            bulk_load_optimized: matches.value_of(ROCKSDB_BULK_LOAD_OPTIMIZED).unwrap() == "true",
         }
     }
 
@@ -92,16 +99,14 @@ pub fn parse_cli_args() -> CliArgs {
             sled_config: match sled_compression {
                 "true" => indradb::SledConfig::with_compression(None),
                 "false" => indradb::SledConfig::default(),
-                _ => {
-                    indradb::SledConfig::with_compression(Some(
-                        sled_compression
+                _ => indradb::SledConfig::with_compression(Some(
+                    sled_compression
                         .parse::<i32>()
-                        .expect("Could not parse argument `sled_compression`: must be a bool or i32")
-                    ))
-                }
-            }
+                        .expect("Could not parse argument `sled_compression`: must be a bool or i32"),
+                )),
+            },
         }
     }
-    
+
     args
 }
