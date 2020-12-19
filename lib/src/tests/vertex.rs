@@ -218,7 +218,7 @@ where
     ];
 
     for vertex in &vertices {
-        trans.create_vertex(vertex).unwrap();
+        trans.create_vertex(&vertex).unwrap();
     }
 
     let mut vertex_ids: Vec<Uuid> = vertices.into_iter().map(|v| v.id).collect();

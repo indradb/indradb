@@ -76,6 +76,7 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     Err(ValidationError::CannotIncrementUuid)
 }
 
+// TODO: remove
 /// Gets the number of nanoseconds since unix epoch for a given datetime.
 ///
 /// # Arguments

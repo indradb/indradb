@@ -170,11 +170,11 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> transaction::Server for Tran
         mut res: transaction::CreateEdgeResults,
     ) -> Promise<(), CapnpError> {
         let trans = self.trans.clone();
-        let cnp_edge_key = pry!(pry!(req.get()).get_key());
-        let edge_key = pry!(converters::to_edge_key(&cnp_edge_key));
+        let cnp_edge = pry!(pry!(req.get()).get_edge());
+        let edge = pry!(converters::to_edge(&cnp_edge));
 
         Promise::from_future(async move {
-            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_edge(&edge_key))).await?;
+            let created = spawn_blocking(move || converters::map_capnp_err(trans.create_edge(&edge))).await?;
             res.get().set_result(created);
             Ok(())
         })
@@ -195,7 +195,7 @@ impl<T: IndraDbTransaction + Send + Sync + 'static> transaction::Server for Tran
             let mut res = res.get().init_result(edges.len() as u32);
 
             for (i, edge) in edges.into_iter().enumerate() {
-                converters::from_edge(&edge, res.reborrow().get(i as u32))?;
+                converters::from_edge(&edge, res.reborrow().get(i as u32));
             }
 
             Ok(())

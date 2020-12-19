@@ -6,7 +6,6 @@ use crate::errors::Result;
 use crate::models;
 use crate::models::*;
 use crate::util::{next_uuid, remove_nones_from_iterator};
-use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use sled::{Config, Db, Tree};
 use std::sync::Arc;
@@ -44,7 +43,6 @@ impl SledConfig {
 /// The meat of a Sled datastore
 pub struct SledHolder {
     pub(crate) db: Arc<Db>, // Derefs to Tree, holds the vertices
-    pub(crate) edges: Tree,
     pub(crate) edge_ranges: Tree,
     pub(crate) reversed_edge_ranges: Tree,
     pub(crate) vertex_properties: Tree,
@@ -71,7 +69,6 @@ impl<'ds> SledHolder {
         let db = config.open()?;
 
         Ok(SledHolder {
-            edges: db.open_tree("edges")?,
             edge_ranges: db.open_tree("edge_ranges")?,
             reversed_edge_ranges: db.open_tree("reversed_edge_ranges")?,
             vertex_properties: db.open_tree("vertex_properties")?,
@@ -119,14 +116,14 @@ impl Datastore for SledDatastore {
                 models::BulkInsertItem::Vertex(ref vertex) => {
                     vertex_manager.create(vertex)?;
                 }
-                models::BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                models::BulkInsertItem::Edge(ref edge) => {
+                    edge_manager.set(edge.outbound_id, &edge.t, edge.inbound_id)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(id, name, value)?;
                 }
-                models::BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
-                    edge_property_manager.set(key.outbound_id, &key.t, key.inbound_id, name, value)?;
+                models::BulkInsertItem::EdgeProperty(ref edge, ref name, ref value) => {
+                    edge_property_manager.set(edge.outbound_id, &edge.t, edge.inbound_id, name, value)?;
                 }
             }
         }
@@ -198,7 +195,7 @@ impl SledTransaction {
                 let direction = q.direction;
 
                 let iter = edge_iterator.map(move |item| {
-                    let (outbound_id, _, _, inbound_id) = item?;
+                    let (outbound_id, _, inbound_id) = item?;
 
                     let id = match direction {
                         EdgeDirection::Outbound => outbound_id,
@@ -232,14 +229,13 @@ impl SledTransaction {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match q {
             EdgeQuery::Specific(q) => {
-                let edge_manager = EdgeManager::new(&self.holder);
+                let edge_range_manager = EdgeRangeManager::new(&self.holder);
 
-                let edges = q.keys.into_iter().map(move |key| {
-                    match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                        Some(update_datetime) => {
-                            Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
-                        }
-                        None => Ok(None),
+                let edges = q.edges.into_iter().map(move |edge| {
+                    if edge_range_manager.exists(edge.outbound_id, &edge.t, edge.inbound_id)? {
+                        Ok(Some((edge.outbound_id, edge.t.clone(), edge.inbound_id)))
+                    } else {
+                        Ok(None)
                     }
                 });
 
@@ -263,33 +259,24 @@ impl SledTransaction {
 
                 for item in vertex_iterator {
                     let (id, _) = item?;
-                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
+                    let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.offset)?;
 
                     for item in edge_iterator {
                         match item {
                             Ok((
                                 edge_range_first_id,
                                 edge_range_t,
-                                edge_range_update_datetime,
                                 edge_range_second_id,
                             )) => {
-                                if let Some(low) = q.low {
-                                    if edge_range_update_datetime < low {
-                                        break;
-                                    }
-                                }
-
                                 edges.push(match q.direction {
                                     EdgeDirection::Outbound => Ok((
                                         edge_range_first_id,
                                         edge_range_t,
-                                        edge_range_update_datetime,
                                         edge_range_second_id,
                                     )),
                                     EdgeDirection::Inbound => Ok((
                                         edge_range_second_id,
                                         edge_range_t,
-                                        edge_range_update_datetime,
                                         edge_range_first_id,
                                     )),
                                 })
@@ -351,14 +338,14 @@ impl Transaction for SledTransaction {
         Ok(iterator.count() as u64)
     }
 
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool> {
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool> {
         let vertex_manager = VertexManager::new(&self.holder);
 
-        if !vertex_manager.exists(key.outbound_id)? || !vertex_manager.exists(key.inbound_id)? {
+        if !vertex_manager.exists(edge.outbound_id)? || !vertex_manager.exists(edge.inbound_id)? {
             Ok(false)
         } else {
             let edge_manager = EdgeManager::new(&self.holder);
-            edge_manager.set(key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            edge_manager.set(edge.outbound_id, &edge.t, edge.inbound_id)?;
             Ok(true)
         }
     }
@@ -367,9 +354,8 @@ impl Transaction for SledTransaction {
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         let mapped = iterator.map(move |item: Result<EdgeRangeItem>| {
-            let (outbound_id, t, update_datetime, inbound_id) = item?;
-            let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-            let edge = models::Edge::new(key, update_datetime);
+            let (outbound_id, t, inbound_id) = item?;
+            let edge = models::Edge::new(outbound_id, t, inbound_id);
             Ok(edge)
         });
 
@@ -382,10 +368,10 @@ impl Transaction for SledTransaction {
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         for item in iterator {
-            let (outbound_id, t, update_datetime, inbound_id) = item?;
+            let (outbound_id, t, inbound_id) = item?;
 
             if vertex_manager.get(outbound_id)?.is_some() {
-                edge_manager.delete(outbound_id, &t, inbound_id, update_datetime)?;
+                edge_manager.delete(outbound_id, &t, inbound_id)?;
             };
         }
         Ok(())
@@ -397,7 +383,7 @@ impl Transaction for SledTransaction {
             EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&self.holder),
         };
 
-        let iter = edge_range_manager.iterate_for_range(id, t, None)?;
+        let iter = edge_range_manager.iterate_for_range(id, t, 0)?;
         let count = iter.count();
 
         Ok(count as u64)
@@ -465,12 +451,12 @@ impl Transaction for SledTransaction {
         let mut properties = Vec::new();
 
         for item in self.edge_query_to_iterator(q.inner)? {
-            let (outbound_id, t, _, inbound_id) = item?;
+            let (outbound_id, t, inbound_id) = item?;
             let value = manager.get(outbound_id, &t, inbound_id, &q.name)?;
 
             if let Some(value) = value {
-                let key = models::EdgeKey::new(outbound_id, t, inbound_id);
-                properties.push(models::EdgeProperty::new(key, value));
+                let edge = models::Edge::new(outbound_id, t, inbound_id);
+                properties.push(models::EdgeProperty::new(edge, value));
             }
         }
 
@@ -482,8 +468,8 @@ impl Transaction for SledTransaction {
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         let iter = iterator.map(move |item| {
-            let (out_id, t, time, in_id) = item?;
-            let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+            let (out_id, t, in_id) = item?;
+            let edge = Edge::new(out_id, t.clone(), in_id);
             let it = manager.iterate_for_owner(out_id, &t, in_id)?;
             let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
@@ -501,7 +487,7 @@ impl Transaction for SledTransaction {
         let manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in self.edge_query_to_iterator(q.inner)? {
-            let (outbound_id, t, _, inbound_id) = item?;
+            let (outbound_id, t, inbound_id) = item?;
             manager.set(outbound_id, &t, inbound_id, &q.name, value)?;
         }
         Ok(())
@@ -511,7 +497,7 @@ impl Transaction for SledTransaction {
         let manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in self.edge_query_to_iterator(q.inner)? {
-            let (outbound_id, t, _, inbound_id) = item?;
+            let (outbound_id, t, inbound_id) = item?;
             manager.delete(outbound_id, &t, inbound_id, &q.name)?;
         }
         Ok(())

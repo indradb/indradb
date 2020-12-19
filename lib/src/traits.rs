@@ -40,15 +40,15 @@ pub trait Datastore {
                 models::BulkInsertItem::Vertex(vertex) => {
                     trans.create_vertex(&vertex)?;
                 }
-                models::BulkInsertItem::Edge(edge_key) => {
-                    trans.create_edge(&edge_key)?;
+                models::BulkInsertItem::Edge(edge) => {
+                    trans.create_edge(&edge)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id).property(name);
                     trans.set_vertex_properties(query, &value)?;
                 }
-                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
+                models::BulkInsertItem::EdgeProperty(edge, name, value) => {
+                    let query = models::SpecificEdgeQuery::single(edge).property(name);
                     trans.set_edge_properties(query, &value)?;
                 }
             }
@@ -106,14 +106,13 @@ pub trait Transaction {
     /// Gets the number of vertices in the datastore..
     fn get_vertex_count(&self) -> Result<u64>;
 
-    /// Creates a new edge. If the edge already exists, this will update it
-    /// with a new update datetime. Returns whether the edge was successfully
-    /// created - if this is false, it's because one of the specified vertices
-    /// is missing.
+    /// Creates a new edge. Returns whether the edge was successfully created
+    /// - if this is false, it's because one of the specified vertices is
+    /// missing.
     ///
     /// # Arguments
-    /// * `key`: The edge to create.
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool>;
+    /// * `edge`: The edge to create.
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool>;
 
     /// Gets a range of edges specified by a query.
     ///

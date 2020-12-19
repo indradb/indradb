@@ -17,6 +17,8 @@ pub enum Error {
     Sled { inner: SledError },
     #[fail(display = "UUID already taken")]
     UuidTaken,
+    #[fail(display = "validation error: {}", inner)]
+    Validation { inner: ValidationError },
 }
 
 impl From<JsonError> for Error {
@@ -36,6 +38,12 @@ impl From<RocksDbError> for Error {
 impl From<SledError> for Error {
     fn from(err: SledError) -> Self {
         Error::Sled { inner: err }
+    }
+}
+
+impl From<ValidationError> for Error {
+    fn from(err: ValidationError) -> Self {
+        Error::Validation { inner: err }
     }
 }
 

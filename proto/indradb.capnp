@@ -1,16 +1,10 @@
 @0xa24c698a359c7c15;
 
-using Timestamp = UInt64;
 using Uuid = Data;
 using Type = Text;
 using Json = Text;
 
 struct Edge {
-    key @0 :EdgeKey;
-    createdDatetime @1 :Timestamp;
-}
-
-struct EdgeKey {
     outboundId @0 :Uuid;
     t @1 :Type;
     inboundId @2 :Uuid;
@@ -48,15 +42,14 @@ struct VertexPropertyQuery {
 struct EdgeQuery {
     union {
         specific :group {
-            keys @0 :List(EdgeKey);
+            edges @0 :List(Edge);
         }
         pipe :group {
             inner @1 :VertexQuery;
             direction @2 :EdgeDirection;
             t @3 :Type;
-            high @4 :Timestamp;
-            low @5 :Timestamp;
-            limit @6 :UInt32;
+            limit @4 :UInt32;
+            offset @5 :UInt64;
         }
     }
 }
@@ -87,7 +80,7 @@ struct VertexProperties {
 }
 
 struct EdgeProperty {
-    key @0 :EdgeKey;
+    edge @0 :Edge;
     value @1 :Json;
 }
 
@@ -102,7 +95,7 @@ struct BulkInsertItem {
             vertex @0 :Vertex;
         }
         edge :group {
-            key @1 :EdgeKey;
+            edge @1 :Edge;
         }
         vertexProperty :group {
             id @2 :Uuid;
@@ -110,7 +103,7 @@ struct BulkInsertItem {
             value @4 :Json;
         }
         edgeProperty :group {
-            key @5 :EdgeKey;
+            edge @5 :Edge;
             name @6 :Text;
             value @7 :Json;
         }
@@ -155,14 +148,12 @@ interface Transaction {
     # Gets the number of vertices in the datastore..
     getVertexCount @4 () -> (result :UInt64);
 
-    # Creates a new edge. If the edge already exists, this will update it
-    # with a new update datetime. Returns whether the edge was successfully
-    # created - if this is false, it's because one of the specified vertices
-    # is missing.
+    # Creates a new edge. Returns whether the edge was successfully created -
+    # if this is false, it's because one of the specified vertices is missing.
     #
     # Arguments
-    # * `key`: The edge to create.
-    createEdge @5 (key :EdgeKey) -> (result :Bool);
+    # * `edge`: The edge to create.
+    createEdge @5 (edge :Edge) -> (result :Bool);
 
     # Gets a range of edges specified by a query.
     #

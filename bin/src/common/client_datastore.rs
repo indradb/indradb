@@ -163,10 +163,10 @@ impl ClientTransaction {
         Ok(res.get()?.get_result())
     }
 
-    async fn async_create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, CapnpError> {
+    async fn async_create_edge(&self, e: &indradb::Edge) -> Result<bool, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.create_edge_request();
-        converters::from_edge_key(e, req.get().init_key());
+        converters::from_edge(e, req.get().init_edge());
         let res = req.send().promise.await?;
         Ok(res.get()?.get_result())
     }
@@ -357,7 +357,7 @@ impl indradb::Transaction for ClientTransaction {
         Ok(self.exec.borrow_mut().run_until(self.async_get_vertex_count()).unwrap())
     }
 
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
+    fn create_edge(&self, e: &indradb::Edge) -> Result<bool, indradb::Error> {
         Ok(self.exec.borrow_mut().run_until(self.async_create_edge(e)).unwrap())
     }
 
