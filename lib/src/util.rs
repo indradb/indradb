@@ -76,17 +76,6 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     Err(ValidationError::CannotIncrementUuid)
 }
 
-// TODO: remove
-/// Gets the number of nanoseconds since unix epoch for a given datetime.
-///
-/// # Arguments
-/// * `datetime` - The datetime to convert.
-pub fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
-    let timestamp = datetime.timestamp() as u64;
-    let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());
-    timestamp * 1_000_000_000 + nanoseconds
-}
-
 pub fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
 where
     I: Iterator<Item = Result<Option<T>>>,
@@ -100,7 +89,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_random_secret, generate_temporary_path, generate_uuid_v1, nanos_since_epoch, next_uuid};
+    use super::{generate_random_secret, generate_temporary_path, generate_uuid_v1, next_uuid};
     use chrono::{DateTime, NaiveDateTime, Utc};
     use core::str::FromStr;
     use regex::Regex;
@@ -139,11 +128,5 @@ mod tests {
 
         let from_uuid = Uuid::from_str("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap();
         assert!(next_uuid(from_uuid).is_err());
-    }
-
-    #[test]
-    fn should_generate_nanos_since_epoch() {
-        let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 62), Utc);
-        assert_eq!(nanos_since_epoch(&datetime), 61000000062);
     }
 }
