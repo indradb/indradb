@@ -1,9 +1,7 @@
 //! Utility functions.
 
-use crate::errors::Result;
 use crate::errors::{ValidationError, ValidationResult};
 use chrono::offset::Utc;
-use chrono::DateTime;
 use rand::prelude::*;
 use rand::rngs::OsRng;
 use std::env;
@@ -76,21 +74,9 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     Err(ValidationError::CannotIncrementUuid)
 }
 
-pub fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
-where
-    I: Iterator<Item = Result<Option<T>>>,
-{
-    iter.filter_map(|item| match item {
-        Err(err) => Some(Err(err)),
-        Ok(Some(value)) => Some(Ok(value)),
-        _ => None,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::{generate_random_secret, generate_temporary_path, generate_uuid_v1, next_uuid};
-    use chrono::{DateTime, NaiveDateTime, Utc};
     use core::str::FromStr;
     use regex::Regex;
     use uuid::Uuid;
