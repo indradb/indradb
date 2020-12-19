@@ -5,9 +5,8 @@ use super::managers::*;
 use crate::errors::Result;
 use crate::util::next_uuid;
 use crate::{
-    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
-    VertexQuery,
+    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery,
+    NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use rocksdb::{DBCompactionStyle, MemtableFactory, Options, WriteBatch, WriteOptions, DB};
@@ -196,16 +195,8 @@ fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
                     let (edge_range_first_id, edge_range_t, edge_range_second_id) = item?;
 
                     edges.push(match q.direction {
-                        EdgeDirection::Outbound => (
-                            edge_range_first_id,
-                            edge_range_t,
-                            edge_range_second_id,
-                        ),
-                        EdgeDirection::Inbound => (
-                            edge_range_second_id,
-                            edge_range_t,
-                            edge_range_first_id,
-                        ),
+                        EdgeDirection::Outbound => (edge_range_first_id, edge_range_t, edge_range_second_id),
+                        EdgeDirection::Inbound => (edge_range_second_id, edge_range_t, edge_range_first_id),
                     });
 
                     if let Some(limit) = q.limit {

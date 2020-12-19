@@ -1,6 +1,6 @@
 use super::types::Type;
-use crate::util::next_uuid;
 use crate::errors::ValidationResult;
+use crate::util::next_uuid;
 use uuid::Uuid;
 
 /// Represents an edge.

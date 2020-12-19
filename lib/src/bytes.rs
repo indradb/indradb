@@ -1,6 +1,6 @@
-use std::{str, u8};
-use std::io::{Read, Write, Cursor, Error as IoError};
 use crate::models;
+use std::io::{Cursor, Error as IoError, Read, Write};
+use std::{str, u8};
 use uuid::Uuid;
 
 pub enum Component<'a> {

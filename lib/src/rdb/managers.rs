@@ -92,23 +92,14 @@ impl<'a> VertexManager<'a> {
             for item in edge_range_manager.iterate_for_owner(id)? {
                 let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
-                edge_manager.delete(
-                    &mut batch,
-                    edge_range_out_id,
-                    &edge_range_t,
-                    edge_range_in_id,
-                )?;
+                edge_manager.delete(&mut batch, edge_range_out_id, &edge_range_t, edge_range_in_id)?;
             }
         }
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
             for item in reversed_edge_range_manager.iterate_for_owner(id)? {
-                let (
-                    reversed_edge_range_in_id,
-                    reversed_edge_range_t,
-                    reversed_edge_range_out_id,
-                ) = item?;
+                let (reversed_edge_range_in_id, reversed_edge_range_t, reversed_edge_range_out_id) = item?;
                 debug_assert_eq!(reversed_edge_range_in_id, id);
                 edge_manager.delete(
                     &mut batch,
@@ -136,29 +127,17 @@ impl<'a> EdgeManager<'a> {
         EdgeManager { db }
     }
 
-    pub fn set(
-        &self,
-        mut batch: &mut WriteBatch,
-        out_id: Uuid,
-        t: &models::Type,
-        in_id: Uuid,
-    ) -> Result<()> {
+    pub fn set(&self, mut batch: &mut WriteBatch, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.set(&mut batch, out_id, t, in_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
         reversed_edge_range_manager.set(&mut batch, in_id, t, out_id)?;
-        
+
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        mut batch: &mut WriteBatch,
-        out_id: Uuid,
-        t: &models::Type,
-        in_id: Uuid,
-    ) -> Result<()> {
+    pub fn delete(&self, mut batch: &mut WriteBatch, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(&mut batch, out_id, t, in_id)?;
 
@@ -271,25 +250,13 @@ impl<'a> EdgeRangeManager<'a> {
         Ok(self.db.get_cf(self.cf, &self.key(first_id, t, second_id))?.is_some())
     }
 
-    pub fn set(
-        &self,
-        batch: &mut WriteBatch,
-        first_id: Uuid,
-        t: &models::Type,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<()> {
         let key = self.key(first_id, t, second_id);
         batch.put_cf(self.cf, &key, &[]);
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        batch: &mut WriteBatch,
-        first_id: Uuid,
-        t: &models::Type,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(first_id, t, second_id));
         Ok(())
     }

@@ -1,8 +1,8 @@
 //! Converts between cnp and native IndraDB models
 
+use std::convert::TryInto;
 use std::fmt::Display;
 use std::vec::IntoIter;
-use std::convert::TryInto;
 
 use capnp::Error as CapnpError;
 use uuid::Uuid;
@@ -110,7 +110,10 @@ pub fn to_edge_property<'a>(reader: &crate::edge_property::Reader<'a>) -> Result
     Ok(indradb::EdgeProperty::new(edge, value))
 }
 
-pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_query::Builder<'a>) -> Result<(), CapnpError> {
+pub fn from_vertex_query<'a>(
+    q: &indradb::VertexQuery,
+    builder: crate::vertex_query::Builder<'a>,
+) -> Result<(), CapnpError> {
     match q {
         indradb::VertexQuery::Range(q) => {
             let mut builder = builder.init_range();
@@ -125,7 +128,7 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_qu
 
             builder.set_limit(match q.limit {
                 Some(limit) => limit as u64,
-                None => u64::max_value()
+                None => u64::max_value(),
             });
         }
         indradb::VertexQuery::Specific(q) => {
@@ -141,7 +144,7 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_qu
 
             builder.set_limit(match q.limit {
                 Some(limit) => limit as u64,
-                None => u64::max_value()
+                None => u64::max_value(),
             });
 
             if let Some(ref t) = q.t {
@@ -166,7 +169,7 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
                 range = range.start_id(map_capnp_err(Uuid::from_slice(start_id_bytes))?);
             }
 
-            if t_str != "" {
+            if !t_str.is_empty() {
                 range = range.t(map_capnp_err(indradb::Type::new(t_str))?);
             }
 
@@ -184,9 +187,10 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
             let inner = Box::new(to_edge_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
             let t_str = params.get_t()?;
-            let mut pipe = indradb::PipeVertexQuery::new(inner, direction).limit(map_capnp_err(params.get_limit().try_into())?);
+            let mut pipe =
+                indradb::PipeVertexQuery::new(inner, direction).limit(map_capnp_err(params.get_limit().try_into())?);
 
-            if t_str != "" {
+            if !t_str.is_empty() {
                 pipe = pipe.t(map_capnp_err(indradb::Type::new(t_str))?);
             }
 
@@ -231,7 +235,7 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::B
 
             builder.set_limit(match pipe.limit {
                 Some(limit) => map_capnp_err(limit.try_into())?,
-                None => u64::max_value()
+                None => u64::max_value(),
             });
 
             builder.set_offset(map_capnp_err(pipe.offset.try_into())?);
@@ -246,11 +250,8 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::B
 pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
     match reader.which()? {
         crate::edge_query::Specific(params) => {
-            let edges: Result<Vec<indradb::Edge>, CapnpError> = params
-                .get_edges()?
-                .into_iter()
-                .map(|reader| to_edge(&reader))
-                .collect();
+            let edges: Result<Vec<indradb::Edge>, CapnpError> =
+                params.get_edges()?.into_iter().map(|reader| to_edge(&reader)).collect();
             Ok(indradb::EdgeQuery::Specific(indradb::SpecificEdgeQuery::new(edges?)))
         }
         crate::edge_query::Pipe(params) => {
@@ -261,7 +262,7 @@ pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indra
                 .limit(map_capnp_err(params.get_limit().try_into())?);
 
             let t = params.get_t()?;
-            if t != "" {
+            if !t.is_empty() {
                 pipe = pipe.t(map_capnp_err(indradb::Type::new(t))?);
             }
 

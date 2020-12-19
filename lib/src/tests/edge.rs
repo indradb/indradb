@@ -1,6 +1,5 @@
 use super::super::{
-    Datastore, EdgeDirection, Edge, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
-    VertexQueryExt,
+    Datastore, Edge, EdgeDirection, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, VertexQueryExt,
 };
 use super::util::{create_edge_from, create_edges};
 use crate::models;
@@ -180,12 +179,7 @@ pub fn should_get_an_edge_range<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .t(t)
-                .offset(1),
-        )
+        .get_edges(SpecificVertexQuery::single(outbound_id).outbound().t(t).offset(1))
         .unwrap();
     check_edge_range(&range, outbound_id, 4);
 }
@@ -204,11 +198,7 @@ pub fn should_get_no_edges_for_an_invalid_range<D: Datastore>(datastore: &mut D)
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("foo").unwrap();
     let range = trans
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .t(t),
-        )
+        .get_edges(SpecificVertexQuery::single(outbound_id).outbound().t(t))
         .unwrap();
     check_edge_range(&range, outbound_id, 0);
 }

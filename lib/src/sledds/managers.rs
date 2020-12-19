@@ -101,22 +101,14 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
             for item in edge_range_manager.iterate_for_owner(id)? {
                 let (edge_range_outbound_id, edge_range_t, edge_range_inbound_id) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
-                edge_manager.delete(
-                    edge_range_outbound_id,
-                    &edge_range_t,
-                    edge_range_inbound_id,
-                )?;
+                edge_manager.delete(edge_range_outbound_id, &edge_range_t, edge_range_inbound_id)?;
             }
         }
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
             for item in reversed_edge_range_manager.iterate_for_owner(id)? {
-                let (
-                    reversed_edge_range_inbound_id,
-                    reversed_edge_range_t,
-                    reversed_edge_range_outbound_id,
-                ) = item?;
+                let (reversed_edge_range_inbound_id, reversed_edge_range_t, reversed_edge_range_outbound_id) = item?;
                 debug_assert_eq!(reversed_edge_range_inbound_id, id);
                 edge_manager.delete(
                     reversed_edge_range_outbound_id,
@@ -135,17 +127,10 @@ pub struct EdgeManager<'db> {
 
 impl<'db> EdgeManager<'db> {
     pub fn new(ds: &'db SledHolder) -> Self {
-        EdgeManager {
-            holder: ds,
-        }
+        EdgeManager { holder: ds }
     }
 
-    pub fn set(
-        &self,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-    ) -> Result<()> {
+    pub fn set(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(&self.holder);
         edge_range_manager.set(outbound_id, t, inbound_id)?;
 
@@ -155,12 +140,7 @@ impl<'db> EdgeManager<'db> {
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        outbound_id: Uuid,
-        t: &models::Type,
-        inbound_id: Uuid,
-    ) -> Result<()> {
+    pub fn delete(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(&self.holder);
         edge_range_manager.delete(outbound_id, t, inbound_id)?;
 
@@ -224,7 +204,7 @@ impl<'tree> EdgeRangeManager<'tree> {
         &'trans self,
         id: Uuid,
         t: Option<&models::Type>,
-        offset: usize
+        offset: usize,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match t {
             Some(t) => {
@@ -261,12 +241,7 @@ impl<'tree> EdgeRangeManager<'tree> {
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        first_id: Uuid,
-        t: &models::Type,
-        second_id: Uuid,
-    ) -> Result<()> {
+    pub fn delete(&self, first_id: Uuid, t: &models::Type, second_id: Uuid) -> Result<()> {
         self.tree.remove(&self.key(first_id, t, second_id))?;
         Ok(())
     }

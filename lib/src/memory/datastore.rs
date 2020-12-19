@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, RwLock};
 
-use crate::util::next_uuid;
 use crate::errors::Result;
+use crate::util::next_uuid;
 use crate::{
     Datastore, Edge, EdgeDirection, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, NamedProperty,
-    Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery, SpecificVertexQuery,
-    VertexQueryExt
+    SpecificVertexQuery, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
+    VertexQueryExt,
 };
 
 use serde_json::Value as JsonValue;
@@ -45,17 +45,16 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.take(limit));
                 }
 
-                let iter: QueryIter<Vertex> = Box::new(
-                    iter.map(|(id, t)| Vertex::with_id(*id, t.clone()))
-                );
+                let iter: QueryIter<Vertex> = Box::new(iter.map(|(id, t)| Vertex::with_id(*id, t.clone())));
 
                 Ok(iter)
             }
             VertexQuery::Specific(specific) => {
                 let iter: QueryIter<Vertex> = Box::new(
-                    specific.ids.into_iter().filter_map(move |id| {
-                        self.vertices.get(&id).map(|value| Vertex::with_id(id, value.clone()))
-                    }),
+                    specific
+                        .ids
+                        .into_iter()
+                        .filter_map(move |id| self.vertices.get(&id).map(|value| Vertex::with_id(id, value.clone()))),
                 );
 
                 Ok(iter)
@@ -81,8 +80,7 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.take(limit));
                 }
 
-                let iter: QueryIter<Vertex> =
-                    Box::new(iter.map(|(k, v)| Vertex::with_id(k, v.clone())));
+                let iter: QueryIter<Vertex> = Box::new(iter.map(|(k, v)| Vertex::with_id(k, v.clone())));
 
                 Ok(iter)
             }
@@ -93,7 +91,10 @@ impl InternalMemoryDatastore {
         match q {
             EdgeQuery::Specific(specific) => {
                 let iter: QueryIter<Edge> = Box::new(
-                    specific.edges.into_iter().filter(move |edge| self.edges.contains(&edge))
+                    specific
+                        .edges
+                        .into_iter()
+                        .filter(move |edge| self.edges.contains(&edge)),
                 );
                 Ok(iter)
             }
@@ -296,7 +297,6 @@ impl Transaction for MemoryTransaction {
             datastore.reversed_edges.range(from..)
         };
 
-
         let range = range.take_while(|edge| {
             if let Some(t) = t {
                 edge.outbound_id == id && &edge.t == t
@@ -350,7 +350,9 @@ impl Transaction for MemoryTransaction {
         let vertices: Vec<Vertex> = datastore.get_vertices_by_query(q.inner)?.collect();
 
         for vertex in vertices {
-            datastore.vertex_properties.insert((vertex.id, q.name.clone()), value.clone());
+            datastore
+                .vertex_properties
+                .insert((vertex.id, q.name.clone()), value.clone());
         }
 
         Ok(())

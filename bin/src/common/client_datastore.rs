@@ -174,7 +174,7 @@ impl ClientTransaction {
     async fn async_get_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Vec<indradb::Edge>, CapnpError> {
         let trans = self.trans.borrow_mut();
         let mut req = trans.get_edges_request();
-        converters::from_edge_query(&q.into(), req.get().init_q())? ;
+        converters::from_edge_query(&q.into(), req.get().init_q())?;
 
         let res = req.send().promise.await?;
         let list = res.get()?.get_result()?;

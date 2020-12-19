@@ -1,6 +1,6 @@
 use super::super::{
-    BulkInsertItem, Datastore, Edge, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
-    Vertex, VertexQueryExt,
+    BulkInsertItem, Datastore, Edge, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex,
+    VertexQueryExt,
 };
 use serde_json::Value as JsonValue;
 

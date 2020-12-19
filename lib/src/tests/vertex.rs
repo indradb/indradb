@@ -54,9 +54,7 @@ pub fn should_get_no_vertices_with_type_filter<D: Datastore>(datastore: &mut D) 
     let trans = datastore.transaction().unwrap();
     let type_filter = models::Type::new("foo").unwrap();
     create_vertices(&trans);
-    let range = trans
-        .get_vertices(RangeVertexQuery::default().t(type_filter))
-        .unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::default().t(type_filter)).unwrap();
     assert_eq!(range.len(), 0);
 }
 

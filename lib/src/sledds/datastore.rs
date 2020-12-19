@@ -283,22 +283,14 @@ impl SledTransaction {
 
                     for item in edge_iterator {
                         match item {
-                            Ok((
-                                edge_range_first_id,
-                                edge_range_t,
-                                edge_range_second_id,
-                            )) => {
+                            Ok((edge_range_first_id, edge_range_t, edge_range_second_id)) => {
                                 edges.push(match q.direction {
-                                    EdgeDirection::Outbound => Ok((
-                                        edge_range_first_id,
-                                        edge_range_t,
-                                        edge_range_second_id,
-                                    )),
-                                    EdgeDirection::Inbound => Ok((
-                                        edge_range_second_id,
-                                        edge_range_t,
-                                        edge_range_first_id,
-                                    )),
+                                    EdgeDirection::Outbound => {
+                                        Ok((edge_range_first_id, edge_range_t, edge_range_second_id))
+                                    }
+                                    EdgeDirection::Inbound => {
+                                        Ok((edge_range_second_id, edge_range_t, edge_range_first_id))
+                                    }
                                 })
                             }
                             Err(_) => edges.push(item),
