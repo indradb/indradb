@@ -72,19 +72,13 @@ impl From<PipeVertexQuery> for VertexQuery {
 /// Extension trait that specifies methods exposed by all vertex queries.
 pub trait VertexQueryExt: Into<VertexQuery> {
     /// Gets the outbound edges associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn outbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    fn outbound(self) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
     /// Gets the inbound edges associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn inbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    fn inbound(self) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
     /// Gets a property associated with the vertices.
@@ -97,10 +91,10 @@ pub trait VertexQueryExt: Into<VertexQuery> {
 }
 
 /// Gets a range of vertices.
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug, Default)]
 pub struct RangeVertexQuery {
     /// Limits the number of vertices to get.
-    pub limit: u32,
+    pub limit: Option<usize>,
 
     /// Filters the type of vertices returned.
     pub t: Option<Type>,
@@ -112,18 +106,6 @@ pub struct RangeVertexQuery {
 impl VertexQueryExt for RangeVertexQuery {}
 
 impl RangeVertexQuery {
-    /// Creates a new vertex range query.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    pub fn new(limit: u32) -> Self {
-        Self {
-            limit,
-            t: None,
-            start_id: None,
-        }
-    }
-
     /// Filter the type of vertices returned.
     ///
     /// # Arguments
@@ -145,6 +127,18 @@ impl RangeVertexQuery {
             limit: self.limit,
             t: self.t,
             start_id: Some(start_id),
+        }
+    }
+
+    /// Limits the number of returned results.
+    ///
+    /// # Arguments
+    /// * `limit` - Limits the number of returned results.
+    pub fn limit(self, limit: usize) -> Self {
+        Self {
+            limit: Some(limit),
+            t: self.t,
+            start_id: self.start_id,
         }
     }
 }
@@ -190,7 +184,7 @@ pub struct PipeVertexQuery {
     pub direction: EdgeDirection,
 
     /// Limits the number of vertices to get.
-    pub limit: u32,
+    pub limit: Option<usize>,
 
     /// Filters the type of vertices returned.
     pub t: Option<Type>,
@@ -205,12 +199,11 @@ impl PipeVertexQuery {
     /// * `inner` - The edge query to build off of.
     /// * `direction` - Whether to get outbound or inbound vertices on the
     ///   edges.
-    /// * `limit` - Limits the number of vertices to get.
-    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
+    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection) -> Self {
         Self {
             inner,
             direction,
-            limit,
+            limit: None,
             t: None,
         }
     }
@@ -225,6 +218,19 @@ impl PipeVertexQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
+        }
+    }
+
+    /// Limits the number of returned results.
+    ///
+    /// # Arguments
+    /// * `limit` - Limits the number of returned results.
+    pub fn limit(self, limit: usize) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit: Some(limit),
+            t: self.t,
         }
     }
 }
@@ -279,19 +285,13 @@ impl From<PipeEdgeQuery> for EdgeQuery {
 /// Extension trait that specifies methods exposed by all edge queries.
 pub trait EdgeQueryExt: Into<EdgeQuery> {
     /// Gets the vertices associated with the outbound end of the edges.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn outbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    fn outbound(self) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
     /// Gets the vertices associated with the inbound end of the edges.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn inbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    fn inbound(self) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
     /// Gets a property associated with the edges.
@@ -343,13 +343,13 @@ pub struct PipeEdgeQuery {
     pub direction: EdgeDirection,
 
     /// Limits the number of edges to get.
-    pub limit: u32,
+    pub limit: Option<usize>,
 
     /// Filters the type of edges returned.
     pub t: Option<Type>,
 
     /// Offsets into the range.
-    pub offset: u64,
+    pub offset: usize,
 }
 
 impl EdgeQueryExt for PipeEdgeQuery {}
@@ -361,12 +361,11 @@ impl PipeEdgeQuery {
     /// * `inner` - The edge query to build off of.
     /// * `direction` - Whether to get outbound or inbound edges on the
     ///   vertices.
-    /// * `limit` - Limits the number of edges to get.
-    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection, limit: u32) -> Self {
+    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection) -> Self {
         Self {
             inner,
             direction,
-            limit,
+            limit: None,
             t: None,
             offset: 0,
         }
@@ -390,13 +389,27 @@ impl PipeEdgeQuery {
     ///
     /// # Arguments
     /// * `offset` - The offset into the range.
-    pub fn offset(self, offset: u64) -> Self {
+    pub fn offset(self, offset: usize) -> Self {
         Self {
             inner: self.inner,
             direction: self.direction,
             limit: self.limit,
             t: self.t,
             offset,
+        }
+    }
+
+    /// Limits the number of returned results.
+    ///
+    /// # Arguments
+    /// * `limit` - Limits the number of returned results.
+    pub fn limit(self, limit: usize) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit: Some(limit),
+            t: self.t,
+            offset: self.offset,
         }
     }
 }

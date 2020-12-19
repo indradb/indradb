@@ -224,20 +224,20 @@ impl<'tree> EdgeRangeManager<'tree> {
         &'trans self,
         id: Uuid,
         t: Option<&models::Type>,
-        offset: u64
+        offset: usize
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match t {
             Some(t) => {
                 let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
                 let prefix_bytes: &[u8] = prefix.as_ref();
                 let iterator = self.tree.range(prefix_bytes..);
-                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset as usize)))
+                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset)))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let prefix_bytes: &[u8] = prefix.as_ref();
                 let iterator = self.tree.range(prefix_bytes..);
-                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset as usize)))
+                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset)))
             }
         }
     }

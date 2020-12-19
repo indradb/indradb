@@ -238,7 +238,7 @@ impl<'a> EdgeRangeManager<'a> {
         &'a self,
         id: Uuid,
         t: Option<&models::Type>,
-        offset: u64,
+        offset: usize,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
@@ -246,7 +246,7 @@ impl<'a> EdgeRangeManager<'a> {
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset as usize)))
+                Ok(Box::new(self.iterate(iterator, prefix)?.skip(offset)))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
@@ -254,7 +254,7 @@ impl<'a> EdgeRangeManager<'a> {
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
                 let mapped = self.iterate(iterator, prefix)?;
-                Ok(Box::new(mapped.skip(offset as usize)))
+                Ok(Box::new(mapped.skip(offset)))
             }
         }
     }

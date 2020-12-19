@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::u64;
+
 use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
 };
@@ -6,11 +9,9 @@ use crate::errors::Result;
 use crate::models;
 use crate::models::*;
 use crate::util::next_uuid;
+
 use serde_json::Value as JsonValue;
 use sled::{Config, Db, Tree};
-use std::sync::Arc;
-use std::u64;
-use std::usize;
 use uuid::Uuid;
 
 fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
@@ -187,7 +188,11 @@ impl SledTransaction {
                     }));
                 }
 
-                let results: Vec<Result<VertexItem>> = iter.take(q.limit as usize).collect();
+                if let Some(limit) = q.limit {
+                    iter = Box::new(iter.take(limit));
+                }
+
+                let results: Vec<Result<VertexItem>> = iter.collect();
                 Ok(Box::new(results.into_iter()))
             }
             VertexQuery::Specific(q) => {
@@ -228,7 +233,11 @@ impl SledTransaction {
                     }));
                 }
 
-                let results: Vec<Result<VertexItem>> = iter.take(q.limit as usize).collect();
+                if let Some(limit) = q.limit {
+                    iter = Box::new(iter.take(limit));
+                }
+
+                let results: Vec<Result<VertexItem>> = iter.collect();
                 Ok(Box::new(results.into_iter()))
             }
         }
@@ -295,8 +304,10 @@ impl SledTransaction {
                             Err(_) => edges.push(item),
                         }
 
-                        if edges.len() == q.limit as usize {
-                            break;
+                        if let Some(limit) = q.limit {
+                            if edges.len() == limit {
+                                break;
+                            }
                         }
                     }
                 }

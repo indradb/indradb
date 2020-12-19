@@ -84,7 +84,7 @@ pub fn should_create_a_valid_edge<D: Datastore>(datastore: &mut D) {
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
     let e = trans
-        .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound(10))
+        .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound())
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(edge, e[0]);
@@ -182,7 +182,7 @@ pub fn should_get_an_edge_range<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
                 .t(t)
                 .offset(1),
         )
@@ -194,7 +194,7 @@ pub fn should_get_edges_with_no_filter<D: Datastore>(datastore: &mut D) {
     let (outbound_id, _) = create_edges(datastore);
     let trans = datastore.transaction().unwrap();
     let range = trans
-        .get_edges(SpecificVertexQuery::single(outbound_id).outbound(10))
+        .get_edges(SpecificVertexQuery::single(outbound_id).outbound())
         .unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
@@ -206,7 +206,7 @@ pub fn should_get_no_edges_for_an_invalid_range<D: Datastore>(datastore: &mut D)
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
                 .t(t),
         )
         .unwrap();
@@ -237,7 +237,8 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     let inbound_id = create_edge_from(&trans, outbound_v.id);
 
     let query_1 = SpecificVertexQuery::single(outbound_v.id)
-        .outbound(1)
+        .outbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
@@ -247,8 +248,10 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     );
 
     let query_2 = query_1
-        .inbound(1)
-        .inbound(1)
+        .inbound()
+        .limit(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_2).unwrap();
     assert_eq!(range.len(), 1);

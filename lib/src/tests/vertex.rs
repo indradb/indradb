@@ -3,7 +3,6 @@ use super::util::{create_edge_from, create_edges};
 use crate::models;
 use serde_json::Value as JsonValue;
 use std::collections::HashSet;
-use std::u32;
 use uuid::Uuid;
 
 pub fn should_create_vertex_from_type<D: Datastore>(datastore: &mut D) {
@@ -16,7 +15,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let mut inserted_ids = create_vertices(&trans);
 
-    let range = trans.get_vertices(RangeVertexQuery::new(u32::MAX)).unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::default()).unwrap();
 
     assert!(range.len() >= 5);
 
@@ -36,7 +35,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
 pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
-    let range = trans.get_vertices(RangeVertexQuery::new(0)).unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::default().limit(0)).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -45,7 +44,7 @@ pub fn should_get_range_vertices_out_of_range<D: Datastore>(datastore: &mut D) {
     create_vertices(&trans);
     let range = trans
         .get_vertices(
-            RangeVertexQuery::new(u32::MAX).start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
+            RangeVertexQuery::default().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
         )
         .unwrap();
     assert_eq!(range.len(), 0);
@@ -56,7 +55,7 @@ pub fn should_get_no_vertices_with_type_filter<D: Datastore>(datastore: &mut D) 
     let type_filter = models::Type::new("foo").unwrap();
     create_vertices(&trans);
     let range = trans
-        .get_vertices(RangeVertexQuery::new(u32::MAX).t(type_filter))
+        .get_vertices(RangeVertexQuery::default().t(type_filter))
         .unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -122,18 +121,22 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 
     // This query should get `inserted_id`
     let query_1 = SpecificVertexQuery::single(v.id)
-        .outbound(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound(1);
+        .inbound()
+        .limit(1);
     let range = trans.get_vertices(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get `inserted_id`
     let query_2 = SpecificVertexQuery::single(v.id)
-        .outbound(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("test_inbound_vertex_type").unwrap());
     let range = trans.get_vertices(query_2).unwrap();
     assert_eq!(range.len(), 1);
@@ -141,15 +144,17 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 
     // This query should get nothing
     let query_3 = SpecificVertexQuery::single(v.id)
-        .outbound(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("foo").unwrap());
     let range = trans.get_vertices(query_3).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
-    let query_4 = query_1.inbound(1).t(edge_t).outbound(1);
+    let query_4 = query_1.inbound().t(edge_t).limit(1).outbound().limit(1);
     let range = trans.get_vertices(query_4).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0], v);

@@ -18,7 +18,7 @@ struct Vertex {
 struct VertexQuery {
     union {
         range :group {
-            limit @0 :UInt32;
+            limit @0 :UInt64;
             t @1 :Type;
             startId @2 :Uuid;
         }
@@ -28,7 +28,7 @@ struct VertexQuery {
         pipe :group {
             inner @4 :EdgeQuery;
             direction @5 :EdgeDirection;
-            limit @6 :UInt32;
+            limit @6 :UInt64;
             t @7 :Type;
         }
     }
@@ -48,7 +48,7 @@ struct EdgeQuery {
             inner @1 :VertexQuery;
             direction @2 :EdgeDirection;
             t @3 :Type;
-            limit @4 :UInt32;
+            limit @4 :UInt64;
             offset @5 :UInt64;
         }
     }

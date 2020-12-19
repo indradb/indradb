@@ -1,8 +1,10 @@
 //! Converts between cnp and native IndraDB models
 
-use capnp::Error as CapnpError;
 use std::fmt::Display;
 use std::vec::IntoIter;
+use std::convert::TryInto;
+
+use capnp::Error as CapnpError;
 use uuid::Uuid;
 
 pub fn map_capnp_err<T, E: Display>(result: Result<T, E>) -> Result<T, capnp::Error> {
@@ -108,7 +110,7 @@ pub fn to_edge_property<'a>(reader: &crate::edge_property::Reader<'a>) -> Result
     Ok(indradb::EdgeProperty::new(edge, value))
 }
 
-pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_query::Builder<'a>) {
+pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_query::Builder<'a>) -> Result<(), CapnpError> {
     match q {
         indradb::VertexQuery::Range(q) => {
             let mut builder = builder.init_range();
@@ -121,7 +123,10 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_qu
                 builder.set_t(&t.0);
             }
 
-            builder.set_limit(q.limit);
+            builder.set_limit(match q.limit {
+                Some(limit) => limit as u64,
+                None => u64::max_value()
+            });
         }
         indradb::VertexQuery::Specific(q) => {
             let mut builder = builder.init_specific().init_ids(q.ids.len() as u32);
@@ -133,15 +138,21 @@ pub fn from_vertex_query<'a>(q: &indradb::VertexQuery, builder: crate::vertex_qu
         indradb::VertexQuery::Pipe(q) => {
             let mut builder = builder.init_pipe();
             builder.set_direction(from_edge_direction(q.direction));
-            builder.set_limit(q.limit);
+
+            builder.set_limit(match q.limit {
+                Some(limit) => limit as u64,
+                None => u64::max_value()
+            });
 
             if let Some(ref t) = q.t {
                 builder.set_t(&t.0);
             }
 
-            from_edge_query(&q.inner, builder.init_inner());
+            from_edge_query(&q.inner, builder.init_inner())?;
         }
     }
+
+    Ok(())
 }
 
 pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<indradb::VertexQuery, CapnpError> {
@@ -149,7 +160,7 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
         crate::vertex_query::Range(params) => {
             let start_id_bytes = params.get_start_id()?;
             let t_str = params.get_t()?;
-            let mut range = indradb::RangeVertexQuery::new(params.get_limit());
+            let mut range = indradb::RangeVertexQuery::default().limit(map_capnp_err(params.get_limit().try_into())?);
 
             if !start_id_bytes.is_empty() {
                 range = range.start_id(map_capnp_err(Uuid::from_slice(start_id_bytes))?);
@@ -172,9 +183,8 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
         crate::vertex_query::Pipe(params) => {
             let inner = Box::new(to_edge_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
-            let limit = params.get_limit();
             let t_str = params.get_t()?;
-            let mut pipe = indradb::PipeVertexQuery::new(inner, direction, limit);
+            let mut pipe = indradb::PipeVertexQuery::new(inner, direction).limit(map_capnp_err(params.get_limit().try_into())?);
 
             if t_str != "" {
                 pipe = pipe.t(map_capnp_err(indradb::Type::new(t_str))?);
@@ -188,9 +198,10 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
 pub fn from_vertex_property_query<'a>(
     q: &indradb::VertexPropertyQuery,
     mut builder: crate::vertex_property_query::Builder<'a>,
-) {
+) -> Result<(), CapnpError> {
     builder.set_name(&q.name);
-    from_vertex_query(&q.inner, builder.init_inner());
+    from_vertex_query(&q.inner, builder.init_inner())?;
+    Ok(())
 }
 
 pub fn to_vertex_property_query<'a>(
@@ -201,7 +212,7 @@ pub fn to_vertex_property_query<'a>(
     Ok(indradb::VertexPropertyQuery::new(inner, name))
 }
 
-pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::Builder<'a>) {
+pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::Builder<'a>) -> Result<(), CapnpError> {
     match q {
         indradb::EdgeQuery::Specific(specific) => {
             let mut builder = builder.init_specific().init_edges(specific.edges.len() as u32);
@@ -218,11 +229,18 @@ pub fn from_edge_query<'a>(q: &indradb::EdgeQuery, builder: crate::edge_query::B
                 builder.set_t(&t.0);
             }
 
-            builder.set_limit(pipe.limit);
-            builder.set_offset(pipe.offset);
-            from_vertex_query(&pipe.inner, builder.init_inner());
+            builder.set_limit(match pipe.limit {
+                Some(limit) => map_capnp_err(limit.try_into())?,
+                None => u64::max_value()
+            });
+
+            builder.set_offset(map_capnp_err(pipe.offset.try_into())?);
+
+            from_vertex_query(&pipe.inner, builder.init_inner())?;
         }
     }
+
+    Ok(())
 }
 
 pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indradb::EdgeQuery, CapnpError> {
@@ -238,8 +256,9 @@ pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indra
         crate::edge_query::Pipe(params) => {
             let inner = Box::new(to_vertex_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
-            let limit = params.get_limit();
-            let mut pipe = indradb::PipeEdgeQuery::new(inner, direction, limit).offset(params.get_offset());
+            let mut pipe = indradb::PipeEdgeQuery::new(inner, direction)
+                .offset(map_capnp_err(params.get_offset().try_into())?)
+                .limit(map_capnp_err(params.get_limit().try_into())?);
 
             let t = params.get_t()?;
             if t != "" {
@@ -254,9 +273,10 @@ pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indra
 pub fn from_edge_property_query<'a>(
     q: &indradb::EdgePropertyQuery,
     mut builder: crate::edge_property_query::Builder<'a>,
-) {
+) -> Result<(), CapnpError> {
     builder.set_name(&q.name);
-    from_edge_query(&q.inner, builder.init_inner());
+    from_edge_query(&q.inner, builder.init_inner())?;
+    Ok(())
 }
 
 pub fn to_edge_property_query<'a>(

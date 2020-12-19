@@ -41,8 +41,12 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
+                if let Some(limit) = range.limit {
+                    iter = Box::new(iter.take(limit));
+                }
+
                 let iter: QueryIter<Vertex> = Box::new(
-                    iter.take(range.limit as usize).map(|(id, t)| Vertex::with_id(*id, t.clone()))
+                    iter.map(|(id, t)| Vertex::with_id(*id, t.clone()))
                 );
 
                 Ok(iter)
@@ -73,8 +77,12 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
+                if let Some(limit) = pipe.limit {
+                    iter = Box::new(iter.take(limit));
+                }
+
                 let iter: QueryIter<Vertex> =
-                    Box::new(iter.take(pipe.limit as usize).map(|(k, v)| Vertex::with_id(k, v.clone())));
+                    Box::new(iter.map(|(k, v)| Vertex::with_id(k, v.clone())));
 
                 Ok(iter)
             }
@@ -114,7 +122,13 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |edge| edge.t == t));
                 }
 
-                let iter = Box::new(iter.skip(pipe.offset as usize).take(pipe.limit as usize));
+                if pipe.offset > 0 {
+                    iter = Box::new(iter.skip(pipe.offset));
+                }
+
+                if let Some(limit) = pipe.limit {
+                    iter = Box::new(iter.take(limit));
+                }
 
                 if direction == EdgeDirection::Outbound {
                     Ok(Box::new(iter.cloned()))
@@ -127,13 +141,12 @@ impl InternalMemoryDatastore {
 
     fn delete_vertices(&mut self, vertices: Vec<Uuid>) -> Result<()> {
         for vertex_id in vertices {
-            // TODO: get rid of limits
             let mut deletable_edges: Vec<Edge> = Vec::new();
             let vertex_query = SpecificVertexQuery::single(vertex_id);
-            for edge in self.get_edges_by_query(vertex_query.clone().outbound(u32::max_value()).into())? {
+            for edge in self.get_edges_by_query(vertex_query.clone().outbound().into())? {
                 deletable_edges.push(edge);
             }
-            for edge in self.get_edges_by_query(vertex_query.inbound(u32::max_value()).into())? {
+            for edge in self.get_edges_by_query(vertex_query.inbound().into())? {
                 deletable_edges.push(edge);
             }
             self.delete_edges(deletable_edges);

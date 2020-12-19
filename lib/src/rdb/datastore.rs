@@ -1,7 +1,5 @@
-use std::i32;
 use std::sync::Arc;
-use std::u64;
-use std::usize;
+use std::{i32, u64};
 
 use super::managers::*;
 use crate::errors::Result;
@@ -88,7 +86,11 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
                 }));
             }
 
-            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
+            if let Some(limit) = q.limit {
+                iter = Box::new(iter.take(limit));
+            }
+
+            let vertices: Result<Vec<VertexItem>> = iter.collect();
             vertices
         }
         VertexQuery::Specific(q) => {
@@ -140,7 +142,11 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
                 }));
             }
 
-            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
+            if let Some(limit) = q.limit {
+                iter = Box::new(iter.take(limit));
+            }
+
+            let vertices: Result<Vec<VertexItem>> = iter.collect();
             vertices
         }
     }
@@ -202,8 +208,10 @@ fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
                         ),
                     });
 
-                    if edges.len() == q.limit as usize {
-                        break;
+                    if let Some(limit) = q.limit {
+                        if edges.len() == limit {
+                            break;
+                        }
                     }
                 }
             }
