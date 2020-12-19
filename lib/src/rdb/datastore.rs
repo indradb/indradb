@@ -55,6 +55,7 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
     opts
 }
 
+// TODO: see if iterators can be returned instead
 fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
     match q {
         VertexQuery::Range(q) => {

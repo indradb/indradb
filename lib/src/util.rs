@@ -29,6 +29,7 @@ pub fn generate_temporary_path() -> String {
 /// Generates a UUID v1. this utility method uses a shared context and node ID
 /// to help ensure generated UUIDs are unique.
 pub fn generate_uuid_v1() -> Uuid {
+    // TODO: see if std::time can be used instead
     let now = Utc::now();
     let ts = Timestamp::from_unix(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos());
     Uuid::new_v1(ts, &NODE_ID).expect("Expected to be able to generate a UUID")
