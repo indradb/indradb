@@ -8,6 +8,9 @@
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
 
+#[cfg(feature = "bench-suite")]
+extern crate test;
+
 #[macro_use]
 extern crate failure;
 #[macro_use]
