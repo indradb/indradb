@@ -76,7 +76,7 @@ jobs:
       - run: cargo fmt -- --check
 
   linux-nightly:
-    name: stable on linux-latest
+    name: nightly on linux-latest
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
