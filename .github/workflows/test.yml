@@ -5,7 +5,6 @@ name: Test
 
 env:
   RUST_BACKTRACE: 1
-  PATH: ~/.local/bin:~/cached-deps/bin:$PATH
 
 on:
   push:
@@ -18,32 +17,34 @@ on:
       - v1
 
 jobs:
-  other:
-    name: ${{ matrix.rust }} on ${{ matrix.os }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - { rust: stable, os: macos-latest }
-        - { rust: stable, os: windows-latest }
-    steps:
-      - uses: actions/checkout@v2
+  # TODO
+  # other:
+  #   name: ${{ matrix.rust }} on ${{ matrix.os }}
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #       - { rust: stable, os: macos-latest }
+  #       - { rust: stable, os: windows-latest }
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           target
+  #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: ${{ matrix.rust }}
+  #     - uses: hecrj/setup-rust-action@v1
+  #       with:
+  #         rust-version: ${{ matrix.rust }}
 
-      - run: ./scripts/ci_install.sh
-      - run: make test
+  #     - run: ./scripts/ci_install.sh
+  #     - run: echo "${HOME}/.local/bin" >> $GITHUB_PATH
+  #     - run: make test
 
   linux-stable:
     name: stable on linux-latest
@@ -72,6 +73,7 @@ jobs:
           components: clippy, rustfmt
 
       - run: ./scripts/ci_install.sh
+      - run: echo "${HOME}/.local/bin" >> $GITHUB_PATH
       - run: make test
       - run: cargo clippy
       - run: cargo fmt -- --check
@@ -100,6 +102,7 @@ jobs:
           rust-version: ${{ matrix.rust }}
 
       - run: ./scripts/ci_install.sh
+      - run: echo "${HOME}/.local/bin" >> $GITHUB_PATH
       - run: make test
       - run: cd lib && cargo check --features=bench-suite
       - run: cd lib/fuzz && cargo check
