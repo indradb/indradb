@@ -1,4 +1,11 @@
+# Largely built from this excellent guide:
+# https://shift.click/blog/github-actions-rust/#run-on-pushes-to-main--prs-to-main-or-dev
+
 name: Test
+
+env:
+  RUST_BACKTRACE: 1
+
 on:
   push:
     branches:
@@ -8,6 +15,7 @@ on:
     branches:
       - master
       - v1
+
 jobs:
   other:
     name: ${{ matrix.rust }} on ${{ matrix.os }}
