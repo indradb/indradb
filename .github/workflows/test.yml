@@ -59,6 +59,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.local/bin
+            ~/cached-deps/bin
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
@@ -95,6 +97,7 @@ jobs:
         with:
           rust-version: ${{ matrix.rust }}
 
+      - run: ./scripts/ci_install.sh
       - run: cd lib && cargo check --features=bench-suite
       - run: cd lib/fuzz && cargo check
       - run: cd bin && cargo check --features=bench-suite
