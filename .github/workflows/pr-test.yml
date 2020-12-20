@@ -1,9 +1,9 @@
-name: PR Test
+name: Pull Request
 on:
   pull_request:
 jobs:
-  test-versions:
-    name: Rust ${{ matrix.rust }} on ${{ matrix.os }}
+  other:
+    name: Test against ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -11,8 +11,6 @@ jobs:
         include:
         - { rust: stable, os: macos-latest }
         - { rust: stable, os: windows-latest }
-        - { rust: stable, os: linux-latest }
-        - { rust: nightly, os: linux-latest }
     steps:
       - uses: actions/checkout@v2
 
@@ -29,3 +27,59 @@ jobs:
           rust-version: ${{ matrix.rust }}
 
       - run: make test
+
+  linux-stable:
+    name: Test against stable on linux-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - rust: [stable]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+          components: clippy
+          components: rustfmt
+
+      - run: make test
+      - run: cargo clippy
+      - run: cargo fmt -- --check
+
+  linux-nightly:
+    name: Test against stable on linux-latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - rust: [nightly]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+
+      - run: cd lib && cargo check --features=bench-suite
+      - run: cd lib/fuzz && cargo check
+      - run: cd bin && cargo check --features=bench-suite
