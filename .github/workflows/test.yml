@@ -68,8 +68,7 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: ${{ matrix.rust }}
-          components: clippy
-          components: rustfmt
+          components: [clippy, rustfmt]
 
       - run: ./scripts/ci_install.sh
       - run: make test
