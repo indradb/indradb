@@ -24,7 +24,7 @@ PATH="${HOME}/.local/bin:${HOME}/cached-deps/bin:$PATH"
 
 make test
 
-if [ "$os" == "linux" ]; then
+if [ "$os" == "linux-latest" ]; then
     if [ "$rust_variant" == "stable" ]; then
         cargo clippy
         cargo fmt -- --check
