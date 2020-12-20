@@ -5,6 +5,7 @@ name: Test
 
 env:
   RUST_BACKTRACE: 1
+  PATH: ~/.local/bin:~/cached-deps/bin:$PATH
 
 on:
   push:
