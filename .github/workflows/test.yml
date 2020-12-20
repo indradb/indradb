@@ -41,6 +41,7 @@ jobs:
         with:
           rust-version: ${{ matrix.rust }}
 
+      - run: ./scripts/ci_install.sh
       - run: make test
 
   linux-stable:
@@ -70,6 +71,7 @@ jobs:
           components: clippy
           components: rustfmt
 
+      - run: ./scripts/ci_install.sh
       - run: make test
       - run: cargo clippy
       - run: cargo fmt -- --check
@@ -98,6 +100,7 @@ jobs:
           rust-version: ${{ matrix.rust }}
 
       - run: ./scripts/ci_install.sh
+      - run: make test
       - run: cd lib && cargo check --features=bench-suite
       - run: cd lib/fuzz && cargo check
       - run: cd bin && cargo check --features=bench-suite
