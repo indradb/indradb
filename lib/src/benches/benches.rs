@@ -1,4 +1,4 @@
-use crate::models::{BulkInsertItem, EdgeDirection, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex, Edge};
+use crate::models::{BulkInsertItem, Edge, EdgeDirection, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
 use crate::traits::{Datastore, Transaction};
 
 use serde_json::Value as JsonValue;
