@@ -5,7 +5,11 @@ set -ex
 rust_variant=$1
 os=$2
 
-apt-get install capnproto
+if [ "$os" == "linux-latest" ]; then
+    sudo apt-get install capnproto
+else
+    brew install capnp
+fi
 
 make test
 
