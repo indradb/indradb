@@ -5,15 +5,12 @@ set -ex
 rust_variant=$1
 os=$2
 
-if [ "$os" == "linux-latest" ]; then
-    sudo apt-get install capnproto
-else
-    brew install capnp
-fi
+# this works on linux too
+brew install capnp
 
 make test
 
-if [ "$os" == "linux-latest" ]; then
+if [ "$os" == "ubuntu-latest" ]; then
     if [ "$rust_variant" == "stable" ]; then
         cargo clippy
         cargo fmt -- --check
