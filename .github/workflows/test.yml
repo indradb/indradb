@@ -35,4 +35,6 @@ jobs:
           rust-version: ${{ matrix.rust }}
           components: clippy, rustfmt
 
+      - uses: Swatinem/rust-cache@v1
+
       - run: ./scripts/ci.sh "${{ matrix.rust }}" "${{ matrix.os }}"
