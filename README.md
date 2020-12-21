@@ -2,7 +2,7 @@
  	<img src="https://indradb.github.io/logo.png">
 </p>
 
-# [IndraDB](https://indradb.github.io) [![Build Status](https://travis-ci.org/indradb/indradb.svg?branch=master)](https://travis-ci.org/indradb/indradb)
+# [IndraDB](https://indradb.github.io) ![CI](https://github.com/indradb/indradb/workflows/Test/badge.svg)
 
 A graph database written in rust.
 

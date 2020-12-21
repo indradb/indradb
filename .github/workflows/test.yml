@@ -1,0 +1,40 @@
+# Largely built from this excellent guide:
+# https://shift.click/blog/github-actions-rust/#run-on-pushes-to-main--prs-to-main-or-dev
+
+name: Test
+
+env:
+  RUST_BACKTRACE: 1
+
+on:
+  push:
+    branches:
+      - master
+      - v1
+  pull_request:
+    branches:
+      - master
+      - v1
+
+jobs:
+  test:
+    name: ${{ matrix.rust }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - { rust: stable, os: macOS-latest }
+        - { rust: stable, os: ubuntu-latest }
+        - { rust: nightly, os: ubuntu-latest }
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v1
+
+      - run: ./scripts/ci.sh "${{ matrix.rust }}" "${{ matrix.os }}"
