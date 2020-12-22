@@ -26,9 +26,8 @@ fn main() -> Result<(), errors::Error> {
         CliDatastoreArgs::Rocksdb {
             path,
             max_open_files,
-            bulk_load_optimized,
         } => {
-            let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files), bulk_load_optimized)
+            let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
 
             exec.run_until(common::server::run(listener, datastore, exec.spawner()))?;

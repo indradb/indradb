@@ -32,7 +32,7 @@ fn should_create_rocksdb_datastore() {
     let listener = exec.run_until(async { TcpListener::bind(&addr).await }).unwrap();
     let port = listener.local_addr().unwrap().port();
 
-    let datastore = indradb::RocksdbDatastore::new(&generate_temporary_path(), None, false).unwrap();
+    let datastore = indradb::RocksdbDatastore::new(&generate_temporary_path(), None).unwrap();
     let f = server::run(listener, datastore, exec.spawner());
     exec.spawner()
         .spawn_local_obj(Box::pin(f.map_err(|err| panic!(err)).map(|_| ())).into())
