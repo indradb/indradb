@@ -26,6 +26,7 @@ jobs:
         include:
         - { rust: stable, os: macOS-latest }
         - { rust: stable, os: ubuntu-latest }
+        - { rust: stable, os: windows-latest }
         - { rust: nightly, os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v2
