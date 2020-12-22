@@ -54,6 +54,7 @@ def main():
     run(["cargo", "clippy"])
     run(["make", "test", "bench"])
 
+    # a github action will pickup this tag push and create a release
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
     run(["git", "commit", "-m", new_version_str])
     run(["git", "tag", "-a", new_version_str, "-m", new_version_str])

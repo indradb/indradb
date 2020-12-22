@@ -1,0 +1,52 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Release
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  bundle-binaries:
+    name: bundle for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - { os: macOS-latest, os_short: macos }
+        - { os: ubuntu-latest, os_short: linux }
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+
+      - uses: Swatinem/rust-cache@v1
+
+      - run: ./scripts/ci-bundle-binary.sh ${{ matrix.os }} ${{ matrix.os_short }}
+
+      - name: Upload binary
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ~/indradb.tar.gz
+          asset_name: indradb-${{ matrix.os_short }}.tar.gz
+          asset_content_type: application/gzip
