@@ -23,10 +23,7 @@ fn main() -> Result<(), errors::Error> {
     println!("{}", listener.local_addr()?);
 
     match args.datastore_args {
-        CliDatastoreArgs::Rocksdb {
-            path,
-            max_open_files,
-        } => {
+        CliDatastoreArgs::Rocksdb { path, max_open_files } => {
             let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
 

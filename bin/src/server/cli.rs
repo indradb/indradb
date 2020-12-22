@@ -8,14 +8,8 @@ pub struct CliArgs {
 
 pub enum CliDatastoreArgs {
     Memory,
-    Rocksdb {
-        path: String,
-        max_open_files: i32,
-    },
-    Sled {
-        path: String,
-        sled_config: SledConfig,
-    },
+    Rocksdb { path: String, max_open_files: i32 },
+    Sled { path: String, sled_config: SledConfig },
 }
 
 const PORT: &str = "PORT";
@@ -40,12 +34,14 @@ pub fn parse_cli_args() -> CliArgs {
     let rocksdb_subcommand = SubCommand::with_name("rocksdb")
         .about("Start an indradb instance backed by rocksdb")
         .arg(&database_path_argument)
-        .arg(Arg::with_name(ROCKSDB_MAX_OPEN_FILES)
-            .long("max-open-files")
-            .value_name(ROCKSDB_MAX_OPEN_FILES)
-            .help("Sets the number of maximum open files to have open in RocksDB.")
-            .takes_value(true)
-            .default_value("512"));
+        .arg(
+            Arg::with_name(ROCKSDB_MAX_OPEN_FILES)
+                .long("max-open-files")
+                .value_name(ROCKSDB_MAX_OPEN_FILES)
+                .help("Sets the number of maximum open files to have open in RocksDB.")
+                .takes_value(true)
+                .default_value("512"),
+        );
 
     let sled_subcommand = SubCommand::with_name("sled")
         .about("Start an indradb instance backed by sled")
