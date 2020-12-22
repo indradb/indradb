@@ -1,0 +1,12 @@
+[lib]
+manifest-path = "lib/Cargo.toml"
+no-default-features = true
+features = "test-suite,rocksdb-datastore,sled-datastore"
+
+[bin]
+manifest-path = "bin/Cargo.toml"
+no-default-features = true
+features = "test-suite"
+
+[report]
+out = ["Lcov"]

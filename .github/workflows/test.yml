@@ -38,3 +38,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
 
       - run: ./scripts/ci.sh "${{ matrix.rust }}" "${{ matrix.os }}"
+      - uses: actions-rs/tarpaulin@v0.1
+      # TODO: uncomment when tarpaulin tests are passing
+      # - name: Upload to codecov.io
+      #   uses: codecov/codecov-action@v1

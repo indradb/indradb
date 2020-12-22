@@ -8,8 +8,6 @@ os=$2
 # this works on linux too
 brew install capnp
 
-make test
-
 if [ "$os" == "ubuntu-latest" ]; then
     if [ "$rust_variant" == "stable" ]; then
         cargo clippy
