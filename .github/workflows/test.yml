@@ -25,7 +25,6 @@ jobs:
       matrix:
         include:
         - { rust: stable, os: macOS-latest }
-        - { rust: stable, os: ubuntu-latest }
         - { rust: nightly, os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v2
@@ -33,11 +32,26 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: ${{ matrix.rust }}
-          components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v1
 
       - run: ./scripts/ci.sh "${{ matrix.rust }}" "${{ matrix.os }}"
+      - run: make test
+
+  test-with-coverage:
+    name: stable on ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v1
+
+      - run: ./scripts/ci.sh "stable" "ubuntu-latest"
       - uses: actions-rs/tarpaulin@v0.1
       # TODO: uncomment when tarpaulin tests are passing
       # - name: Upload to codecov.io
