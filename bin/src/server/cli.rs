@@ -8,21 +8,13 @@ pub struct CliArgs {
 
 pub enum CliDatastoreArgs {
     Memory,
-    Rocksdb {
-        path: String,
-        max_open_files: i32,
-        bulk_load_optimized: bool,
-    },
-    Sled {
-        path: String,
-        sled_config: SledConfig,
-    },
+    Rocksdb { path: String, max_open_files: i32 },
+    Sled { path: String, sled_config: SledConfig },
 }
 
 const PORT: &str = "PORT";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
-const ROCKSDB_BULK_LOAD_OPTIMIZED: &str = "ROCKSDB_BULK_LOAD_OPTIMIZED";
 const SLED_COMPRESSION: &str = "SLED_COMPRESSION";
 
 const DEFAULT_PORT: u16 = 27615;
@@ -42,18 +34,14 @@ pub fn parse_cli_args() -> CliArgs {
     let rocksdb_subcommand = SubCommand::with_name("rocksdb")
         .about("Start an indradb instance backed by rocksdb")
         .arg(&database_path_argument)
-        .arg(Arg::with_name(ROCKSDB_MAX_OPEN_FILES)
-            .long("max_open_files")
-            .value_name(ROCKSDB_MAX_OPEN_FILES)
-            .help("Sets the number of maximum open files to have open in RocksDB.")
-            .takes_value(true)
-            .default_value("512"))
-        .arg(Arg::with_name(ROCKSDB_BULK_LOAD_OPTIMIZED)
-            .long("bulk_load_opt")
-            .value_name(ROCKSDB_BULK_LOAD_OPTIMIZED)
-            .help("If set to true, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.")
-            .takes_value(true)
-            .default_value("false"));
+        .arg(
+            Arg::with_name(ROCKSDB_MAX_OPEN_FILES)
+                .long("max-open-files")
+                .value_name(ROCKSDB_MAX_OPEN_FILES)
+                .help("Sets the number of maximum open files to have open in RocksDB.")
+                .takes_value(true)
+                .default_value("512"),
+        );
 
     let sled_subcommand = SubCommand::with_name("sled")
         .about("Start an indradb instance backed by sled")
@@ -65,9 +53,8 @@ pub fn parse_cli_args() -> CliArgs {
             .takes_value(true)
             .default_value("false"));
 
-    let matches = App::new("Indra DB")
+    let matches = App::new("IndraDB")
         .version("1.2.0")
-        .about("Indra DB server")
         .subcommand(rocksdb_subcommand)
         .subcommand(sled_subcommand)
         .arg(&port)
@@ -88,7 +75,6 @@ pub fn parse_cli_args() -> CliArgs {
                 "Could not parse argument `max_open_files`: must be an \
                  i32",
             ),
-            bulk_load_optimized: matches.value_of(ROCKSDB_BULK_LOAD_OPTIMIZED).unwrap() == "true",
         }
     }
 

@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured};
-use indradb::{Transaction, MemoryDatastore, RocksdbDatastore, Datastore};
 use indradb::util::generate_temporary_path;
+use indradb::{Datastore, MemoryDatastore, RocksdbDatastore, Transaction};
+use libfuzzer_sys::fuzz_target;
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum Op {
@@ -39,18 +39,14 @@ pub enum BulkInsertItem {
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
     fn into(self) -> indradb::BulkInsertItem {
         match self {
-            BulkInsertItem::Vertex(vertex) => {
-                indradb::BulkInsertItem::Vertex(vertex.into())
-            },
-            BulkInsertItem::Edge(key) => {
-                indradb::BulkInsertItem::Edge(key.into())
-            },
+            BulkInsertItem::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.into()),
+            BulkInsertItem::Edge(key) => indradb::BulkInsertItem::Edge(key.into()),
             BulkInsertItem::VertexProperty(id, name, value) => {
                 indradb::BulkInsertItem::VertexProperty(id.into(), name, value.into())
-            },
+            }
             BulkInsertItem::EdgeProperty(key, name, value) => {
                 indradb::BulkInsertItem::EdgeProperty(key.into(), name, value.into())
-            },
+            }
         }
     }
 }
@@ -98,12 +94,8 @@ pub enum EdgeDirection {
 impl Into<indradb::EdgeDirection> for EdgeDirection {
     fn into(self) -> indradb::EdgeDirection {
         match self {
-            EdgeDirection::Outbound => {
-                indradb::EdgeDirection::Outbound
-            },
-            EdgeDirection::Inbound => {
-                indradb::EdgeDirection::Inbound
-            },
+            EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
+            EdgeDirection::Inbound => indradb::EdgeDirection::Inbound,
         }
     }
 }
@@ -118,15 +110,9 @@ pub enum VertexQuery {
 impl Into<indradb::VertexQuery> for VertexQuery {
     fn into(self) -> indradb::VertexQuery {
         match self {
-            VertexQuery::Range(range) => {
-                indradb::VertexQuery::Range(range.into())
-            },
-            VertexQuery::Specific(specific) => {
-                indradb::VertexQuery::Specific(specific.into())
-            },
-            VertexQuery::Pipe(pipe) => {
-                indradb::VertexQuery::Pipe(pipe.into())
-            },
+            VertexQuery::Range(range) => indradb::VertexQuery::Range(range.into()),
+            VertexQuery::Specific(specific) => indradb::VertexQuery::Specific(specific.into()),
+            VertexQuery::Pipe(pipe) => indradb::VertexQuery::Pipe(pipe.into()),
         }
     }
 }
@@ -177,7 +163,12 @@ impl Arbitrary for PipeVertexQuery {
         let direction: EdgeDirection = u.arbitrary()?;
         let limit: u32 = u.arbitrary()?;
         let t: Option<Type> = u.arbitrary()?;
-        Ok(PipeVertexQuery { inner: Box::new(inner), direction, limit, t })
+        Ok(PipeVertexQuery {
+            inner: Box::new(inner),
+            direction,
+            limit,
+            t,
+        })
     }
 }
 
@@ -216,12 +207,8 @@ pub enum EdgeQuery {
 impl Into<indradb::EdgeQuery> for EdgeQuery {
     fn into(self) -> indradb::EdgeQuery {
         match self {
-            EdgeQuery::Specific(specific) => {
-                indradb::EdgeQuery::Specific(specific.into())
-            },
-            EdgeQuery::Pipe(pipe) => {
-                indradb::EdgeQuery::Pipe(pipe.into())
-            },
+            EdgeQuery::Specific(specific) => indradb::EdgeQuery::Specific(specific.into()),
+            EdgeQuery::Pipe(pipe) => indradb::EdgeQuery::Pipe(pipe.into()),
         }
     }
 }
@@ -259,7 +246,14 @@ impl Arbitrary for PipeEdgeQuery {
         let t: Option<Type> = u.arbitrary()?;
         let high: Option<DateTime> = u.arbitrary()?;
         let low: Option<DateTime> = u.arbitrary()?;
-        Ok(PipeEdgeQuery { inner: Box::new(inner), direction, limit, t, high, low })
+        Ok(PipeEdgeQuery {
+            inner: Box::new(inner),
+            direction,
+            limit,
+            t,
+            high,
+            low,
+        })
     }
 }
 
@@ -403,7 +397,9 @@ pub struct Uuid(uuid::Uuid);
 
 impl Arbitrary for Uuid {
     fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
-        Ok(Self { 0: uuid::Uuid::from_u128(u.arbitrary()?) })
+        Ok(Self {
+            0: uuid::Uuid::from_u128(u.arbitrary()?),
+        })
     }
 }
 
@@ -445,21 +441,11 @@ pub enum JsonValue {
 impl Into<serde_json::Value> for JsonValue {
     fn into(self) -> serde_json::Value {
         match self {
-            JsonValue::Null => {
-                serde_json::Value::Null
-            },
-            JsonValue::Bool(b) => {
-                serde_json::Value::Bool(b)
-            },
-            JsonValue::Number(n) => {
-                serde_json::Value::Number(n.into())
-            },
-            JsonValue::String(s) => {
-                serde_json::Value::String(s)
-            },
-            JsonValue::Array(v) => {
-                serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect())
-            },
+            JsonValue::Null => serde_json::Value::Null,
+            JsonValue::Bool(b) => serde_json::Value::Bool(b),
+            JsonValue::Number(n) => serde_json::Value::Number(n.into()),
+            JsonValue::String(s) => serde_json::Value::String(s),
+            JsonValue::Array(v) => serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect()),
             JsonValue::Object(o) => {
                 let mut m = serde_json::Map::new();
 
@@ -468,7 +454,7 @@ impl Into<serde_json::Value> for JsonValue {
                 }
 
                 serde_json::Value::Object(m)
-            },
+            }
         }
     }
 }
@@ -483,15 +469,9 @@ pub enum JsonNumber {
 impl Into<serde_json::Number> for JsonNumber {
     fn into(self) -> serde_json::Number {
         match self {
-            JsonNumber::PosInt(n) => {
-                n.into()
-            },
-            JsonNumber::NegInt(n) => {
-                n.into()
-            },
-            JsonNumber::Float(n) => {
-                serde_json::Number::from_f64(n.into()).unwrap()
-            },
+            JsonNumber::PosInt(n) => n.into(),
+            JsonNumber::NegInt(n) => n.into(),
+            JsonNumber::Float(n) => serde_json::Number::from_f64(n.into()).unwrap(),
         }
     }
 }
@@ -522,7 +502,7 @@ macro_rules! cmp {
         match ($v1, $v2) {
             (Ok(v1), Ok(v2)) => {
                 assert_eq!(v1, v2);
-            },
+            }
             (v1, v2) => {
                 assert_eq!(format!("{:?}", v1), format!("{:?}", v2));
             }
@@ -533,7 +513,7 @@ macro_rules! cmp {
 fuzz_target!(|ops: Vec<Op>| {
     let d1 = MemoryDatastore::default();
     let rocksdb_path = generate_temporary_path();
-    let d2 = RocksdbDatastore::new(&rocksdb_path, Some(1), false).unwrap();
+    let d2 = RocksdbDatastore::new(&rocksdb_path, Some(1)).unwrap();
 
     let t1 = d1.transaction().unwrap();
     let t2 = d2.transaction().unwrap();
@@ -545,48 +525,48 @@ fuzz_target!(|ops: Vec<Op>| {
                 let v1 = d1.bulk_insert(items.clone().into_iter());
                 let v2 = d2.bulk_insert(items.into_iter());
                 cmp!(v1, v2);
-            },
+            }
             Op::CreateVertex(vertex) => {
                 let vertex = vertex.into();
                 let v1 = t1.create_vertex(&vertex);
                 let v2 = t2.create_vertex(&vertex);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
                 let v1 = t1.get_vertices(q.clone());
                 let v2 = t2.get_vertices(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::DeleteVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
                 let v1 = t1.delete_vertices(q.clone());
                 let v2 = t2.delete_vertices(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetVertexCount => {
                 let v1 = t1.get_vertex_count();
                 let v2 = t2.get_vertex_count();
                 cmp!(v1, v2);
-            },
+            }
             Op::CreateEdge(key) => {
                 let key: indradb::EdgeKey = key.into();
                 let v1 = t1.create_edge(&key);
                 let v2 = t2.create_edge(&key);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
                 let v1 = t1.get_edges(q.clone());
                 let v2 = t2.get_edges(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::DeleteEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
                 let v1 = t1.delete_edges(q.clone());
                 let v2 = t2.delete_edges(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetEdgeCount(id, t, direction) => {
                 let id: uuid::Uuid = id.into();
                 let t: Option<indradb::Type> = t.map(|t| t.into());
@@ -594,57 +574,57 @@ fuzz_target!(|ops: Vec<Op>| {
                 let v1 = t1.get_edge_count(id, t.as_ref(), direction);
                 let v2 = t2.get_edge_count(id, t.as_ref(), direction);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
                 let v1 = t1.get_vertex_properties(q.clone());
                 let v2 = t2.get_vertex_properties(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetAllVertexProperties(q) => {
                 let q: indradb::VertexQuery = q.into();
                 let v1 = t1.get_all_vertex_properties(q.clone());
                 let v2 = t2.get_all_vertex_properties(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
                 let value: serde_json::Value = value.into();
                 let v1 = t1.set_vertex_properties(q.clone(), &value);
                 let v2 = t2.set_vertex_properties(q, &value);
                 cmp!(v1, v2);
-            },
+            }
             Op::DeleteVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
                 let v1 = t1.delete_vertex_properties(q.clone());
                 let v2 = t2.delete_vertex_properties(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
                 let v1 = t1.get_edge_properties(q.clone());
                 let v2 = t2.get_edge_properties(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::GetAllEdgeProperties(q) => {
                 let q: indradb::EdgeQuery = q.into();
                 let v1 = t1.get_all_edge_properties(q.clone());
                 let v2 = t2.get_all_edge_properties(q);
                 cmp!(v1, v2);
-            },
+            }
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
                 let value: serde_json::Value = value.into();
                 let v1 = t1.set_edge_properties(q.clone(), &value);
                 let v2 = t2.set_edge_properties(q, &value);
                 cmp!(v1, v2);
-            },
+            }
             Op::DeleteEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
                 let v1 = t1.delete_edge_properties(q.clone());
                 let v2 = t2.delete_edge_properties(q);
                 cmp!(v1, v2);
-            },
+            }
         }
     }
 });
