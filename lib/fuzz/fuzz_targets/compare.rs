@@ -533,7 +533,7 @@ macro_rules! cmp {
 fuzz_target!(|ops: Vec<Op>| {
     let d1 = MemoryDatastore::default();
     let rocksdb_path = generate_temporary_path();
-    let d2 = RocksdbDatastore::new(&rocksdb_path, Some(1), false).unwrap();
+    let d2 = RocksdbDatastore::new(&rocksdb_path, Some(1)).unwrap();
 
     let t1 = d1.transaction().unwrap();
     let t2 = d2.transaction().unwrap();
