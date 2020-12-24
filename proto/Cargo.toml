@@ -2,7 +2,7 @@
 name = "indradb-proto"
 version = "1.3.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
-description = "Cap'n proto interface and auto-generated rust bindings for IndraDB"
+description = "Protobuf/gRPC interfaces for IndraDB"
 homepage = "https://indradb.github.io"
 repository = "https://github.com/indradb/indradb"
 keywords = ["graph", "database"]
@@ -18,16 +18,27 @@ travis-ci = { repository = "indradb/indradb", branch = "master" }
 name = "indradb_proto"
 path = "src/lib.rs"
 
+[features]
+default = ["client"]
+server = ["tokio"]
+client = ["tokio"]
+bench-suite = ["indradb-lib/bench-suite", "test-suite"]
+test-suite = ["indradb-lib/test-suite", "client", "server"]
+
 [dependencies]
+failure = "0.1.8"
 serde_json = "^1.0.57"
 uuid = "0.8.1"
-capnp = "0.13.3"
 chrono = "0.4.15"
+prost = "0.6.1"
+prost-derive = "0.6.1"
+prost-types = "0.6.1"
+tonic = "0.3.1"
+tokio = { version = "0.2.24", optional = true }
 
 [dependencies.indradb-lib]
 path = "../lib"
 version = "1.3.0"
-features = ["test-suite", "rocksdb-datastore", "sled-datastore"]
 
 [build-dependencies]
-capnpc = "0.13.1"
+tonic-build = "0.3.1"

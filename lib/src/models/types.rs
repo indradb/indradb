@@ -66,12 +66,12 @@ impl FromStr for Type {
 #[cfg(test)]
 mod tests {
     use super::Type;
-    use crate::util::generate_random_secret;
     use std::str::FromStr;
 
     #[test]
     fn should_fail_for_invalid_types() {
-        assert!(Type::new(generate_random_secret(256)).is_err());
+        let long_t = (0..256).map(|_| "X").collect::<String>();
+        assert!(Type::new(long_t).is_err());
         assert!(Type::new("$").is_err());
     }
 

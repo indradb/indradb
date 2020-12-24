@@ -28,7 +28,7 @@ struct InternalMemoryDatastore {
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query<'a>(&'a self, q: VertexQuery) -> Result<QueryIter<'a, (Uuid, Type)>> {
+    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (Uuid, Type)>> {
         match q {
             VertexQuery::Range(range) => {
                 let mut iter: QueryIter<(&Uuid, &Type)> = if let Some(start_id) = range.start_id {
@@ -81,7 +81,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn get_edge_values_by_query<'a>(&'a self, q: EdgeQuery) -> Result<QueryIter<'a, (EdgeKey, DateTime<Utc>)>> {
+    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<QueryIter<'_, (EdgeKey, DateTime<Utc>)>> {
         match q {
             EdgeQuery::Specific(specific) => {
                 let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = Box::new(
