@@ -1,5 +1,5 @@
-use std::u32;
 use std::str::FromStr;
+use std::u32;
 
 use super::edges::EdgeKey;
 use super::types::Type;

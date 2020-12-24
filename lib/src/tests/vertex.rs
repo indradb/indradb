@@ -43,9 +43,7 @@ pub fn should_get_range_vertices_out_of_range<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
     let range = trans
-        .get_vertices(
-            RangeVertexQuery::new().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
-        )
+        .get_vertices(RangeVertexQuery::new().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()))
         .unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -54,9 +52,7 @@ pub fn should_get_no_vertices_with_type_filter<D: Datastore>(datastore: &mut D) 
     let trans = datastore.transaction().unwrap();
     let type_filter = models::Type::new("foo").unwrap();
     create_vertices(&trans);
-    let range = trans
-        .get_vertices(RangeVertexQuery::new().t(type_filter))
-        .unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::new().t(type_filter)).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -121,18 +117,22 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 
     // This query should get `inserted_id`
     let query_1 = SpecificVertexQuery::single(v.id)
-        .outbound().limit(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound().limit(1);
+        .inbound()
+        .limit(1);
     let range = trans.get_vertices(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get `inserted_id`
     let query_2 = SpecificVertexQuery::single(v.id)
-        .outbound().limit(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound().limit(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("test_inbound_vertex_type").unwrap());
     let range = trans.get_vertices(query_2).unwrap();
     assert_eq!(range.len(), 1);
@@ -140,9 +140,11 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
 
     // This query should get nothing
     let query_3 = SpecificVertexQuery::single(v.id)
-        .outbound().limit(1)
+        .outbound()
+        .limit(1)
         .t(edge_t.clone())
-        .inbound().limit(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("foo").unwrap());
     let range = trans.get_vertices(query_3).unwrap();
     assert_eq!(range.len(), 0);

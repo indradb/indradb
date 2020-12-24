@@ -316,7 +316,8 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     let inbound_id = create_edge_from(&trans, outbound_v.id);
 
     let query_1 = SpecificVertexQuery::single(outbound_v.id)
-        .outbound().limit(1)
+        .outbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
@@ -326,8 +327,10 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     );
 
     let query_2 = query_1
-        .inbound().limit(1)
-        .inbound().limit(1)
+        .inbound()
+        .limit(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_2).unwrap();
     assert_eq!(range.len(), 1);
