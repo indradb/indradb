@@ -8,18 +8,18 @@ A graph database written in rust.
 
 IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
+IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for properties.
+
+For more details, see the [homepage](https://indradb.github.io).
+
 ## Features
 
 * Support for directed and typed graphs.
 * Support for queries with multiple hops.
 * Cross-language support via Cap'n Proto, or direct embedding as a library.
 * Support for JSON-based properties tied to vertices and edges.
-* Pluggable underlying datastores, with built-in support for in-memory-only, rocksdb and Sled. [Postgresql is available separately](https://github.com/indradb/postgres).
-* Written in rust!
-
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for properties.
-
-For more details, see the [homepage](https://indradb.github.io).
+* Pluggable underlying datastores, with built-in support for in-memory-only, rocksdb and sled. [Postgresql is available separately](https://github.com/indradb/postgres).
+* Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
 ## Getting started
 
@@ -50,7 +50,7 @@ indradb rocksdb [/path/to/rocksdb.rdb] [options]
 
 ### Sled
 
-If you want to a datastore based on [Sled](http://sled.rs/), use the `sled` subcommand; e.g.:
+If you want to a datastore based on [sled](http://sled.rs/), use the `sled` subcommand; e.g.:
 
 ```bash
 indradb sled [path/to/sled] [options]
@@ -58,7 +58,7 @@ indradb sled [path/to/sled] [options]
 
  If the sled directory does not exist, it will be created.
 
-**NOTE:** The sled datastore is not production-ready yet. Sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
+**NOTE:** The sled datastore is not production-ready yet. sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
 
 ## Install from source
 
