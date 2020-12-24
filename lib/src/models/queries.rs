@@ -1,9 +1,12 @@
+use std::str::FromStr;
+use std::u32;
+
 use super::edges::EdgeKey;
 use super::types::Type;
 use crate::errors;
+
 use chrono::offset::Utc;
 use chrono::DateTime;
-use std::str::FromStr;
 use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
@@ -74,19 +77,13 @@ impl From<PipeVertexQuery> for VertexQuery {
 /// Extension trait that specifies methods exposed by all vertex queries.
 pub trait VertexQueryExt: Into<VertexQuery> {
     /// Gets the outbound edges associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn outbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    fn outbound(self) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
     /// Gets the inbound edges associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn inbound(self, limit: u32) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    fn inbound(self) -> PipeEdgeQuery {
+        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
     /// Gets a property associated with the vertices.
@@ -115,14 +112,23 @@ impl VertexQueryExt for RangeVertexQuery {}
 
 impl RangeVertexQuery {
     /// Creates a new vertex range query.
+    pub fn new() -> Self {
+        Self {
+            limit: u32::max_value(),
+            t: None,
+            start_id: None,
+        }
+    }
+
+    /// Sets the limit.
     ///
     /// # Arguments
     /// * `limit` - Limits the number of returned results.
-    pub fn new(limit: u32) -> Self {
+    pub fn limit(self, limit: u32) -> Self {
         Self {
             limit,
-            t: None,
-            start_id: None,
+            t: self.t,
+            start_id: self.start_id,
         }
     }
 
@@ -207,13 +213,25 @@ impl PipeVertexQuery {
     /// * `inner` - The edge query to build off of.
     /// * `direction` - Whether to get outbound or inbound vertices on the
     ///   edges.
-    /// * `limit` - Limits the number of vertices to get.
-    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection, limit: u32) -> Self {
+    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection) -> Self {
         Self {
             inner,
             direction,
-            limit,
+            limit: u32::max_value(),
             t: None,
+        }
+    }
+
+    /// Sets the limit.
+    ///
+    /// # Arguments
+    /// * `limit` - Limits the number of returned results.
+    pub fn limit(self, limit: u32) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit,
+            t: self.t,
         }
     }
 
@@ -281,19 +299,13 @@ impl From<PipeEdgeQuery> for EdgeQuery {
 /// Extension trait that specifies methods exposed by all edge queries.
 pub trait EdgeQueryExt: Into<EdgeQuery> {
     /// Gets the vertices associated with the outbound end of the edges.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn outbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound, limit)
+    fn outbound(self) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
     /// Gets the vertices associated with the inbound end of the edges.
-    ///
-    /// # Arguments
-    /// * `limit` - Limits the number of returned results.
-    fn inbound(self, limit: u32) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound, limit)
+    fn inbound(self) -> PipeVertexQuery {
+        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
     /// Gets a property associated with the edges.
@@ -368,14 +380,29 @@ impl PipeEdgeQuery {
     /// * `direction` - Whether to get outbound or inbound edges on the
     ///   vertices.
     /// * `limit` - Limits the number of edges to get.
-    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection, limit: u32) -> Self {
+    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection) -> Self {
         Self {
             inner,
             direction,
-            limit,
+            limit: u32::max_value(),
             t: None,
             high: None,
             low: None,
+        }
+    }
+
+    /// Sets the limit.
+    ///
+    /// # Arguments
+    /// * `limit` - Limits the number of returned results.
+    pub fn limit(self, limit: u32) -> Self {
+        Self {
+            inner: self.inner,
+            direction: self.direction,
+            limit,
+            t: self.t,
+            high: self.high,
+            low: self.low,
         }
     }
 

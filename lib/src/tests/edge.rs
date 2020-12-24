@@ -93,7 +93,7 @@ pub fn should_create_a_valid_edge<D: Datastore>(datastore: &mut D) {
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
     let e = trans
-        .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound(10))
+        .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound().limit(10))
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(key, e[0].key);
@@ -191,7 +191,8 @@ pub fn should_get_an_edge_range<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .t(t)
                 .low(start_time)
                 .high(end_time),
@@ -206,7 +207,8 @@ pub fn should_get_edges_with_no_type<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .low(start_time)
                 .high(end_time),
         )
@@ -221,7 +223,8 @@ pub fn should_get_no_edges_for_an_invalid_range<D: Datastore>(datastore: &mut D)
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .t(t)
                 .low(start_time)
                 .high(end_time),
@@ -237,7 +240,8 @@ pub fn should_get_edges_with_no_high<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .t(t)
                 .low(start_time),
         )
@@ -252,7 +256,8 @@ pub fn should_get_edges_with_no_low<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .t(t)
                 .high(end_time),
         )
@@ -265,7 +270,7 @@ pub fn should_get_edges_with_no_time<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
     let range = trans
-        .get_edges(SpecificVertexQuery::single(outbound_id).outbound(100).t(t))
+        .get_edges(SpecificVertexQuery::single(outbound_id).outbound().limit(100).t(t))
         .unwrap();
     check_edge_range(&range, outbound_id, 15);
 }
@@ -277,7 +282,8 @@ pub fn should_get_no_edges_for_reversed_time<D: Datastore>(datastore: &mut D) {
     let range = trans
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
-                .outbound(10)
+                .outbound()
+                .limit(10)
                 .t(t)
                 .low(end_time)
                 .high(start_time),
@@ -310,7 +316,8 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     let inbound_id = create_edge_from(&trans, outbound_v.id);
 
     let query_1 = SpecificVertexQuery::single(outbound_v.id)
-        .outbound(1)
+        .outbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
@@ -320,8 +327,10 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     );
 
     let query_2 = query_1
-        .inbound(1)
-        .inbound(1)
+        .inbound()
+        .limit(1)
+        .inbound()
+        .limit(1)
         .t(models::Type::new("test_edge_type").unwrap());
     let range = trans.get_edges(query_2).unwrap();
     assert_eq!(range.len(), 1);

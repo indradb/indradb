@@ -164,7 +164,7 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
         crate::vertex_query::Range(params) => {
             let start_id_bytes = params.get_start_id()?;
             let t_str = params.get_t()?;
-            let mut range = indradb::RangeVertexQuery::new(params.get_limit());
+            let mut range = indradb::RangeVertexQuery::new().limit(params.get_limit());
 
             if !start_id_bytes.is_empty() {
                 range = range.start_id(map_capnp_err(Uuid::from_slice(start_id_bytes))?);
@@ -189,7 +189,7 @@ pub fn to_vertex_query<'a>(reader: &crate::vertex_query::Reader<'a>) -> Result<i
             let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
             let t_str = params.get_t()?;
-            let mut pipe = indradb::PipeVertexQuery::new(inner, direction, limit);
+            let mut pipe = indradb::PipeVertexQuery::new(inner, direction).limit(limit);
 
             if t_str != "" {
                 pipe = pipe.t(map_capnp_err(indradb::Type::new(t_str))?);
@@ -261,7 +261,7 @@ pub fn to_edge_query<'a>(reader: &crate::edge_query::Reader<'a>) -> Result<indra
             let inner = Box::new(to_vertex_query(&params.get_inner()?)?);
             let direction = to_edge_direction(params.get_direction()?);
             let limit = params.get_limit();
-            let mut pipe = indradb::PipeEdgeQuery::new(inner, direction, limit);
+            let mut pipe = indradb::PipeEdgeQuery::new(inner, direction).limit(limit);
 
             let t = params.get_t()?;
             if t != "" {
