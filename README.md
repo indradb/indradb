@@ -34,39 +34,31 @@ This should start an in-memory-only datastore, where all work will be wiped out 
 By default, IndraDB starts an in-memory datastore that does not persist to
 disk. This is useful for kicking the tires. If you want to use the in-memory
 datastore, simply start up an instance. e.g.: 
+
 ```bash
-indradb [options] [subcommands]
+indradb [options]
 ```
 
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g
+If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g.:
+
 ```bash
-indradb rocksdb /path/to/rocksdb.rdb [options]
+indradb rocksdb [/path/to/rocksdb.rdb] [options]
 ```
 
 ### Sled
 
-If you want to a datastore based on [Sled](http://sled.rs/), use the `sled` subcommand; e.g. 
+If you want to a datastore based on [Sled](http://sled.rs/), use the `sled` subcommand; e.g.:
+
 ```bash
-indradb sled sled_dir [options]
+indradb sled [path/to/sled] [options]
 ```
- If `sled_dir` does not exist, it will be created.
 
-# CLI Options
-Applications are configured via CLI arguments:
+ If the sled directory does not exist, it will be created.
 
-```
-  -p, --port                     The port to run the server on. Defaults to 27615.
-
-  [RocksDB options]
-  --max_open_files               Sets the number of maximum open files to have open in RocksDB.
-  --bulk_load_opt   			 If set to true, RocksDB will be configured to optimize for bulk loading of data, likely at the detriment of any other kind of workload.
-
-  [Sled options]
-  --sled_compression			 If set to true, compression will be enabled at the default zstd factor of 5. If set to an integer, compression will be enabled at the zstd specified factor.
-```
+**NOTE:** The sled datastore is not production-ready yet. Sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
 
 ## Install from source
 
