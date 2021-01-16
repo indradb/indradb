@@ -5,9 +5,6 @@ set -ex
 rust_variant=$1
 os=$2
 
-# this works on linux too
-brew install capnp
-
 make test
 
 if [ "$os" == "ubuntu-latest" ]; then
