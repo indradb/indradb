@@ -1,4 +1,5 @@
-//! Converts between protobuf and native IndraDB models.
+//! Trait implementations for conveniently converting between protobuf and
+//! native IndraDB models.
 
 use std::convert::TryInto;
 
@@ -10,6 +11,7 @@ use serde_json::Value as JsonValue;
 use uuid::Error as UuidError;
 use uuid::Uuid;
 
+/// The error returned if a try into operation fails.
 #[derive(Debug, Fail)]
 pub enum ConversionError {
     #[fail(display = "json error: {}", inner)]

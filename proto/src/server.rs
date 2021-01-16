@@ -26,6 +26,7 @@ fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T,
     res.map_err(|err| Status::invalid_argument(format!("{}", err)))
 }
 
+/// The IndraDB server implementation.
 #[derive(Clone)]
 pub struct Server<
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
@@ -262,6 +263,15 @@ where
     Ok(())
 }
 
+/// Runs the IndraDB server.
+///
+/// # Arguments
+/// * `datastore`: The underlying datastore to use.
+/// * `listener`: The TCP listener to run the gRPC server on.
+///
+/// # Errors
+/// This will return an error if the gRPC fails to start on the given
+/// listener.
 pub async fn run<D, T>(datastore: D, mut listener: TcpListener) -> Result<(), TonicTransportError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,

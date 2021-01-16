@@ -3,7 +3,7 @@
 //! every case, unless you want to avoid the cost of translating between
 //! protobuf types and their IndraDB equivalents. The interface is designed to
 //! resemble the datastore and transaction traits in IndraDB, but they cannot
-//! implement these directly since the functions here are async.
+//! implement them directly since the functions here are async.
 
 use std::convert::TryInto;
 
@@ -27,6 +27,7 @@ fn check_request_id(expected: u32, actual: u32) -> Result<(), ClientError> {
     }
 }
 
+/// The error returned if a client operation failed.
 #[derive(Debug, Fail)]
 pub enum ClientError {
     #[fail(display = "{}", inner)]

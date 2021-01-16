@@ -1,4 +1,7 @@
-//! Scaffolding for testing and benchmarking.
+//! Scaffolding for testing and benchmarking. This exposes implementations of
+//! Datastore and Transaction, so that the standard testing and benchmarking
+//! suite can be reused. Under the hood, they use tokio runtimes to call async
+//! functions from non-async functions.
 
 use std::cell::RefCell;
 use std::convert::TryInto;
