@@ -102,7 +102,7 @@ impl Datastore for SledDatastore {
     type Trans = SledTransaction;
 
     fn transaction(&self) -> Result<Self::Trans> {
-        SledTransaction::new(self.holder.clone())
+        Ok(SledTransaction::new(self.holder.clone()))
     }
 
     fn bulk_insert<I>(&self, items: I) -> Result<()>
@@ -142,8 +142,8 @@ pub struct SledTransaction {
 }
 
 impl SledTransaction {
-    fn new(holder: Arc<SledHolder>) -> Result<Self> {
-        Ok(SledTransaction { holder })
+    fn new(holder: Arc<SledHolder>) -> Self {
+        SledTransaction { holder }
     }
 
     fn vertex_query_to_iterator<'iter, 'trans: 'iter>(

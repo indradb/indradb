@@ -71,7 +71,7 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
             };
 
             let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                Box::new(vertex_manager.iterate_for_range(next_uuid));
 
             if let Some(ref t) = q.t {
                 iter = Box::new(iter.filter(move |item| match item {
@@ -303,7 +303,7 @@ impl Datastore for RocksdbDatastore {
     }
 
     fn transaction(&self) -> Result<Self::Trans> {
-        RocksdbTransaction::new(self.db.clone())
+        Ok(RocksdbTransaction::new(self.db.clone()))
     }
 }
 
@@ -314,8 +314,8 @@ pub struct RocksdbTransaction {
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>) -> Result<Self> {
-        Ok(RocksdbTransaction { db })
+    fn new(db: Arc<DB>) -> Self {
+        RocksdbTransaction { db }
     }
 }
 
@@ -364,7 +364,7 @@ impl Transaction for RocksdbTransaction {
     fn get_vertex_count(&self) -> Result<u64> {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
         Ok(iterator.count() as u64)
     }
 
