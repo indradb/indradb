@@ -14,9 +14,9 @@ fuzz:
 	cd lib && cargo +nightly fuzz run compare
 
 check:
-	cd lib && cargo check --all-features
-	cd lib/fuzz && cargo check
-	cd bin && cargo check --all-features
+	cargo +stable check
+	cargo +nightly check --all-features
+	cd lib/fuzz && cargo +stable check
 	cargo clippy
 
 fmt:
