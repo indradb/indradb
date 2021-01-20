@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand, value_t};
+use clap::{value_t, App, Arg, SubCommand};
 use indradb::SledConfig;
 
 pub struct CliArgs {
