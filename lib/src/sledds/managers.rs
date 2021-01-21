@@ -73,7 +73,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         })
     }
 
-    pub fn iterate_for_range<'a>(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
+    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + '_> {
         let low_key = build(&[Component::Uuid(id)]);
         let low_key_bytes: &[u8] = low_key.as_ref();
         let iter = self.tree.range(low_key_bytes..);
@@ -99,7 +99,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
 
         {
             let edge_range_manager = EdgeRangeManager::new(&self.holder);
-            for item in edge_range_manager.iterate_for_owner(id)? {
+            for item in edge_range_manager.iterate_for_owner(id) {
                 let (edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
                 edge_manager.delete(
@@ -113,7 +113,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
-            for item in reversed_edge_range_manager.iterate_for_owner(id)? {
+            for item in reversed_edge_range_manager.iterate_for_owner(id) {
                 let (
                     reversed_edge_range_inbound_id,
                     reversed_edge_range_t,
@@ -240,13 +240,9 @@ impl<'tree> EdgeRangeManager<'tree> {
         ])
     }
 
-    fn iterate<'it>(
-        &self,
-        iterator: DbIterator,
-        prefix: Vec<u8>,
-    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'it> {
+    fn iterate<'it>(&self, iterator: DbIterator, prefix: Vec<u8>) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'it {
         let filtered = take_while_prefixed(iterator, prefix);
-        Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
+        filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
@@ -254,7 +250,7 @@ impl<'tree> EdgeRangeManager<'tree> {
             let update_datetime = read_datetime(&mut cursor);
             let second_id = read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
-        }))
+        })
     }
 
     pub fn iterate_for_range<'iter, 'trans: 'iter>(
@@ -270,13 +266,13 @@ impl<'tree> EdgeRangeManager<'tree> {
                 let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
                 let low_key_bytes: &[u8] = low_key.as_ref();
                 let iterator = self.tree.range(low_key_bytes..);
-                Ok(Box::new(self.iterate(iterator, prefix)?))
+                Ok(Box::new(self.iterate(iterator, prefix)))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let prefix_bytes: &[u8] = prefix.as_ref();
                 let iterator = self.tree.range(prefix_bytes..);
-                let mapped = self.iterate(iterator, prefix)?;
+                let mapped = self.iterate(iterator, prefix);
 
                 if let Some(high) = high {
                     // We can filter out `update_datetime`s greater than
@@ -301,7 +297,7 @@ impl<'tree> EdgeRangeManager<'tree> {
     pub fn iterate_for_owner<'iter, 'trans: 'iter>(
         &'trans self,
         id: Uuid,
-    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'iter> {
+    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'iter {
         let prefix: Vec<u8> = build(&[Component::Uuid(id)]);
         let iterator = self.tree.scan_prefix(&prefix);
         self.iterate(iterator, prefix)

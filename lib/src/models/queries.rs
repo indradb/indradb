@@ -110,6 +110,12 @@ pub struct RangeVertexQuery {
 
 impl VertexQueryExt for RangeVertexQuery {}
 
+impl Default for RangeVertexQuery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RangeVertexQuery {
     /// Creates a new vertex range query.
     pub fn new() -> Self {
