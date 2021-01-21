@@ -117,16 +117,20 @@ impl ClientTransaction {
 
 impl ClientTransaction {
     async fn async_create_vertex(&self, v: &indradb::Vertex) -> Result<bool, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.create_vertex_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.create_vertex_request()
+        };
         converters::from_vertex(v, req.get().init_vertex());
         let res = req.send().promise.await?;
         Ok(res.get()?.get_result())
     }
 
     async fn async_create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.create_vertex_from_type_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.create_vertex_from_type_request()
+        };
         req.get().set_t(&t.0);
         let res = req.send().promise.await?;
         let bytes = res.get()?.get_result()?;
@@ -137,8 +141,10 @@ impl ClientTransaction {
         &self,
         q: Q,
     ) -> Result<Vec<indradb::Vertex>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_vertices_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_vertices_request()
+        };
         converters::from_vertex_query(&q.into(), req.get().init_q());
         let res = req.send().promise.await?;
         let list = res.get()?.get_result()?;
@@ -148,8 +154,10 @@ impl ClientTransaction {
     }
 
     async fn async_delete_vertices<Q: Into<indradb::VertexQuery>>(&self, q: Q) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.delete_vertices_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.delete_vertices_request()
+        };
         converters::from_vertex_query(&q.into(), req.get().init_q());
         let res = req.send().promise.await?;
         res.get()?;
@@ -157,23 +165,29 @@ impl ClientTransaction {
     }
 
     async fn async_get_vertex_count(&self) -> Result<u64, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let req = trans.get_vertex_count_request();
+        let req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_vertex_count_request()
+        };
         let res = req.send().promise.await?;
         Ok(res.get()?.get_result())
     }
 
     async fn async_create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.create_edge_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.create_edge_request()
+        };
         converters::from_edge_key(e, req.get().init_key());
         let res = req.send().promise.await?;
         Ok(res.get()?.get_result())
     }
 
     async fn async_get_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<Vec<indradb::Edge>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_edges_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_edges_request()
+        };
         converters::from_edge_query(&q.into(), req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -184,8 +198,10 @@ impl ClientTransaction {
     }
 
     async fn async_delete_edges<Q: Into<indradb::EdgeQuery>>(&self, q: Q) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.delete_edges_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.delete_edges_request()
+        };
         converters::from_edge_query(&q.into(), req.get().init_q());
         let res = req.send().promise.await?;
         res.get()?;
@@ -198,8 +214,10 @@ impl ClientTransaction {
         t: Option<&indradb::Type>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_edge_count_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_edge_count_request()
+        };
         req.get().set_id(id.as_bytes());
 
         if let Some(t) = t {
@@ -216,8 +234,10 @@ impl ClientTransaction {
         &self,
         q: indradb::VertexPropertyQuery,
     ) -> Result<Vec<indradb::VertexProperty>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_vertex_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_vertex_properties_request()
+        };
         converters::from_vertex_property_query(&q, req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -233,8 +253,10 @@ impl ClientTransaction {
         &self,
         q: Q,
     ) -> Result<Vec<indradb::VertexProperties>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_all_vertex_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_all_vertex_properties_request()
+        };
         converters::from_vertex_query(&q.into(), req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -251,8 +273,10 @@ impl ClientTransaction {
         q: indradb::VertexPropertyQuery,
         value: &JsonValue,
     ) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.set_vertex_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.set_vertex_properties_request()
+        };
         converters::from_vertex_property_query(&q, req.get().init_q());
         req.get().set_value(&value.to_string());
 
@@ -262,8 +286,10 @@ impl ClientTransaction {
     }
 
     async fn async_delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.delete_vertex_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.delete_vertex_properties_request()
+        };
         converters::from_vertex_property_query(&q, req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -275,8 +301,10 @@ impl ClientTransaction {
         &self,
         q: indradb::EdgePropertyQuery,
     ) -> Result<Vec<indradb::EdgeProperty>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_edge_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_edge_properties_request()
+        };
         converters::from_edge_property_query(&q, req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -292,8 +320,10 @@ impl ClientTransaction {
         &self,
         q: Q,
     ) -> Result<Vec<indradb::EdgeProperties>, CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.get_all_edge_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.get_all_edge_properties_request()
+        };
         converters::from_edge_query(&q.into(), req.get().init_q());
 
         let res = req.send().promise.await?;
@@ -310,8 +340,10 @@ impl ClientTransaction {
         q: indradb::EdgePropertyQuery,
         value: &JsonValue,
     ) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.set_edge_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.set_edge_properties_request()
+        };
         converters::from_edge_property_query(&q, req.get().init_q());
         req.get().set_value(&value.to_string());
 
@@ -321,8 +353,10 @@ impl ClientTransaction {
     }
 
     async fn async_delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), CapnpError> {
-        let trans = self.trans.borrow_mut();
-        let mut req = trans.delete_edge_properties_request();
+        let mut req = {
+            let trans = self.trans.borrow_mut();
+            trans.delete_edge_properties_request()
+        };
         converters::from_edge_property_query(&q, req.get().init_q());
 
         let res = req.send().promise.await?;
