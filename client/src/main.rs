@@ -1,11 +1,5 @@
-#[macro_use]
-extern crate clap;
-
 use std::error::Error;
-use std::net::ToSocketAddrs;
 
-use indradb_proto as proto;
-use tokio::net::TcpListener;
 use clap::{Arg, App, SubCommand};
 
 #[tokio::main]
@@ -128,44 +122,44 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .arg(&required_property_name_arg))))
         .get_matches();
 
-    let address = matches.value_of("address").unwrap();
+    let _address = matches.value_of("address").unwrap();
 
-    if let Some(matches) = matches.subcommand_matches("ping") {
+    if let Some(_matches) = matches.subcommand_matches("ping") {
         unimplemented!();
     } else if let Some(matches) = matches.subcommand_matches("set") {
-        if let Some(matches) = matches.subcommand_matches("vertex") {
+        if let Some(_matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
-        if let Some(matches) = matches.subcommand_matches("vertex") {
+        if let Some(_matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
         }
     } else if let Some(matches) = matches.subcommand_matches("get") {
-        if let Some(matches) = matches.subcommand_matches("vertex") {
+        if let Some(_matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
         }
     } else if let Some(matches) = matches.subcommand_matches("delete") {
-        if let Some(matches) = matches.subcommand_matches("vertex") {
+        if let Some(_matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
             unimplemented!();
-        } else if let Some(matches) = matches.subcommand_matches("edge-property") {
+        } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
         }
     }
