@@ -53,8 +53,7 @@ pub fn parse_cli_args() -> CliArgs {
             .takes_value(true)
             .default_value("false"));
 
-    let matches = App::new("IndraDB")
-        .version("1.2.0")
+    let matches = App::new("indradb-server")
         .subcommand(rocksdb_subcommand)
         .subcommand(sled_subcommand)
         .arg(&port)

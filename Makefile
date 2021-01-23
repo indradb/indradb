@@ -1,6 +1,6 @@
 export RUST_BACKTRACE=1
 
-.PHONY: test bench fuzz fmt check
+.PHONY: test bench fuzz check fmt
 
 test:
 	cd lib && cargo test --features=test-suite,rocksdb-datastore,sled-datastore $(TEST_NAME)
