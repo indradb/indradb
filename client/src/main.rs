@@ -141,16 +141,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             unimplemented!();
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
-        } else {
-            panic!("unknown command");
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             unimplemented!();
-        } else {
-            panic!("unknown command");
         }
     } else if let Some(matches) = matches.subcommand_matches("get") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
@@ -161,8 +157,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             unimplemented!();
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
-        } else {
-            panic!("unknown command");
         }
     } else if let Some(matches) = matches.subcommand_matches("delete") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
@@ -173,10 +167,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             unimplemented!();
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
-        } else {
-            panic!("unknown command");
         }
     }
 
-    Ok(())
+    panic!("unknown command");
 }
