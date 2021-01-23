@@ -103,7 +103,7 @@ pub trait Transaction {
     /// * `q` - The query to run.
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
 
-    /// Gets the number of vertices in the datastore..
+    /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
 
     /// Creates a new edge. If the edge already exists, this will update it

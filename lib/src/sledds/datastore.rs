@@ -1,3 +1,7 @@
+use std::sync::Arc;
+use std::u64;
+use std::usize;
+
 use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
 };
@@ -5,13 +9,11 @@ use super::managers::*;
 use crate::errors::Result;
 use crate::models;
 use crate::models::*;
-use crate::util::{next_uuid, remove_nones_from_iterator};
+use crate::util::next_uuid;
+
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use sled::{Config, Db, Tree};
-use std::sync::Arc;
-use std::u64;
-use std::usize;
 use uuid::Uuid;
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -170,7 +172,7 @@ impl SledTransaction {
                 };
 
                 let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                    Box::new(vertex_manager.iterate_for_range(next_uuid));
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -347,7 +349,7 @@ impl Transaction for SledTransaction {
 
     fn get_vertex_count(&self) -> Result<u64> {
         let vertex_manager = VertexManager::new(&self.holder);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
         Ok(iterator.count() as u64)
     }
 
@@ -516,4 +518,15 @@ impl Transaction for SledTransaction {
         }
         Ok(())
     }
+}
+
+fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
+where
+    I: Iterator<Item = Result<Option<T>>>,
+{
+    iter.filter_map(|item| match item {
+        Err(err) => Some(Err(err)),
+        Ok(Some(value)) => Some(Ok(value)),
+        _ => None,
+    })
 }

@@ -73,11 +73,11 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         })
     }
 
-    pub fn iterate_for_range(&self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + '_> {
+    pub fn iterate_for_range(&self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + '_ {
         let low_key = build(&[Component::Uuid(id)]);
         let low_key_bytes: &[u8] = low_key.as_ref();
         let iter = self.tree.range(low_key_bytes..);
-        Ok(self.iterate(iter))
+        self.iterate(iter)
     }
 
     pub fn create(&self, vertex: &models::Vertex) -> Result<()> {

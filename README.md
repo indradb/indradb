@@ -16,7 +16,7 @@ For more details, see the [homepage](https://indradb.github.io).
 
 * Support for directed and typed graphs.
 * Support for queries with multiple hops.
-* Cross-language support via Cap'n Proto, or direct embedding as a library.
+* Cross-language support via gRPC, or direct embedding as a library.
 * Support for JSON-based properties tied to vertices and edges.
 * Pluggable underlying datastores, with built-in support for in-memory-only, rocksdb and sled. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
