@@ -59,7 +59,7 @@ impl FromStr for Type {
     type Err = ValidationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s.to_string())?)
+        Self::new(s.to_string())
     }
 }
 
