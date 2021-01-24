@@ -38,7 +38,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - run: ./scripts/ci-bundle-binary.sh ${{ matrix.os }} ${{ matrix.os_short }}
+      - run: ./scripts/ci-bundle-binaries.sh ${{ matrix.os }} ${{ matrix.os_short }}
 
       - name: Upload binary
         id: upload-release-asset 
