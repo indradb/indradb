@@ -10,7 +10,7 @@ jobs:
     name: Create release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      upload_url: ${{ steps.step_upload_url.outputs.upload_url }}
     steps:
       - id: create_release
         uses: actions/create-release@v1
@@ -21,6 +21,8 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+      - id: step_upload_url
+        run: echo "::set-output name=upload_url::${{ steps.create_release.outputs.upload_url }}"
 
   bundle-binaries:
     name: bundle for ${{ matrix.os }}
