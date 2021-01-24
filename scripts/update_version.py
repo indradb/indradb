@@ -47,7 +47,8 @@ def main():
 
     update_version("lib/Cargo.toml", new_version)
     update_version("proto/Cargo.toml", new_version)
-    update_version("bin/Cargo.toml", new_version)
+    update_version("server/Cargo.toml", new_version)
+    update_version("client/Cargo.toml", new_version)
 
     run(["cargo", "check"], cwd="lib/fuzz")
     run(["cargo", "fmt", "--", "--check"])
@@ -64,7 +65,8 @@ def main():
     time.sleep(15) # wait for lib to be accessible on crates.io
     run(["cargo", "publish"], cwd="proto")
     time.sleep(15) # wait for proto to be accessible on crates.io
-    run(["cargo", "publish"], cwd="bin")
+    run(["cargo", "publish"], cwd="server")
+    run(["cargo", "publish"], cwd="client")
 
 if __name__ == "__main__":
     main()

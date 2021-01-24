@@ -10,11 +10,8 @@ categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "indradb/indradb", branch = "master" }
-
 [[bin]]
-name = "indradb"
+name = "indradb-server"
 path = "src/main.rs"
 
 [dependencies]
@@ -30,4 +27,4 @@ features = ["rocksdb-datastore", "sled-datastore"]
 [dependencies.indradb-proto]
 path = "../proto"
 version = "1.3.0"
-features = ["client", "server"]
+features = ["server"]

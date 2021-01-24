@@ -10,9 +10,6 @@ categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "indradb/indradb", branch = "master" }
-
 [lib]
 name = "indradb"
 path = "src/lib.rs"

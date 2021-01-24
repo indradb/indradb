@@ -25,7 +25,7 @@ For more details, see the [homepage](https://indradb.github.io).
 
 * [Download the latest release for your platform.](https://github.com/indradb/indradb/releases)
 * Add the binaries to your `PATH`.
-* Start the app: `indradb`
+* Start the server: `indradb-server`
 
 This should start an in-memory-only datastore, where all work will be wiped out when the server is shutdown. You can persist your work with one of the alternative datastores.
 
@@ -36,7 +36,7 @@ disk. This is useful for kicking the tires. If you want to use the in-memory
 datastore, simply start up an instance. e.g.: 
 
 ```bash
-indradb [options]
+indradb-server [options]
 ```
 
 
@@ -45,7 +45,7 @@ indradb [options]
 If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g.:
 
 ```bash
-indradb rocksdb [/path/to/rocksdb.rdb] [options]
+indradb-server rocksdb [/path/to/rocksdb.rdb] [options]
 ```
 
 ### Sled
@@ -53,7 +53,7 @@ indradb rocksdb [/path/to/rocksdb.rdb] [options]
 If you want to a datastore based on [sled](http://sled.rs/), use the `sled` subcommand; e.g.:
 
 ```bash
-indradb sled [path/to/sled] [options]
+indradb-server sled [path/to/sled] [options]
 ```
 
  If the sled directory does not exist, it will be created.

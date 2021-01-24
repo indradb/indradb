@@ -12,7 +12,9 @@ else
     stage=$(mktemp -d -t tmp)
 fi
 
-cp target/release/indradb $stage/
+cp target/release/indradb-server $stage/
+# TODO: add once CLI client is actually implemented
+# cp target/release/indradb-client $stage/
 
 pushd $stage
     tar czf ~/indradb.tar.gz *
