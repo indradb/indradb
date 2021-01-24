@@ -3,6 +3,7 @@
 set -ex
 
 os=$1
+project_root=$(pwd)
 
 cargo build --release
 
@@ -17,8 +18,7 @@ cp target/release/indradb-server $stage/
 # cp target/release/indradb-client $stage/
 
 pushd $stage
-    tar czf ~/indradb.tar.gz *
+    tar czf $project_root/indradb.tar.gz *
 popd
 
-cd ~
 rm -rf $stage
