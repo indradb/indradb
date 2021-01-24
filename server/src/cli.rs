@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{value_t, App, Arg, SubCommand};
 use indradb::SledConfig;
 
 pub struct CliArgs {
@@ -16,8 +16,6 @@ const PORT: &str = "PORT";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
 const SLED_COMPRESSION: &str = "SLED_COMPRESSION";
-
-const DEFAULT_PORT: u16 = 27615;
 
 pub fn parse_cli_args() -> CliArgs {
     let database_path_argument = Arg::with_name(DATABASE_PATH)
@@ -60,20 +58,14 @@ pub fn parse_cli_args() -> CliArgs {
         .get_matches();
 
     let mut args = CliArgs {
-        port: match matches.value_of(PORT) {
-            Some(value) => value.parse::<u16>().expect("Could not parse argument `port`"),
-            None => DEFAULT_PORT,
-        },
+        port: value_t!(matches, PORT, u16).unwrap_or_else(|e| e.exit()),
         datastore_args: CliDatastoreArgs::Memory,
     };
 
     if let Some(matches) = matches.subcommand_matches("rocksdb") {
         args.datastore_args = CliDatastoreArgs::Rocksdb {
-            path: String::from(matches.value_of(DATABASE_PATH).unwrap()),
-            max_open_files: matches.value_of(ROCKSDB_MAX_OPEN_FILES).unwrap().parse::<i32>().expect(
-                "Could not parse argument `max_open_files`: must be an \
-                 i32",
-            ),
+            path: value_t!(matches, DATABASE_PATH, String).unwrap_or_else(|e| e.exit()),
+            max_open_files: value_t!(matches, ROCKSDB_MAX_OPEN_FILES, i32).unwrap_or_else(|e| e.exit()),
         }
     }
 
