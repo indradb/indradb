@@ -33,8 +33,6 @@ def update_version(path, new_version):
     with open(path, "w") as f:
         f.write("\n".join(contents))
 
-    run(["git", "add", path])
-
 def main():
     if len(sys.argv) < 2:
         raise Exception("No version specified")
@@ -57,7 +55,7 @@ def main():
 
     # a github action will pickup this tag push and create a release
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
-    run(["git", "commit", "-m", new_version_str])
+    run(["git", "commit", "-a", "-m", new_version_str])
     run(["git", "tag", "-a", new_version_str, "-m", new_version_str])
     run(["git", "push", "origin", new_version_str])
 

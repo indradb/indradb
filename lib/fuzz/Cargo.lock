@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-lib"
-version = "1.3.0"
+version = "2.0.0"
 dependencies = [
  "byteorder",
  "chrono",

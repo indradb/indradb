@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "1.3.0"
+version = "2.0.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -21,10 +21,10 @@ tokio = { version = "0.2.24", features = ["macros", "rt-threaded"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "1.3.0"
+version = "2.0.0"
 features = ["rocksdb-datastore", "sled-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"
-version = "1.3.0"
+version = "2.0.0"
 features = ["server"]
