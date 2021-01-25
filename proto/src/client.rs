@@ -68,6 +68,7 @@ impl<T> From<mpsc::error::SendError<T>> for ClientError {
     }
 }
 
+#[derive(Clone)]
 pub struct Client(crate::ProtoClient<Channel>);
 
 impl Client {
