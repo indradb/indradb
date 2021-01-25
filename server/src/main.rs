@@ -13,14 +13,11 @@ use tokio::net::TcpListener;
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let args = cli::parse_cli_args();
-    let port = args.port;
 
-    let addr = format!("127.0.0.1:{}", port).to_socket_addrs()?.next().unwrap();
-
+    let addr = args.addr.to_socket_addrs()?.next().unwrap();
     let listener = TcpListener::bind(addr).await?;
-
-    // TODO: print bound port
-    println!("{}", addr);
+    let binding = listener.local_addr()?;
+    println!("grpc://{}", binding);
 
     match args.datastore_args {
         CliDatastoreArgs::Rocksdb { path, max_open_files } => {

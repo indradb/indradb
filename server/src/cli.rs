@@ -2,7 +2,7 @@ use clap::{value_t, App, Arg, SubCommand};
 use indradb::SledConfig;
 
 pub struct CliArgs {
-    pub port: u16,
+    pub addr: String,
     pub datastore_args: CliDatastoreArgs,
 }
 
@@ -12,7 +12,7 @@ pub enum CliDatastoreArgs {
     Sled { path: String, sled_config: SledConfig },
 }
 
-const PORT: &str = "PORT";
+const ADDRESS: &str = "ADDRESS";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
 const SLED_COMPRESSION: &str = "SLED_COMPRESSION";
@@ -22,13 +22,13 @@ pub fn parse_cli_args() -> CliArgs {
         .help("Database url")
         .required(true)
         .index(1);
-    let port = Arg::with_name(PORT)
-        .short("p")
-        .long("port")
-        .value_name(PORT)
-        .help("The port to run the server on. Defaults to 27615")
+    let addr = Arg::with_name(ADDRESS)
+        .short("a")
+        .long("address")
+        .value_name(ADDRESS)
+        .help("The address to listen on, defaults to 127.0.0.1:27615")
         .takes_value(true)
-        .default_value("27615");
+        .default_value("127.0.0.1:27615");
     let rocksdb_subcommand = SubCommand::with_name("rocksdb")
         .about("Start an indradb instance backed by rocksdb")
         .arg(&database_path_argument)
@@ -54,11 +54,11 @@ pub fn parse_cli_args() -> CliArgs {
     let matches = App::new("indradb-server")
         .subcommand(rocksdb_subcommand)
         .subcommand(sled_subcommand)
-        .arg(&port)
+        .arg(&addr)
         .get_matches();
 
     let mut args = CliArgs {
-        port: value_t!(matches, PORT, u16).unwrap_or_else(|e| e.exit()),
+        addr: matches.value_of(ADDRESS).unwrap().to_string(),
         datastore_args: CliDatastoreArgs::Memory,
     };
 
