@@ -29,7 +29,7 @@ uuid = "0.8.1"
 chrono = "0.4.15"
 prost = "0.6.1"
 prost-derive = "0.6.1"
-prost-types = "0.6.1"
+prost-types = "0.7.0"
 tonic = "0.3.1"
 tokio = { version = "0.2.24", optional = true }
 
