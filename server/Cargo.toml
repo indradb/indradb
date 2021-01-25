@@ -17,7 +17,7 @@ path = "src/main.rs"
 [dependencies]
 clap = "2.33.3"
 tonic = "0.3.1"
-tokio = { version = "0.2.24", features = ["macros", "rt-threaded"] }
+tokio = { version = "1.1.0", features = ["macros", "rt-threaded"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
