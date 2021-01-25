@@ -30,7 +30,7 @@ chrono = "0.4.15"
 prost = "0.6.1"
 prost-derive = "0.6.1"
 prost-types = "0.6.1"
-tonic = "0.3.1"
+tonic = "0.4.0"
 tokio = { version = "0.2.24", optional = true }
 
 [dependencies.indradb-lib]
