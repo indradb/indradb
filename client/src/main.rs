@@ -204,6 +204,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
         }
+    } else {
+        panic!("unknown command");
     }
     Ok(())
 }
