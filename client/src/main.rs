@@ -1,6 +1,9 @@
 use std::error::Error;
 
 use clap::{App, Arg, SubCommand};
+use indradb_proto as proto;
+use std::convert::TryInto;
+use failure::Fail;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
@@ -160,9 +163,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .get_matches();
 
     let _address = matches.value_of("address").unwrap();
+    let mut client = proto::Client::new(String::from(_address).try_into().unwrap()).await.map_err(|err| err.compat())?;
 
     if let Some(_matches) = matches.subcommand_matches("ping") {
-        unimplemented!();
+        client.ping().await.map_err(|err| err.compat())?;
+        println!("PING OK");
     } else if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(_matches) = matches.subcommand_matches("vertex") {
             unimplemented!();
@@ -200,6 +205,5 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             unimplemented!();
         }
     }
-
-    panic!("unknown command");
+    Ok(())
 }
