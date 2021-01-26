@@ -17,7 +17,8 @@ check:
 	cargo +stable check
 	cargo +nightly check --all-features
 	cd lib/fuzz && cargo +stable check
-	cargo clippy
+	cargo +stable clippy
+	cargo fmt -- --check
 
 fmt:
 	cargo fmt

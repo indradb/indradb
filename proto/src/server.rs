@@ -1,9 +1,11 @@
 use std::convert::TryInto;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use tokio::net::TcpListener;
-use tokio::stream::{Stream, StreamExt};
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
+use tokio_stream::{Stream, StreamExt};
 use tonic::transport::{Error as TonicTransportError, Server as TonicServer};
 use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
@@ -70,7 +72,8 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         Ok(Response::new(()))
     }
 
-    type TransactionStream = mpsc::Receiver<Result<crate::TransactionResponse, Status>>;
+    type TransactionStream =
+        Pin<Box<dyn Stream<Item = Result<crate::TransactionResponse, Status>> + Send + Sync + 'static>>;
     async fn transaction(
         &self,
         request: Request<Streaming<crate::TransactionRequest>>,
@@ -90,7 +93,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
             }
         });
 
-        Ok(Response::new(rx))
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
 }
 
@@ -272,15 +275,16 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D, T>(datastore: D, mut listener: TcpListener) -> Result<(), TonicTransportError>
+pub async fn run<D, T>(datastore: D, listener: TcpListener) -> Result<(), TonicTransportError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
     T: indradb::Transaction + Send + Sync + 'static,
 {
     let svc = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
+    let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
         .add_service(svc)
-        .serve_with_incoming(listener.incoming())
+        .serve_with_incoming(incoming)
         .await?;
     Ok(())
 }
