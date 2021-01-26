@@ -16,6 +16,7 @@ use tonic::codec::Streaming;
 use tonic::transport::{Channel, Endpoint, Error as TonicTransportError};
 use tonic::{Request, Status};
 use uuid::Uuid;
+use tokio_stream::wrappers::ReceiverStream;
 
 const CHANNEL_CAPACITY: usize = 100;
 
@@ -87,7 +88,7 @@ impl Client {
         I: Iterator<Item = indradb::BulkInsertItem>,
     {
         let items: Vec<indradb::BulkInsertItem> = items.collect();
-        let (mut tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
             for item in items.into_iter() {
                 if tx.send(item.into()).await.is_err() {
@@ -96,13 +97,13 @@ impl Client {
             }
         });
 
-        self.0.bulk_insert(Request::new(rx)).await?;
+        self.0.bulk_insert(Request::new(ReceiverStream::new(rx))).await?;
         Ok(())
     }
 
     pub async fn transaction(&mut self) -> Result<Transaction, ClientError> {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-        let response = self.0.transaction(Request::new(rx)).await?;
+        let response = self.0.transaction(Request::new(ReceiverStream::new(rx))).await?;
         Ok(Transaction::new(tx, response.into_inner()))
     }
 }

@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use serde_json::value::Value as JsonValue;
 use tokio::runtime::Runtime;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 use tonic::transport::Endpoint;
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ pub struct ClientDatastore {
 }
 
 impl ClientDatastore {
-    pub fn new(port: u16, mut exec: Runtime) -> Self {
+    pub fn new(port: u16, exec: Runtime) -> Self {
         let endpoint: Endpoint = format!("http://127.0.0.1:{}", port).try_into().unwrap();
 
         for _ in 0..5 {
@@ -33,7 +33,7 @@ impl ClientDatastore {
                 }
             }
 
-            exec.block_on(delay_for(Duration::from_secs(1)));
+            exec.block_on(sleep(Duration::from_secs(1)));
         }
 
         panic!("Could not connect to the server after a few seconds");
@@ -234,7 +234,7 @@ full_test_impl!({
     use std::net::ToSocketAddrs;
     use tokio::net::TcpListener;
 
-    let mut rt = Runtime::new().unwrap();
+    let rt = Runtime::new().unwrap();
 
     let addr = "127.0.0.1:0".to_socket_addrs().unwrap().next().unwrap();
     let listener = rt.block_on(TcpListener::bind(&addr)).unwrap();
