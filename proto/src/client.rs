@@ -12,11 +12,11 @@ use crate::ConversionError;
 use failure::Fail;
 use serde_json::value::Value as JsonValue;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::codec::Streaming;
 use tonic::transport::{Channel, Endpoint, Error as TonicTransportError};
 use tonic::{Request, Status};
 use uuid::Uuid;
-use tokio_stream::wrappers::ReceiverStream;
 
 const CHANNEL_CAPACITY: usize = 100;
 

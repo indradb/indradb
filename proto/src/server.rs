@@ -1,11 +1,11 @@
 use std::convert::TryInto;
-use std::sync::Arc;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use tokio::net::TcpListener;
-use tokio_stream::{Stream, StreamExt};
-use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
+use tokio_stream::{Stream, StreamExt};
 use tonic::transport::{Error as TonicTransportError, Server as TonicServer};
 use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
@@ -72,7 +72,8 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         Ok(Response::new(()))
     }
 
-    type TransactionStream = Pin<Box<dyn Stream<Item = Result<crate::TransactionResponse, Status>> + Send + Sync + 'static>>;
+    type TransactionStream =
+        Pin<Box<dyn Stream<Item = Result<crate::TransactionResponse, Status>> + Send + Sync + 'static>>;
     async fn transaction(
         &self,
         request: Request<Streaming<crate::TransactionRequest>>,
