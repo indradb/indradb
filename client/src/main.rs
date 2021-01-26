@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, SubCommand, AppSettings};
 use indradb_proto as proto;
 use std::convert::TryInto;
 use failure::Fail;
@@ -31,6 +31,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .index(3);
 
     let matches = App::new("indradb-client")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(
             Arg::with_name("address")
                 .help("address to the IndraDB server")
@@ -40,6 +41,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(SubCommand::with_name("ping").about("pings the server"))
         .subcommand(
             SubCommand::with_name("set")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("vertex")
                         .about("creates a vertex")
@@ -86,6 +88,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         )
         .subcommand(
             SubCommand::with_name("count")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(SubCommand::with_name("vertex").about("counts the number of vertices"))
                 .subcommand(
                     SubCommand::with_name("edge")
@@ -112,6 +115,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         )
         .subcommand(
             SubCommand::with_name("get")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("vertex")
                         .about("gets vertices by query")
@@ -137,6 +141,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         )
         .subcommand(
             SubCommand::with_name("delete")
+                .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("vertex")
                         .about("deletes vertices by query")
@@ -162,12 +167,12 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         )
         .get_matches();
 
-    let _address = matches.value_of("address").unwrap();
-    let mut client = proto::Client::new(String::from(_address).try_into().unwrap()).await.map_err(|err| err.compat())?;
+    let address = matches.value_of("address").unwrap();
+    let mut client = proto::Client::new(String::from(address).try_into().unwrap()).await.map_err(|err| err.compat())?;
 
     if let Some(_matches) = matches.subcommand_matches("ping") {
         client.ping().await.map_err(|err| err.compat())?;
-        println!("PING OK");
+        println!("ok");
     } else if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(_matches) = matches.subcommand_matches("vertex") {
             let link_type = indradb::Type::new(_matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
@@ -180,11 +185,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .await.map_err(|err| err.compat())?
                 .create_vertex(&vertex)
                 .await.map_err(|err| err.compat())?;
-            if res == true {
-                println!("Created vertex with id: {} and type: {}", vertex.id, vertex.t.0);
-            } else {
+            if res == false {
                 panic!("Failed to create vertex with id: {} and type: {}", vertex.id, vertex.t.0);
             }
+            println!("Created vertex with id: {} and type: {}", vertex.id, vertex.t.0);
         } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
         } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
@@ -218,8 +222,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
             unimplemented!();
         }
-    } else {
-        panic!("unknown command");
     }
+    
     Ok(())
 }
