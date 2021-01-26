@@ -170,7 +170,21 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         println!("PING OK");
     } else if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(_matches) = matches.subcommand_matches("vertex") {
-            unimplemented!();
+            let link_type = indradb::Type::new(_matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let uuid = match _matches.value_of("id") {
+                Some(id) => uuid::Uuid::parse_str(id)?,
+                None => indradb::util::generate_uuid_v1(),
+            };
+            let vertex = indradb::Vertex::with_id(uuid, link_type);
+            let res = client.transaction()
+                .await.map_err(|err| err.compat())?
+                .create_vertex(&vertex)
+                .await.map_err(|err| err.compat())?;
+            if res == true {
+                println!("Created vertex with id: {} and type: {}", vertex.id, vertex.t.0);
+            } else {
+                panic!("Failed to create vertex with id: {} and type: {}", vertex.id, vertex.t.0);
+            }
         } else if let Some(_matches) = matches.subcommand_matches("edge") {
             unimplemented!();
         } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
