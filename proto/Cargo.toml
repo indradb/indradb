@@ -25,8 +25,8 @@ test-suite = ["indradb-lib/test-suite", "client", "server"]
 [dependencies]
 failure = "0.1.8"
 serde_json = "^1.0.57"
-uuid = "0.8.1"
-chrono = "0.4.15"
+uuid = "~0.8.2"
+chrono = "0.4.19"
 prost = "0.6.1"
 prost-derive = "0.6.1"
 prost-types = "0.6.1"
