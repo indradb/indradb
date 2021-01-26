@@ -42,7 +42,7 @@ indradb-server [options]
 
 ### RocksDB
 
-If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand. Supply the rocksdb database url via the command line. e.g.:
+If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand; e.g.:
 
 ```bash
 indradb-server rocksdb [/path/to/rocksdb.rdb] [options]
