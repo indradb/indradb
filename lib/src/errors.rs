@@ -17,6 +17,8 @@ pub enum Error {
     Sled { inner: SledError },
     #[fail(display = "UUID already taken")]
     UuidTaken,
+    #[fail(display = "Invalid vertex")]
+    VertexInvalid,
 }
 
 impl From<JsonError> for Error {

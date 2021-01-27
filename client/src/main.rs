@@ -170,27 +170,40 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let address = matches.value_of("address").unwrap();
     let mut client = proto::Client::new(String::from(address).try_into().unwrap()).await.map_err(|err| err.compat())?;
 
-    if let Some(_matches) = matches.subcommand_matches("ping") {
+    if let Some(_) = matches.subcommand_matches("ping") {
         client.ping().await.map_err(|err| err.compat())?;
         println!("ok");
     } else if let Some(matches) = matches.subcommand_matches("set") {
-        if let Some(_matches) = matches.subcommand_matches("vertex") {
-            let link_type = indradb::Type::new(_matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
-            let uuid = match _matches.value_of("id") {
+        if let Some(matches) = matches.subcommand_matches("vertex") {
+            let vertex_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let uuid = match matches.value_of("id") {
                 Some(id) => uuid::Uuid::parse_str(id)?,
                 None => indradb::util::generate_uuid_v1(),
             };
-            let vertex = indradb::Vertex::with_id(uuid, link_type);
+            let vertex = indradb::Vertex::with_id(uuid, vertex_type);
             let res = client.transaction()
                 .await.map_err(|err| err.compat())?
                 .create_vertex(&vertex)
                 .await.map_err(|err| err.compat())?;
-            if res == false {
-                panic!("Failed to create vertex with id: {} and type: {}", vertex.id, vertex.t.0);
+            if !res {
+                return Err(indradb::Error::UuidTaken.compat())?;
             }
-            println!("Created vertex with id: {} and type: {}", vertex.id, vertex.t.0);
-        } else if let Some(_matches) = matches.subcommand_matches("edge") {
-            unimplemented!();
+            println!("{:?}", vertex);
+
+        } else if let Some(matches) = matches.subcommand_matches("edge") {
+            let edge_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
+            let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+            let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
+            let res = client.transaction()
+                .await.map_err(|err| err.compat())?
+                .create_edge(&edge_key)
+                .await.map_err(|err| err.compat())?;
+            if !res {
+                return Err(indradb::Error::VertexInvalid.compat())?;
+            }
+            println!("{:?}", edge_key);
+
         } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
             unimplemented!();
         } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
