@@ -210,10 +210,27 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             unimplemented!();
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
-        if let Some(_matches) = matches.subcommand_matches("vertex") {
-            unimplemented!();
-        } else if let Some(_matches) = matches.subcommand_matches("edge") {
-            unimplemented!();
+        if let Some(_) = matches.subcommand_matches("vertex") {
+            let vertex_count = client.transaction()
+            .await.map_err(|err| err.compat())?
+            .get_vertex_count()
+            .await.map_err(|err| err.compat())?;
+            println!("{}", vertex_count);
+        } else if let Some(matches) = matches.subcommand_matches("edge") {
+            let vertex_id = uuid::Uuid::parse_str(matches.value_of("id").unwrap()).map_err(|err| err.compat())?;
+            let edge_direction = match matches.value_of("inbound") {
+                Some(_) =>  indradb::EdgeDirection::Inbound,
+                None => indradb::EdgeDirection::Outbound,
+            };
+            let edge_type = match matches.value_of("type") {
+                Some(edge_type) =>  Some(indradb::Type::new(edge_type).map_err(|err| err.compat())?),
+                None => None,
+            };
+            let res = client.transaction()
+                .await.map_err(|err| err.compat())?
+                .get_edge_count(vertex_id, edge_type.as_ref(), edge_direction)
+                .await.map_err(|err| err.compat())?;
+            println!("{}", res);
         }
     } else if let Some(matches) = matches.subcommand_matches("get") {
         if let Some(_matches) = matches.subcommand_matches("vertex") {
