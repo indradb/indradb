@@ -3,10 +3,14 @@ use std::error::Error;
 use clap::{App, Arg, SubCommand, AppSettings};
 use indradb_proto as proto;
 use std::convert::TryInto;
-use failure::Fail;
+use failure::Fail; 
+use indradb::{VertexQuery, SpecificVertexQuery, VertexPropertyQuery, EdgeQuery, SpecificEdgeQuery, EdgePropertyQuery};
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
+    let vertex_id_arg = Arg::with_name("uuid")
+        .help("the UUID of the target vertex")
+        .required(true);
     let vertex_query_arg = Arg::with_name("query")
         .help("the JSON vertex query")
         .required(true)
@@ -16,6 +20,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .help("the JSON edge query")
         .required(true)
         .index(1);
+    let outbound_id_arg = Arg::with_name("outbound_id")
+        .help("the outbound vertex ID")
+        .required(true);
+    let edge_type_arg = Arg::with_name("type")
+        .help("the edge type")
+        .required(true);
+
+    let inbound_id_arg = Arg::with_name("inbound_id")
+        .help("the inbound vertex ID")
+        .required(true);
+
+    let _edge_query_arg = [outbound_id_arg, edge_type_arg, inbound_id_arg];
 
     let optional_property_name_arg = Arg::with_name("name")
         .help("the property name; if not set, all properties will be fetched")
@@ -23,12 +39,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .value_name("name")
         .takes_value(true);
 
-    let required_property_name_arg = Arg::with_name("name").help("the property name").required(true).index(2);
+    let required_property_name_arg = Arg::with_name("name").help("the property name").required(true);
 
     let property_value_arg = Arg::with_name("value")
         .help("the property value as JSON")
-        .required(true)
-        .index(3);
+        .required(true);
 
     let matches = App::new("indradb-client")
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -57,31 +72,19 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .subcommand(
                     SubCommand::with_name("edge")
                         .about("creates an edge")
-                        .arg(
-                            Arg::with_name("outbound_id")
-                                .help("the outbound vertex ID")
-                                .required(true)
-                                .index(1),
-                        )
-                        .arg(Arg::with_name("type").help("the edge type").required(true).index(2))
-                        .arg(
-                            Arg::with_name("inbound_id")
-                                .help("the inbound vertex ID")
-                                .required(true)
-                                .index(3),
-                        ),
+                        .args(&_edge_query_arg),
                 )
                 .subcommand(
                     SubCommand::with_name("vertex-property")
                         .about("sets vertex properties")
-                        .arg(&vertex_query_arg)
+                        .arg(&vertex_id_arg)
                         .arg(&required_property_name_arg)
                         .arg(&property_value_arg),
                 )
                 .subcommand(
                     SubCommand::with_name("edge-property")
                         .about("sets edge properties")
-                        .arg(&edge_query_arg)
+                        .args(&_edge_query_arg)
                         .arg(&required_property_name_arg)
                         .arg(&property_value_arg),
                 ),
@@ -110,7 +113,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                                 .long("type")
                                 .value_name("type")
                                 .takes_value(true),
-                        ),
+                        )
                 ),
         )
         .subcommand(
@@ -204,10 +207,27 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             }
             println!("{:?}", edge_key);
 
-        } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
-            unimplemented!();
-        } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
-            unimplemented!();
+        } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
+            let vertex_id = uuid::Uuid::parse_str(matches.value_of("uuid").unwrap()).map_err(|err| err.compat())?;
+            let property_name = matches.value_of("name").unwrap();
+            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
+            let vertex_query = VertexQuery::Specific(SpecificVertexQuery::single(vertex_id));
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .set_vertex_properties(VertexPropertyQuery::new(vertex_query, property_name), &property_value)
+                .await.map_err(|err| err.compat())?;
+        } else if let Some(matches) = matches.subcommand_matches("edge-property") {
+            let edge_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
+            let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+            let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
+            let property_name = matches.value_of("name").unwrap();
+            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
+            let edge_query = EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key));
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .set_edge_properties(EdgePropertyQuery::new(edge_query, property_name), &property_value)
+                .await.map_err(|err| err.compat())?;
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
         if let Some(_) = matches.subcommand_matches("vertex") {
