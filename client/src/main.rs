@@ -148,24 +148,24 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .subcommand(
                     SubCommand::with_name("vertex")
                         .about("deletes vertices by query")
-                        .arg(&vertex_query_arg),
+                        .arg(&vertex_id_arg),
                 )
                 .subcommand(
                     SubCommand::with_name("edge")
                         .about("deletes edges by query")
-                        .arg(&edge_query_arg)
-                        .subcommand(
-                            SubCommand::with_name("vertex-property")
-                                .about("deletes vertex properties")
-                                .arg(&vertex_query_arg)
-                                .arg(&required_property_name_arg),
-                        )
-                        .subcommand(
-                            SubCommand::with_name("edge-property")
-                                .about("deletes edge properties")
-                                .arg(&edge_query_arg)
-                                .arg(&required_property_name_arg),
-                        ),
+                        .args(&_edge_query_arg)
+                )
+                .subcommand(
+                    SubCommand::with_name("vertex-property")
+                        .about("deletes vertex properties")
+                        .arg(&vertex_id_arg)
+                        .arg(&required_property_name_arg),
+                )
+                .subcommand(
+                    SubCommand::with_name("edge-property")
+                        .about("deletes edge properties")
+                        .args(&_edge_query_arg)
+                        .arg(&required_property_name_arg),
                 ),
         )
         .get_matches();
@@ -305,14 +305,42 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     } else if let Some(matches) = matches.subcommand_matches("delete") {
-        if let Some(_matches) = matches.subcommand_matches("vertex") {
-            unimplemented!();
-        } else if let Some(_matches) = matches.subcommand_matches("edge") {
-            unimplemented!();
-        } else if let Some(_matches) = matches.subcommand_matches("vertex-property") {
-            unimplemented!();
-        } else if let Some(_matches) = matches.subcommand_matches("edge-property") {
-            unimplemented!();
+        if let Some(matches) = matches.subcommand_matches("vertex") {
+            let vertex_id = uuid::Uuid::parse_str(matches.value_of("uuid").unwrap()).map_err(|err| err.compat())?;
+            
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .delete_vertices(VertexQuery::Specific(SpecificVertexQuery::single(vertex_id)))
+                .await.map_err(|err| err.compat())?;
+        } else if let Some(matches) = matches.subcommand_matches("edge") {
+            let edge_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
+            let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+            let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
+            
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .delete_edges(EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key)))
+                .await.map_err(|err| err.compat())?;
+        } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
+            let vertex_id = uuid::Uuid::parse_str(matches.value_of("uuid").unwrap()).map_err(|err| err.compat())?;
+            let property_name = matches.value_of("name").unwrap();
+
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .delete_vertex_properties(VertexPropertyQuery::new(VertexQuery::Specific(SpecificVertexQuery::single(vertex_id)), property_name))
+                .await.map_err(|err| err.compat())?;
+        } else if let Some(matches) = matches.subcommand_matches("edge-property") {
+            let edge_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
+            let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
+            let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+            let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
+            let property_name = matches.value_of("name").unwrap();
+            
+            client.transaction()
+                .await.map_err(|err| err.compat())?
+                .delete_edge_properties(EdgePropertyQuery::new(EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key)), property_name))
+                .await.map_err(|err| err.compat())?;
         }
     }
     
