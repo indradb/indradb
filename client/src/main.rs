@@ -169,7 +169,10 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         client.ping().await.map_err(|err| err.compat())?;
 
         println!("ok");
-    } else if let Some(matches) = matches.subcommand_matches("set") {
+        return Ok(());
+    }
+    let mut trans = client.transaction().await.map_err(|err| err.compat())?;
+    if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             let vertex_type = indradb::Type::new(matches.value_of("type").unwrap()).map_err(|err| err.compat())?;
             let uuid = match matches.value_of("id") {
@@ -177,13 +180,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 None => indradb::util::generate_uuid_v1(),
             };
             let vertex = indradb::Vertex::with_id(uuid, vertex_type);
-            let res = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
-                .create_vertex(&vertex)
-                .await
-                .map_err(|err| err.compat())?;
+            let res = trans.create_vertex(&vertex).await.map_err(|err| err.compat())?;
             if !res {
                 return Err(indradb::Error::UuidTaken.compat())?;
             }
@@ -191,13 +188,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             println!("{:?}", vertex);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let edge_key = build_edge_key(matches)?;
-            let res = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
-                .create_edge(&edge_key)
-                .await
-                .map_err(|err| err.compat())?;
+            let res = trans.create_edge(&edge_key).await.map_err(|err| err.compat())?;
             if !res {
                 return Err(indradb::Error::VertexInvalid.compat())?;
             }
@@ -207,10 +198,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let vertex_query = build_vertex_query(matches)?;
             let property_name = matches.value_of("name").unwrap();
             let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .set_vertex_properties(VertexPropertyQuery::new(vertex_query, property_name), &property_value)
                 .await
                 .map_err(|err| err.compat())?;
@@ -218,23 +206,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let property_name = matches.value_of("name").unwrap();
             let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
             let edge_query = build_edge_query(build_edge_key(matches)?)?;
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .set_edge_properties(EdgePropertyQuery::new(edge_query, property_name), &property_value)
                 .await
                 .map_err(|err| err.compat())?;
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
         if let Some(_) = matches.subcommand_matches("vertex") {
-            let vertex_count = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
-                .get_vertex_count()
-                .await
-                .map_err(|err| err.compat())?;
+            let vertex_count = trans.get_vertex_count().await.map_err(|err| err.compat())?;
             println!("{}", vertex_count);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let vertex_id = uuid::Uuid::parse_str(matches.value_of("id").unwrap()).map_err(|err| err.compat())?;
@@ -246,10 +225,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 Some(edge_type) => Some(indradb::Type::new(edge_type).map_err(|err| err.compat())?),
                 None => None,
             };
-            let res = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            let res = trans
                 .get_edge_count(vertex_id, edge_type.as_ref(), edge_direction)
                 .await
                 .map_err(|err| err.compat())?;
@@ -259,34 +235,19 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     } else if let Some(matches) = matches.subcommand_matches("get") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             let vertex_query = build_vertex_query(matches)?;
-            let vertices = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
-                .get_vertices(vertex_query)
-                .await
-                .map_err(|err| err.compat())?;
+            let vertices = trans.get_vertices(vertex_query).await.map_err(|err| err.compat())?;
 
             println!("{:?}", vertices);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let edge_query = build_edge_query(build_edge_key(matches)?)?;
-            let edges = client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
-                .get_edges(edge_query)
-                .await
-                .map_err(|err| err.compat())?;
+            let edges = trans.get_edges(edge_query).await.map_err(|err| err.compat())?;
 
             println!("{:?}", edges);
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let property_name = matches.value_of("name");
             match property_name {
                 Some(property_name) => {
-                    let vertex_property = client
-                        .transaction()
-                        .await
-                        .map_err(|err| err.compat())?
+                    let vertex_property = trans
                         .get_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
                         .await
                         .map_err(|err| err.compat())?;
@@ -294,10 +255,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                     println!("{:?}", vertex_property);
                 }
                 None => {
-                    let vertex_properties = client
-                        .transaction()
-                        .await
-                        .map_err(|err| err.compat())?
+                    let vertex_properties = trans
                         .get_all_vertex_properties(build_vertex_query(matches)?)
                         .await
                         .map_err(|err| err.compat())?;
@@ -310,10 +268,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let edge_query = build_edge_query(build_edge_key(matches)?)?;
             match property_name {
                 Some(property_name) => {
-                    let edge_property = client
-                        .transaction()
-                        .await
-                        .map_err(|err| err.compat())?
+                    let edge_property = trans
                         .get_edge_properties(EdgePropertyQuery::new(edge_query, property_name))
                         .await
                         .map_err(|err| err.compat())?;
@@ -321,10 +276,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                     println!("{:?}", edge_property);
                 }
                 None => {
-                    let edge_property = client
-                        .transaction()
-                        .await
-                        .map_err(|err| err.compat())?
+                    let edge_property = trans
                         .get_all_edge_properties(edge_query)
                         .await
                         .map_err(|err| err.compat())?;
@@ -335,38 +287,26 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         }
     } else if let Some(matches) = matches.subcommand_matches("delete") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .delete_vertices(build_vertex_query(matches)?)
                 .await
                 .map_err(|err| err.compat())?;
         } else if let Some(matches) = matches.subcommand_matches("edge") {
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .delete_edges(build_edge_query(build_edge_key(matches)?)?)
                 .await
                 .map_err(|err| err.compat())?;
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let property_name = matches.value_of("name").unwrap();
 
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .delete_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
                 .await
                 .map_err(|err| err.compat())?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = matches.value_of("name").unwrap();
 
-            client
-                .transaction()
-                .await
-                .map_err(|err| err.compat())?
+            trans
                 .delete_edge_properties(EdgePropertyQuery::new(
                     build_edge_query(build_edge_key(matches)?)?,
                     property_name,
