@@ -1,3 +1,4 @@
+mod errors;
 use std::error::Error;
 
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -190,7 +191,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let edge_key = build_edge_key(matches)?;
             let res = trans.create_edge(&edge_key).await.map_err(|err| err.compat())?;
             if !res {
-                return Err(indradb::Error::VertexInvalid.compat())?;
+                return Err(errors::Error::VertexInvalid.compat())?;
             }
 
             println!("{:?}", edge_key);
