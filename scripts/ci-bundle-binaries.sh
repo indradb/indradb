@@ -14,8 +14,7 @@ else
 fi
 
 cp target/release/indradb-server $stage/
-# TODO: add once CLI client is actually implemented
-# cp target/release/indradb-client $stage/
+cp target/release/indradb-client $stage/
 
 pushd $stage
     tar czf $project_root/indradb.tar.gz *
