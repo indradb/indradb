@@ -11,24 +11,10 @@
 #[cfg(feature = "bench-suite")]
 extern crate test;
 
-extern crate chrono;
-extern crate core;
 #[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate lazy_static;
-extern crate rand;
-extern crate regex;
-extern crate serde_json;
-extern crate uuid;
-
-#[cfg(feature = "rocksdb-datastore")]
-extern crate byteorder;
-#[cfg(feature = "rocksdb-datastore")]
-extern crate rocksdb;
-
-#[cfg(feature = "sled-datastore")]
-extern crate sled;
 
 #[cfg(feature = "test-suite")]
 #[macro_use]
