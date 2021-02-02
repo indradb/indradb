@@ -166,7 +166,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .map_err(|err| err.compat())?;
 
-    if let Some(_) = matches.subcommand_matches("ping") {
+    if matches.subcommand_matches("ping").is_some() {
         client.ping().await.map_err(|err| err.compat())?;
 
         println!("ok");
@@ -183,7 +183,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let vertex = indradb::Vertex::with_id(uuid, vertex_type);
             let res = trans.create_vertex(&vertex).await.map_err(|err| err.compat())?;
             if !res {
-                return Err(indradb::Error::UuidTaken.compat())?;
+                return Err(indradb::Error::UuidTaken.compat().into());
             }
 
             println!("{:?}", vertex);
@@ -191,7 +191,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let edge_key = build_edge_key(matches)?;
             let res = trans.create_edge(&edge_key).await.map_err(|err| err.compat())?;
             if !res {
-                return Err(errors::Error::VertexInvalid.compat())?;
+                return Err(errors::Error::VertexInvalid.compat().into());
             }
 
             println!("{:?}", edge_key);
@@ -206,14 +206,14 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = matches.value_of("name").unwrap();
             let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
-            let edge_query = build_edge_query(build_edge_key(matches)?)?;
+            let edge_query = build_edge_query(build_edge_key(matches)?);
             trans
                 .set_edge_properties(EdgePropertyQuery::new(edge_query, property_name), &property_value)
                 .await
                 .map_err(|err| err.compat())?;
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
-        if let Some(_) = matches.subcommand_matches("vertex") {
+        if matches.subcommand_matches("vertex").is_some() {
             let vertex_count = trans.get_vertex_count().await.map_err(|err| err.compat())?;
             println!("{}", vertex_count);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
@@ -240,7 +240,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             println!("{:?}", vertices);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
-            let edge_query = build_edge_query(build_edge_key(matches)?)?;
+            let edge_query = build_edge_query(build_edge_key(matches)?);
             let edges = trans.get_edges(edge_query).await.map_err(|err| err.compat())?;
 
             println!("{:?}", edges);
@@ -266,7 +266,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             }
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = matches.value_of("name");
-            let edge_query = build_edge_query(build_edge_key(matches)?)?;
+            let edge_query = build_edge_query(build_edge_key(matches)?);
             match property_name {
                 Some(property_name) => {
                     let edge_property = trans
@@ -294,7 +294,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .map_err(|err| err.compat())?;
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             trans
-                .delete_edges(build_edge_query(build_edge_key(matches)?)?)
+                .delete_edges(build_edge_query(build_edge_key(matches)?))
                 .await
                 .map_err(|err| err.compat())?;
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
@@ -309,7 +309,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             trans
                 .delete_edge_properties(EdgePropertyQuery::new(
-                    build_edge_query(build_edge_key(matches)?)?,
+                    build_edge_query(build_edge_key(matches)?),
                     property_name,
                 ))
                 .await
@@ -335,6 +335,6 @@ fn build_edge_key(matches: &clap::ArgMatches) -> Result<EdgeKey, Box<dyn Error>>
     Ok(edge_key)
 }
 
-fn build_edge_query(edge_key: EdgeKey) -> Result<EdgeQuery, Box<dyn Error>> {
-    Ok(EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key)))
+fn build_edge_query(edge_key: EdgeKey) -> EdgeQuery {
+    EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key))
 }
