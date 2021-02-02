@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{Duration, Timelike};
+use lazy_static::lazy_static;
 use std::i32;
 use std::i64;
 use std::io::Read;
