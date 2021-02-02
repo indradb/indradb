@@ -11,9 +11,6 @@
 #[cfg(feature = "bench-suite")]
 extern crate test;
 
-#[macro_use]
-extern crate lazy_static;
-
 #[cfg(feature = "test-suite")]
 #[macro_use]
 pub mod tests;

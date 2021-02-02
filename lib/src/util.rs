@@ -2,6 +2,7 @@
 
 use crate::errors::{ValidationError, ValidationResult};
 use chrono::offset::Utc;
+use lazy_static::lazy_static;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 

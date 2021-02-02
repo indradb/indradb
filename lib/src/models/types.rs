@@ -1,5 +1,6 @@
 use crate::errors::{ValidationError, ValidationResult};
 use core::str::FromStr;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 lazy_static! {
