@@ -18,8 +18,8 @@ impl VertexProperty {
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the vertex.
-    /// * `value` - The property value.
+    /// * `id`: The id of the vertex.
+    /// * `value`: The property value.
     pub fn new(id: Uuid, value: JsonValue) -> Self {
         Self { id, value }
     }
@@ -40,8 +40,8 @@ impl NamedProperty {
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the vertex.
-    /// * `value` - The property value.
+    /// * `id`: The id of the vertex.
+    /// * `value`: The property value.
     pub fn new(name: String, value: JsonValue) -> Self {
         Self { name, value }
     }
@@ -60,8 +60,8 @@ impl VertexProperties {
     ///
     /// # Arguments
     ///
-    /// * `vertex` - The vertex information
-    /// * `props` - The properties
+    /// * `vertex`: The vertex information
+    /// * `props`: The properties
     pub fn new(vertex: Vertex, props: Vec<NamedProperty>) -> Self {
         VertexProperties { vertex, props }
     }
@@ -80,8 +80,8 @@ impl EdgeProperties {
     ///
     /// # Arguments
     ///
-    /// * `edge` - The edge information
-    /// * `props` - The properties
+    /// * `edge`: The edge information
+    /// * `props`: The properties
     pub fn new(edge: Edge, props: Vec<NamedProperty>) -> Self {
         EdgeProperties { edge, props }
     }
@@ -102,8 +102,8 @@ impl EdgeProperty {
     ///
     /// # Arguments
     ///
-    /// * `key` - The key to the edge.
-    /// * `value` - The property value.
+    /// * `key`: The key to the edge.
+    /// * `value`: The property value.
     pub fn new(key: EdgeKey, value: JsonValue) -> Self {
         Self { key, value }
     }

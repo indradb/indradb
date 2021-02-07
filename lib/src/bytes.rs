@@ -75,7 +75,7 @@ pub fn build(components: &[Component]) -> Vec<u8> {
 /// Gets the number of nanoseconds since unix epoch for a given datetime.
 ///
 /// # Arguments
-/// * `datetime` - The datetime to convert.
+/// * `datetime`: The datetime to convert.
 fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     let timestamp = datetime.timestamp() as u64;
     let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());

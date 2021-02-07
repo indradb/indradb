@@ -21,9 +21,9 @@ impl EdgeKey {
     ///
     /// # Arguments
     ///
-    /// * `outbound_id` - The id of the outbound vertex.
-    /// * `t` - The type of the edge.
-    /// * `inbound_id` - The id of the inbound vertex.
+    /// * `outbound_id`: The id of the outbound vertex.
+    /// * `t`: The type of the edge.
+    /// * `inbound_id`: The id of the inbound vertex.
     pub fn new(outbound_id: Uuid, t: Type, inbound_id: Uuid) -> EdgeKey {
         EdgeKey {
             outbound_id,
@@ -57,7 +57,7 @@ impl Edge {
     /// Creates a new edge with the current datetime in UTC.
     ///
     /// # Arguments
-    /// * `key` - The key to the edge.
+    /// * `key`: The key to the edge.
     pub fn new_with_current_datetime(key: EdgeKey) -> Edge {
         Self::new(key, Utc::now())
     }
@@ -65,8 +65,8 @@ impl Edge {
     /// Creates a new edge with a specified datetime.
     ///
     /// # Arguments
-    /// * `key` - The key to the edge.
-    /// * `created_datetime` - When the edge was created.
+    /// * `key`: The key to the edge.
+    /// * `created_datetime`: When the edge was created.
     pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
         Edge { key, created_datetime }
     }
