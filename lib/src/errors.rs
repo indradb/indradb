@@ -1,9 +1,11 @@
+use bincode::Error as BincodeError;
 use failure::Fail;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
 #[cfg(feature = "sled-datastore")]
 use sled::Error as SledError;
+use std::io::Error as IoError;
 use std::result::Result as StdResult;
 
 #[derive(Debug, Fail)]
@@ -53,3 +55,26 @@ pub enum ValidationError {
 }
 
 pub type ValidationResult<T> = StdResult<T, ValidationError>;
+
+// An error that arises out of (de-)serialization of an in-memory datastore
+/// instance.
+#[derive(Debug, Fail)]
+pub enum MemorySerializationError {
+    /// Indicates a system failure. Underlying these errors are
+    /// `std::io::Error`s because they actually wrap general system errors
+    /// from libc -- see `std::io::Error::last_os_error()`.
+    #[fail(display = "system error: {}", inner)]
+    System { inner: IoError },
+    /// An error from the in-memory datastore indicating that sync failed
+    #[fail(display = "sync failed; forked process returned {}", status)]
+    SyncFailed { status: libc::c_int },
+    /// An error that arose out of bincode deserialization.
+    #[fail(display = "bincode error: {}", inner)]
+    Bincode { inner: BincodeError },
+}
+
+impl From<BincodeError> for MemorySerializationError {
+    fn from(err: BincodeError) -> Self {
+        MemorySerializationError::Bincode { inner: err }
+    }
+}

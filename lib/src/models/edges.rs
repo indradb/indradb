@@ -1,10 +1,11 @@
 use super::types::Type;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Represents a uniquely identifiable key to an edge.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct EdgeKey {
     /// The id of the outbound vertex.
     pub outbound_id: Uuid,

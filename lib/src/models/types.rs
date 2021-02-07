@@ -1,7 +1,8 @@
 use crate::errors::{ValidationError, ValidationResult};
-use core::str::FromStr;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 lazy_static! {
     static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
@@ -11,7 +12,7 @@ lazy_static! {
 ///
 /// Types must be less than 256 characters long, and can only contain letters,
 /// numbers, dashes and underscores.
-#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Type(pub String);
 
 impl Type {

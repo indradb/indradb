@@ -18,7 +18,7 @@ For more details, see the [homepage](https://indradb.github.io).
 * Support for queries with multiple hops.
 * Cross-language support via gRPC, or direct embedding as a library.
 * Support for JSON-based properties tied to vertices and edges.
-* Pluggable underlying datastores, with built-in support for in-memory-only, rocksdb and sled. [Postgresql is available separately](https://github.com/indradb/postgres).
+* Pluggable underlying datastores, with several built-in datastores. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
 ## Getting started
@@ -27,18 +27,21 @@ For more details, see the [homepage](https://indradb.github.io).
 * Add the binaries to your `PATH`.
 * Start the server: `indradb-server`
 
-This should start an in-memory-only datastore, where all work will be wiped out when the server is shutdown. You can persist your work with one of the alternative datastores.
+This should start the default datastore.
 
-### In-memory
+### Memory
 
-By default, IndraDB starts an in-memory datastore that does not persist to
-disk. This is useful for kicking the tires. If you want to use the in-memory
-datastore, simply start up an instance. e.g.: 
+By default, IndraDB starts a datastore that stores all values in-memory. This datastore is fastest for most access patterns, but has a few caveats:
+
+* No support for graphs larger than what can be stored in-memory.
+* No transactional guarantees.
+* Data is only persisted to disk when explicitly requested.
+
+If you want to use the standard datastore, don't pass a subcommand; e.g.:
 
 ```bash
 indradb-server [options]
 ```
-
 
 ### RocksDB
 
