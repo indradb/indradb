@@ -17,14 +17,14 @@ use tokio::net::TcpListener;
 fn read_memory_datastore(path: OsString, every: u16) -> Result<Arc<indradb::MemoryDatastore>, Box<dyn Error>> {
     use std::fs::File;
     use std::io::Error as IoError;
+    use std::io::{BufReader, BufWriter};
     use std::path::Path;
     use std::thread::{sleep, spawn};
     use std::time::Duration;
 
     let datastore = if Path::new(path.as_os_str()).exists() {
-        // TODO: wrap file reader in a buffer for substantially better
-        // performance
-        Arc::new(indradb::MemoryDatastore::read_image(File::open(path.as_os_str())?)?)
+        let buf = BufReader::new(File::open(path.as_os_str())?);
+        Arc::new(indradb::MemoryDatastore::read_image(buf)?)
     } else {
         Arc::new(indradb::MemoryDatastore::default())
     };
@@ -45,11 +45,9 @@ fn read_memory_datastore(path: OsString, every: u16) -> Result<Arc<indradb::Memo
                         // this is the child process
                         // TODO: write to temporary file first, then move it into
                         // the right path
-                        // TODO: wrap file writer in a buffer for substantially
-                        // better performance
                         let f = File::create(path.as_os_str()).expect(&format!("expected to be able to create file"));
                         datastore
-                            .write_image(f)
+                            .write_image(BufWriter::new(f))
                             .expect("expected to be able to write the image");
                         std::process::exit(0);
                     } else {

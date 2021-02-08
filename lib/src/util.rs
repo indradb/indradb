@@ -13,6 +13,7 @@ lazy_static! {
     static ref CONTEXT: Context = Context::new(0);
 }
 
+// TODO: this should return OsString
 /// Gets the path to a file or directory within the temporary directory, in a
 /// platform-independent manner. Note that this will panic if the path cannot
 /// be formatted into UTF-8.
