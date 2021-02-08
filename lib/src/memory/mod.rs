@@ -14,35 +14,3 @@ full_bench_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
 full_test_impl!(MemoryDatastore::default());
-
-#[cfg(feature = "test-suite")]
-#[cfg(unix)]
-#[test]
-fn should_serialize() {
-    use super::MemoryDatastore;
-    use crate::util::generate_temporary_path;
-    use crate::{Datastore, SpecificVertexQuery, Transaction, Type};
-    use std::fs::File;
-
-    let path = generate_temporary_path();
-
-    let id = {
-        let datastore = MemoryDatastore::default();
-        let trans = datastore.transaction().unwrap();
-        let id = trans.create_vertex_from_type(Type::default()).unwrap();
-
-        unsafe {
-            datastore.unix_write(File::create(&path).unwrap()).unwrap();
-        }
-
-        id
-    };
-
-    let datastore = MemoryDatastore::unix_read(File::open(&path).unwrap()).unwrap();
-    let trans = datastore.transaction().unwrap();
-    assert_eq!(trans.get_vertex_count().unwrap(), 1);
-    let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![id])).unwrap();
-    assert_eq!(vertices.len(), 1);
-    assert_eq!(vertices[0].id, id);
-    assert_eq!(vertices[0].t, Type::default());
-}

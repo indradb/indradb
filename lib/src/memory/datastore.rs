@@ -1,15 +1,15 @@
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::Error as IoError;
+use std::io::{Read, Write};
 use std::result::Result as StdResult;
 use std::sync::{Arc, RwLock};
 
-use crate::errors::{MemorySerializationError, Result};
+use crate::errors::Result;
 use crate::{
     Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, NamedProperty,
     Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
+use bincode::Error as BincodeError;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
@@ -213,44 +213,19 @@ impl Default for MemoryDatastore {
 }
 
 impl MemoryDatastore {
-    /// Reads a persisted image from disk. Only supported on unix systems,
-    /// because, while reading an image is cross-platform, writing is
-    /// unix-only.
-    #[cfg(unix)]
-    pub fn unix_read(file: File) -> StdResult<MemoryDatastore, MemorySerializationError> {
-        let datastore = bincode::deserialize_from(file)?;
+    /// Reads a persisted image from disk.
+    pub fn read_image<R: Read>(reader: R) -> StdResult<MemoryDatastore, BincodeError> {
+        let datastore = bincode::deserialize_from(reader)?;
         Ok(MemoryDatastore {
             0: Arc::new(RwLock::new(datastore)),
         })
     }
 
-    /// Syncs the contents to disk. Only supported on unix systems.
-    #[cfg(unix)]
-    pub unsafe fn unix_write(&self, file: File) -> StdResult<(), MemorySerializationError> {
-        let pid = libc::fork();
-
-        if pid < 0 {
-            Err(MemorySerializationError::System {
-                inner: IoError::last_os_error(),
-            })
-        } else if pid == 0 {
-            // this is the child process
-            let datastore = self.0.read().unwrap();
-            bincode::serialize_into(file, &*datastore).unwrap();
-            std::process::exit(0);
-        } else {
-            // this is the parent process
-            let mut status = 0 as libc::c_int;
-            if libc::waitpid(pid, &mut status, 0) < 0 {
-                Err(MemorySerializationError::System {
-                    inner: IoError::last_os_error(),
-                })
-            } else if status != 0 {
-                Err(MemorySerializationError::SyncFailed { status })
-            } else {
-                Ok(())
-            }
-        }
+    /// Syncs the contents to disk.
+    pub fn write_image<W: Write>(&self, writer: W) -> StdResult<(), BincodeError> {
+        let datastore = self.0.read().unwrap();
+        bincode::serialize_into(writer, &*datastore)?;
+        Ok(())
     }
 }
 

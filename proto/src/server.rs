@@ -37,16 +37,6 @@ pub struct Server<
     datastore: Arc<D>,
 }
 
-impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
-    Server<D, T>
-{
-    pub fn new(datastore: D) -> Self {
-        Self {
-            datastore: Arc::new(datastore),
-        }
-    }
-}
-
 #[tonic::async_trait]
 impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
     crate::indra_db_server::IndraDb for Server<D, T>
@@ -275,12 +265,12 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D, T>(datastore: D, listener: TcpListener) -> Result<(), TonicTransportError>
+pub async fn run<D, T>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
     T: indradb::Transaction + Send + Sync + 'static,
 {
-    let svc = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
+    let svc = crate::indra_db_server::IndraDbServer::new(Server { datastore });
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
         .add_service(svc)

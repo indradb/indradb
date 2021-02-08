@@ -1,6 +1,6 @@
+use std::path::Path;
 use std::sync::Arc;
-use std::u64;
-use std::usize;
+use std::{u64, usize};
 
 use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
@@ -36,7 +36,7 @@ impl SledConfig {
     }
 
     /// Creates a new sled datastore.
-    pub fn open(self, path: &str) -> Result<SledDatastore> {
+    pub fn open<P: AsRef<Path>>(self, path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, self)?),
         })
@@ -59,7 +59,7 @@ impl<'ds> SledHolder {
     /// # Arguments
     /// * `path` - The file path to the Sled database.
     /// * `opts` - Sled options to pass in.
-    pub fn new(path: &str, opts: SledConfig) -> Result<SledHolder> {
+    pub fn new<P: AsRef<Path>>(path: P, opts: SledConfig) -> Result<SledHolder> {
         let mut config = Config::default().path(path);
 
         if opts.use_compression {

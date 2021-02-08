@@ -1,4 +1,5 @@
 use std::i32;
+use std::path::Path;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
@@ -227,8 +228,9 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
+    pub fn new<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
         let opts = get_options(max_open_files);
+        let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
             Ok(db) => db,
@@ -252,7 +254,7 @@ impl RocksdbDatastore {
     /// * `path` - The file path to the rocksdb database.
     /// * `max_open_files` - The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
+    pub fn repair<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<()> {
         let opts = get_options(max_open_files);
         DB::repair(&opts, path)?;
         Ok(())
