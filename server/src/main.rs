@@ -15,10 +15,11 @@ use tokio::net::TcpListener;
 
 #[cfg(unix)]
 fn read_memory_datastore(path: OsString, every: u16) -> Result<Arc<indradb::MemoryDatastore>, Box<dyn Error>> {
+    use std::fs::rename;
     use std::fs::File;
     use std::io::Error as IoError;
     use std::io::{BufReader, BufWriter};
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::thread::{sleep, spawn};
     use std::time::Duration;
 
@@ -31,7 +32,13 @@ fn read_memory_datastore(path: OsString, every: u16) -> Result<Arc<indradb::Memo
 
     {
         let datastore = datastore.clone();
-        let path = path.clone();
+        let persist_path = path.clone();
+        let scratch_path = {
+            let mut scratch_path = PathBuf::new();
+            scratch_path.push(&path);
+            scratch_path.set_extension(".tmp");
+            scratch_path.into_boxed_path()
+        };
 
         spawn(move || {
             loop {
@@ -43,12 +50,11 @@ fn read_memory_datastore(path: OsString, every: u16) -> Result<Arc<indradb::Memo
                         panic!("failed to fork: {}", IoError::last_os_error());
                     } else if pid == 0 {
                         // this is the child process
-                        // TODO: write to temporary file first, then move it into
-                        // the right path
-                        let f = File::create(path.as_os_str()).expect(&format!("expected to be able to create file"));
+                        let f = File::create(&scratch_path).expect("expected to be able to create scratch file");
                         datastore
                             .write_image(BufWriter::new(f))
                             .expect("expected to be able to write the image");
+                        rename(scratch_path, persist_path).expect("expected to be able to rename scratch file");
                         std::process::exit(0);
                     } else {
                         // this is the parent process
