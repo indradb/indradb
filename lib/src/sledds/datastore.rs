@@ -93,7 +93,7 @@ impl<'ds> SledDatastore {
     ///
     /// # Arguments
     /// * `path` - The file path to the Sled database.
-    pub fn new(path: &str) -> Result<SledDatastore> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, SledConfig::default())?),
         })

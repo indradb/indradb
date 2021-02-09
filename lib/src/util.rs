@@ -1,5 +1,7 @@
 //! Utility functions.
 
+use std::path::PathBuf;
+
 use crate::errors::{ValidationError, ValidationResult};
 use chrono::offset::Utc;
 use lazy_static::lazy_static;
@@ -13,17 +15,12 @@ lazy_static! {
     static ref CONTEXT: Context = Context::new(0);
 }
 
-// TODO: this should return OsString
 /// Gets the path to a file or directory within the temporary directory, in a
-/// platform-independent manner. Note that this will panic if the path cannot
-/// be formatted into UTF-8.
-pub fn generate_temporary_path() -> String {
-    use std::env;
-    let mut path = env::temp_dir();
+/// platform-independent manner.
+pub fn generate_temporary_path() -> PathBuf {
+    let mut path = std::env::temp_dir();
     path.push(generate_random_secret(TEMP_PATH_RANDOM_PART_LENGTH));
-    path.to_str()
-        .expect("Expected to be able to parse the temp path into UTF-8")
-        .to_string()
+    path
 }
 
 /// Generates a UUID v1. this utility method uses a shared context and node ID
@@ -88,8 +85,6 @@ mod tests {
     fn should_generate_temporary_path() {
         let first = generate_temporary_path();
         let second = generate_temporary_path();
-        assert!(first.len() > 0);
-        assert!(second.len() > 0);
         assert_ne!(first, second);
     }
 
