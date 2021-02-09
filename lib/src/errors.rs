@@ -1,9 +1,11 @@
+use bincode::Error as BincodeError;
 use failure::Fail;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
 #[cfg(feature = "sled-datastore")]
 use sled::Error as SledError;
+use std::io::Error as IoError;
 use std::result::Result as StdResult;
 
 #[derive(Debug, Fail)]
@@ -18,6 +20,10 @@ pub enum Error {
     Sled { inner: SledError },
     #[fail(display = "UUID already taken")]
     UuidTaken,
+    #[fail(display = "i/o error: {}", inner)]
+    Io { inner: IoError },
+    #[fail(display = "serialization error: {}", inner)]
+    Bincode { inner: BincodeError },
 }
 
 impl From<JsonError> for Error {
@@ -37,6 +43,18 @@ impl From<RocksDbError> for Error {
 impl From<SledError> for Error {
     fn from(err: SledError) -> Self {
         Error::Sled { inner: err }
+    }
+}
+
+impl From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Error::Io { inner: err }
+    }
+}
+
+impl From<BincodeError> for Error {
+    fn from(err: BincodeError) -> Self {
+        Error::Bincode { inner: err }
     }
 }
 

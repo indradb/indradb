@@ -43,6 +43,14 @@ impl ClientDatastore {
 impl indradb::Datastore for ClientDatastore {
     type Trans = ClientTransaction;
 
+    fn sync(&self) -> Result<(), indradb::Error> {
+        self.exec
+            .borrow_mut()
+            .block_on(self.client.borrow_mut().sync())
+            .unwrap();
+        Ok(())
+    }
+
     fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
     where
         I: Iterator<Item = indradb::BulkInsertItem>,
@@ -232,6 +240,7 @@ impl indradb::Transaction for ClientTransaction {
 
 full_test_impl!({
     use std::net::ToSocketAddrs;
+    use std::sync::Arc;
     use tokio::net::TcpListener;
 
     let rt = Runtime::new().unwrap();
@@ -239,7 +248,10 @@ full_test_impl!({
     let addr = "127.0.0.1:0".to_socket_addrs().unwrap().next().unwrap();
     let listener = rt.block_on(TcpListener::bind(&addr)).unwrap();
     let port = listener.local_addr().unwrap().port();
-    rt.spawn(crate::run_server(indradb::MemoryDatastore::default(), listener));
+    rt.spawn(crate::run_server(
+        Arc::new(indradb::MemoryDatastore::default()),
+        listener,
+    ));
 
     ClientDatastore::new(port as u16, rt)
 });

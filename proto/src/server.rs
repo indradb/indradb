@@ -45,6 +45,11 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         Ok(Response::new(()))
     }
 
+    async fn sync(&self, _: Request<()>) -> Result<Response<()>, Status> {
+        map_indradb_result(self.datastore.sync())?;
+        Ok(Response::new(()))
+    }
+
     async fn bulk_insert(&self, request: Request<Streaming<crate::BulkInsertItem>>) -> Result<Response<()>, Status> {
         let items = {
             let mut stream = request.into_inner();

@@ -103,6 +103,13 @@ impl<'ds> SledDatastore {
 impl Datastore for SledDatastore {
     type Trans = SledTransaction;
 
+    fn sync(&self) -> Result<()> {
+        let holder = self.holder.clone();
+        let db = holder.db.clone();
+        db.flush()?;
+        Ok(())
+    }
+
     fn transaction(&self) -> Result<Self::Trans> {
         Ok(SledTransaction::new(self.holder.clone()))
     }

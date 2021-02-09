@@ -264,6 +264,18 @@ impl RocksdbDatastore {
 impl Datastore for RocksdbDatastore {
     type Trans = RocksdbTransaction;
 
+    fn sync(&self) -> Result<()> {
+        let db = self.db.clone();
+        VertexManager::new(&db).compact();
+        EdgeManager::new(&db).compact();
+        EdgeRangeManager::new(&db).compact();
+        EdgeRangeManager::new_reversed(&db).compact();
+        VertexPropertyManager::new(&db).compact();
+        EdgePropertyManager::new(&db).compact();
+        db.flush()?;
+        Ok(())
+    }
+
     // We override the default `bulk_insert` implementation because further
     // optimization can be done by using `WriteBatch`s.
     fn bulk_insert<I>(&self, items: I) -> Result<()>

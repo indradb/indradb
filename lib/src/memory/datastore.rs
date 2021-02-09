@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::fs::{rename, File};
+use std::io::{BufReader, BufWriter};
+use std::path::PathBuf;
 use std::result::Result as StdResult;
 use std::sync::{Arc, RwLock};
 
@@ -15,6 +17,12 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
+
+fn scratch_path(path: &PathBuf) -> PathBuf {
+    let mut scratch_path = path.clone();
+    scratch_path.set_extension(".tmp");
+    scratch_path
+}
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -202,39 +210,69 @@ impl InternalMemoryDatastore {
 
 /// An in-memory datastore.
 #[derive(Debug, Clone)]
-pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
+pub struct MemoryDatastore {
+    datastore: Arc<RwLock<InternalMemoryDatastore>>,
+    paths: Option<(PathBuf, PathBuf)>,
+}
 
 impl Default for MemoryDatastore {
     fn default() -> MemoryDatastore {
         Self {
-            0: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            paths: None,
         }
     }
 }
 
 impl MemoryDatastore {
-    /// Reads a persisted image from disk.
-    pub fn read_image<R: Read>(reader: R) -> StdResult<MemoryDatastore, BincodeError> {
-        let datastore = bincode::deserialize_from(reader)?;
+    /// Reads a persisted image from disk. Calls to sync will overwrite the
+    /// file at the specified path.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn read<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
+        let path = path.into();
+        let scratch_path = scratch_path(&path);
+        let buf = BufReader::new(File::open(&path)?);
+        let datastore = bincode::deserialize_from(buf)?;
         Ok(MemoryDatastore {
-            0: Arc::new(RwLock::new(datastore)),
+            datastore: Arc::new(RwLock::new(datastore)),
+            paths: Some((scratch_path, path)),
         })
     }
 
-    /// Syncs the contents to disk.
-    pub fn write_image<W: Write>(&self, writer: W) -> StdResult<(), BincodeError> {
-        let datastore = self.0.read().unwrap();
-        bincode::serialize_into(writer, &*datastore)?;
-        Ok(())
+    /// Creates a new datastore. Calls to sync will overwrite the file at the
+    /// specified path, but as opposed to `read`, this will not read the file
+    /// first.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
+        let path = path.into();
+        let scratch_path = scratch_path(&path);
+        Ok(MemoryDatastore {
+            datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            paths: Some((scratch_path, path)),
+        })
     }
 }
 
 impl Datastore for MemoryDatastore {
     type Trans = MemoryTransaction;
 
+    fn sync(&self) -> Result<()> {
+        if let Some((ref scratch_path, ref persist_path)) = self.paths {
+            let buf = BufWriter::new(File::create(scratch_path)?);
+            let datastore = self.datastore.read().unwrap();
+            bincode::serialize_into(buf, &*datastore)?;
+            rename(scratch_path, persist_path)?;
+        }
+        Ok(())
+    }
+
     fn transaction(&self) -> Result<Self::Trans> {
         Ok(MemoryTransaction {
-            datastore: Arc::clone(&self.0),
+            datastore: Arc::clone(&self.datastore),
         })
     }
 }
