@@ -89,7 +89,7 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     /// Gets a property associated with the vertices.
     ///
     /// # Arguments
-    /// * `name` - The name of the property to get.
+    /// * `name`: The name of the property to get.
     fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
         VertexPropertyQuery::new(self.into(), name)
     }
@@ -129,7 +129,7 @@ impl RangeVertexQuery {
     /// Sets the limit.
     ///
     /// # Arguments
-    /// * `limit` - Limits the number of returned results.
+    /// * `limit`: Limits the number of returned results.
     pub fn limit(self, limit: u32) -> Self {
         Self {
             limit,
@@ -141,7 +141,7 @@ impl RangeVertexQuery {
     /// Filter the type of vertices returned.
     ///
     /// # Arguments
-    /// * `t` - Sets the type filter.
+    /// * `t`: Sets the type filter.
     pub fn t(self, t: Type) -> Self {
         Self {
             limit: self.limit,
@@ -153,7 +153,7 @@ impl RangeVertexQuery {
     /// Sets the lowest vertex ID to return.
     ///
     /// # Arguments
-    /// * `start_id` - The lowest vertex ID to return.
+    /// * `start_id`: The lowest vertex ID to return.
     pub fn start_id(self, start_id: Uuid) -> Self {
         Self {
             limit: self.limit,
@@ -177,7 +177,7 @@ impl SpecificVertexQuery {
     /// IDs.
     ///
     /// Arguments
-    /// * `ids` - The IDs of the vertices to get.
+    /// * `ids`: The IDs of the vertices to get.
     pub fn new(ids: Vec<Uuid>) -> Self {
         Self { ids }
     }
@@ -185,7 +185,7 @@ impl SpecificVertexQuery {
     /// Creates a new vertex query for getting a single vertex.
     ///
     /// Arguments
-    /// * `id` - The ID of the vertex to get.
+    /// * `id`: The ID of the vertex to get.
     pub fn single(id: Uuid) -> Self {
         Self { ids: vec![id] }
     }
@@ -216,8 +216,8 @@ impl PipeVertexQuery {
     /// Creates a new pipe vertex query.
     ///
     /// Arguments
-    /// * `inner` - The edge query to build off of.
-    /// * `direction` - Whether to get outbound or inbound vertices on the
+    /// * `inner`: The edge query to build off of.
+    /// * `direction`: Whether to get outbound or inbound vertices on the
     ///   edges.
     pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection) -> Self {
         Self {
@@ -231,7 +231,7 @@ impl PipeVertexQuery {
     /// Sets the limit.
     ///
     /// # Arguments
-    /// * `limit` - Limits the number of returned results.
+    /// * `limit`: Limits the number of returned results.
     pub fn limit(self, limit: u32) -> Self {
         Self {
             inner: self.inner,
@@ -244,7 +244,7 @@ impl PipeVertexQuery {
     /// Filter the type of vertices returned.
     ///
     /// # Arguments
-    /// * `t` - Sets the type filter.
+    /// * `t`: Sets the type filter.
     pub fn t(self, t: Type) -> Self {
         Self {
             inner: self.inner,
@@ -269,8 +269,8 @@ impl VertexPropertyQuery {
     /// Creates a new vertex property query.
     ///
     /// Arguments
-    /// * `inner` - The vertex query to build off of.
-    /// * `name` - The name of the property to get.
+    /// * `inner`: The vertex query to build off of.
+    /// * `name`: The name of the property to get.
     pub fn new<S: Into<String>>(inner: VertexQuery, name: S) -> Self {
         Self {
             inner,
@@ -317,7 +317,7 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     /// Gets a property associated with the edges.
     ///
     /// # Arguments
-    /// * `name` - The name of the property to get.
+    /// * `name`: The name of the property to get.
     fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
         EdgePropertyQuery::new(self.into(), name)
     }
@@ -337,7 +337,7 @@ impl SpecificEdgeQuery {
     /// keys.
     ///
     /// Arguments
-    /// * `keys` - The keys of the edges to get.
+    /// * `keys`: The keys of the edges to get.
     pub fn new(keys: Vec<EdgeKey>) -> Self {
         Self { keys }
     }
@@ -345,7 +345,7 @@ impl SpecificEdgeQuery {
     /// Creates a new edge query for getting a single edge.
     ///
     /// Arguments
-    /// * `key` - The key of the edge to get.
+    /// * `key`: The key of the edge to get.
     pub fn single(key: EdgeKey) -> Self {
         Self { keys: vec![key] }
     }
@@ -382,10 +382,10 @@ impl PipeEdgeQuery {
     /// Creates a new pipe edge query.
     ///
     /// Arguments
-    /// * `inner` - The edge query to build off of.
-    /// * `direction` - Whether to get outbound or inbound edges on the
+    /// * `inner`: The edge query to build off of.
+    /// * `direction`: Whether to get outbound or inbound edges on the
     ///   vertices.
-    /// * `limit` - Limits the number of edges to get.
+    /// * `limit`: Limits the number of edges to get.
     pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection) -> Self {
         Self {
             inner,
@@ -400,7 +400,7 @@ impl PipeEdgeQuery {
     /// Sets the limit.
     ///
     /// # Arguments
-    /// * `limit` - Limits the number of returned results.
+    /// * `limit`: Limits the number of returned results.
     pub fn limit(self, limit: u32) -> Self {
         Self {
             inner: self.inner,
@@ -415,7 +415,7 @@ impl PipeEdgeQuery {
     /// Filter the type of edges returned.
     ///
     /// # Arguments
-    /// * `t` - Sets the type filter.
+    /// * `t`: Sets the type filter.
     pub fn t(self, t: Type) -> Self {
         Self {
             inner: self.inner,
@@ -430,7 +430,7 @@ impl PipeEdgeQuery {
     /// Filter the update datetime of the edges returned.
     ///
     /// # Arguments
-    /// * `high` - The newest update datetime for the edges returned.
+    /// * `high`: The newest update datetime for the edges returned.
     pub fn high(self, high: DateTime<Utc>) -> Self {
         Self {
             inner: self.inner,
@@ -445,7 +445,7 @@ impl PipeEdgeQuery {
     /// Filter the update datetime of the edges returned.
     ///
     /// # Arguments
-    /// * `low` - The oldest update datetime for the edges returned.
+    /// * `low`: The oldest update datetime for the edges returned.
     pub fn low(self, low: DateTime<Utc>) -> Self {
         Self {
             inner: self.inner,
@@ -472,8 +472,8 @@ impl EdgePropertyQuery {
     /// Creates a new edge property query.
     ///
     /// Arguments
-    /// * `inner` - The edge query to build off of.
-    /// * `name` - The name of the property to get.
+    /// * `inner`: The edge query to build off of.
+    /// * `name`: The name of the property to get.
     pub fn new<S: Into<String>>(inner: EdgeQuery, name: S) -> Self {
         Self {
             inner,

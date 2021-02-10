@@ -19,7 +19,7 @@ impl Type {
     ///
     /// # Arguments
     ///
-    /// * `t` - The type, which must be less than 256 characters long.
+    /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Errors
     /// Returns a `ValidationError` if the type is longer than 255 characters,
@@ -40,7 +40,7 @@ impl Type {
     ///
     /// # Arguments
     ///
-    /// * `t` - The type, which must be less than 256 characters long.
+    /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Safety
     /// This function is marked unsafe because there's no verification that
