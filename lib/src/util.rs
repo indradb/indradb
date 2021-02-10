@@ -24,7 +24,7 @@ pub fn generate_uuid_v1() -> Uuid {
 ///
 /// # Arguments
 ///
-/// * `uuid` - The input UUID.
+/// * `uuid`: The input UUID.
 ///
 /// # Errors
 /// Returns a `ValidationError` if the input UUID is the great possible value

@@ -26,7 +26,7 @@ impl SledConfig {
     /// Creates a new sled config with zstd compression enabled.
     ///
     /// # Arguments
-    /// * `factor` - The zstd compression factor to use. If unspecified, this
+    /// * `factor`: The zstd compression factor to use. If unspecified, this
     ///   will default to 5.
     pub fn with_compression(factor: Option<i32>) -> SledConfig {
         SledConfig {
@@ -57,8 +57,8 @@ impl<'ds> SledHolder {
     /// The meat of a Sled datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the Sled database.
-    /// * `opts` - Sled options to pass in.
+    /// * `path`: The file path to the Sled database.
+    /// * `opts`: Sled options to pass in.
     pub fn new<P: AsRef<Path>>(path: P, opts: SledConfig) -> Result<SledHolder> {
         let mut config = Config::default().path(path);
 
@@ -92,7 +92,7 @@ impl<'ds> SledDatastore {
     /// Creates a new Sled datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the Sled database.
+    /// * `path`: The file path to the Sled database.
     pub fn new<P: AsRef<Path>>(path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, SledConfig::default())?),

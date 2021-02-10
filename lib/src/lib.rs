@@ -1,4 +1,4 @@
-//! `IndraDB` - a graph datastore.
+//! `IndraDB`: a graph datastore.
 //!
 //! `IndraDB` is broken up into a library and an application. This is the
 //! library, which you would use if you want to create new datastore
