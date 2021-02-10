@@ -7,6 +7,7 @@ use serde_json::Error as JsonError;
 use sled::Error as SledError;
 use std::io::Error as IoError;
 use std::result::Result as StdResult;
+use tempfile::PersistError as TempFilePersistError;
 
 #[derive(Debug, Fail)]
 pub enum Error {
@@ -24,6 +25,8 @@ pub enum Error {
     Io { inner: IoError },
     #[fail(display = "serialization error: {}", inner)]
     Bincode { inner: BincodeError },
+    #[fail(display = "failed to move temporary file into place: {}", inner)]
+    MoveTempFile { inner: TempFilePersistError },
 }
 
 impl From<JsonError> for Error {
@@ -55,6 +58,12 @@ impl From<IoError> for Error {
 impl From<BincodeError> for Error {
     fn from(err: BincodeError) -> Self {
         Error::Bincode { inner: err }
+    }
+}
+
+impl From<TempFilePersistError> for Error {
+    fn from(err: TempFilePersistError) -> Self {
+        Error::MoveTempFile { inner: err }
     }
 }
 

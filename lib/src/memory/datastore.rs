@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::fs::{rename, File};
+use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::result::Result as StdResult;
@@ -16,13 +16,8 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use tempfile::NamedTempFile;
 use uuid::Uuid;
-
-fn scratch_path(path: &PathBuf) -> PathBuf {
-    let mut scratch_path = path.clone();
-    scratch_path.set_extension(".tmp");
-    scratch_path
-}
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -212,7 +207,7 @@ impl InternalMemoryDatastore {
 #[derive(Debug, Clone)]
 pub struct MemoryDatastore {
     datastore: Arc<RwLock<InternalMemoryDatastore>>,
-    paths: Option<(PathBuf, PathBuf)>,
+    paths: Option<PathBuf>,
 }
 
 impl Default for MemoryDatastore {
@@ -232,12 +227,11 @@ impl MemoryDatastore {
     /// * `path`: The path to the persisted image.
     pub fn read<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         let path = path.into();
-        let scratch_path = scratch_path(&path);
         let buf = BufReader::new(File::open(&path)?);
         let datastore = bincode::deserialize_from(buf)?;
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(datastore)),
-            paths: Some((scratch_path, path)),
+            paths: Some(path),
         })
     }
 
@@ -249,10 +243,9 @@ impl MemoryDatastore {
     /// * `path`: The path to the persisted image.
     pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         let path = path.into();
-        let scratch_path = scratch_path(&path);
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
-            paths: Some((scratch_path, path)),
+            paths: Some(path),
         })
     }
 }
@@ -261,11 +254,12 @@ impl Datastore for MemoryDatastore {
     type Trans = MemoryTransaction;
 
     fn sync(&self) -> Result<()> {
-        if let Some((ref scratch_path, ref persist_path)) = self.paths {
-            let buf = BufWriter::new(File::create(scratch_path)?);
+        if let Some(ref persist_path) = self.paths {
+            let temp_path = NamedTempFile::new()?;
+            let buf = BufWriter::new(temp_path.as_file());
             let datastore = self.datastore.read().unwrap();
             bincode::serialize_into(buf, &*datastore)?;
-            rename(scratch_path, persist_path)?;
+            temp_path.persist(persist_path)?;
         }
         Ok(())
     }

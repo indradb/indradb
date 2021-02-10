@@ -17,20 +17,20 @@ full_test_impl!(MemoryDatastore::default());
 #[test]
 fn should_serialize() {
     use super::MemoryDatastore;
-    use crate::util::generate_temporary_path;
     use crate::{Datastore, SpecificVertexQuery, Transaction, Type};
+    use tempfile::NamedTempFile;
 
-    let path = generate_temporary_path();
+    let path = NamedTempFile::new().unwrap();
 
     let id = {
-        let datastore = MemoryDatastore::create(path.clone()).unwrap();
+        let datastore = MemoryDatastore::create(path.path()).unwrap();
         let trans = datastore.transaction().unwrap();
         let id = trans.create_vertex_from_type(Type::default()).unwrap();
         datastore.sync().unwrap();
         id
     };
 
-    let datastore = MemoryDatastore::read(path).unwrap();
+    let datastore = MemoryDatastore::read(path.path()).unwrap();
     let trans = datastore.transaction().unwrap();
     assert_eq!(trans.get_vertex_count().unwrap(), 1);
     let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![id])).unwrap();
@@ -43,6 +43,7 @@ fn should_serialize() {
 #[test]
 fn should_volatile_sync() {
     use super::MemoryDatastore;
+    use crate::Datastore;
     let datastore = MemoryDatastore::default();
     datastore.sync().unwrap(); // should be a no-op
 }

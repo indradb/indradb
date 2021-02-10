@@ -9,15 +9,17 @@ mod normal_config {
     #[cfg(feature = "bench-suite")]
     full_bench_impl!({
         use super::SledDatastore;
-        use crate::util::generate_temporary_path;
-        SledDatastore::new(generate_temporary_path()).unwrap()
+        use tempfile::tempdir;
+        let path = tempdir().unwrap().into_path();
+        SledDatastore::new(path).unwrap()
     });
 
     #[cfg(feature = "test-suite")]
     full_test_impl!({
         use super::SledDatastore;
-        use crate::util::generate_temporary_path;
-        SledDatastore::new(generate_temporary_path()).unwrap()
+        use tempfile::tempdir;
+        let path = tempdir().unwrap().into_path();
+        SledDatastore::new(path).unwrap()
     });
 }
 
@@ -25,18 +27,16 @@ mod compression_config {
     #[cfg(feature = "bench-suite")]
     full_bench_impl!({
         use super::SledConfig;
-        use crate::util::generate_temporary_path;
-        SledConfig::with_compression(None)
-            .open(&generate_temporary_path())
-            .unwrap()
+        use tempfile::tempdir;
+        let path = tempdir().unwrap().into_path();
+        SledConfig::with_compression(None).open(path).unwrap()
     });
 
     #[cfg(feature = "test-suite")]
     full_test_impl!({
         use super::SledConfig;
-        use crate::util::generate_temporary_path;
-        SledConfig::with_compression(None)
-            .open(&generate_temporary_path())
-            .unwrap()
+        use tempfile::tempdir;
+        let path = tempdir().unwrap().into_path();
+        SledConfig::with_compression(None).open(path).unwrap()
     });
 }
