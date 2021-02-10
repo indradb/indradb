@@ -16,7 +16,6 @@ full_bench_impl!(MemoryDatastore::default());
 full_test_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
-#[cfg(unix)]
 #[test]
 fn should_serialize() {
     use super::MemoryDatastore;
@@ -40,4 +39,12 @@ fn should_serialize() {
     assert_eq!(vertices.len(), 1);
     assert_eq!(vertices[0].id, id);
     assert_eq!(vertices[0].t, Type::default());
+}
+
+#[cfg(feature = "test-suite")]
+#[test]
+fn should_volatile_sync() {
+    use super::MemoryDatastore;
+    let datastore = MemoryDatastore::default();
+    datastore.sync().unwrap(); // should be a no-op
 }
