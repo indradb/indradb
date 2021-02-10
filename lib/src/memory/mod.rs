@@ -1,9 +1,7 @@
 //! The in-memory datastore implementation. This is the simplest and generally
-//! fastest implementation, but it has some drawbacks:
-//!
-//! * No support for graphs larger than what can be stored in-memory.
-//! * No transactional guarantees.
-//! * Data is only persisted to disk when explicitly requested.
+//! fastest implementation, but there's no support for graphs larger than what
+//! can fit in-memory, and data is only persisted to disk when explicitly
+//! requested.
 
 mod datastore;
 
