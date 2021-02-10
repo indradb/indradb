@@ -207,14 +207,14 @@ impl InternalMemoryDatastore {
 #[derive(Debug, Clone)]
 pub struct MemoryDatastore {
     datastore: Arc<RwLock<InternalMemoryDatastore>>,
-    paths: Option<PathBuf>,
+    path: Option<PathBuf>,
 }
 
 impl Default for MemoryDatastore {
     fn default() -> MemoryDatastore {
         Self {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
-            paths: None,
+            path: None,
         }
     }
 }
@@ -231,7 +231,7 @@ impl MemoryDatastore {
         let datastore = bincode::deserialize_from(buf)?;
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(datastore)),
-            paths: Some(path),
+            path: Some(path),
         })
     }
 
@@ -242,10 +242,9 @@ impl MemoryDatastore {
     /// # Arguments
     /// * `path`: The path to the persisted image.
     pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
-        let path = path.into();
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
-            paths: Some(path),
+            path: Some(path.into()),
         })
     }
 }
@@ -254,7 +253,7 @@ impl Datastore for MemoryDatastore {
     type Trans = MemoryTransaction;
 
     fn sync(&self) -> Result<()> {
-        if let Some(ref persist_path) = self.paths {
+        if let Some(ref persist_path) = self.path {
             let temp_path = NamedTempFile::new()?;
             let buf = BufWriter::new(temp_path.as_file());
             let datastore = self.datastore.read().unwrap();
