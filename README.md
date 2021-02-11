@@ -31,17 +31,21 @@ This should start the default datastore.
 
 ### Memory
 
-By default, IndraDB starts a datastore that stores all values in-memory. This datastore is fastest for most access patterns, but has a few caveats:
+By default, IndraDB starts a datastore that stores all values in-memory. This is the fastest implementation, but there's no support for graphs larger than what can fit in-memory, and data is only persisted to disk when explicitly requested.
 
-* No support for graphs larger than what can be stored in-memory.
-* No transactional guarantees.
-* Data is only persisted to disk when explicitly requested.
-
-If you want to use the standard datastore, don't pass a subcommand; e.g.:
+If you want to use the standard datastore _without_ support for persistence, don't pass a subcommand; e.g.:
 
 ```bash
 indradb-server [options]
 ```
+
+If you want to use the standard datastore but persist to disk:
+
+```bash
+indradb-server memory --persist-path=[/path/to/memory/image.bincode]
+```
+
+You'll need to explicitly call `Sync()` when you want to save the graph.
 
 ### RocksDB
 
