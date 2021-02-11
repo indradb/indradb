@@ -38,12 +38,3 @@ fn should_serialize() {
     assert_eq!(vertices[0].id, id);
     assert_eq!(vertices[0].t, Type::default());
 }
-
-#[cfg(feature = "test-suite")]
-#[test]
-fn should_volatile_sync() {
-    use super::MemoryDatastore;
-    use crate::Datastore;
-    let datastore = MemoryDatastore::default();
-    datastore.sync().unwrap(); // should be a no-op
-}
