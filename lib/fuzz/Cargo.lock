@@ -272,7 +272,6 @@ dependencies = [
  "chrono",
  "failure",
  "lazy_static",
- "rand",
  "regex",
  "rocksdb",
  "serde",

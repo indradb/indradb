@@ -7,6 +7,9 @@
 //! layer.
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
+// Unfortunately needed for some deprecated variants in errors.rs.
+// TODO: remove this as soon as the deprecated fields are removed.
+#![allow(deprecated)]
 
 #[cfg(feature = "bench-suite")]
 extern crate test;
