@@ -238,6 +238,7 @@ message TransactionResponse {
 
 service IndraDB {
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc BulkInsert(stream BulkInsertItem) returns (google.protobuf.Empty);
     rpc Transaction(stream TransactionRequest) returns (stream TransactionResponse);
 }

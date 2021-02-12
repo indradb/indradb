@@ -4,6 +4,8 @@ mod cli;
 
 use std::error::Error;
 use std::net::ToSocketAddrs;
+use std::path::Path;
+use std::sync::Arc;
 
 use crate::cli::CliDatastoreArgs;
 
@@ -24,7 +26,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
 
-            proto::run_server(datastore, listener).await?;
+            proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
         CliDatastoreArgs::Sled { path, sled_config } => {
@@ -32,12 +34,22 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .open(&path)
                 .expect("Expected to be able to create the Sled datastore");
 
-            proto::run_server(datastore, listener).await?;
+            proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
-        CliDatastoreArgs::Memory => {
+        CliDatastoreArgs::Memory { path: None } => {
             let datastore = indradb::MemoryDatastore::default();
-            proto::run_server(datastore, listener).await?;
+            proto::run_server(Arc::new(datastore), listener).await?;
+            Ok(())
+        }
+        CliDatastoreArgs::Memory { path: Some(path) } => {
+            let datastore = if Path::new(path.as_os_str()).exists() {
+                Arc::new(indradb::MemoryDatastore::read(path)?)
+            } else {
+                Arc::new(indradb::MemoryDatastore::create(path)?)
+            };
+
+            proto::run_server(datastore.clone(), listener).await?;
             Ok(())
         }
     }

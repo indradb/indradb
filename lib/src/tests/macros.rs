@@ -14,6 +14,9 @@ macro_rules! define_test {
 #[macro_export]
 macro_rules! full_test_impl {
     ($code:expr) => {
+        // Sync
+        define_test!(should_sync, $code);
+
         // Bulk insert
         define_test!(should_bulk_insert, $code);
         define_test!(should_bulk_insert_a_redundant_vertex, $code);

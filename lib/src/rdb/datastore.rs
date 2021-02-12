@@ -1,4 +1,5 @@
 use std::i32;
+use std::path::Path;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
@@ -227,8 +228,9 @@ impl RocksdbDatastore {
     /// * `path`: The file path to the rocksdb database.
     /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new(path: &str, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
+    pub fn new<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
         let opts = get_options(max_open_files);
+        let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
             Ok(db) => db,
@@ -252,7 +254,7 @@ impl RocksdbDatastore {
     /// * `path`: The file path to the rocksdb database.
     /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
+    pub fn repair<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<()> {
         let opts = get_options(max_open_files);
         DB::repair(&opts, path)?;
         Ok(())
@@ -261,6 +263,18 @@ impl RocksdbDatastore {
 
 impl Datastore for RocksdbDatastore {
     type Trans = RocksdbTransaction;
+
+    fn sync(&self) -> Result<()> {
+        let db = self.db.clone();
+        VertexManager::new(&db).compact();
+        EdgeManager::new(&db).compact();
+        EdgeRangeManager::new(&db).compact();
+        EdgeRangeManager::new_reversed(&db).compact();
+        VertexPropertyManager::new(&db).compact();
+        EdgePropertyManager::new(&db).compact();
+        db.flush()?;
+        Ok(())
+    }
 
     // We override the default `bulk_insert` implementation because further
     // optimization can be done by using `WriteBatch`s.

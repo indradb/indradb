@@ -1,6 +1,6 @@
+use std::path::Path;
 use std::sync::Arc;
-use std::u64;
-use std::usize;
+use std::{u64, usize};
 
 use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
@@ -36,7 +36,7 @@ impl SledConfig {
     }
 
     /// Creates a new sled datastore.
-    pub fn open(self, path: &str) -> Result<SledDatastore> {
+    pub fn open<P: AsRef<Path>>(self, path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, self)?),
         })
@@ -59,7 +59,7 @@ impl<'ds> SledHolder {
     /// # Arguments
     /// * `path`: The file path to the Sled database.
     /// * `opts`: Sled options to pass in.
-    pub fn new(path: &str, opts: SledConfig) -> Result<SledHolder> {
+    pub fn new<P: AsRef<Path>>(path: P, opts: SledConfig) -> Result<SledHolder> {
         let mut config = Config::default().path(path);
 
         if opts.use_compression {
@@ -93,7 +93,7 @@ impl<'ds> SledDatastore {
     ///
     /// # Arguments
     /// * `path`: The file path to the Sled database.
-    pub fn new(path: &str) -> Result<SledDatastore> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, SledConfig::default())?),
         })
@@ -102,6 +102,13 @@ impl<'ds> SledDatastore {
 
 impl Datastore for SledDatastore {
     type Trans = SledTransaction;
+
+    fn sync(&self) -> Result<()> {
+        let holder = self.holder.clone();
+        let db = holder.db.clone();
+        db.flush()?;
+        Ok(())
+    }
 
     fn transaction(&self) -> Result<Self::Trans> {
         Ok(SledTransaction::new(self.holder.clone()))

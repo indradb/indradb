@@ -83,6 +83,11 @@ impl Client {
         Ok(())
     }
 
+    pub async fn sync(&mut self) -> Result<(), ClientError> {
+        self.0.sync(()).await?;
+        Ok(())
+    }
+
     pub async fn bulk_insert<I>(&mut self, items: I) -> Result<(), ClientError>
     where
         I: Iterator<Item = indradb::BulkInsertItem>,
