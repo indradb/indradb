@@ -17,7 +17,6 @@ impl VertexProperty {
     /// Creates a new vertex property.
     ///
     /// # Arguments
-    ///
     /// * `id`: The id of the vertex.
     /// * `value`: The property value.
     pub fn new(id: Uuid, value: JsonValue) -> Self {
@@ -25,7 +24,7 @@ impl VertexProperty {
     }
 }
 
-/// Represents a vertex property.
+/// A property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
     /// The id of the vertex
@@ -39,7 +38,6 @@ impl NamedProperty {
     /// Creates a new vertex property.
     ///
     /// # Arguments
-    ///
     /// * `id`: The id of the vertex.
     /// * `value`: The property value.
     pub fn new(name: String, value: JsonValue) -> Self {
@@ -48,7 +46,6 @@ impl NamedProperty {
 }
 
 /// A vertex with properties.
-///
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperties {
     pub vertex: Vertex,
@@ -56,10 +53,9 @@ pub struct VertexProperties {
 }
 
 impl VertexProperties {
-    /// Creates a new vertex+properties for a given Vertex
+    /// Creates new properties for a given vertex.
     ///
     /// # Arguments
-    ///
     /// * `vertex`: The vertex information
     /// * `props`: The properties
     pub fn new(vertex: Vertex, props: Vec<NamedProperty>) -> Self {
@@ -67,8 +63,7 @@ impl VertexProperties {
     }
 }
 
-/// A vertex with properties.
-///
+/// An edge with properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperties {
     pub edge: Edge,
@@ -76,10 +71,9 @@ pub struct EdgeProperties {
 }
 
 impl EdgeProperties {
-    /// Creates a new edge+properties information for a given Edge
+    /// Creates a new edge properties for a given edge.
     ///
     /// # Arguments
-    ///
     /// * `edge`: The edge information
     /// * `props`: The properties
     pub fn new(edge: Edge, props: Vec<NamedProperty>) -> Self {
@@ -101,7 +95,6 @@ impl EdgeProperty {
     /// Creates a new edge property.
     ///
     /// # Arguments
-    ///
     /// * `key`: The key to the edge.
     /// * `value`: The property value.
     pub fn new(key: EdgeKey, value: JsonValue) -> Self {

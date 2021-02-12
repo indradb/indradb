@@ -11,8 +11,10 @@ use serde_json::Error as JsonError;
 use sled::Error as SledError;
 use tempfile::PersistError as TempFilePersistError;
 
+/// An error triggered by the datastore
 #[derive(Debug)]
 pub enum Error {
+    /// Json (de-)serialization failed
     Json {
         inner: JsonError,
     },
@@ -30,6 +32,8 @@ pub enum Error {
     },
 
     UuidTaken,
+
+    /// An error occurred in the underlying datastore
     Datastore {
         inner: Box<dyn StdError + Send>,
     },
@@ -52,8 +56,10 @@ impl fmt::Display for Error {
             Error::UuidTaken => write!(f, "UUID already taken"),
             Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
             #[cfg(feature = "rocksdb-datastore")]
+            #[allow(deprecated)]
             Error::Rocksdb { ref inner } => write!(f, "rocksdb error: {}", inner),
             #[cfg(feature = "sled-datastore")]
+            #[allow(deprecated)]
             Error::Sled { ref inner } => write!(f, "sled error: {}", inner),
         }
     }
@@ -99,10 +105,14 @@ impl From<TempFilePersistError> for Error {
 
 pub type Result<T> = StdResult<T, Error>;
 
+/// A validation error
 #[derive(Debug)]
 pub enum ValidationError {
+    /// The value is invalid
     InvalidValue,
+    /// The value is too long
     ValueTooLong,
+    /// The input UUID is the maximum value, and cannot be incremented
     CannotIncrementUuid,
 }
 

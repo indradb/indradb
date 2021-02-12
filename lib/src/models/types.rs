@@ -19,7 +19,6 @@ impl Type {
     /// Constructs a new type.
     ///
     /// # Arguments
-    ///
     /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Errors
@@ -40,7 +39,6 @@ impl Type {
     /// Constructs a new type, without any checks that the name is valid.
     ///
     /// # Arguments
-    ///
     /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Safety

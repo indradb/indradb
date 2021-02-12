@@ -74,7 +74,7 @@ impl From<PipeVertexQuery> for VertexQuery {
     }
 }
 
-/// Extension trait that specifies methods exposed by all vertex queries.
+/// Extension trait with methods available in all vertex queries.
 pub trait VertexQueryExt: Into<VertexQuery> {
     /// Gets the outbound edges associated with the vertices.
     fn outbound(self) -> PipeEdgeQuery {
