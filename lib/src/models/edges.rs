@@ -43,8 +43,8 @@ impl EdgeKey {
 /// An edge.
 ///
 /// Edges are how you would represent a verb or a relationship in the
-/// datastore. An example might be "liked" or "reviewed". Edges are typed
-/// and directed.
+/// datastore. An example might be "liked" or "reviewed". Edges are typed and
+/// directed.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Edge {
     /// The key to the edge.

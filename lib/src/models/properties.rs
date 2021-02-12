@@ -6,7 +6,7 @@ use uuid::Uuid;
 /// Represents a vertex property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperty {
-    /// The id of the vertex
+    /// The id of the vertex.
     pub id: Uuid,
 
     /// The property value.
@@ -27,7 +27,7 @@ impl VertexProperty {
 /// A property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
-    /// The id of the vertex
+    /// The id of the vertex.
     pub name: String,
 
     /// The property value.
@@ -48,7 +48,9 @@ impl NamedProperty {
 /// A vertex with properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperties {
+    /// The vertex.
     pub vertex: Vertex,
+    /// All of the vertex's properties.
     pub props: Vec<NamedProperty>,
 }
 
@@ -66,7 +68,9 @@ impl VertexProperties {
 /// An edge with properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperties {
+    /// The edge.
     pub edge: Edge,
+    /// All of the edge's properties.
     pub props: Vec<NamedProperty>,
 }
 
