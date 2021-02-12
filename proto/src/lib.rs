@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate failure;
 #[cfg(feature = "test-suite")]
 #[macro_use]
 extern crate indradb;
