@@ -6,10 +6,11 @@
 //! implement them directly since the functions here are async.
 
 use std::convert::TryInto;
+use std::error::Error as StdError;
+use std::fmt;
 
 use crate::ConversionError;
 
-use failure::Fail;
 use serde_json::value::Value as JsonValue;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -29,20 +30,42 @@ fn check_request_id(expected: u32, actual: u32) -> Result<(), ClientError> {
 }
 
 /// The error returned if a client operation failed.
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum ClientError {
-    #[fail(display = "{}", inner)]
     Conversion { inner: ConversionError },
-    #[fail(display = "unexpected response ID; expected {}, got {}", expected, actual)]
     UnexpectedResponseId { expected: u32, actual: u32 },
-    #[fail(display = "unexpected empty response for request ID {}", request_id)]
     UnexpectedEmptyResponse { request_id: u32 },
-    #[fail(display = "grpc error: {}", inner)]
     Grpc { inner: Status },
-    #[fail(display = "transport error: {}", inner)]
     Transport { inner: TonicTransportError },
-    #[fail(display = "failed to send request: channel closed")]
     ChannelClosed,
+}
+
+impl StdError for ClientError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match *self {
+            ClientError::Conversion { ref inner } => Some(inner),
+            ClientError::Grpc { ref inner } => Some(inner),
+            ClientError::Transport { ref inner } => Some(inner),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ClientError::Conversion { ref inner } => inner.fmt(f),
+            ClientError::UnexpectedResponseId { expected, actual } => {
+                write!(f, "unexpected response ID; expected {}, got {}", expected, actual)
+            }
+            ClientError::UnexpectedEmptyResponse { request_id } => {
+                write!(f, "unexpected empty response for request ID {}", request_id)
+            }
+            ClientError::Grpc { ref inner } => write!(f, "grpc error: {}", inner),
+            ClientError::Transport { ref inner } => write!(f, "transport error: {}", inner),
+            ClientError::ChannelClosed => write!(f, "failed to send request: channel closed"),
+        }
+    }
 }
 
 impl From<ConversionError> for ClientError {

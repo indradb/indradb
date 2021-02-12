@@ -1,9 +1,9 @@
 use std::error::Error as StdError;
+use std::fmt;
 use std::io::Error as IoError;
 use std::result::Result as StdResult;
 
 use bincode::Error as BincodeError;
-use failure::Fail;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
@@ -11,25 +11,52 @@ use serde_json::Error as JsonError;
 use sled::Error as SledError;
 use tempfile::PersistError as TempFilePersistError;
 
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum Error {
-    #[fail(display = "json error: {}", inner)]
-    Json { inner: JsonError },
+    Json {
+        inner: JsonError,
+    },
 
     #[cfg(feature = "rocksdb-datastore")]
     #[deprecated(since = "2.1.0", note = "use the Datastore variant instead")]
-    #[fail(display = "rocksdb error: {}", inner)]
-    Rocksdb { inner: RocksDbError },
+    Rocksdb {
+        inner: RocksDbError,
+    },
 
     #[cfg(feature = "sled-datastore")]
     #[deprecated(since = "2.1.0", note = "use the Datastore variant instead")]
-    #[fail(display = "sled error: {}", inner)]
-    Sled { inner: SledError },
+    Sled {
+        inner: SledError,
+    },
 
-    #[fail(display = "UUID already taken")]
     UuidTaken,
-    #[fail(display = "underlying datastore failure: {}", inner)]
-    Datastore { inner: Box<dyn StdError + Send + Sync> },
+    Datastore {
+        inner: Box<dyn StdError + Send>,
+    },
+}
+
+impl StdError for Error {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match *self {
+            Error::Json { ref inner } => Some(inner),
+            Error::Datastore { ref inner } => Some(&**inner),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Json { ref inner } => write!(f, "json error: {}", inner),
+            Error::UuidTaken => write!(f, "UUID already taken"),
+            Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
+            #[cfg(feature = "rocksdb-datastore")]
+            Error::Rocksdb { ref inner } => write!(f, "rocksdb error: {}", inner),
+            #[cfg(feature = "sled-datastore")]
+            Error::Sled { ref inner } => write!(f, "sled error: {}", inner),
+        }
+    }
 }
 
 impl From<JsonError> for Error {
@@ -72,14 +99,23 @@ impl From<TempFilePersistError> for Error {
 
 pub type Result<T> = StdResult<T, Error>;
 
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum ValidationError {
-    #[fail(display = "invalid value")]
     InvalidValue,
-    #[fail(display = "value too long")]
     ValueTooLong,
-    #[fail(display = "could not increment the UUID")]
     CannotIncrementUuid,
+}
+
+impl StdError for ValidationError {}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ValidationError::InvalidValue => write!(f, "invalid value"),
+            ValidationError::ValueTooLong => write!(f, "value too long"),
+            ValidationError::CannotIncrementUuid => write!(f, "could not increment the UUID"),
+        }
+    }
 }
 
 pub type ValidationResult<T> = StdResult<T, ValidationError>;

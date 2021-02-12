@@ -2,6 +2,8 @@
 //! native IndraDB models.
 
 use std::convert::TryInto;
+use std::error::Error as StdError;
+use std::fmt;
 
 use chrono::TimeZone;
 use chrono::{DateTime, Utc};
@@ -12,18 +14,36 @@ use uuid::Error as UuidError;
 use uuid::Uuid;
 
 /// The error returned if a try into operation fails.
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum ConversionError {
-    #[fail(display = "json error: {}", inner)]
     Json { inner: JsonError },
-    #[fail(display = "uuid error: {}", inner)]
     Uuid { inner: UuidError },
-    #[fail(display = "validation error: {}", inner)]
     Validation { inner: ValidationError },
-    #[fail(display = "proto field '{}' should not be none", name)]
     NoneField { name: String },
-    #[fail(display = "unexpected response type")]
     UnexpectedResponseType,
+}
+
+impl StdError for ConversionError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match *self {
+            ConversionError::Json { ref inner } => Some(inner),
+            ConversionError::Uuid { ref inner } => Some(inner),
+            ConversionError::Validation { ref inner } => Some(inner),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ConversionError::Json { ref inner } => write!(f, "json conversion failed: {}", inner),
+            ConversionError::Uuid { ref inner } => write!(f, "uuid conversion failed: {}", inner),
+            ConversionError::Validation { ref inner } => write!(f, "validation conversion failed: {}", inner),
+            ConversionError::NoneField { ref name } => write!(f, "proto field '{}' should not be none", name),
+            ConversionError::UnexpectedResponseType => write!(f, "unexpected response type"),
+        }
+    }
 }
 
 impl From<JsonError> for ConversionError {
