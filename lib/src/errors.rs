@@ -12,6 +12,7 @@ use sled::Error as SledError;
 use tempfile::PersistError as TempFilePersistError;
 
 /// An error triggered by the datastore
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
     /// Json (de-)serialization failed
