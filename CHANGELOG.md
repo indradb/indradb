@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 (2/13/2021)
+
+* A new client CLI, `indradb-client` (PR #157, #146, #163)
+* Serialization support for in-memory datastore (PR #170)
+* Tweaks to error types (PR #176, #174, #170)
+* Use `OsString` for paths (PR #170)
+* Docs cleanup (PR #175, #169)
+* Make proto client cloneable (PR #149)
+* Replaced `--port` with `--address` (PR #148)
+
 ## 2.0.0 (1/24/2021)
 
 * Switched the frontend from cap'n proto to gRPC (PR #142)
