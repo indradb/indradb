@@ -14,13 +14,16 @@ use tokio::time::sleep;
 use tonic::transport::Endpoint;
 use uuid::Uuid;
 
-pub struct ClientDatastore {
+struct ClientDatastore {
     client: Rc<RefCell<crate::Client>>,
     exec: Rc<RefCell<Runtime>>,
 }
 
+// the use of this function inside the full_test_impl macro appears to make
+// the linter think this is dead code, so ignore the warning for now
+#[allow(dead_code)]
 impl ClientDatastore {
-    pub fn new(port: u16, exec: Runtime) -> Self {
+    fn new(port: u16, exec: Runtime) -> Self {
         let endpoint: Endpoint = format!("http://127.0.0.1:{}", port).try_into().unwrap();
 
         for _ in 0..5 {
@@ -72,7 +75,7 @@ impl indradb::Datastore for ClientDatastore {
     }
 }
 
-pub struct ClientTransaction {
+struct ClientTransaction {
     trans: Rc<RefCell<crate::Transaction>>,
     exec: Rc<RefCell<Runtime>>,
 }

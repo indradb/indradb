@@ -62,14 +62,12 @@ pub trait Datastore {
     }
 }
 
-/// Specifies a transaction implementation, which are returned by datastores.
-/// All datastore manipulations are done through transactions. Despite the
-/// name, different datastore implementations carry different guarantees.
-/// Depending on the implementation, it may not be possible to rollback the
-/// changes on error. See the documentation of individual implementations for
-/// details. Transactions are automatically committed on drop. Transactions
-/// should be designed to not fail on commit; i.e. errors should occur when a
-/// method is actually called instead.
+/// Specifies a transaction implementation, which are provided by datastores.
+///
+/// All datastore manipulations are done through transactions. Datastore
+/// implementations carry different guarantees. Depending on the
+/// implementation, it may not be possible to rollback the changes on error.
+/// See the documentation of individual implementations for details.
 pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same UUID
@@ -143,7 +141,6 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
 
     /// Gets all vertex properties.
@@ -156,7 +153,6 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     /// * `value`: The property value.
     fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<()>;
 
@@ -164,14 +160,12 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<()>;
 
     /// Gets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
 
     /// Gets all edge properties.
@@ -184,7 +178,6 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     /// * `value`: The property value.
     fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<()>;
 
@@ -192,6 +185,5 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    /// * `name`: The property name.
     fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
 }

@@ -12,7 +12,7 @@ lazy_static! {
     static ref CONTEXT: Context = Context::new(0);
 }
 
-/// Generates a UUID v1. this utility method uses a shared context and node ID
+/// Generates a UUID v1. This utility method uses a shared context and node ID
 /// to help ensure generated UUIDs are unique.
 pub fn generate_uuid_v1() -> Uuid {
     let now = Utc::now();

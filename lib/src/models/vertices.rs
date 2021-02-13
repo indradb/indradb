@@ -18,9 +18,9 @@ pub struct Vertex {
 
 impl Vertex {
     /// Creates a new vertex with an ID generated via UUIDv1. These vertex IDs
-    /// are trivially guessable and consequently less secure, but likely index
-    /// better depending on the datastore. This method is suggested unless you
-    /// need vertex IDs to not be trivially guessable.
+    /// are trivially guessable and consequently less secure, but index
+    /// better. This method is suggested unless you need vertex IDs to not be
+    /// trivially guessable.
     ///
     /// # Arguments
     ///

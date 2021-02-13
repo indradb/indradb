@@ -1,15 +1,12 @@
-//! `IndraDB`: a graph datastore.
+//! IndraDB: a graph datastore.
 //!
-//! `IndraDB` is broken up into a library and an application. This is the
+//! IndraDB is broken up into a library and an application. This is the
 //! library, which you would use if you want to create new datastore
-//! implementations, or plug into the low-level details of `IndraDB`. For most
+//! implementations, or plug into the low-level details of IndraDB. For most
 //! use cases, you can use the application, which exposes an API and scripting
 //! layer.
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
-// Unfortunately needed for some deprecated variants in errors.rs.
-// TODO: remove this as soon as the deprecated fields are removed.
-#![allow(deprecated)]
 
 #[cfg(feature = "bench-suite")]
 extern crate test;
