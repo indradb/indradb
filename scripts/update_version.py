@@ -48,10 +48,7 @@ def main():
     update_version("server/Cargo.toml", new_version)
     update_version("client/Cargo.toml", new_version)
 
-    run(["cargo", "check"], cwd="lib/fuzz")
-    run(["cargo", "fmt", "--", "--check"])
-    run(["cargo", "clippy"])
-    run(["make", "test", "bench"])
+    run(["make", "check", "test"])
 
     # a github action will pickup this tag push and create a release
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
