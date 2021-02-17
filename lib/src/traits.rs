@@ -60,6 +60,20 @@ pub trait Datastore {
 
         Ok(())
     }
+
+    // Enables indexing on a specified vertex property. When indexing is
+    // enabled, queries on properties are faster.
+    //
+    // # Arguments
+    // * `name`: The name of the property to index.
+    fn index_vertex_property<name: Into<String>>(&mut self, name: S) -> Result<()>;
+
+    // Enables indexing on a specified edge property. When indexing is
+    // enabled, queries on properties are faster.
+    //
+    // # Arguments
+    // * `name`: The name of the property to index.
+    fn index_edge_property<name: Into<String>>(&mut self, name: S) -> Result<()>;
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.
