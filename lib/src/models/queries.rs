@@ -10,39 +10,6 @@ use chrono::DateTime;
 use uuid::Uuid;
 use serde_json::Value as JsonValue;
 
-macro_rules! property_name_query_type {
-    ($name:ident, $inner:ty) => {
-        #[derive(Eq, PartialEq, Clone, Debug)]
-        pub struct $name {
-            pub inner: Box<$inner>,
-            pub name: String
-        }
-
-        impl $name {
-            pub fn new<S: Into<String>>(inner: Box<$inner>, name: S) -> Self {
-                Self { inner, name: name.into() }
-            }
-        }
-    };
-}
-
-macro_rules! property_value_query_type {
-    ($name:ident, $inner:ty) => {
-        #[derive(Eq, PartialEq, Clone, Debug)]
-        pub struct $name {
-            pub inner: Box<$inner>,
-            pub name: String,
-            pub value: JsonValue
-        }
-
-        impl $name {
-            pub fn new<S: Into<String>>(inner: Box<$inner>, name: S, value: JsonValue) -> Self {
-                Self { inner, name: name.into(), value }
-            }
-        }
-    };
-}
-
 macro_rules! vertex_query_type {
     ($name:ident, $variant:ident) => {
         impl VertexQueryExt for $name {}
@@ -112,14 +79,12 @@ pub enum VertexQuery {
     Range(RangeVertexQuery),
     Specific(SpecificVertexQuery),
     Pipe(PipeVertexQuery),
-    WithProperty(WithPropertyVertexQuery),
-    WithoutProperty(WithoutPropertyVertexQuery),
-    WithPropertyEqualTo(WithPropertyEqualToVertexQuery),
-    WithPropertyNotEqualTo(WithPropertyNotEqualToVertexQuery),
-    WithPropertyLessThan(WithPropertyLessThanVertexQuery),
-    WithPropertyLessThanOrEqualTo(WithPropertyLessThanOrEqualToVertexQuery),
-    WithPropertyGreaterThan(WithPropertyGreaterThanVertexQuery),
-    WithPropertyGreaterThanOrEqualTo(WithPropertyGreaterThanOrEqualToVertexQuery),
+
+    PropertyPresence(PropertyPresenceVertexQuery),
+    PropertyValue(PropertyValueVertexQuery),
+
+    PipePropertyPresence(PipePropertyPresenceVertexQuery),
+    PipePropertyValue(PipePropertyValueVertexQuery),
 }
 
 /// Extension trait with methods available in all vertex queries.
@@ -142,62 +107,82 @@ pub trait VertexQueryExt: Into<VertexQuery> {
         VertexPropertyQuery::new(self.into(), name)
     }
 
-    fn with_property<S: Into<String>>(self, name: S) -> WithPropertyVertexQuery {
-        WithPropertyVertexQuery::new(Box::new(self.into()), name)
+    fn with_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceVertexQuery {
+        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, true)
     }
 
-    fn without_property<S: Into<String>>(self, name: S) -> WithoutPropertyVertexQuery {
-        WithoutPropertyVertexQuery::new(Box::new(self.into()), name)
+    fn without_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceVertexQuery {
+        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, false)
     }
 
-    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyEqualToVertexQuery {
-        WithPropertyEqualToVertexQuery::new(Box::new(self.into()), name, value)
+    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueVertexQuery {
+        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyNotEqualToVertexQuery {
-        WithPropertyNotEqualToVertexQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_less_than<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyLessThanVertexQuery {
-        WithPropertyLessThanVertexQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_less_than_or_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyLessThanOrEqualToVertexQuery {
-        WithPropertyLessThanOrEqualToVertexQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_greater_than<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyGreaterThanVertexQuery {
-        WithPropertyGreaterThanVertexQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_greater_than_or_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyGreaterThanOrEqualToVertexQuery {
-        WithPropertyGreaterThanOrEqualToVertexQuery::new(Box::new(self.into()), name, value)
+    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueVertexQuery {
+        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, false)
     }
 }
 
-property_name_query_type!(WithPropertyVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyVertexQuery, WithProperty);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceVertexQuery {
+    pub name: String,
+    pub exists: bool
+}
 
-property_name_query_type!(WithoutPropertyVertexQuery, VertexQuery);
-vertex_query_type!(WithoutPropertyVertexQuery, WithoutProperty);
+vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
 
-property_value_query_type!(WithPropertyEqualToVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyEqualToVertexQuery, WithPropertyEqualTo);
+impl PropertyPresenceVertexQuery {
+    pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
+        Self { name: name.into(), exists }
+    }
+}
 
-property_value_query_type!(WithPropertyNotEqualToVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyNotEqualToVertexQuery, WithPropertyNotEqualTo);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyValueVertexQuery {
+    pub name: String,
+    pub value: JsonValue,
+    pub equal: bool
+}
 
-property_value_query_type!(WithPropertyLessThanVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyLessThanVertexQuery, WithPropertyLessThan);
+vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
 
-property_value_query_type!(WithPropertyLessThanOrEqualToVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyLessThanOrEqualToVertexQuery, WithPropertyLessThanOrEqualTo);
+impl PropertyValueVertexQuery {
+    pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
+        Self { name: name.into(), value, equal }
+    }
+}
 
-property_value_query_type!(WithPropertyGreaterThanVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyGreaterThanVertexQuery, WithPropertyGreaterThan);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceVertexQuery {
+    pub inner: Box<VertexQuery>,
+    pub name: String,
+    pub exists: bool
+}
 
-property_value_query_type!(WithPropertyGreaterThanOrEqualToVertexQuery, VertexQuery);
-vertex_query_type!(WithPropertyGreaterThanOrEqualToVertexQuery, WithPropertyGreaterThanOrEqualTo);
+vertex_query_type!(PipePropertyPresenceVertexQuery, PipePropertyPresence);
+
+impl PipePropertyPresenceVertexQuery {
+    pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, exists: bool) -> Self {
+        Self { inner, name: name.into(), exists }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueVertexQuery {
+    pub inner: Box<VertexQuery>,
+    pub name: String,
+    pub value: JsonValue,
+    pub equal: bool
+}
+
+vertex_query_type!(PipePropertyValueVertexQuery, PipePropertyValue);
+
+impl PipePropertyValueVertexQuery {
+    pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, value: JsonValue, equal: bool) -> Self {
+        Self { inner, name: name.into(), value, equal }
+    }
+}
 
 /// Gets a range of vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -392,14 +377,12 @@ impl VertexPropertyQuery {
 pub enum EdgeQuery {
     Specific(SpecificEdgeQuery),
     Pipe(PipeEdgeQuery),
-    WithProperty(WithPropertyEdgeQuery),
-    WithoutProperty(WithoutPropertyEdgeQuery),
-    WithPropertyEqualTo(WithPropertyEqualToEdgeQuery),
-    WithPropertyNotEqualTo(WithPropertyNotEqualToEdgeQuery),
-    WithPropertyLessThan(WithPropertyLessThanEdgeQuery),
-    WithPropertyLessThanOrEqualTo(WithPropertyLessThanOrEqualToEdgeQuery),
-    WithPropertyGreaterThan(WithPropertyGreaterThanEdgeQuery),
-    WithPropertyGreaterThanOrEqualTo(WithPropertyGreaterThanOrEqualToEdgeQuery),
+
+    PropertyPresence(PropertyPresenceEdgeQuery),
+    PropertyValue(PropertyValueEdgeQuery),
+
+    PipePropertyPresence(PipePropertyPresenceEdgeQuery),
+    PipePropertyValue(PipePropertyValueEdgeQuery),
 }
 
 /// Extension trait that specifies methods exposed by all edge queries.
@@ -422,62 +405,82 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
         EdgePropertyQuery::new(self.into(), name)
     }
 
-    fn with_property<S: Into<String>>(self, name: S) -> WithPropertyEdgeQuery {
-        WithPropertyEdgeQuery::new(Box::new(self.into()), name)
+    fn with_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceEdgeQuery {
+        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, true)
     }
 
-    fn without_property<S: Into<String>>(self, name: S) -> WithoutPropertyEdgeQuery {
-        WithoutPropertyEdgeQuery::new(Box::new(self.into()), name)
+    fn without_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceEdgeQuery {
+        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, false)
     }
 
-    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyEqualToEdgeQuery {
-        WithPropertyEqualToEdgeQuery::new(Box::new(self.into()), name, value)
+    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueEdgeQuery {
+        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyNotEqualToEdgeQuery {
-        WithPropertyNotEqualToEdgeQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_less_than<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyLessThanEdgeQuery {
-        WithPropertyLessThanEdgeQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_less_than_or_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyLessThanOrEqualToEdgeQuery {
-        WithPropertyLessThanOrEqualToEdgeQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_greater_than<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyGreaterThanEdgeQuery {
-        WithPropertyGreaterThanEdgeQuery::new(Box::new(self.into()), name, value)
-    }
-
-    fn with_property_greater_than_or_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> WithPropertyGreaterThanOrEqualToEdgeQuery {
-        WithPropertyGreaterThanOrEqualToEdgeQuery::new(Box::new(self.into()), name, value)
+    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueEdgeQuery {
+        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, false)
     }
 }
 
-property_name_query_type!(WithPropertyEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyEdgeQuery, WithProperty);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceEdgeQuery {
+    pub name: String,
+    pub exists: bool
+}
 
-property_name_query_type!(WithoutPropertyEdgeQuery, EdgeQuery);
-edge_query_type!(WithoutPropertyEdgeQuery, WithoutProperty);
+edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
 
-property_value_query_type!(WithPropertyEqualToEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyEqualToEdgeQuery, WithPropertyEqualTo);
+impl PropertyPresenceEdgeQuery {
+    pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
+        Self { name: name.into(), exists }
+    }
+}
 
-property_value_query_type!(WithPropertyNotEqualToEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyNotEqualToEdgeQuery, WithPropertyNotEqualTo);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyValueEdgeQuery {
+    pub name: String,
+    pub value: JsonValue,
+    pub equal: bool
+}
 
-property_value_query_type!(WithPropertyLessThanEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyLessThanEdgeQuery, WithPropertyLessThan);
+edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
 
-property_value_query_type!(WithPropertyLessThanOrEqualToEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyLessThanOrEqualToEdgeQuery, WithPropertyLessThanOrEqualTo);
+impl PropertyValueEdgeQuery {
+    pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
+        Self { name: name.into(), value, equal }
+    }
+}
 
-property_value_query_type!(WithPropertyGreaterThanEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyGreaterThanEdgeQuery, WithPropertyGreaterThan);
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceEdgeQuery {
+    pub inner: Box<EdgeQuery>,
+    pub name: String,
+    pub exists: bool
+}
 
-property_value_query_type!(WithPropertyGreaterThanOrEqualToEdgeQuery, EdgeQuery);
-edge_query_type!(WithPropertyGreaterThanOrEqualToEdgeQuery, WithPropertyGreaterThanOrEqualTo);
+edge_query_type!(PipePropertyPresenceEdgeQuery, PipePropertyPresence);
+
+impl PipePropertyPresenceEdgeQuery {
+    pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, exists: bool) -> Self {
+        Self { inner, name: name.into(), exists }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueEdgeQuery {
+    pub inner: Box<EdgeQuery>,
+    pub name: String,
+    pub value: JsonValue,
+    pub equal: bool
+}
+
+edge_query_type!(PipePropertyValueEdgeQuery, PipePropertyValue);
+
+impl PipePropertyValueEdgeQuery {
+    pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, value: JsonValue, equal: bool) -> Self {
+        Self { inner, name: name.into(), value, equal }
+    }
+}
 
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
