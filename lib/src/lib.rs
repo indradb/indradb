@@ -23,6 +23,7 @@ mod errors;
 mod memory;
 mod models;
 mod traits;
+pub(crate) mod tree;
 pub mod util;
 
 pub use crate::errors::*;
