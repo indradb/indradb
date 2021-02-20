@@ -68,12 +68,12 @@ impl<'a> tree::VertexManager for VertexManager<'a> {
         }
     }
 
-    fn iterate_for_range(&'a self, id: Uuid) -> Box<dyn Iterator<Item = Result<tree::VertexItem>> + 'a> {
+    fn iterate_for_range(&'a self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<tree::VertexItem>> + 'a>> {
         let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
-        Box::new(self.iterate(iter))
+        Ok(Box::new(self.iterate(iter)))
     }
 
     fn create(&self, batch: &mut rocksdb::WriteBatch, vertex: &models::Vertex) -> Result<()> {
@@ -250,12 +250,12 @@ impl<'a> tree::EdgeRangeManager for EdgeRangeManager<'a> {
         }
     }
 
-    fn iterate_for_owner(&'a self, id: Uuid) -> Box<dyn Iterator<Item = Result<tree::EdgeRangeItem>> + 'a> {
+    fn iterate_for_owner(&'a self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<tree::EdgeRangeItem>> + 'a>> {
         let prefix = build(&[Component::Uuid(id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-        Box::new(self.iterate(iterator, prefix))
+        Ok(Box::new(self.iterate(iterator, prefix)))
     }
 
     fn set(
@@ -312,7 +312,7 @@ impl<'a> tree::VertexPropertyManager for VertexPropertyManager<'a> {
     fn iterate_for_owner(
         &'a self,
         vertex_id: Uuid,
-    ) -> Result<Box<Iterator<Item = Result<tree::OwnedPropertyItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<tree::OwnedPropertyItem>> + 'a>> {
         let prefix = build(&[Component::Uuid(vertex_id)]);
 
         let iterator = self
