@@ -51,7 +51,7 @@ impl<'a> VertexManager<'a> {
     }
 }
 
-impl<'a> tree::VertexManager for VertexManager<'a> {
+impl<'a> tree::VertexManager<'a> for VertexManager<'a> {
     type WriteBatch = rocksdb::WriteBatch;
 
     fn exists(&self, id: Uuid) -> Result<bool> {
@@ -110,7 +110,7 @@ impl<'a> EdgeManager<'a> {
     }
 }
 
-impl<'a> tree::EdgeManager for EdgeManager<'a> {
+impl<'a> tree::EdgeManager<'a> for EdgeManager<'a> {
     type WriteBatch = rocksdb::WriteBatch;
     
     fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
@@ -204,7 +204,7 @@ impl<'a> EdgeRangeManager<'a> {
     }
 }
 
-impl<'a> tree::EdgeRangeManager for EdgeRangeManager<'a> {
+impl<'a> tree::EdgeRangeManager<'a> for EdgeRangeManager<'a> {
     type WriteBatch = rocksdb::WriteBatch;
 
     fn iterate_for_range(
@@ -306,7 +306,7 @@ impl<'a> VertexPropertyManager<'a> {
     }
 }
 
-impl<'a> tree::VertexPropertyManager for VertexPropertyManager<'a> {
+impl<'a> tree::VertexPropertyManager<'a> for VertexPropertyManager<'a> {
     type WriteBatch = rocksdb::WriteBatch;
 
     fn iterate_for_owner(
@@ -384,7 +384,7 @@ impl<'a> EdgePropertyManager<'a> {
     }
 }
 
-impl<'a> tree::EdgePropertyManager for EdgePropertyManager<'a> {
+impl<'a> tree::EdgePropertyManager<'a> for EdgePropertyManager<'a> {
     type WriteBatch = rocksdb::WriteBatch;
 
     fn iterate_for_owner(

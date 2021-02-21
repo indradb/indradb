@@ -2,20 +2,17 @@ use std::i32;
 use std::path::Path;
 use std::sync::Arc;
 use std::u64;
-use std::usize;
 
 use super::managers;
 use crate::errors::Result;
-use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    EdgeQuery, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
     VertexQuery,
 };
 use crate::tree;
 use crate::tree::TreeLikeDatastore;
 
-use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
@@ -60,32 +57,32 @@ struct InternalRocksdbDatastore {
     db: Arc<DB>,
 }
 
-impl TreeLikeDatastore for InternalRocksdbDatastore {
-    type VertexManager = managers::VertexManager;
-    fn vertex_manager(&self) -> Self::VertexManager {
+impl<'a> TreeLikeDatastore<'a> for InternalRocksdbDatastore {
+    type VertexManager = managers::VertexManager<'a>;
+    fn vertex_manager(&'a self) -> Self::VertexManager {
         managers::VertexManager::new(&self.db)
     }
 
-    type EdgeManager = managers::EdgeManager;
-    fn edge_manager(&self) -> Self::EdgeManager {
+    type EdgeManager = managers::EdgeManager<'a>;
+    fn edge_manager(&'a self) -> Self::EdgeManager {
         managers::EdgeManager::new(&self.db)
     }
 
-    type EdgeRangeManager = managers::EdgeRangeManager;
-    fn edge_range_manager(&self) -> Self::EdgeRangeManager {
+    type EdgeRangeManager = managers::EdgeRangeManager<'a>;
+    fn edge_range_manager(&'a self) -> Self::EdgeRangeManager {
         managers::EdgeRangeManager::new(&self.db)
     }
-    fn reversed_edge_range_manager(&self) -> Self::EdgeRangeManager {
+    fn reversed_edge_range_manager(&'a self) -> Self::EdgeRangeManager {
         managers::EdgeRangeManager::new_reversed(&self.db)
     }
 
-    type VertexPropertyManager = managers::VertexPropertyManager;
-    fn vertex_property_manager(&self) -> Self::VertexPropertyManager {
+    type VertexPropertyManager = managers::VertexPropertyManager<'a>;
+    fn vertex_property_manager(&'a self) -> Self::VertexPropertyManager {
         managers::VertexPropertyManager::new(&self.db)
     }
 
-    type EdgePropertyManager = managers::EdgePropertyManager;
-    fn edge_property_manager(&self) -> Self::EdgePropertyManager {
+    type EdgePropertyManager = managers::EdgePropertyManager<'a>;
+    fn edge_property_manager(&'a self) -> Self::EdgePropertyManager {
         managers::EdgePropertyManager::new(&self.db)
     }
 

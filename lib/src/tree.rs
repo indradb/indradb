@@ -21,16 +21,16 @@ pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
 
 pub trait WriteBatch {}
 
-pub trait VertexManager {
+pub trait VertexManager<'a> {
     type WriteBatch: WriteBatch;
     fn exists(&self, id: Uuid) -> Result<bool>;
     fn get(&self, id: Uuid) -> Result<Option<models::Type>>;
-    fn iterate_for_range(&self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<VertexItem>>>>;
+    fn iterate_for_range(&'a self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<VertexItem>> + 'a>>;
     fn create(&self, batch: &mut Self::WriteBatch, vertex: &models::Vertex) -> Result<()>;
     fn delete(&self, batch: &mut Self::WriteBatch, id: Uuid) -> Result<()>;
 }
 
-pub trait EdgeManager {
+pub trait EdgeManager<'a> {
     type WriteBatch: WriteBatch;
 
     fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<Option<DateTime<Utc>>>;
@@ -54,17 +54,17 @@ pub trait EdgeManager {
     ) -> Result<()>;
 }
 
-pub trait EdgeRangeManager {
+pub trait EdgeRangeManager<'a> {
     type WriteBatch: WriteBatch;
 
     fn iterate_for_range(
-        &self,
+        &'a self,
         id: Uuid,
         t: Option<&models::Type>,
         high: Option<DateTime<Utc>>,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>>;
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>>;
 
-    fn iterate_for_owner(&self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>>>>;
+    fn iterate_for_owner(&'a self, id: Uuid) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>>;
 
     fn set(
         &self,
@@ -85,10 +85,10 @@ pub trait EdgeRangeManager {
     ) -> Result<()>;
 }
 
-pub trait VertexPropertyManager {
+pub trait VertexPropertyManager<'a> {
     type WriteBatch: WriteBatch;
 
-    fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<Box<dyn Iterator<Item = Result<OwnedPropertyItem>>>>;
+    fn iterate_for_owner(&'a self, vertex_id: Uuid) -> Result<Box<dyn Iterator<Item = Result<OwnedPropertyItem>> + 'a>>;
 
     fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>>;
 
@@ -97,15 +97,15 @@ pub trait VertexPropertyManager {
     fn delete(&self, batch: &mut Self::WriteBatch, vertex_id: Uuid, name: &str) -> Result<()>;
 }
 
-pub trait EdgePropertyManager {
+pub trait EdgePropertyManager<'a> {
     type WriteBatch: WriteBatch;
 
     fn iterate_for_owner(
-        &self,
+        &'a self,
         out_id: Uuid,
-        t: &models::Type,
+        t: &'a models::Type,
         in_id: Uuid,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>>>>;
+    ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>>;
 
     fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<JsonValue>>;
 
@@ -130,28 +130,28 @@ pub trait EdgePropertyManager {
 }
 
 // TODO: better name
-pub trait TreeLikeDatastore {
-    type VertexManager: VertexManager<WriteBatch=Self::WriteBatch>;
-    fn vertex_manager(&self) -> Self::VertexManager;
+pub trait TreeLikeDatastore<'a> {
+    type VertexManager: VertexManager<'a, WriteBatch=Self::WriteBatch>;
+    fn vertex_manager(&'a self) -> Self::VertexManager;
 
-    type EdgeManager: EdgeManager<WriteBatch=Self::WriteBatch>;
-    fn edge_manager(&self) -> Self::EdgeManager;
+    type EdgeManager: EdgeManager<'a, WriteBatch=Self::WriteBatch>;
+    fn edge_manager(&'a self) -> Self::EdgeManager;
 
-    type EdgeRangeManager: EdgeRangeManager<WriteBatch=Self::WriteBatch>;
-    fn edge_range_manager(&self) -> Self::EdgeRangeManager;
-    fn reversed_edge_range_manager(&self) -> Self::EdgeRangeManager;
+    type EdgeRangeManager: EdgeRangeManager<'a, WriteBatch=Self::WriteBatch>;
+    fn edge_range_manager(&'a self) -> Self::EdgeRangeManager;
+    fn reversed_edge_range_manager(&'a self) -> Self::EdgeRangeManager;
 
-    type VertexPropertyManager: VertexPropertyManager<WriteBatch=Self::WriteBatch>;
-    fn vertex_property_manager(&self) -> Self::VertexPropertyManager;
+    type VertexPropertyManager: VertexPropertyManager<'a, WriteBatch=Self::WriteBatch>;
+    fn vertex_property_manager(&'a self) -> Self::VertexPropertyManager;
 
-    type EdgePropertyManager: EdgePropertyManager<WriteBatch=Self::WriteBatch>;
-    fn edge_property_manager(&self) -> Self::EdgePropertyManager;
+    type EdgePropertyManager: EdgePropertyManager<'a, WriteBatch=Self::WriteBatch>;
+    fn edge_property_manager(&'a self) -> Self::EdgePropertyManager;
 
     type WriteBatch: WriteBatch;
-    fn write_batch(&self) -> Self::WriteBatch;
-    fn write(&self, batch: Self::WriteBatch) -> Result<()>;
+    fn write_batch(&'a self) -> Self::WriteBatch;
+    fn write(&'a self, batch: Self::WriteBatch) -> Result<()>;
 
-    fn execute_vertex_query(&self, q: models::VertexQuery) -> Result<Vec<VertexItem>> {
+    fn execute_vertex_query(&'a self, q: models::VertexQuery) -> Result<Vec<VertexItem>> {
         match q {
             models::VertexQuery::Range(q) => {
                 let vertex_manager = self.vertex_manager();
@@ -172,7 +172,7 @@ pub trait TreeLikeDatastore {
                 };
 
                 let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                    vertex_manager.iterate_for_range(next_uuid)?;
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -239,7 +239,7 @@ pub trait TreeLikeDatastore {
         }
     }
 
-    fn execute_edge_query(&self, q: models::EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
+    fn execute_edge_query(&'a self, q: models::EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
         match q {
             models::EdgeQuery::Specific(q) => {
                 let edge_manager = self.edge_manager();
@@ -315,7 +315,7 @@ pub trait TreeLikeDatastore {
         }
     }
 
-    fn bulk_insert<I>(&self, items: I) -> Result<Self::WriteBatch>
+    fn bulk_insert<I>(&'a self, items: I) -> Result<Self::WriteBatch>
     where
         I: Iterator<Item = models::BulkInsertItem>,
     {
@@ -354,7 +354,7 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn create_vertex(&self, vertex: &models::Vertex) -> Result<Option<Self::WriteBatch>> {
+    fn create_vertex(&'a self, vertex: &models::Vertex) -> Result<Option<Self::WriteBatch>> {
         let vertex_manager = self.vertex_manager();
 
         if vertex_manager.exists(vertex.id)? {
@@ -366,7 +366,7 @@ pub trait TreeLikeDatastore {
         }
     }
 
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>> {
+    fn get_vertices<Q: Into<models::VertexQuery>>(&'a self, q: Q) -> Result<Vec<models::Vertex>> {
         let iter = self.execute_vertex_query(q.into())?.into_iter();
 
         let iter = iter.map(move |(id, t)| {
@@ -378,7 +378,7 @@ pub trait TreeLikeDatastore {
     }
 
     // TODO: delete propagation needs to be reworked
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Self::WriteBatch> {
+    fn delete_vertices<Q: Into<models::VertexQuery>>(&'a self, q: Q) -> Result<Self::WriteBatch> {
         let iter = self.execute_vertex_query(q.into())?.into_iter();
         let vertex_manager = self.vertex_manager();
         let vertex_property_manager = self.vertex_property_manager();
@@ -428,13 +428,13 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn get_vertex_count(&self) -> Result<u64> {
+    fn get_vertex_count(&'a self) -> Result<u64> {
         let vertex_manager = self.vertex_manager();
         let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
         Ok(iterator.count() as u64)
     }
 
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<Option<Self::WriteBatch>> {
+    fn create_edge(&'a self, key: &models::EdgeKey) -> Result<Option<Self::WriteBatch>> {
         let vertex_manager = self.vertex_manager();
 
         if !vertex_manager.exists(key.outbound_id)? || !vertex_manager.exists(key.inbound_id)? {
@@ -456,7 +456,7 @@ pub trait TreeLikeDatastore {
         }
     }
 
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>> {
+    fn get_edges<Q: Into<models::EdgeQuery>>(&'a self, q: Q) -> Result<Vec<models::Edge>> {
         let iter = self.execute_edge_query(q.into())?.into_iter();
 
         let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
@@ -468,7 +468,7 @@ pub trait TreeLikeDatastore {
         iter.collect()
     }
 
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Self::WriteBatch> {
+    fn delete_edges<Q: Into<models::EdgeQuery>>(&'a self, q: Q) -> Result<Self::WriteBatch> {
         let edge_manager = self.edge_manager();
         let edge_range_manager = self.edge_range_manager();
         let reversed_edge_range_manager = self.reversed_edge_range_manager();
@@ -500,7 +500,7 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&'a self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64> {
         let edge_range_manager = match direction {
             models::EdgeDirection::Outbound => self.edge_range_manager(),
             models::EdgeDirection::Inbound => self.reversed_edge_range_manager(),
@@ -511,7 +511,7 @@ pub trait TreeLikeDatastore {
         Ok(count as u64)
     }
 
-    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
+    fn get_vertex_properties(&'a self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>> {
         let manager = self.vertex_property_manager();
         let mut properties = Vec::new();
 
@@ -526,15 +526,14 @@ pub trait TreeLikeDatastore {
         Ok(properties)
     }
 
-    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>> {
+    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&'a self, q: Q) -> Result<Vec<models::VertexProperties>> {
         let iter = self.execute_vertex_query(q.into())?.into_iter();
         let manager = self.vertex_property_manager();
 
         let iter = iter.map(move |(id, t)| {
             let vertex = models::Vertex::with_id(id, t);
 
-            let it = manager.iterate_for_owner(id)?;
-            let props: Result<Vec<_>> = it.collect();
+            let props: Result<Vec<_>> = manager.iterate_for_owner(id)?.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
                 .map(|((_, name), value)| models::NamedProperty::new(name, value))
@@ -546,7 +545,7 @@ pub trait TreeLikeDatastore {
         iter.collect()
     }
 
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<Self::WriteBatch> {
+    fn set_vertex_properties(&'a self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<Self::WriteBatch> {
         let manager = self.vertex_property_manager();
         let mut batch = self.write_batch();
 
@@ -557,7 +556,7 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Self::WriteBatch> {
+    fn delete_vertex_properties(&'a self, q: models::VertexPropertyQuery) -> Result<Self::WriteBatch> {
         let manager = self.vertex_property_manager();
         let mut batch = self.write_batch();
 
@@ -568,7 +567,7 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
+    fn get_edge_properties(&'a self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
         let manager = self.edge_property_manager();
         let mut properties = Vec::new();
 
@@ -584,7 +583,7 @@ pub trait TreeLikeDatastore {
         Ok(properties)
     }
 
-    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
+    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&'a self, q: Q) -> Result<Vec<models::EdgeProperties>> {
         let iter = self.execute_edge_query(q.into())?.into_iter();
         let manager = self.edge_property_manager();
 
@@ -603,7 +602,7 @@ pub trait TreeLikeDatastore {
         iter.collect()
     }
 
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<Self::WriteBatch> {
+    fn set_edge_properties(&'a self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<Self::WriteBatch> {
         let manager = self.edge_property_manager();
         let mut batch = self.write_batch();
 
@@ -614,7 +613,7 @@ pub trait TreeLikeDatastore {
         Ok(batch)
     }
 
-    fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Self::WriteBatch> {
+    fn delete_edge_properties(&'a self, q: models::EdgePropertyQuery) -> Result<Self::WriteBatch> {
         let manager = self.edge_property_manager();
         let mut batch = self.write_batch();
 
