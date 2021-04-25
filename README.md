@@ -98,18 +98,13 @@ docker network create indradb-network
 
 3.Run the server container 
 ```
-docker run --name=indradb-server -v {Project root}:/usr/app/src --expose {Port for the server} --network indradb-network -it indrdb /bin/bash
+docker run --name=indradb-server --expose {Port for the server} -it --rm --network indradb-network indradb
+./indradb-server -a 0.0.0.0:{Port for the server}
 ```
-When running the server in the container 
-```
-cargo run --bin indradb-server -- --address 0.0.0.0:{Port number}
-```
+
 
 4.Run the client container
 ```
-docker run --name=indradb-client -v {Project root}:/usr/app/src -it  --network indradb-network indradb /bin/bash
-```
-When testing the connection
-```
-cargo run --bin indradb-client -- grpc://indradb-server:{Port number} ping
+docker run --name=indradb-client -it --rm  --network indradb-network indradb
+./indradb-client grpc://indradb-server:{Port for the sever} ping
 ```
