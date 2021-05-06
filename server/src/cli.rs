@@ -9,13 +9,14 @@ pub struct CliArgs {
 
 pub enum CliDatastoreArgs {
     Memory { path: Option<OsString> },
-    Rocksdb { path: OsString, max_open_files: i32 },
+    Rocksdb { path: OsString, max_open_files: i32, repair: bool },
     Sled { path: OsString, sled_config: SledConfig },
 }
 
 const ADDRESS: &str = "ADDRESS";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
+const ROCKSDB_REPAIR: &str = "ROCKSDB_REPAIR";
 const SLED_COMPRESSION: &str = "SLED_COMPRESSION";
 const MEMORY_PERSIST_PATH: &str = "MEMORY_PERSIST_PATH";
 
@@ -53,6 +54,13 @@ pub fn parse_cli_args() -> CliArgs {
                 .help("Sets the number of maximum open files to have open in RocksDB.")
                 .takes_value(true)
                 .default_value("512"),
+        )
+        .arg(
+            Arg::with_name(ROCKSDB_REPAIR)
+                .long("repair")
+                .short("r")
+                .help("Repair the database at the given path rather than staring a server")
+                .takes_value(false)
         );
 
     let sled_subcommand = SubCommand::with_name("sled")
@@ -86,6 +94,7 @@ pub fn parse_cli_args() -> CliArgs {
             CliDatastoreArgs::Rocksdb {
                 path: matches.value_of_os(DATABASE_PATH).unwrap().to_os_string(),
                 max_open_files: value_t!(matches, ROCKSDB_MAX_OPEN_FILES, i32).unwrap_or_else(|e| e.exit()),
+                repair: matches.is_present("ROCKSDB_REPAIR")
             }
         } else if let Some(matches) = matches.subcommand_matches("sled") {
             let sled_compression = matches.value_of(SLED_COMPRESSION).unwrap();
