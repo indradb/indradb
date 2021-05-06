@@ -86,25 +86,26 @@ You can filter which tests run via the `TEST_NAME` environment variable. e.g. `T
 
 Dockerfile is provided to run the server and client CLIs in docker environments. Follow the instruction below when using docker.
 
-1.Build the image for the client and the server (Both of them shere the image)
-```bash
-docker build . -t indradb
+### Server 
+
+1.Build the image for the server
+```
+docker build -t indradb-server -f Dockerfile.server .
 ```
 
-2.Create the network for the client and the server to connect
+2.Run the srver container
 ```
-docker network create indradb-network
-```
-
-3.Run the server container 
-```
-docker run --name=indradb-server --expose {Port for the server} -it --rm --network indradb-network indradb
-./indradb-server -a 0.0.0.0:{Port for the server}
+docker run --name indradb-server --network indradb-network --rm indradb-server -a 0.0.0.0:27615
 ```
 
+### Client
 
-4.Run the client container
+1.Build the image for the client
 ```
-docker run --name=indradb-client -it --rm  --network indradb-network indradb
-./indradb-client grpc://indradb-server:{Port for the sever} ping
+docker build -t indradb-client -f Dockerfile.client .
+```
+
+2.Run the client container
+```
+docker run --rm indradb-client grpc://indradb-server:27615 ping
 ```
