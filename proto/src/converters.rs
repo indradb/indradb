@@ -338,9 +338,9 @@ impl From<indradb::EdgeDirection> for crate::EdgeDirection {
     }
 }
 
-impl Into<indradb::EdgeDirection> for crate::EdgeDirection {
-    fn into(self) -> indradb::EdgeDirection {
-        match self {
+impl From<crate::EdgeDirection> for indradb::EdgeDirection {
+    fn from(direction: crate::EdgeDirection) -> Self {
+        match direction {
             crate::EdgeDirection::Outbound => indradb::EdgeDirection::Outbound,
             crate::EdgeDirection::Inbound => indradb::EdgeDirection::Inbound,
         }
