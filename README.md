@@ -90,22 +90,22 @@ Dockerfile is provided to run the server and client CLIs in docker environments.
 
 1.Build the image for the server
 ```
-docker build -t indradb-server -f Dockerfile.server .
+DOCKER_BUILDKIT=1 docker build --target server -t indradb-server .
 ```
 
 2.Run the srver container
 ```
-docker run --name indradb-server --network indradb-network --rm indradb-server -a 0.0.0.0:27615
+docker run --network host --rm indradb-server -a 0.0.0.0:27615
 ```
 
 ### Client
 
 1.Build the image for the client
 ```
-docker build -t indradb-client -f Dockerfile.client .
+DOCKER_BUILDKIT=1 docker build --target client -t indradb-client .
 ```
 
 2.Run the client container
 ```
-docker run --rm indradb-client grpc://indradb-server:27615 ping
+docker run --network host --rm indradb-client grpc://localhost:27615 ping
 ```
