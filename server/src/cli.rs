@@ -94,7 +94,7 @@ pub fn parse_cli_args() -> CliArgs {
             CliDatastoreArgs::Rocksdb {
                 path: matches.value_of_os(DATABASE_PATH).unwrap().to_os_string(),
                 max_open_files: value_t!(matches, ROCKSDB_MAX_OPEN_FILES, i32).unwrap_or_else(|e| e.exit()),
-                repair: matches.is_present("ROCKSDB_REPAIR")
+                repair: matches.is_present(ROCKSDB_REPAIR)
             }
         } else if let Some(matches) = matches.subcommand_matches("sled") {
             let sled_compression = matches.value_of(SLED_COMPRESSION).unwrap();

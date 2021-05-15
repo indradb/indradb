@@ -25,7 +25,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             if repair {
                 indradb::RocksdbDatastore::repair(&path, Some(max_open_files))
                     .expect("Expected to be able to repair the RocksDB datastore");
-                println!("repair the datastore successfully");
+                println!("repair successful");
                 return Ok(());
             }
 
