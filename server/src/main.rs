@@ -21,7 +21,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let binding = listener.local_addr()?;
 
     match args.datastore_args {
-        CliDatastoreArgs::Rocksdb { path, max_open_files, repair } => {
+        CliDatastoreArgs::Rocksdb {
+            path,
+            max_open_files,
+            repair,
+        } => {
             if repair {
                 indradb::RocksdbDatastore::repair(&path, Some(max_open_files))
                     .expect("Expected to be able to repair the RocksDB datastore");
@@ -55,7 +59,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 Arc::new(indradb::MemoryDatastore::create(path)?)
             };
-            println!("grpc://{}", binding);  
+            println!("grpc://{}", binding);
             proto::run_server(datastore.clone(), listener).await?;
             Ok(())
         }

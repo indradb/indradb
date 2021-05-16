@@ -8,9 +8,18 @@ pub struct CliArgs {
 }
 
 pub enum CliDatastoreArgs {
-    Memory { path: Option<OsString> },
-    Rocksdb { path: OsString, max_open_files: i32, repair: bool },
-    Sled { path: OsString, sled_config: SledConfig },
+    Memory {
+        path: Option<OsString>,
+    },
+    Rocksdb {
+        path: OsString,
+        max_open_files: i32,
+        repair: bool,
+    },
+    Sled {
+        path: OsString,
+        sled_config: SledConfig,
+    },
 }
 
 const ADDRESS: &str = "ADDRESS";
@@ -60,7 +69,7 @@ pub fn parse_cli_args() -> CliArgs {
                 .long("repair")
                 .short("r")
                 .help("Repair the database at the given path rather than staring a server")
-                .takes_value(false)
+                .takes_value(false),
         );
 
     let sled_subcommand = SubCommand::with_name("sled")
@@ -94,7 +103,7 @@ pub fn parse_cli_args() -> CliArgs {
             CliDatastoreArgs::Rocksdb {
                 path: matches.value_of_os(DATABASE_PATH).unwrap().to_os_string(),
                 max_open_files: value_t!(matches, ROCKSDB_MAX_OPEN_FILES, i32).unwrap_or_else(|e| e.exit()),
-                repair: matches.is_present(ROCKSDB_REPAIR)
+                repair: matches.is_present(ROCKSDB_REPAIR),
             }
         } else if let Some(matches) = matches.subcommand_matches("sled") {
             let sled_compression = matches.value_of(SLED_COMPRESSION).unwrap();
