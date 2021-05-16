@@ -81,3 +81,31 @@ If you don't want to use the pre-built releases, you can build/install from sour
 Use `make test` to run the test suite. Note that this will run the full test suite across the entire workspace, including tests for all datastore implementations. Similarly, you can run `make bench` to run the full benchmarking suite.
 
 You can filter which tests run via the `TEST_NAME` environment variable. e.g. `TEST_NAME=create_vertex make test` will run tests with `create_vertex` in the name across all datastore implementations.
+
+## Running in docker
+
+Dockerfile is provided to run the server and client CLIs in docker environments. Follow the instruction below when using docker.
+
+### Server 
+
+1.Build the image for the server
+```
+DOCKER_BUILDKIT=1 docker build --target server -t indradb-server .
+```
+
+2.Run the srver container
+```
+docker run --network host --rm indradb-server -a 0.0.0.0:27615
+```
+
+### Client
+
+1.Build the image for the client
+```
+DOCKER_BUILDKIT=1 docker build --target client -t indradb-client .
+```
+
+2.Run the client container
+```
+docker run --network host --rm indradb-client grpc://localhost:27615 ping
+```
