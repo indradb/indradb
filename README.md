@@ -84,28 +84,32 @@ You can filter which tests run via the `TEST_NAME` environment variable. e.g. `T
 
 ## Running in docker
 
-Dockerfile is provided to run the server and client CLIs in docker environments. Follow the instruction below when using docker.
+If you want to run IndraDB in docker, follow the below instructions.
 
 ### Server 
 
-1.Build the image for the server
-```
+Build the image for the server:
+
+```bash
 DOCKER_BUILDKIT=1 docker build --target server -t indradb-server .
 ```
 
-2.Run the srver container
-```
+Run the server:
+
+```bash
 docker run --network host --rm indradb-server -a 0.0.0.0:27615
 ```
 
 ### Client
 
-1.Build the image for the client
-```
+Build the image for the client:
+
+```bash
 DOCKER_BUILDKIT=1 docker build --target client -t indradb-client .
 ```
 
-2.Run the client container
-```
+Run the client:
+
+```bash
 docker run --network host --rm indradb-client grpc://localhost:27615 ping
 ```
