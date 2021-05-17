@@ -1,7 +1,6 @@
 use super::super::{
     Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
 };
-use crate::util::generate_random_secret;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -10,8 +9,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
     let t = Type::new("test_edge_type").unwrap();
     let v = Vertex::new(t);
     trans.create_vertex(&v).unwrap();
-    let name = format!("vertex-properties-{}", generate_random_secret(8));
-    let q = SpecificVertexQuery::single(v.id).property(name);
+    let q = SpecificVertexQuery::single(v.id).property("foo");
 
     // Check to make sure there's no initial value
     let result = trans.get_vertex_properties(q.clone()).unwrap();
@@ -110,7 +108,7 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.create_vertex(&inbound_v).unwrap();
     let edge_t = Type::new("test_edge_type").unwrap();
     let key = EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    let q = SpecificEdgeQuery::single(key.clone()).property(format!("edge-properties-{}", generate_random_secret(8)));
+    let q = SpecificEdgeQuery::single(key.clone()).property("edge-property");
 
     trans.create_edge(&key).unwrap();
 

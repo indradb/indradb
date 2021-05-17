@@ -33,8 +33,6 @@ def update_version(path, new_version):
     with open(path, "w") as f:
         f.write("\n".join(contents))
 
-    run(["git", "add", path])
-
 def main():
     if len(sys.argv) < 2:
         raise Exception("No version specified")
@@ -47,15 +45,14 @@ def main():
 
     update_version("lib/Cargo.toml", new_version)
     update_version("proto/Cargo.toml", new_version)
-    update_version("bin/Cargo.toml", new_version)
+    update_version("server/Cargo.toml", new_version)
+    update_version("client/Cargo.toml", new_version)
 
-    run(["cargo", "check"], cwd="lib/fuzz")
-    run(["cargo", "fmt", "--", "--check"])
-    run(["cargo", "clippy"])
-    run(["make", "test", "bench"])
+    run(["make", "check", "test"])
 
+    # a github action will pickup this tag push and create a release
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
-    run(["git", "commit", "-m", new_version_str])
+    run(["git", "commit", "-a", "-m", new_version_str])
     run(["git", "tag", "-a", new_version_str, "-m", new_version_str])
     run(["git", "push", "origin", new_version_str])
 
@@ -63,7 +60,8 @@ def main():
     time.sleep(15) # wait for lib to be accessible on crates.io
     run(["cargo", "publish"], cwd="proto")
     time.sleep(15) # wait for proto to be accessible on crates.io
-    run(["cargo", "publish"], cwd="bin")
+    run(["cargo", "publish"], cwd="server")
+    run(["cargo", "publish"], cwd="client")
 
 if __name__ == "__main__":
     main()

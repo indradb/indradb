@@ -1,3 +1,7 @@
+use std::path::Path;
+use std::sync::Arc;
+use std::{u64, usize};
+
 use super::super::{
     Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
 };
@@ -5,13 +9,11 @@ use super::managers::*;
 use crate::errors::Result;
 use crate::models;
 use crate::models::*;
-use crate::util::{next_uuid, remove_nones_from_iterator};
+use crate::util::next_uuid;
+
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
 use sled::{Config, Db, Tree};
-use std::sync::Arc;
-use std::u64;
-use std::usize;
 use uuid::Uuid;
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -24,7 +26,7 @@ impl SledConfig {
     /// Creates a new sled config with zstd compression enabled.
     ///
     /// # Arguments
-    /// * `factor` - The zstd compression factor to use. If unspecified, this
+    /// * `factor`: The zstd compression factor to use. If unspecified, this
     ///   will default to 5.
     pub fn with_compression(factor: Option<i32>) -> SledConfig {
         SledConfig {
@@ -34,7 +36,7 @@ impl SledConfig {
     }
 
     /// Creates a new sled datastore.
-    pub fn open(self, path: &str) -> Result<SledDatastore> {
+    pub fn open<P: AsRef<Path>>(self, path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, self)?),
         })
@@ -55,9 +57,9 @@ impl<'ds> SledHolder {
     /// The meat of a Sled datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the Sled database.
-    /// * `opts` - Sled options to pass in.
-    pub fn new(path: &str, opts: SledConfig) -> Result<SledHolder> {
+    /// * `path`: The file path to the Sled database.
+    /// * `opts`: Sled options to pass in.
+    pub fn new<P: AsRef<Path>>(path: P, opts: SledConfig) -> Result<SledHolder> {
         let mut config = Config::default().path(path);
 
         if opts.use_compression {
@@ -90,8 +92,8 @@ impl<'ds> SledDatastore {
     /// Creates a new Sled datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the Sled database.
-    pub fn new(path: &str) -> Result<SledDatastore> {
+    /// * `path`: The file path to the Sled database.
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<SledDatastore> {
         Ok(SledDatastore {
             holder: Arc::new(SledHolder::new(path, SledConfig::default())?),
         })
@@ -101,8 +103,15 @@ impl<'ds> SledDatastore {
 impl Datastore for SledDatastore {
     type Trans = SledTransaction;
 
+    fn sync(&self) -> Result<()> {
+        let holder = self.holder.clone();
+        let db = holder.db.clone();
+        db.flush()?;
+        Ok(())
+    }
+
     fn transaction(&self) -> Result<Self::Trans> {
-        SledTransaction::new(self.holder.clone())
+        Ok(SledTransaction::new(self.holder.clone()))
     }
 
     fn bulk_insert<I>(&self, items: I) -> Result<()>
@@ -142,8 +151,8 @@ pub struct SledTransaction {
 }
 
 impl SledTransaction {
-    fn new(holder: Arc<SledHolder>) -> Result<Self> {
-        Ok(SledTransaction { holder })
+    fn new(holder: Arc<SledHolder>) -> Self {
+        SledTransaction { holder }
     }
 
     fn vertex_query_to_iterator<'iter, 'trans: 'iter>(
@@ -170,7 +179,7 @@ impl SledTransaction {
                 };
 
                 let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                    Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                    Box::new(vertex_manager.iterate_for_range(next_uuid));
 
                 if let Some(ref t) = q.t {
                     iter = Box::new(iter.filter(move |item| match item {
@@ -347,7 +356,7 @@ impl Transaction for SledTransaction {
 
     fn get_vertex_count(&self) -> Result<u64> {
         let vertex_manager = VertexManager::new(&self.holder);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
         Ok(iterator.count() as u64)
     }
 
@@ -516,4 +525,15 @@ impl Transaction for SledTransaction {
         }
         Ok(())
     }
+}
+
+fn remove_nones_from_iterator<I, T>(iter: I) -> impl Iterator<Item = Result<T>>
+where
+    I: Iterator<Item = Result<Option<T>>>,
+{
+    iter.filter_map(|item| match item {
+        Err(err) => Some(Err(err)),
+        Ok(Some(value)) => Some(Ok(value)),
+        _ => None,
+    })
 }

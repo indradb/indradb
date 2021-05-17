@@ -1,0 +1,349 @@
+syntax = "proto3";
+
+package indradb;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// A UUID.
+message Uuid {
+    bytes value = 1;
+}
+
+// An edge or vertex type.
+//
+// Types must be less than 256 characters long, and can only contain letters,
+// numbers, dashes and underscores.
+message Type {
+    string value = 1;
+}
+
+// A JSON value.
+message Json {
+    string value = 1;
+}
+
+// An edge.
+//
+// Edges are how you would represent a verb or a relationship in the
+// datastore. An example might be "liked" or "reviewed". Edges are typed and
+// directed.
+message Edge {
+    // The key to the edge.
+    EdgeKey key = 1;
+    // When the edge was created.
+    google.protobuf.Timestamp created_datetime = 2;
+}
+
+// Represents a uniquely identifiable key to an edge.
+message EdgeKey {
+    // The id of the outbound vertex.
+    Uuid outbound_id = 1;
+    // The type of the edge.
+    Type t = 2;
+    // The id of the inbound vertex.
+    Uuid inbound_id = 3;
+}
+
+// A vertex.
+//
+// Vertices are how you would represent nouns in the datastore. An example
+// might be a user, or a movie. All vertices have a unique ID and a type.
+message Vertex {
+    // The id of the vertex.
+    Uuid id = 1;
+    // The type of the vertex.
+    Type t = 2;
+}
+
+// A query for vertices.
+message VertexQuery {
+    oneof query {
+        RangeVertexQuery range = 1;
+        SpecificVertexQuery specific = 2;
+        PipeVertexQuery pipe = 3;
+    }
+}
+
+// Gets a range of vertices.
+message RangeVertexQuery {
+    // Limits the number of vertices to get.
+    uint32 limit = 1;
+    // Filters the type of vertices returned.
+    Type t = 2;
+    // Sets the lowest vertex ID to return.
+    Uuid start_id = 3;
+}
+
+// Gets a specific set of vertices.
+message SpecificVertexQuery {
+    // The IDs of the vertices to get.
+    repeated Uuid ids = 1;
+}
+
+// Gets the vertices associated with edges.
+message PipeVertexQuery {
+    // The edge query to build off of.
+    EdgeQuery inner = 1;
+    // Whether to get outbound or inbound vertices on the edges.
+    EdgeDirection direction = 2;
+    // Limits the number of vertices to get.
+    uint32 limit = 3;
+    // Filters the type of vertices returned.
+    Type t = 4;
+}
+
+// Gets property values associated with vertices.
+message VertexPropertyQuery {
+    // The vertex query to build off of.
+    VertexQuery inner = 1;
+    // The name of the property to get.
+    string name = 2;
+}
+
+// A query for edges.
+message EdgeQuery {
+    oneof query {
+        SpecificEdgeQuery specific = 1;
+        PipeEdgeQuery pipe = 2;
+    }
+}
+
+// Gets a specific set of edges.
+message SpecificEdgeQuery {
+    // The keys of the edges to get.
+    repeated EdgeKey keys = 1;
+}
+
+// Gets the edges associated with vertices.
+message PipeEdgeQuery {
+    // The vertex query to build off of.
+    VertexQuery inner = 1;
+    // Whether to get outbound or inbound edges on the vertices.
+    EdgeDirection direction = 2;
+    // Filters the type of edges returned.
+    Type t = 3;
+    // Specifies the newest update datetime for returned edges.
+    google.protobuf.Timestamp high = 4;
+    // Specifies the oldest update datetime for returned edges.
+    google.protobuf.Timestamp low = 5;
+    // Limits the number of edges to get.
+    uint32 limit = 6;
+}
+
+// Gets property values associated with edges.
+message EdgePropertyQuery {
+    // The edge query to build off of.
+    EdgeQuery inner = 1;
+    // The name of the property to get.
+    string name = 2;
+}
+
+// Specifies what kind of items should be piped from one type of query to
+// another.
+//
+// Edge and vertex queries can build off of one another via pipes - e.g. you
+// can get the outbound edges of a set of vertices by piping from a vertex
+// query to an edge query. `EdgeDirection`s are used to specify which
+// end of things you want to pipe - either the outbound items or the inbound
+// items.
+enum EdgeDirection {
+    OUTBOUND = 0;
+    INBOUND = 1;
+}
+
+// A property.
+message NamedProperty {
+    // The id of the vertex.
+    string name = 1;
+    // The property value.
+    Json value = 2;
+}
+
+// Represents a vertex property.
+message VertexProperty {
+    // The id of the vertex.
+    Uuid id = 1;
+    // The property value.
+    Json value = 2;
+}
+
+// A vertex with properties.
+message VertexProperties {
+    // The vertex.
+    Vertex vertex = 1;
+    // All of the vertex's properties.
+    repeated NamedProperty props = 2;
+}
+
+// Represents an edge property.
+message EdgeProperty {
+    // The key to the edge.
+    EdgeKey key = 1;
+    // The property value.
+    Json value = 2;
+}
+
+// An edge with properties.
+message EdgeProperties {
+    // The edge.
+    Edge edge = 1;
+    // All of the edge's properties.
+    repeated NamedProperty props = 2;
+}
+
+// An item to insert, as part of a bulk insert request.
+message BulkInsertItem {
+    oneof item {
+        Vertex vertex = 1;
+        EdgeKey edge = 2;
+        VertexPropertyBulkInsertItem vertex_property = 3;
+        EdgePropertyBulkInsertItem edge_property = 4;
+    }
+}
+
+// A vertex property to insert.
+message VertexPropertyBulkInsertItem {
+    Uuid id = 1;
+    string name = 2;
+    Json value = 3;
+}
+
+// An edge property to insert.
+message EdgePropertyBulkInsertItem {
+    EdgeKey key = 1;
+    string name = 2;
+    Json value = 3;
+}
+
+message GetEdgeCountRequest {
+    Uuid id = 1;
+    Type t = 2;
+    EdgeDirection direction = 3;
+}
+
+message SetVertexPropertiesRequest {
+    VertexPropertyQuery q = 1;
+    Json value = 2;
+}
+
+message SetEdgePropertiesRequest {
+    EdgePropertyQuery q = 1;
+    Json value = 2;
+}
+
+message TransactionRequest {
+    uint32 request_id = 1;
+
+    oneof request {
+        // Creates a new vertex. Returns whether the vertex was successfully
+        // created - if this is false, it's because a vertex with the same UUID
+        // already exists.
+        Vertex create_vertex = 2;
+
+        // Creates a new vertex with just a type specification. As opposed to
+        // `CreateVertex`, this is used when you do not want to manually specify
+        // the vertex's UUID. Returns the new vertex's UUID.
+        Type create_vertex_from_type = 3;
+
+        // Gets a range of vertices specified by a query.
+        VertexQuery get_vertices = 4;
+
+        // Deletes existing vertices specified by a query.
+        VertexQuery delete_vertices = 5;
+
+        // Gets the number of vertices in the datastore.
+        google.protobuf.Empty get_vertex_count = 6;
+
+        // Creates a new edge. If the edge already exists, this will update it
+        // with a new update datetime. Returns whether the edge was successfully
+        // created - if this is false, it's because one of the specified vertices
+        // is missing.
+        EdgeKey create_edge = 7;
+
+        // Gets a range of edges specified by a query.
+        EdgeQuery get_edges = 8;
+
+        // Deletes a set of edges specified by a query.
+        EdgeQuery delete_edges = 9;
+
+        // Gets the number of edges associated with a vertex.
+        GetEdgeCountRequest get_edge_count = 10;
+
+        // Gets vertex properties.
+        VertexPropertyQuery get_vertex_properties = 11;
+
+        // Sets vertex properties.
+        SetVertexPropertiesRequest set_vertex_properties = 12;
+
+        // Deletes vertex properties.
+        VertexPropertyQuery delete_vertex_properties = 13;
+
+        // Gets edge properties.
+        EdgePropertyQuery get_edge_properties = 14;
+
+        // Sets edge properties.
+        SetEdgePropertiesRequest set_edge_properties = 15;
+
+        // Deletes edge properties.
+        EdgePropertyQuery delete_edge_properties = 16;
+
+        // Gets vertexes and all properties for each vertex.
+        VertexQuery get_all_vertex_properties = 17;
+
+        // Gets edges and all properties for each edge.
+        EdgeQuery get_all_edge_properties = 18;
+    }
+}
+
+message TransactionResponse {
+    // The ID of the request associated with this response.
+    uint32 request_id = 1;
+
+    oneof response {
+        // An empty response.
+        google.protobuf.Empty empty = 2;
+        // An ok response, indicating whether or not it was successful.
+        bool ok = 3;
+        // A response with a count.
+        uint64 count = 4;
+        // A response with a vertex ID.
+        Uuid id = 5;
+        // A response with a vertex.
+        Vertex vertex = 6;
+        // A response with an edge.
+        Edge edge = 7;
+        // A response with a vertex property.
+        VertexProperty vertex_property = 8;
+        // A response with vertex properties.
+        VertexProperties vertex_properties = 9;
+        // A response with an edge property.
+        EdgeProperty edge_property = 10;
+        // A response with edge properties.
+        EdgeProperties edge_properties = 11;
+    }
+}
+
+service IndraDB {
+    // Pings the server.
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+    
+    // Syncs persisted content. Depending on the datastore implementation,
+    // this has different meanings - including potentially being a no-op.
+    rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty);
+    
+    // Bulk inserts many vertices, edges, and/or properties.
+    //
+    // Note that datastores have discretion on how to approach safeguard vs
+    // performance tradeoffs. In particular:
+    // * If the datastore is disk-backed, it may or may not flush before
+    //   returning.
+    // * The datastore might not verify for correctness; e.g., it might not
+    //   ensure that the relevant vertices exist before inserting an edge.
+    // If you want maximum protection, use the equivalent functions in
+    // transactions, which will provide more safeguards.
+    rpc BulkInsert(stream BulkInsertItem) returns (google.protobuf.Empty);
+    
+    // Runs a transaction.
+    rpc Transaction(stream TransactionRequest) returns (stream TransactionResponse);
+}

@@ -1,6 +1,8 @@
 use crate::errors::{ValidationError, ValidationResult};
-use core::str::FromStr;
+use lazy_static::lazy_static;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 lazy_static! {
     static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
@@ -10,15 +12,14 @@ lazy_static! {
 ///
 /// Types must be less than 256 characters long, and can only contain letters,
 /// numbers, dashes and underscores.
-#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd)]
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Type(pub String);
 
 impl Type {
     /// Constructs a new type.
     ///
     /// # Arguments
-    ///
-    /// * `t` - The type, which must be less than 256 characters long.
+    /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Errors
     /// Returns a `ValidationError` if the type is longer than 255 characters,
@@ -38,8 +39,7 @@ impl Type {
     /// Constructs a new type, without any checks that the name is valid.
     ///
     /// # Arguments
-    ///
-    /// * `t` - The type, which must be less than 256 characters long.
+    /// * `t`: The type, which must be less than 256 characters long.
     ///
     /// # Safety
     /// This function is marked unsafe because there's no verification that
@@ -59,19 +59,19 @@ impl FromStr for Type {
     type Err = ValidationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s.to_string())?)
+        Self::new(s.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Type;
-    use crate::util::generate_random_secret;
     use std::str::FromStr;
 
     #[test]
     fn should_fail_for_invalid_types() {
-        assert!(Type::new(generate_random_secret(256)).is_err());
+        let long_t = (0..256).map(|_| "X").collect::<String>();
+        assert!(Type::new(long_t).is_err());
         assert!(Type::new("$").is_err());
     }
 

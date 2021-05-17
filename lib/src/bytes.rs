@@ -1,9 +1,9 @@
 use crate::models;
-use crate::util::nanos_since_epoch;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{Duration, Timelike};
+use lazy_static::lazy_static;
 use std::i32;
 use std::i64;
 use std::io::Read;
@@ -72,6 +72,16 @@ pub fn build(components: &[Component]) -> Vec<u8> {
     cursor.into_inner()
 }
 
+/// Gets the number of nanoseconds since unix epoch for a given datetime.
+///
+/// # Arguments
+/// * `datetime`: The datetime to convert.
+fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
+    let timestamp = datetime.timestamp() as u64;
+    let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());
+    timestamp * 1_000_000_000 + nanoseconds
+}
+
 pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
@@ -104,4 +114,16 @@ pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
     *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::nanos_since_epoch;
+    use chrono::{DateTime, NaiveDateTime, Utc};
+
+    #[test]
+    fn should_generate_nanos_since_epoch() {
+        let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 62), Utc);
+        assert_eq!(nanos_since_epoch(&datetime), 61000000062);
+    }
 }

@@ -1,0 +1,30 @@
+[package]
+name = "indradb"
+version = "2.1.0"
+authors = ["Yusuf Simonson <simonson@gmail.com>"]
+description = "A graph database server"
+homepage = "https://indradb.github.io"
+repository = "https://github.com/indradb/indradb"
+keywords = ["graph", "database"]
+categories = ["database", "database-implementations"]
+license = "MPL-2.0"
+edition = "2018"
+
+[[bin]]
+name = "indradb-server"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2.33.3"
+tonic = "0.4.0"
+tokio = { version = "1.0.1", features = ["macros", "rt-multi-thread"] }
+
+[dependencies.indradb-lib]
+path = "../lib"
+version = "2.1.0"
+features = ["rocksdb-datastore", "sled-datastore"]
+
+[dependencies.indradb-proto]
+path = "../proto"
+version = "2.1.0"
+features = ["server"]

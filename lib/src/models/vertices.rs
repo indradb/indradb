@@ -18,13 +18,13 @@ pub struct Vertex {
 
 impl Vertex {
     /// Creates a new vertex with an ID generated via UUIDv1. These vertex IDs
-    /// are trivially guessable and consequently less secure, but likely index
-    /// better depending on the datastore. This method is suggested unless you
-    /// need vertex IDs to not be trivially guessable.
+    /// are trivially guessable and consequently less secure, but index
+    /// better. This method is suggested unless you need vertex IDs to not be
+    /// trivially guessable.
     ///
     /// # Arguments
     ///
-    /// * `t` - The type of the vertex.
+    /// * `t`: The type of the vertex.
     pub fn new(t: Type) -> Self {
         Self::with_id(generate_uuid_v1(), t)
     }
@@ -33,8 +33,8 @@ impl Vertex {
     ///
     /// # Arguments
     ///
-    /// * `id` - The id of the vertex.
-    /// * `t` - The type of the vertex.
+    /// * `id`: The id of the vertex.
+    /// * `t`: The type of the vertex.
     pub fn with_id(id: Uuid, t: Type) -> Self {
         Vertex { id, t }
     }

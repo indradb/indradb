@@ -13,14 +13,7 @@ if [ "$os" == "ubuntu-latest" ]; then
         cargo clippy
         cargo fmt -- --check
     else
-        pushd lib
-            cargo check --features=bench-suite
-            pushd fuzz
-                cargo check
-            popd
-        popd
-        pushd bin
-            cargo check --features=bench-suite
-        popd
+        cargo check --all-features
+        (cd lib/fuzz && cargo check)
     fi
 fi

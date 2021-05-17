@@ -13,6 +13,10 @@ use uuid::Uuid;
 pub trait Datastore {
     type Trans: Transaction;
 
+    /// Syncs persisted content. Depending on the datastore implementation,
+    /// this has different meanings - including potentially being a no-op.
+    fn sync(&self) -> Result<()>;
+
     /// Creates a new transaction.
     fn transaction(&self) -> Result<Self::Trans>;
 
@@ -58,14 +62,12 @@ pub trait Datastore {
     }
 }
 
-/// Specifies a transaction implementation, which are returned by datastores.
-/// All datastore manipulations are done through transactions. Despite the
-/// name, different datastore implementations carry different guarantees.
-/// Depending on the implementation, it may not be possible to rollback the
-/// changes on error. See the documentation of individual implementations for
-/// details. Transactions are automatically committed on drop. Transactions
-/// should be designed to not fail on commit; i.e. errors should occur when a
-/// method is actually called instead.
+/// Specifies a transaction implementation, which are provided by datastores.
+///
+/// All datastore manipulations are done through transactions. Datastore
+/// implementations carry different guarantees. Depending on the
+/// implementation, it may not be possible to rollback the changes on error.
+/// See the documentation of individual implementations for details.
 pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same UUID
@@ -94,16 +96,16 @@ pub trait Transaction {
     /// Gets a range of vertices specified by a query.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
 
-    /// Gets the number of vertices in the datastore..
+    /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
 
     /// Creates a new edge. If the edge already exists, this will update it
@@ -118,76 +120,70 @@ pub trait Transaction {
     /// Gets a range of edges specified by a query.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()>;
 
     /// Gets the number of edges associated with a vertex.
     ///
     /// # Arguments
-    /// * `id` - The id of the vertex.
-    /// * `t` - Only get the count for a specified edge type.
+    /// * `id`: The id of the vertex.
+    /// * `t`: Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
     fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets vertex properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
+    /// * `q`: The query to run.
     fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
 
     /// Gets all vertex properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>>;
 
     /// Sets a vertex properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
-    /// * `value` - The property value.
+    /// * `q`: The query to run.
+    /// * `value`: The property value.
     fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
+    /// * `q`: The query to run.
     fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<()>;
 
     /// Gets edge properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
+    /// * `q`: The query to run.
     fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
 
     /// Gets all edge properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
+    /// * `q`: The query to run.
     fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
-    /// * `value` - The property value.
+    /// * `q`: The query to run.
+    /// * `value`: The property value.
     fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<()>;
 
     /// Deletes edge properties.
     ///
     /// # Arguments
-    /// * `q` - The query to run.
-    /// * `name` - The property name.
+    /// * `q`: The query to run.
     fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
 }

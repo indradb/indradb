@@ -1,4 +1,8 @@
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
+use std::path::PathBuf;
+use std::result::Result as StdResult;
 use std::sync::{Arc, RwLock};
 
 use crate::errors::Result;
@@ -7,16 +11,19 @@ use crate::{
     Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
+use bincode::Error as BincodeError;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use tempfile::NamedTempFile;
 use uuid::Uuid;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
 // the entire datastore, rather than on a per-data structure basis, as the
 // latter approach would risk deadlocking without extreme care.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 struct InternalMemoryDatastore {
     vertices: BTreeMap<Uuid, Type>,
     edges: BTreeMap<EdgeKey, DateTime<Utc>>,
@@ -28,7 +35,7 @@ struct InternalMemoryDatastore {
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query<'a>(&'a self, q: VertexQuery) -> Result<QueryIter<'a, (Uuid, Type)>> {
+    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (Uuid, Type)>> {
         match q {
             VertexQuery::Range(range) => {
                 let mut iter: QueryIter<(&Uuid, &Type)> = if let Some(start_id) = range.start_id {
@@ -81,7 +88,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn get_edge_values_by_query<'a>(&'a self, q: EdgeQuery) -> Result<QueryIter<'a, (EdgeKey, DateTime<Utc>)>> {
+    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<QueryIter<'_, (EdgeKey, DateTime<Utc>)>> {
         match q {
             EdgeQuery::Specific(specific) => {
                 let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = Box::new(
@@ -196,30 +203,74 @@ impl InternalMemoryDatastore {
     }
 }
 
-/// An in-memory-only datastore.
+/// An in-memory datastore.
 #[derive(Debug, Clone)]
-pub struct MemoryDatastore(Arc<RwLock<InternalMemoryDatastore>>);
+pub struct MemoryDatastore {
+    datastore: Arc<RwLock<InternalMemoryDatastore>>,
+    path: Option<PathBuf>,
+}
+
+impl Default for MemoryDatastore {
+    fn default() -> MemoryDatastore {
+        Self {
+            datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            path: None,
+        }
+    }
+}
 
 impl MemoryDatastore {
-    /// Creates a new in-memory datastore.
-    pub fn default() -> MemoryDatastore {
-        Self {
-            0: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
-        }
+    /// Reads a persisted image from disk. Calls to sync will overwrite the
+    /// file at the specified path.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn read<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
+        let path = path.into();
+        let buf = BufReader::new(File::open(&path)?);
+        let datastore = bincode::deserialize_from(buf)?;
+        Ok(MemoryDatastore {
+            datastore: Arc::new(RwLock::new(datastore)),
+            path: Some(path),
+        })
+    }
+
+    /// Creates a new datastore. Calls to sync will overwrite the file at the
+    /// specified path, but as opposed to `read`, this will not read the file
+    /// first.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
+        Ok(MemoryDatastore {
+            datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            path: Some(path.into()),
+        })
     }
 }
 
 impl Datastore for MemoryDatastore {
     type Trans = MemoryTransaction;
 
+    fn sync(&self) -> Result<()> {
+        if let Some(ref persist_path) = self.path {
+            let temp_path = NamedTempFile::new()?;
+            let buf = BufWriter::new(temp_path.as_file());
+            let datastore = self.datastore.read().unwrap();
+            bincode::serialize_into(buf, &*datastore)?;
+            temp_path.persist(persist_path)?;
+        }
+        Ok(())
+    }
+
     fn transaction(&self) -> Result<Self::Trans> {
         Ok(MemoryTransaction {
-            datastore: Arc::clone(&self.0),
+            datastore: Arc::clone(&self.datastore),
         })
     }
 }
 
-/// A transaction for manipulating in-memory-only datastores.
+/// A transaction for manipulating in-memory datastores.
 #[derive(Debug)]
 pub struct MemoryTransaction {
     datastore: Arc<RwLock<InternalMemoryDatastore>>,

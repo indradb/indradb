@@ -48,8 +48,8 @@ impl<'a> VertexManager<'a> {
         }
     }
 
-    fn iterate(&'a self, iterator: DBIterator<'a>) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
-        Ok(iterator.map(|item| -> Result<VertexItem> {
+    fn iterate(&'a self, iterator: DBIterator<'a>) -> impl Iterator<Item = Result<VertexItem>> + 'a {
+        iterator.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
 
             let id = {
@@ -61,10 +61,10 @@ impl<'a> VertexManager<'a> {
             let mut cursor = Cursor::new(v);
             let t = read_type(&mut cursor);
             Ok((id, t))
-        }))
+        })
     }
 
-    pub fn iterate_for_range(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<VertexItem>> + 'a> {
+    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
         let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
@@ -91,7 +91,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let edge_range_manager = EdgeRangeManager::new(self.db);
-            for item in edge_range_manager.iterate_for_owner(id)? {
+            for item in edge_range_manager.iterate_for_owner(id) {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(
@@ -106,7 +106,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
-            for item in reversed_edge_range_manager.iterate_for_owner(id)? {
+            for item in reversed_edge_range_manager.iterate_for_owner(id) {
                 let (
                     reversed_edge_range_in_id,
                     reversed_edge_range_t,
@@ -215,8 +215,6 @@ impl<'a> EdgeManager<'a> {
 
     pub fn compact(&self) {
         self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
-        EdgeRangeManager::new(self.db).compact();
-        EdgeRangeManager::new_reversed(self.db).compact();
     }
 }
 
@@ -253,13 +251,13 @@ impl<'a> EdgeRangeManager<'a> {
         &'a self,
         iterator: DBIterator<'a>,
         prefix: Vec<u8>,
-    ) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
+    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
         let filtered = iterator.take_while(move |item| -> bool {
             let (ref k, _) = *item;
             k.starts_with(&prefix)
         });
 
-        Ok(filtered.map(move |item| -> Result<EdgeRangeItem> {
+        filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = read_uuid(&mut cursor);
@@ -267,7 +265,7 @@ impl<'a> EdgeRangeManager<'a> {
             let update_datetime = read_datetime(&mut cursor);
             let second_id = read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
-        }))
+        })
     }
 
     pub fn iterate_for_range(
@@ -284,14 +282,14 @@ impl<'a> EdgeRangeManager<'a> {
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
-                Ok(Box::new(self.iterate(iterator, prefix)?))
+                Ok(Box::new(self.iterate(iterator, prefix)))
             }
             None => {
                 let prefix = build(&[Component::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-                let mapped = self.iterate(iterator, prefix)?;
+                let mapped = self.iterate(iterator, prefix);
 
                 if let Some(high) = high {
                     // We can filter out `update_datetime`s greater than
@@ -313,7 +311,7 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    pub fn iterate_for_owner(&'a self, id: Uuid) -> Result<impl Iterator<Item = Result<EdgeRangeItem>> + 'a> {
+    pub fn iterate_for_owner(&'a self, id: Uuid) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
         let prefix = build(&[Component::Uuid(id)]);
         let iterator = self
             .db

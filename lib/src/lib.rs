@@ -1,8 +1,8 @@
-//! `IndraDB` - a graph datastore.
+//! IndraDB: a graph datastore.
 //!
-//! `IndraDB` is broken up into a library and an application. This is the
+//! IndraDB is broken up into a library and an application. This is the
 //! library, which you would use if you want to create new datastore
-//! implementations, or plug into the low-level details of `IndraDB`. For most
+//! implementations, or plug into the low-level details of IndraDB. For most
 //! use cases, you can use the application, which exposes an API and scripting
 //! layer.
 
@@ -10,25 +10,6 @@
 
 #[cfg(feature = "bench-suite")]
 extern crate test;
-
-extern crate chrono;
-extern crate core;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate lazy_static;
-extern crate rand;
-extern crate regex;
-extern crate serde_json;
-extern crate uuid;
-
-#[cfg(feature = "rocksdb-datastore")]
-extern crate byteorder;
-#[cfg(feature = "rocksdb-datastore")]
-extern crate rocksdb;
-
-#[cfg(feature = "sled-datastore")]
-extern crate sled;
 
 #[cfg(feature = "test-suite")]
 #[macro_use]

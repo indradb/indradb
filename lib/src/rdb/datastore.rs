@@ -1,4 +1,5 @@
 use std::i32;
+use std::path::Path;
 use std::sync::Arc;
 use std::u64;
 use std::usize;
@@ -13,7 +14,7 @@ use crate::{
 };
 
 use chrono::offset::Utc;
-use rocksdb::{DBCompactionStyle, MemtableFactory, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -26,7 +27,7 @@ const CF_NAMES: [&str; 6] = [
     "edge_properties:v1",
 ];
 
-fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Options {
+fn get_options(max_open_files: Option<i32>) -> Options {
     // Current tuning based off of the total ordered example, flash
     // storage example on
     // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
@@ -45,16 +46,6 @@ fn get_options(max_open_files: Option<i32>, bulk_load_optimized: bool) -> Option
 
     if let Some(max_open_files) = max_open_files {
         opts.set_max_open_files(max_open_files);
-    }
-
-    if bulk_load_optimized {
-        // Via https://github.com/facebook/rocksdb/wiki/RocksDB-FAQ
-        opts.set_allow_concurrent_memtable_write(false);
-        opts.set_memtable_factory(MemtableFactory::Vector);
-        opts.set_disable_auto_compactions(true);
-        opts.set_level_zero_file_num_compaction_trigger(1024);
-        opts.set_level_zero_slowdown_writes_trigger(1024 * 5);
-        opts.set_level_zero_stop_writes_trigger(1024 * 6);
     }
 
     opts
@@ -81,7 +72,7 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
             };
 
             let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                Box::new(vertex_manager.iterate_for_range(next_uuid)?);
+                Box::new(vertex_manager.iterate_for_range(next_uuid));
 
             if let Some(ref t) = q.t {
                 iter = Box::new(iter.filter(move |item| match item {
@@ -234,14 +225,12 @@ impl RocksdbDatastore {
     /// Creates a new rocksdb datastore.
     ///
     /// # Arguments
-    /// * `path` - The file path to the rocksdb database.
-    /// * `max_open_files` - The maximum number of open files to have. If
+    /// * `path`: The file path to the rocksdb database.
+    /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    /// * `bulk_load_optimized` - Whether to configure the database to
-    ///   optimize for bulk loading, based off of suggestions from the RocksDB
-    ///   FAQ.
-    pub fn new(path: &str, max_open_files: Option<i32>, bulk_load_optimized: bool) -> Result<RocksdbDatastore> {
-        let opts = get_options(max_open_files, bulk_load_optimized);
+    pub fn new<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
+        let opts = get_options(max_open_files);
+        let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, &CF_NAMES) {
             Ok(db) => db,
@@ -262,11 +251,11 @@ impl RocksdbDatastore {
     /// Runs a repair operation on the rocksdb database.
     ///
     /// # Arguments
-    /// * `path` - The file path to the rocksdb database.
-    /// * `max_open_files` - The maximum number of open files to have. If
+    /// * `path`: The file path to the rocksdb database.
+    /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn repair(path: &str, max_open_files: Option<i32>) -> Result<()> {
-        let opts = get_options(max_open_files, false);
+    pub fn repair<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<()> {
+        let opts = get_options(max_open_files);
         DB::repair(&opts, path)?;
         Ok(())
     }
@@ -274,6 +263,18 @@ impl RocksdbDatastore {
 
 impl Datastore for RocksdbDatastore {
     type Trans = RocksdbTransaction;
+
+    fn sync(&self) -> Result<()> {
+        let db = self.db.clone();
+        VertexManager::new(&db).compact();
+        EdgeManager::new(&db).compact();
+        EdgeRangeManager::new(&db).compact();
+        EdgeRangeManager::new_reversed(&db).compact();
+        VertexPropertyManager::new(&db).compact();
+        EdgePropertyManager::new(&db).compact();
+        db.flush()?;
+        Ok(())
+    }
 
     // We override the default `bulk_insert` implementation because further
     // optimization can be done by using `WriteBatch`s.
@@ -287,28 +288,20 @@ impl Datastore for RocksdbDatastore {
         let vertex_property_manager = VertexPropertyManager::new(&db);
         let edge_property_manager = EdgePropertyManager::new(&db);
         let mut batch = WriteBatch::default();
-        let mut compact_vertices = false;
-        let mut compact_edges = false;
-        let mut compact_vertex_properties = false;
-        let mut compact_edge_properties = false;
 
         for item in items {
             match item {
                 BulkInsertItem::Vertex(ref vertex) => {
                     vertex_manager.create(&mut batch, vertex)?;
-                    compact_vertices = true;
                 }
                 BulkInsertItem::Edge(ref key) => {
                     edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
-                    compact_edges = true;
                 }
                 BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(&mut batch, id, name, value)?;
-                    compact_vertex_properties = true;
                 }
                 BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
                     edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
-                    compact_edge_properties = true;
                 }
             }
         }
@@ -320,25 +313,11 @@ impl Datastore for RocksdbDatastore {
         opts.disable_wal(true);
         self.db.write_opt(batch, &opts)?;
 
-        // manually compact
-        if compact_vertices {
-            vertex_manager.compact();
-        }
-        if compact_edges {
-            edge_manager.compact();
-        }
-        if compact_vertex_properties {
-            vertex_property_manager.compact();
-        }
-        if compact_edge_properties {
-            edge_property_manager.compact();
-        }
-
         Ok(())
     }
 
     fn transaction(&self) -> Result<Self::Trans> {
-        RocksdbTransaction::new(self.db.clone())
+        Ok(RocksdbTransaction::new(self.db.clone()))
     }
 }
 
@@ -349,8 +328,8 @@ pub struct RocksdbTransaction {
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>) -> Result<Self> {
-        Ok(RocksdbTransaction { db })
+    fn new(db: Arc<DB>) -> Self {
+        RocksdbTransaction { db }
     }
 }
 
@@ -399,7 +378,7 @@ impl Transaction for RocksdbTransaction {
     fn get_vertex_count(&self) -> Result<u64> {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default())?;
+        let iterator = vertex_manager.iterate_for_range(Uuid::default());
         Ok(iterator.count() as u64)
     }
 
