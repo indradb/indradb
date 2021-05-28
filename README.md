@@ -21,13 +21,62 @@ For more details, see the [homepage](https://indradb.github.io).
 * Pluggable underlying datastores, with several built-in datastores. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
-## Getting started
+## Installation
+
+### Releases
+
+We offer pre-compiled releases for linux and macOS.
 
 * [Download the latest release for your platform.](https://github.com/indradb/indradb/releases)
 * Add the binaries to your `PATH`.
 * Start the server: `indradb-server`
 
 This should start the default datastore.
+
+### From source
+
+To build and install from source:
+
+* Install [rust](https://www.rust-lang.org/en-US/install.html). IndraDB should work with any of the rust variants (stable, nightly, beta.)
+* Make sure you have gcc 5+ installed.
+* Clone the repo: `git clone git@github.com:indradb/indradb.git`.
+* Build/install it: `cargo install`.
+
+### Docker
+
+If you want to run IndraDB in docker, follow the below instructions.
+
+#### Server 
+
+Build the image for the server:
+
+```bash
+DOCKER_BUILDKIT=1 docker build --target server -t indradb-server .
+```
+
+Run the server:
+
+```bash
+docker run --network host --rm indradb-server -a 0.0.0.0:27615
+```
+
+#### Client
+
+Build the image for the client:
+
+```bash
+DOCKER_BUILDKIT=1 docker build --target client -t indradb-client .
+```
+
+Run the client:
+
+```bash
+docker run --network host --rm indradb-client grpc://localhost:27615 ping
+```
+
+## Datastores
+
+IndraDB offers several different datastores with trade-offs in durability, transaction capabilities, and performance.
 
 ### Memory
 
@@ -63,53 +112,12 @@ If you want to a datastore based on [sled](http://sled.rs/), use the `sled` subc
 indradb-server sled [path/to/sled] [options]
 ```
 
- If the sled directory does not exist, it will be created.
+If the sled directory does not exist, it will be created.
 
 **NOTE:** The sled datastore is not production-ready yet. sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
-
-## Install from source
-
-If you don't want to use the pre-built releases, you can build/install from source:
-
-* Install [rust](https://www.rust-lang.org/en-US/install.html). IndraDB should work with any of the rust variants (stable, nightly, beta.)
-* Make sure you have gcc 5+ installed.
-* Clone the repo: `git clone git@github.com:indradb/indradb.git`.
-* Build/install it: `cargo install`.
 
 ## Running tests
 
 Use `make test` to run the test suite. Note that this will run the full test suite across the entire workspace, including tests for all datastore implementations. Similarly, you can run `make bench` to run the full benchmarking suite.
 
 You can filter which tests run via the `TEST_NAME` environment variable. e.g. `TEST_NAME=create_vertex make test` will run tests with `create_vertex` in the name across all datastore implementations.
-
-## Running in docker
-
-If you want to run IndraDB in docker, follow the below instructions.
-
-### Server 
-
-Build the image for the server:
-
-```bash
-DOCKER_BUILDKIT=1 docker build --target server -t indradb-server .
-```
-
-Run the server:
-
-```bash
-docker run --network host --rm indradb-server -a 0.0.0.0:27615
-```
-
-### Client
-
-Build the image for the client:
-
-```bash
-DOCKER_BUILDKIT=1 docker build --target client -t indradb-client .
-```
-
-Run the client:
-
-```bash
-docker run --network host --rm indradb-client grpc://localhost:27615 ping
-```
