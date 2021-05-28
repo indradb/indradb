@@ -116,8 +116,21 @@ If the sled directory does not exist, it will be created.
 
 **NOTE:** The sled datastore is not production-ready yet. sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
 
-## Running tests
+## Testing
 
-Use `make test` to run the test suite. Note that this will run the full test suite across the entire workspace, including tests for all datastore implementations. Similarly, you can run `make bench` to run the full benchmarking suite.
+### Unit tests
 
-You can filter which tests run via the `TEST_NAME` environment variable. e.g. `TEST_NAME=create_vertex make test` will run tests with `create_vertex` in the name across all datastore implementations.
+Use `make test` to run the test suite. Note that this will run the full test suite across the entire workspace, including tests for all datastore implementations. You can filter which tests run via the `TEST_NAME` environment variable. e.g. `TEST_NAME=create_vertex make test` will run tests with `create_vertex` in the name across all datastore implementations. All unit tests will run in CI.
+
+### Benchmarks
+
+Microbenchmarks can be run via `make bench`.
+
+### Fuzzing
+
+A fuzzer is available, ensuring the the RocksDB and in-memory datastores operate identically. Run it via `make fuzz`.
+
+### Checks
+
+Lint and formatting checks can be run via `make check`. Equivalent checks will be run in CI.
+
