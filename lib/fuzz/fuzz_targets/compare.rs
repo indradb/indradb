@@ -147,29 +147,12 @@ impl Into<indradb::SpecificVertexQuery> for SpecificVertexQuery {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct PipeVertexQuery {
     pub inner: Box<EdgeQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
     pub t: Option<Type>,
-}
-
-// Manually implemented to avoid this bug:
-// https://github.com/rust-fuzz/arbitrary/issues/30
-impl<'a> Arbitrary<'a> for PipeVertexQuery {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let inner: EdgeQuery = u.arbitrary()?;
-        let direction: EdgeDirection = u.arbitrary()?;
-        let limit: u32 = u.arbitrary()?;
-        let t: Option<Type> = u.arbitrary()?;
-        Ok(PipeVertexQuery {
-            inner: Box::new(inner),
-            direction,
-            limit,
-            t,
-        })
-    }
 }
 
 impl Into<indradb::PipeVertexQuery> for PipeVertexQuery {
@@ -226,7 +209,7 @@ impl Into<indradb::SpecificEdgeQuery> for SpecificEdgeQuery {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct PipeEdgeQuery {
     pub inner: Box<VertexQuery>,
     pub direction: EdgeDirection,
@@ -234,27 +217,6 @@ pub struct PipeEdgeQuery {
     pub t: Option<Type>,
     pub high: Option<DateTime>,
     pub low: Option<DateTime>,
-}
-
-// Manually implemented to avoid this bug:
-// https://github.com/rust-fuzz/arbitrary/issues/30
-impl<'a> Arbitrary<'a> for PipeEdgeQuery {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let inner: VertexQuery = u.arbitrary()?;
-        let direction: EdgeDirection = u.arbitrary()?;
-        let limit: u32 = u.arbitrary()?;
-        let t: Option<Type> = u.arbitrary()?;
-        let high: Option<DateTime> = u.arbitrary()?;
-        let low: Option<DateTime> = u.arbitrary()?;
-        Ok(PipeEdgeQuery {
-            inner: Box::new(inner),
-            direction,
-            limit,
-            t,
-            high,
-            low,
-        })
-    }
 }
 
 impl Into<indradb::PipeEdgeQuery> for PipeEdgeQuery {
