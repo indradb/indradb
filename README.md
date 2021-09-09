@@ -10,7 +10,7 @@ IndraDB consists of a server and an underlying library. Most users would use the
 
 IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO (and most graph databases) in its support for properties.
 
-For more details, see the [homepage](https://indradb.github.io).
+For more details, see the [homepage](https://indradb.github.io). See also a [complete demo of IndraDB for browsing the wikipedia article link graph.](https://github.com/indradb/wikipedia-example)
 
 ## Features
 
@@ -115,6 +115,12 @@ indradb-server sled [path/to/sled] [options]
 If the sled directory does not exist, it will be created.
 
 **NOTE:** The sled datastore is not production-ready yet. sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
+
+### Postgres, etc.
+
+It's possible to develop other datastores implementations in separate crates, since the IndraDB exposes the necessary traits to implement. For an example of this, see the [postgres datastore.](https://github.com/indradb/postgres)
+
+**NOTE:** The postgres datastore only works on older (pre-1.0) versions of IndraDB.
 
 ## Testing
 
