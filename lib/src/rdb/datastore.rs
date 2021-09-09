@@ -142,7 +142,7 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
 fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
     match q {
         EdgeQuery::Specific(q) => {
-            let edge_manager = EdgeManager::new(&db);
+            let edge_manager = EdgeManager::new(db);
 
             let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
                 match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
@@ -166,8 +166,8 @@ fn execute_edge_query(db: &DB, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
             let vertices = execute_vertex_query(db, *q.inner)?;
 
             let edge_range_manager = match q.direction {
-                EdgeDirection::Outbound => EdgeRangeManager::new(&db),
-                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&db),
+                EdgeDirection::Outbound => EdgeRangeManager::new(db),
+                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db),
             };
 
             // Ideally we'd use iterators all the way down, but things
