@@ -66,8 +66,8 @@ impl Into<indradb::Vertex> for Vertex {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Type(indradb::Type);
 
-impl Arbitrary for Type {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
+impl<'a> Arbitrary<'a> for Type {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let s: String = u.arbitrary()?;
 
         if s.is_empty() {
@@ -147,29 +147,12 @@ impl Into<indradb::SpecificVertexQuery> for SpecificVertexQuery {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct PipeVertexQuery {
     pub inner: Box<EdgeQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
     pub t: Option<Type>,
-}
-
-// Manually implemented to avoid this bug:
-// https://github.com/rust-fuzz/arbitrary/issues/30
-impl Arbitrary for PipeVertexQuery {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
-        let inner: EdgeQuery = u.arbitrary()?;
-        let direction: EdgeDirection = u.arbitrary()?;
-        let limit: u32 = u.arbitrary()?;
-        let t: Option<Type> = u.arbitrary()?;
-        Ok(PipeVertexQuery {
-            inner: Box::new(inner),
-            direction,
-            limit,
-            t,
-        })
-    }
 }
 
 impl Into<indradb::PipeVertexQuery> for PipeVertexQuery {
@@ -226,7 +209,7 @@ impl Into<indradb::SpecificEdgeQuery> for SpecificEdgeQuery {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct PipeEdgeQuery {
     pub inner: Box<VertexQuery>,
     pub direction: EdgeDirection,
@@ -234,27 +217,6 @@ pub struct PipeEdgeQuery {
     pub t: Option<Type>,
     pub high: Option<DateTime>,
     pub low: Option<DateTime>,
-}
-
-// Manually implemented to avoid this bug:
-// https://github.com/rust-fuzz/arbitrary/issues/30
-impl Arbitrary for PipeEdgeQuery {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
-        let inner: VertexQuery = u.arbitrary()?;
-        let direction: EdgeDirection = u.arbitrary()?;
-        let limit: u32 = u.arbitrary()?;
-        let t: Option<Type> = u.arbitrary()?;
-        let high: Option<DateTime> = u.arbitrary()?;
-        let low: Option<DateTime> = u.arbitrary()?;
-        Ok(PipeEdgeQuery {
-            inner: Box::new(inner),
-            direction,
-            limit,
-            t,
-            high,
-            low,
-        })
-    }
 }
 
 impl Into<indradb::PipeEdgeQuery> for PipeEdgeQuery {
@@ -395,8 +357,8 @@ impl Into<indradb::Edge> for Edge {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Uuid(uuid::Uuid);
 
-impl Arbitrary for Uuid {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
+impl<'a> Arbitrary<'a> for Uuid {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Self {
             0: uuid::Uuid::from_u128(u.arbitrary()?),
         })
@@ -418,8 +380,8 @@ impl Into<chrono::DateTime<chrono::Utc>> for DateTime {
     }
 }
 
-impl Arbitrary for DateTime {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
+impl<'a> Arbitrary<'a> for DateTime {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let t: i64 = u.arbitrary()?;
         let n: u32 = u.arbitrary()?;
         let naive = chrono::NaiveDateTime::from_timestamp_opt(t, n).ok_or(arbitrary::Error::IncorrectFormat)?;
@@ -479,8 +441,8 @@ impl Into<serde_json::Number> for JsonNumber {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FiniteFloat(f64);
 
-impl Arbitrary for FiniteFloat {
-    fn arbitrary(u: &mut Unstructured) -> arbitrary::Result<Self> {
+impl<'a> Arbitrary<'a> for FiniteFloat {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let f: f64 = u.arbitrary()?;
 
         if f.is_finite() {

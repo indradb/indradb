@@ -5,6 +5,7 @@ name: Test
 
 env:
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
 
 on:
   push:

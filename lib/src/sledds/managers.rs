@@ -35,7 +35,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
     pub fn new(ds: &'db SledHolder) -> Self {
         VertexManager {
             holder: ds,
-            tree: &ds.db.deref(),
+            tree: ds.db.deref(),
         }
     }
 
@@ -95,10 +95,10 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
             vertex_property_manager.delete(vertex_property_owner_id, &vertex_property_name[..])?;
         }
 
-        let edge_manager = EdgeManager::new(&self.holder);
+        let edge_manager = EdgeManager::new(self.holder);
 
         {
-            let edge_range_manager = EdgeRangeManager::new(&self.holder);
+            let edge_range_manager = EdgeRangeManager::new(self.holder);
             for item in edge_range_manager.iterate_for_owner(id) {
                 let (edge_range_outbound_id, edge_range_t, edge_range_update_datetime, edge_range_inbound_id) = item?;
                 debug_assert_eq!(edge_range_outbound_id, id);
@@ -112,7 +112,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         }
 
         {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
+            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder);
             for item in reversed_edge_range_manager.iterate_for_owner(id) {
                 let (
                     reversed_edge_range_inbound_id,
@@ -171,8 +171,8 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
         inbound_id: Uuid,
         new_update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        let edge_range_manager = EdgeRangeManager::new(&self.holder);
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
+        let edge_range_manager = EdgeRangeManager::new(self.holder);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder);
 
         if let Some(update_datetime) = self.get(outbound_id, t, inbound_id)? {
             edge_range_manager.delete(outbound_id, t, update_datetime, inbound_id)?;
@@ -196,10 +196,10 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
     ) -> Result<()> {
         self.tree.remove(&self.key(outbound_id, t, inbound_id))?;
 
-        let edge_range_manager = EdgeRangeManager::new(&self.holder);
+        let edge_range_manager = EdgeRangeManager::new(self.holder);
         edge_range_manager.delete(outbound_id, t, update_datetime, inbound_id)?;
 
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(&self.holder);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.holder);
         reversed_edge_range_manager.delete(inbound_id, t, update_datetime, outbound_id)?;
 
         let edge_property_manager = EdgePropertyManager::new(&self.holder.edge_properties);
@@ -437,7 +437,7 @@ impl<'tree> EdgePropertyManager<'tree> {
         let key = self.key(outbound_id, t, inbound_id, name);
 
         match self.tree.get(&key)? {
-            Some(ref value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
+            Some(ref value_bytes) => Ok(Some(serde_json::from_slice(value_bytes)?)),
             None => Ok(None),
         }
     }
