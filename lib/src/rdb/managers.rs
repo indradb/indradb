@@ -9,13 +9,12 @@ use crate::models;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
-use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
+pub type OwnedPropertyItem = ((Uuid, String), models::JsonValue);
 pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), models::JsonValue);
 
 pub struct VertexManager<'a> {
     pub db: &'a DB,
@@ -390,12 +389,12 @@ impl<'a> VertexPropertyManager<'a> {
             let owner_id = read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
             let name = read_unsized_string(&mut cursor);
-            let value = serde_json::from_slice(&v)?;
-            Ok(((owner_id, name), value))
+            let value: serde_json::Value = serde_json::from_slice(&v)?;
+            Ok(((owner_id, name), value.into()))
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<models::JsonValue>> {
         let key = self.key(vertex_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
@@ -404,7 +403,7 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &models::JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
@@ -491,7 +490,7 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<models::JsonValue>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
@@ -507,7 +506,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &models::Type,
         in_id: Uuid,
         name: &str,
-        value: &JsonValue,
+        value: &models::JsonValue,
     ) -> Result<()> {
         let key = self.key(out_id, t, in_id, name);
         let value_json = serde_json::to_vec(value)?;

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
@@ -7,15 +7,14 @@ use std::sync::{Arc, RwLock};
 
 use crate::errors::Result;
 use crate::{
-    Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, NamedProperty,
-    Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
+    Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, JsonValue,
+    NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use bincode::Error as BincodeError;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
@@ -267,6 +266,14 @@ impl Datastore for MemoryDatastore {
         Ok(MemoryTransaction {
             datastore: Arc::clone(&self.datastore),
         })
+    }
+
+    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
+    }
+
+    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
     }
 }
 

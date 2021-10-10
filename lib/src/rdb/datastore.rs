@@ -9,13 +9,12 @@ use crate::errors::Result;
 use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
-    VertexQuery,
+    EdgeQuery, JsonValue, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty,
+    VertexPropertyQuery, VertexQuery,
 };
 
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
-use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 const CF_NAMES: [&str; 6] = [
@@ -318,6 +317,14 @@ impl Datastore for RocksdbDatastore {
 
     fn transaction(&self) -> Result<Self::Trans> {
         Ok(RocksdbTransaction::new(self.db.clone()))
+    }
+
+    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
+    }
+
+    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
     }
 }
 

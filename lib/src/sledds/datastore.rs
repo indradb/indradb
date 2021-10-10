@@ -12,7 +12,6 @@ use crate::models::*;
 use crate::util::next_uuid;
 
 use chrono::offset::Utc;
-use serde_json::Value as JsonValue;
 use sled::{Config, Db, Tree};
 use uuid::Uuid;
 
@@ -142,6 +141,14 @@ impl Datastore for SledDatastore {
 
         self.holder.db.flush()?;
         Ok(())
+    }
+
+    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
+    }
+
+    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        unimplemented!();
     }
 }
 
@@ -450,7 +457,7 @@ impl Transaction for SledTransaction {
         iter.collect()
     }
 
-    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &models::JsonValue) -> Result<()> {
         let manager = VertexPropertyManager::new(&self.holder.vertex_properties);
 
         for item in self.vertex_query_to_iterator(q.inner)? {
@@ -507,7 +514,7 @@ impl Transaction for SledTransaction {
         iter.collect()
     }
 
-    fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_edge_properties(&self, q: EdgePropertyQuery, value: &models::JsonValue) -> Result<()> {
         let manager = EdgePropertyManager::new(&self.holder.edge_properties);
 
         for item in self.edge_query_to_iterator(q.inner)? {

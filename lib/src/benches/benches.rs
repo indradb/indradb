@@ -1,7 +1,8 @@
-use crate::models::{BulkInsertItem, EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
+use crate::models::{
+    BulkInsertItem, EdgeDirection, EdgeKey, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex,
+};
 use crate::traits::{Datastore, Transaction};
 
-use serde_json::Value as JsonValue;
 use test::Bencher;
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {

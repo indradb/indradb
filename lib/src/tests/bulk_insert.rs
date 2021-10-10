@@ -1,10 +1,9 @@
 use super::super::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
-    Vertex, VertexQueryExt,
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
+    Type, Vertex, VertexQueryExt,
 };
 use chrono::offset::Utc;
 use chrono::Timelike;
-use serde_json::Value as JsonValue;
 
 pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     let vertex_t = Type::new("test_vertex_type").unwrap();

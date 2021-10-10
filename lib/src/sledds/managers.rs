@@ -4,7 +4,6 @@ use crate::models;
 use crate::sledds::datastore::SledHolder;
 use chrono::offset::Utc;
 use chrono::DateTime;
-use serde_json::Value as JsonValue;
 use sled::Result as SledResult;
 use sled::{IVec, Iter as DbIterator, Tree};
 use std::io::Cursor;
@@ -12,10 +11,10 @@ use std::ops::Deref;
 use std::u8;
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
+pub type OwnedPropertyItem = ((Uuid, String), models::JsonValue);
 pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), models::JsonValue);
 
 fn take_while_prefixed(iterator: DbIterator, prefix: Vec<u8>) -> impl Iterator<Item = SledResult<(IVec, IVec)>> {
     iterator.take_while(move |item| -> bool {
@@ -344,12 +343,12 @@ impl<'tree> VertexPropertyManager<'tree> {
             let owner_id = read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
             let name = read_unsized_string(&mut cursor);
-            let value = serde_json::from_slice(&v)?;
-            Ok(((owner_id, name), value))
+            let value: serde_json::Value = serde_json::from_slice(&v)?;
+            Ok(((owner_id, name), value.into()))
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<models::JsonValue>> {
         let key = self.key(vertex_id, name);
 
         match self.tree.get(&key)? {
@@ -358,7 +357,7 @@ impl<'tree> VertexPropertyManager<'tree> {
         }
     }
 
-    pub fn set(&self, vertex_id: Uuid, name: &str, value: &JsonValue) -> Result<()> {
+    pub fn set(&self, vertex_id: Uuid, name: &str, value: &models::JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
         self.tree.insert(key.as_slice(), value_json.as_slice())?;
@@ -433,7 +432,13 @@ impl<'tree> EdgePropertyManager<'tree> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+    pub fn get(
+        &self,
+        outbound_id: Uuid,
+        t: &models::Type,
+        inbound_id: Uuid,
+        name: &str,
+    ) -> Result<Option<models::JsonValue>> {
         let key = self.key(outbound_id, t, inbound_id, name);
 
         match self.tree.get(&key)? {
@@ -448,7 +453,7 @@ impl<'tree> EdgePropertyManager<'tree> {
         t: &models::Type,
         inbound_id: Uuid,
         name: &str,
-        value: &JsonValue,
+        value: &models::JsonValue,
     ) -> Result<()> {
         let key = self.key(outbound_id, t, inbound_id, name);
         let value_json = serde_json::to_vec(value)?;

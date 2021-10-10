@@ -1,7 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::models;
 use crate::models::{EdgeQueryExt, VertexQueryExt};
-use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 use uuid::Uuid;
 
@@ -66,14 +65,14 @@ pub trait Datastore {
     //
     // # Arguments
     // * `name`: The name of the property to index.
-    fn index_vertex_property<name: Into<String>>(&mut self, name: S) -> Result<()>;
+    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()>;
 
     // Enables indexing on a specified edge property. When indexing is
     // enabled, queries on properties are faster.
     //
     // # Arguments
     // * `name`: The name of the property to index.
-    fn index_edge_property<name: Into<String>>(&mut self, name: S) -> Result<()>;
+    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()>;
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.
@@ -168,7 +167,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
@@ -193,7 +192,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes edge properties.
     ///

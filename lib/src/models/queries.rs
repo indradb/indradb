@@ -2,13 +2,13 @@ use std::str::FromStr;
 use std::u32;
 
 use super::edges::EdgeKey;
+use super::json::JsonValue;
 use super::types::Type;
 use crate::errors;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
 use uuid::Uuid;
-use serde_json::Value as JsonValue;
 
 macro_rules! vertex_query_type {
     ($name:ident, $variant:ident) => {
@@ -127,14 +127,17 @@ pub trait VertexQueryExt: Into<VertexQuery> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceVertexQuery {
     pub name: String,
-    pub exists: bool
+    pub exists: bool,
 }
 
 vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
 
 impl PropertyPresenceVertexQuery {
     pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
-        Self { name: name.into(), exists }
+        Self {
+            name: name.into(),
+            exists,
+        }
     }
 }
 
@@ -142,14 +145,18 @@ impl PropertyPresenceVertexQuery {
 pub struct PropertyValueVertexQuery {
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool
+    pub equal: bool,
 }
 
 vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
 
 impl PropertyValueVertexQuery {
     pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
-        Self { name: name.into(), value, equal }
+        Self {
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
@@ -157,14 +164,18 @@ impl PropertyValueVertexQuery {
 pub struct PipePropertyPresenceVertexQuery {
     pub inner: Box<VertexQuery>,
     pub name: String,
-    pub exists: bool
+    pub exists: bool,
 }
 
 vertex_query_type!(PipePropertyPresenceVertexQuery, PipePropertyPresence);
 
 impl PipePropertyPresenceVertexQuery {
     pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, exists: bool) -> Self {
-        Self { inner, name: name.into(), exists }
+        Self {
+            inner,
+            name: name.into(),
+            exists,
+        }
     }
 }
 
@@ -173,14 +184,19 @@ pub struct PipePropertyValueVertexQuery {
     pub inner: Box<VertexQuery>,
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool
+    pub equal: bool,
 }
 
 vertex_query_type!(PipePropertyValueVertexQuery, PipePropertyValue);
 
 impl PipePropertyValueVertexQuery {
     pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, value: JsonValue, equal: bool) -> Self {
-        Self { inner, name: name.into(), value, equal }
+        Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
@@ -425,14 +441,17 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceEdgeQuery {
     pub name: String,
-    pub exists: bool
+    pub exists: bool,
 }
 
 edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
 
 impl PropertyPresenceEdgeQuery {
     pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
-        Self { name: name.into(), exists }
+        Self {
+            name: name.into(),
+            exists,
+        }
     }
 }
 
@@ -440,14 +459,18 @@ impl PropertyPresenceEdgeQuery {
 pub struct PropertyValueEdgeQuery {
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool
+    pub equal: bool,
 }
 
 edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
 
 impl PropertyValueEdgeQuery {
     pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
-        Self { name: name.into(), value, equal }
+        Self {
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
@@ -455,14 +478,18 @@ impl PropertyValueEdgeQuery {
 pub struct PipePropertyPresenceEdgeQuery {
     pub inner: Box<EdgeQuery>,
     pub name: String,
-    pub exists: bool
+    pub exists: bool,
 }
 
 edge_query_type!(PipePropertyPresenceEdgeQuery, PipePropertyPresence);
 
 impl PipePropertyPresenceEdgeQuery {
     pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, exists: bool) -> Self {
-        Self { inner, name: name.into(), exists }
+        Self {
+            inner,
+            name: name.into(),
+            exists,
+        }
     }
 }
 
@@ -471,14 +498,19 @@ pub struct PipePropertyValueEdgeQuery {
     pub inner: Box<EdgeQuery>,
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool
+    pub equal: bool,
 }
 
 edge_query_type!(PipePropertyValueEdgeQuery, PipePropertyValue);
 
 impl PipePropertyValueEdgeQuery {
     pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, value: JsonValue, equal: bool) -> Self {
-        Self { inner, name: name.into(), value, equal }
+        Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
