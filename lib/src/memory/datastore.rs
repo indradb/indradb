@@ -405,6 +405,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
+    #[allow(clippy::needless_collect)]
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
@@ -416,6 +417,7 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
+    #[allow(clippy::needless_collect)]
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
@@ -467,6 +469,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
+    #[allow(clippy::needless_collect)]
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();

@@ -19,13 +19,23 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
     let addr = args.addr.to_socket_addrs()?.next().unwrap();
     let listener = TcpListener::bind(addr).await?;
     let binding = listener.local_addr()?;
-    println!("grpc://{}", binding);
 
     match args.datastore_args {
-        CliDatastoreArgs::Rocksdb { path, max_open_files } => {
+        CliDatastoreArgs::Rocksdb {
+            path,
+            max_open_files,
+            repair,
+        } => {
+            if repair {
+                indradb::RocksdbDatastore::repair(&path, Some(max_open_files))
+                    .expect("Expected to be able to repair the RocksDB datastore");
+                println!("repair successful");
+                return Ok(());
+            }
+
             let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
-
+            println!("grpc://{}", binding);
             proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
@@ -33,12 +43,13 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let datastore = sled_config
                 .open(&path)
                 .expect("Expected to be able to create the Sled datastore");
-
+            println!("grpc://{}", binding);
             proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
         CliDatastoreArgs::Memory { path: None } => {
             let datastore = indradb::MemoryDatastore::default();
+            println!("grpc://{}", binding);
             proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
@@ -48,7 +59,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 Arc::new(indradb::MemoryDatastore::create(path)?)
             };
-
+            println!("grpc://{}", binding);
             proto::run_server(datastore.clone(), listener).await?;
             Ok(())
         }

@@ -26,16 +26,16 @@ test-suite = ["indradb-lib/test-suite", "client", "server"]
 serde_json = "^1.0.57"
 uuid = "~0.8.2"
 chrono = "0.4.19"
-prost = "0.7.0"
-prost-derive = "0.7.0"
-prost-types = "0.7.0"
-tonic = "0.4.0"
-tokio = { version = "1.0.1", features = ["rt-multi-thread"], optional = true }
-tokio-stream = { version = "0.1.2", features = ["net"], optional = true }
+prost = "0.8.0"
+prost-derive = "0.8.0"
+prost-types = "0.8.0"
+tonic = "0.5.2"
+tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
+tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
 
 [dependencies.indradb-lib]
 path = "../lib"
 version = "2.1.0"
 
 [build-dependencies]
-tonic-build = "0.4.0"
+tonic-build = "0.5.2"

@@ -1,0 +1,7 @@
+**/target
+/lib/fuzz/artifacts
+/lib/fuzz/corpus
+.git
+.github
+.gitignore
+Dockerfile

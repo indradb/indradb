@@ -155,6 +155,7 @@ impl SledTransaction {
         SledTransaction { holder }
     }
 
+    #[allow(clippy::needless_collect)]
     fn vertex_query_to_iterator<'iter, 'trans: 'iter>(
         &'trans self,
         q: VertexQuery,

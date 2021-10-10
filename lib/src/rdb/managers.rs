@@ -128,7 +128,8 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
@@ -214,7 +215,8 @@ impl<'a> EdgeManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
@@ -345,7 +347,8 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
@@ -414,7 +417,8 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
@@ -524,6 +528,7 @@ impl<'a> EdgePropertyManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db.compact_range_cf::<&[u8], &[u8]>(self.cf, None, None);
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
