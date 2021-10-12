@@ -1,12 +1,6 @@
 use crate::errors::{ValidationError, ValidationResult};
-use lazy_static::lazy_static;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-
-lazy_static! {
-    static ref TYPE_VALIDATOR: Regex = Regex::new("^[a-zA-Z0-9-_]+$").unwrap();
-}
 
 /// An edge or vertex type.
 ///
@@ -29,7 +23,7 @@ impl Type {
 
         if s.len() > 255 {
             Err(ValidationError::ValueTooLong)
-        } else if !TYPE_VALIDATOR.is_match(&s[..]) {
+        } else if !s.chars().all(|c| c == '-' || c == '_' || c.is_alphanumeric()) {
             Err(ValidationError::InvalidValue)
         } else {
             Ok(Type(s))
