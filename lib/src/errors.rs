@@ -38,6 +38,9 @@ pub enum Error {
     Datastore {
         inner: Box<dyn StdError + Send>,
     },
+
+    /// A query occurred on a property that isn't indexed
+    NotIndexed
 }
 
 impl StdError for Error {
@@ -62,6 +65,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "sled-datastore")]
             #[allow(deprecated)]
             Error::Sled { ref inner } => write!(f, "sled error: {}", inner),
+            Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
         }
     }
 }

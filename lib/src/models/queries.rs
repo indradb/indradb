@@ -127,16 +127,14 @@ pub trait VertexQueryExt: Into<VertexQuery> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceVertexQuery {
     pub name: String,
-    pub exists: bool,
 }
 
 vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
 
 impl PropertyPresenceVertexQuery {
-    pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
+    pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             name: name.into(),
-            exists,
         }
     }
 }
@@ -441,16 +439,14 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceEdgeQuery {
     pub name: String,
-    pub exists: bool,
 }
 
 edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
 
 impl PropertyPresenceEdgeQuery {
-    pub fn new<S: Into<String>>(name: S, exists: bool) -> Self {
+    pub fn new<S: Into<String>>(name: S) -> Self {
         Self {
             name: name.into(),
-            exists,
         }
     }
 }
