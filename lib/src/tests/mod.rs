@@ -6,6 +6,7 @@
 
 mod bulk_insert;
 mod edge;
+mod indexing;
 #[macro_use]
 mod macros;
 mod properties;
@@ -15,6 +16,7 @@ mod vertex;
 
 pub use self::bulk_insert::*;
 pub use self::edge::*;
+pub use self::indexing::*;
 pub use self::macros::*;
 pub use self::properties::*;
 pub use self::sync::*;

@@ -123,7 +123,7 @@ pub fn should_delete_a_valid_edge<D: Datastore>(datastore: &mut D) {
 
     let q = SpecificEdgeQuery::single(key);
     trans
-        .set_edge_properties(q.clone().property("foo"), &JsonValue::Bool(true))
+        .set_edge_properties(q.clone().property("foo"), &JsonValue::new(serde_json::Value::Bool(true)))
         .unwrap();
 
     trans.delete_edges(q.clone()).unwrap();
