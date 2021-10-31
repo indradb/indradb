@@ -304,13 +304,9 @@ impl InternalMemoryDatastore {
         for property_key in keys {
             if let Some(property_value) = self.vertex_properties.remove(&property_key) {
                 let (property_vertex_id, property_name) = property_key;
-                debug_assert!(self
-                    .vertex_property_values
-                    .get_mut(&property_name)
-                    .unwrap()
-                    .get_mut(&property_value)
-                    .unwrap()
-                    .remove(&property_vertex_id));
+                if let Some(property_container) = self.vertex_property_values.get_mut(&property_name) {
+                    debug_assert!(property_container.get_mut(&property_value).unwrap().remove(&property_vertex_id));
+                }
             }
         }
     }
@@ -338,13 +334,9 @@ impl InternalMemoryDatastore {
         for property_key in keys {
             if let Some(property_value) = self.edge_properties.remove(&property_key) {
                 let (property_edge_key, property_name) = property_key;
-                debug_assert!(self
-                    .edge_property_values
-                    .get_mut(&property_name)
-                    .unwrap()
-                    .get_mut(&property_value)
-                    .unwrap()
-                    .remove(&property_edge_key));
+                if let Some(property_container) = self.edge_property_values.get_mut(&property_name) {
+                    debug_assert!(property_container.get_mut(&property_value).unwrap().remove(&property_edge_key));
+                }
             }
         }
     }
@@ -623,14 +615,11 @@ impl Transaction for MemoryTransaction {
             datastore.vertex_properties.insert((*id, q.name.clone()), value.clone());
         }
 
-        let property_container = datastore
-            .vertex_property_values
-            .get_mut(&q.name)
-            .unwrap()
-            .entry(value.clone())
-            .or_insert_with(HashSet::new);
-        for (id, _) in vertex_values.into_iter() {
-            property_container.insert(id);
+        if let Some(property_container) = datastore.vertex_property_values.get_mut(&q.name) {
+            let property_container = property_container.entry(value.clone()).or_insert_with(HashSet::new);
+            for (id, _) in vertex_values.into_iter() {
+                property_container.insert(id);
+            }
         }
 
         Ok(())
@@ -702,14 +691,11 @@ impl Transaction for MemoryTransaction {
                 .insert((key.clone(), q.name.clone()), value.clone());
         }
 
-        let property_container = datastore
-            .edge_property_values
-            .get_mut(&q.name)
-            .unwrap()
-            .entry(value.clone())
-            .or_insert_with(HashSet::new);
-        for (key, _) in edge_values.into_iter() {
-            property_container.insert(key);
+        if let Some(property_container) = datastore.edge_property_values.get_mut(&q.name) {
+            let property_container = property_container.entry(value.clone()).or_insert_with(HashSet::new);
+            for (key, _) in edge_values.into_iter() {
+                property_container.insert(key);
+            }
         }
 
         Ok(())
