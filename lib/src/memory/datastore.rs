@@ -24,7 +24,6 @@ macro_rules! iter_vertex_values {
     };
 }
 
-
 macro_rules! iter_edge_values {
     ($self:expr, $iter:expr) => {
         Box::new($iter.filter_map(move |key| $self.edges.get(&key).map(|update_datetime| (key, *update_datetime))))
@@ -175,9 +174,7 @@ impl InternalMemoryDatastore {
 
     fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<QueryIter<'_, (EdgeKey, DateTime<Utc>)>> {
         match q {
-            EdgeQuery::Specific(specific) => {
-                Ok(iter_edge_values!(self, specific.keys.into_iter()))
-            }
+            EdgeQuery::Specific(specific) => Ok(iter_edge_values!(self, specific.keys.into_iter())),
             EdgeQuery::Pipe(pipe) => {
                 let iter = self.get_vertex_values_by_query(*pipe.inner)?;
 
@@ -291,11 +288,7 @@ impl InternalMemoryDatastore {
 
                 deletable_vertex_properties.push(property_key.clone());
             }
-            for property_key in deletable_vertex_properties {
-                self.vertex_properties.remove(&property_key);
-            }
-
-            // TODO: delete from vertex property values
+            self.delete_vertex_properties(deletable_vertex_properties);
 
             let mut deletable_edges: Vec<EdgeKey> = Vec::new();
             for edge_key in self.edges.keys() {
@@ -303,8 +296,22 @@ impl InternalMemoryDatastore {
                     deletable_edges.push(edge_key.clone());
                 }
             }
-
             self.delete_edges(deletable_edges);
+        }
+    }
+
+    fn delete_vertex_properties(&mut self, keys: Vec<(Uuid, String)>) {
+        for property_key in keys {
+            if let Some(property_value) = self.vertex_properties.remove(&property_key) {
+                let (property_vertex_id, property_name) = property_key;
+                debug_assert!(self
+                    .vertex_property_values
+                    .get_mut(&property_name)
+                    .unwrap()
+                    .get_mut(&property_value)
+                    .unwrap()
+                    .remove(&property_vertex_id));
+            }
         }
     }
 
@@ -323,11 +330,22 @@ impl InternalMemoryDatastore {
 
                 deletable_edge_properties.push(property_key.clone());
             }
-            for property_key in deletable_edge_properties {
-                self.edge_properties.remove(&property_key);
-            }
+            self.delete_edge_properties(deletable_edge_properties)
+        }
+    }
 
-            // TODO: delete edge property values
+    fn delete_edge_properties(&mut self, keys: Vec<(EdgeKey, String)>) {
+        for property_key in keys {
+            if let Some(property_value) = self.edge_properties.remove(&property_key) {
+                let (property_edge_key, property_name) = property_key;
+                debug_assert!(self
+                    .edge_property_values
+                    .get_mut(&property_name)
+                    .unwrap()
+                    .get_mut(&property_value)
+                    .unwrap()
+                    .remove(&property_edge_key));
+            }
         }
     }
 }
@@ -405,15 +423,19 @@ impl Datastore for MemoryDatastore {
         let mut property_container: HashMap<JsonValue, HashSet<Uuid>> = HashMap::new();
         for id in datastore.vertices.keys() {
             if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
-                property_container.entry(value.clone()).or_insert_with(|| HashSet::new()).insert(*id);
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(*id);
             }
         }
 
-        let existing_property_container = datastore.vertex_property_values
+        let existing_property_container = datastore
+            .vertex_property_values
             .entry(name.clone())
-            .or_insert_with(|| HashMap::new());
+            .or_insert_with(HashMap::new);
         for (value, ids) in property_container.into_iter() {
-            let existing_ids = existing_property_container.entry(value).or_insert_with(|| HashSet::new());
+            let existing_ids = existing_property_container.entry(value).or_insert_with(HashSet::new);
             for id in ids {
                 existing_ids.insert(id);
             }
@@ -429,15 +451,19 @@ impl Datastore for MemoryDatastore {
         let mut property_container: HashMap<JsonValue, HashSet<EdgeKey>> = HashMap::new();
         for key in datastore.edges.keys() {
             if let Some(value) = datastore.edge_properties.get(&(key.clone(), name.clone())) {
-                property_container.entry(value.clone()).or_insert_with(|| HashSet::new()).insert(key.clone());
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(key.clone());
             }
         }
 
-        let existing_property_container = datastore.edge_property_values
+        let existing_property_container = datastore
+            .edge_property_values
             .entry(name.clone())
-            .or_insert_with(|| HashMap::new());
+            .or_insert_with(HashMap::new);
         for (value, keys) in property_container.into_iter() {
-            let existing_keys = existing_property_container.entry(value).or_insert_with(|| HashSet::new());
+            let existing_keys = existing_property_container.entry(value).or_insert_with(HashSet::new);
             for key in keys {
                 existing_keys.insert(key);
             }
@@ -582,32 +608,42 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    #[allow(clippy::needless_collect)]
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
+
         let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
-        for (id, _) in vertex_values.into_iter() {
-            datastore.vertex_properties.insert((id, q.name.clone()), value.clone());
+        let mut deletable_vertex_properties = Vec::<(Uuid, String)>::new();
+        for (id, _) in &vertex_values {
+            deletable_vertex_properties.push((*id, q.name.clone()));
+        }
+        datastore.delete_vertex_properties(deletable_vertex_properties);
+
+        for (id, _) in &vertex_values {
+            datastore.vertex_properties.insert((*id, q.name.clone()), value.clone());
         }
 
-        // TODO: update vertex property values
+        let property_container = datastore
+            .vertex_property_values
+            .get_mut(&q.name)
+            .unwrap()
+            .entry(value.clone())
+            .or_insert_with(HashSet::new);
+        for (id, _) in vertex_values.into_iter() {
+            property_container.insert(id);
+        }
 
         Ok(())
     }
 
-    #[allow(clippy::needless_collect)]
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-
         let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
-
+        let mut deletable_vertex_properties = Vec::<(Uuid, String)>::new();
         for (id, _) in vertex_values.into_iter() {
-            datastore.vertex_properties.remove(&(id, q.name.clone()));
+            deletable_vertex_properties.push((id, q.name.clone()));
         }
-
-        // TODO: delete vertex property values
-
+        datastore.delete_vertex_properties(deletable_vertex_properties);
         Ok(())
     }
 
@@ -650,16 +686,31 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    #[allow(clippy::needless_collect)]
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
 
-        for (key, _) in edge_values.into_iter() {
-            datastore.edge_properties.insert((key, q.name.clone()), value.clone());
+        let mut deletable_edge_properties = Vec::<(EdgeKey, String)>::new();
+        for (key, _) in &edge_values {
+            deletable_edge_properties.push((key.clone(), q.name.clone()));
+        }
+        datastore.delete_edge_properties(deletable_edge_properties);
+
+        for (key, _) in &edge_values {
+            datastore
+                .edge_properties
+                .insert((key.clone(), q.name.clone()), value.clone());
         }
 
-        // TODO: update edge property values
+        let property_container = datastore
+            .edge_property_values
+            .get_mut(&q.name)
+            .unwrap()
+            .entry(value.clone())
+            .or_insert_with(HashSet::new);
+        for (key, _) in edge_values.into_iter() {
+            property_container.insert(key);
+        }
 
         Ok(())
     }
@@ -667,13 +718,11 @@ impl Transaction for MemoryTransaction {
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
-
+        let mut deletable_edge_properties = Vec::<(EdgeKey, String)>::new();
         for (key, _) in edge_values {
-            datastore.edge_properties.remove(&(key, q.name.clone()));
+            deletable_edge_properties.push((key, q.name.clone()));
         }
-
-        // TODO: delete edge property values
-
+        datastore.delete_edge_properties(deletable_edge_properties);
         Ok(())
     }
 }
