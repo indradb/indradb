@@ -143,17 +143,15 @@ impl PropertyPresenceVertexQuery {
 pub struct PropertyValueVertexQuery {
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool,
 }
 
 vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
 
 impl PropertyValueVertexQuery {
-    pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
+    pub fn new<S: Into<String>>(name: S, value: JsonValue) -> Self {
         Self {
             name: name.into(),
             value,
-            equal,
         }
     }
 }
@@ -455,17 +453,15 @@ impl PropertyPresenceEdgeQuery {
 pub struct PropertyValueEdgeQuery {
     pub name: String,
     pub value: JsonValue,
-    pub equal: bool,
 }
 
 edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
 
 impl PropertyValueEdgeQuery {
-    pub fn new<S: Into<String>>(name: S, value: JsonValue, equal: bool) -> Self {
+    pub fn new<S: Into<String>>(name: S, value: JsonValue) -> Self {
         Self {
             name: name.into(),
             value,
-            equal,
         }
     }
 }
