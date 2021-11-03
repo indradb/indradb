@@ -35,7 +35,7 @@ lazy_static! {
 /// store.
 pub enum Component<'a> {
     Uuid(Uuid),
-    UnsizedString(&'a str),
+    FixedLengthString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
 }
@@ -44,7 +44,7 @@ impl<'a> Component<'a> {
     pub fn len(&self) -> usize {
         match *self {
             Component::Uuid(_) => 16,
-            Component::UnsizedString(s) => s.len(),
+            Component::FixedLengthString(s) => s.len(),
             Component::Type(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
         }
@@ -55,7 +55,7 @@ impl<'a> Component<'a> {
             Component::Uuid(uuid) => {
                 cursor.write_all(uuid.as_bytes())?;
             }
-            Component::UnsizedString(s) => {
+            Component::FixedLengthString(s) => {
                 cursor.write_all(s.as_bytes())?;
             }
             Component::Type(t) => {
