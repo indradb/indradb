@@ -1,5 +1,6 @@
 use super::edges::EdgeKey;
 use super::vertices::Vertex;
+
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 

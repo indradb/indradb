@@ -1,6 +1,8 @@
-use crate::errors::{ValidationError, ValidationResult};
-use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+
+use crate::errors::{ValidationError, ValidationResult};
+
+use serde::{Deserialize, Serialize};
 
 /// An edge or vertex type.
 ///

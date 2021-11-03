@@ -1,15 +1,16 @@
+use std::io::Cursor;
+use std::ops::Deref;
+use std::u8;
+
 use crate::errors::Result;
-use crate::models;
 use crate::sledds::datastore::SledHolder;
-use crate::util;
+use crate::{models, util};
+
 use chrono::offset::Utc;
 use chrono::DateTime;
 use serde_json::Value as JsonValue;
 use sled::Result as SledResult;
 use sled::{IVec, Iter as DbIterator, Tree};
-use std::io::Cursor;
-use std::ops::Deref;
-use std::u8;
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);

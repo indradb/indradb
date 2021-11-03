@@ -1,7 +1,8 @@
-use super::super::{
+use crate::{
     BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
     Vertex, VertexQueryExt,
 };
+
 use chrono::offset::Utc;
 use chrono::Timelike;
 use serde_json::Value as JsonValue;
