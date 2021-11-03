@@ -30,8 +30,6 @@ pub use crate::memory::{MemoryDatastore, MemoryTransaction};
 pub use crate::models::*;
 pub use crate::traits::*;
 
-#[cfg(any(feature = "rocksdb-datastore", feature = "sled-datastore"))]
-mod bytes;
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
 #[cfg(feature = "sled-datastore")]
