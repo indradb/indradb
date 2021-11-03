@@ -1,5 +1,5 @@
-use super::edges::EdgeKey;
-use crate::{Edge, Vertex};
+use crate::{Edge, EdgeKey, Vertex};
+
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 

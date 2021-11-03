@@ -1,13 +1,14 @@
-use super::super::{
-    Datastore, EdgeDirection, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
+use std::collections::HashSet;
+
+use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
+use crate::{
+    models, Datastore, EdgeDirection, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
     VertexQueryExt,
 };
-use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
-use crate::models;
+
 use chrono::offset::Utc;
 use chrono::Timelike;
 use serde_json::Value as JsonValue;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {

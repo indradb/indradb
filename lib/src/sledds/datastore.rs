@@ -2,14 +2,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::{u64, usize};
 
-use super::super::{
-    Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
-};
 use super::managers::*;
 use crate::errors::Result;
-use crate::models;
-use crate::models::*;
 use crate::util::next_uuid;
+use crate::{
+    models, Datastore, EdgeDirection, EdgePropertyQuery, EdgeQuery, Transaction, VertexPropertyQuery, VertexQuery,
+};
 
 use chrono::offset::Utc;
 use serde_json::Value as JsonValue;
@@ -487,21 +485,21 @@ impl Transaction for SledTransaction {
         Ok(properties)
     }
 
-    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>> {
         let manager = EdgePropertyManager::new(&self.holder.edge_properties);
         let iterator = self.edge_query_to_iterator(q.into())?;
 
         let iter = iterator.map(move |item| {
             let (out_id, t, time, in_id) = item?;
-            let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+            let edge = models::Edge::new(models::EdgeKey::new(out_id, t.clone(), in_id), time);
             let it = manager.iterate_for_owner(out_id, &t, in_id)?;
             let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
-                .map(|((_, _, _, name), value)| NamedProperty::new(name, value))
+                .map(|((_, _, _, name), value)| models::NamedProperty::new(name, value))
                 .collect();
 
-            Ok(EdgeProperties::new(edge, props))
+            Ok(models::EdgeProperties::new(edge, props))
         });
 
         iter.collect()

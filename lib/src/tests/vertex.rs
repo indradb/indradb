@@ -1,8 +1,9 @@
-use super::super::{Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
-use super::util::{create_edge_from, create_edges};
-use crate::models;
-use serde_json::Value as JsonValue;
 use std::collections::HashSet;
+
+use super::util::{create_edge_from, create_edges};
+use crate::{models, Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
+
+use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 pub fn should_create_vertex_from_type<D: Datastore>(datastore: &mut D) {

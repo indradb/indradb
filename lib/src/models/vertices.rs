@@ -1,6 +1,6 @@
-use super::types::Type;
-use crate::util::generate_uuid_v1;
 use std::hash::{Hash, Hasher};
+
+use crate::{util::generate_uuid_v1, Type};
 use uuid::Uuid;
 
 /// A vertex.

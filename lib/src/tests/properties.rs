@@ -1,6 +1,7 @@
-use super::super::{
+use crate::{
     Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
 };
+
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 

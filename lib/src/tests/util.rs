@@ -1,5 +1,5 @@
-use super::super::{Datastore, Transaction};
-use crate::models;
+use crate::{models, Datastore, Transaction};
+
 use chrono::offset::Utc;
 use chrono::DateTime;
 use uuid::Uuid;

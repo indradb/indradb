@@ -1,9 +1,7 @@
 use std::str::FromStr;
 use std::u32;
 
-use super::edges::EdgeKey;
-use super::types::Type;
-use crate::errors;
+use crate::{errors, EdgeKey, Type};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
