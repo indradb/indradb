@@ -336,7 +336,10 @@ impl<'tree> VertexPropertyManager<'tree> {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
-        util::build(&[util::Component::Uuid(vertex_id), util::Component::FixedLengthString(name)])
+        util::build(&[
+            util::Component::Uuid(vertex_id),
+            util::Component::FixedLengthString(name),
+        ])
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + '_> {
@@ -348,7 +351,7 @@ impl<'tree> VertexPropertyManager<'tree> {
             let mut cursor = Cursor::new(k);
             let owner_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
-            let name = util::read_unsized_string(&mut cursor);
+            let name = util::read_fixed_length_string(&mut cursor);
             let value = serde_json::from_slice(&v)?;
             Ok(((owner_id, name), value))
         }))
@@ -421,7 +424,7 @@ impl<'tree> EdgePropertyManager<'tree> {
             let edge_property_inbound_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_inbound_id, inbound_id);
 
-            let edge_property_name = util::read_unsized_string(&mut cursor);
+            let edge_property_name = util::read_fixed_length_string(&mut cursor);
 
             let value = serde_json::from_slice(&v)?;
             Ok((
