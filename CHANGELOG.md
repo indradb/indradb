@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.0 (11/3/2021)
+
+* Added a `--repair` flag (PR #182)
+* Made utils public, for use in third-party datastores (PR #195)
+
 ## 2.1.0 (2/13/2021)
 
 * A new client CLI, `indradb-client` (PR #157, #146, #163)
