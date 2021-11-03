@@ -41,6 +41,11 @@ pub enum Component<'a> {
 }
 
 impl<'a> Component<'a> {
+    // Really just implemented to not set off a clippy warning
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
     pub fn len(&self) -> usize {
         match *self {
             Component::Uuid(_) => 16,
