@@ -2,9 +2,9 @@ use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
 
-use super::super::bytes::*;
 use crate::errors::Result;
 use crate::models;
+use crate::util;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -31,7 +31,7 @@ impl<'a> VertexManager<'a> {
     }
 
     fn key(&self, id: Uuid) -> Vec<u8> {
-        build(&[Component::Uuid(id)])
+        util::build(&[util::Component::Uuid(id)])
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
@@ -42,7 +42,7 @@ impl<'a> VertexManager<'a> {
         match self.db.get_cf(self.cf, &self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(read_type(&mut cursor)))
+                Ok(Some(util::read_type(&mut cursor)))
             }
             None => Ok(None),
         }
@@ -55,17 +55,17 @@ impl<'a> VertexManager<'a> {
             let id = {
                 debug_assert_eq!(k.len(), 16);
                 let mut cursor = Cursor::new(k);
-                read_uuid(&mut cursor)
+                util::read_uuid(&mut cursor)
             };
 
             let mut cursor = Cursor::new(v);
-            let t = read_type(&mut cursor);
+            let t = util::read_type(&mut cursor);
             Ok((id, t))
         })
     }
 
     pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
-        let low_key = build(&[Component::Uuid(id)]);
+        let low_key = util::build(&[util::Component::Uuid(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
@@ -74,7 +74,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &build(&[Component::Type(&vertex.t)]));
+        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Type(&vertex.t)]));
         Ok(())
     }
 
@@ -147,14 +147,18 @@ impl<'a> EdgeManager<'a> {
     }
 
     fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Vec<u8> {
-        build(&[Component::Uuid(out_id), Component::Type(t), Component::Uuid(in_id)])
+        util::build(&[
+            util::Component::Uuid(out_id),
+            util::Component::Type(t),
+            util::Component::Uuid(in_id),
+        ])
     }
 
     pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
         match self.db.get_cf(self.cf, &self.key(out_id, t, in_id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(read_datetime(&mut cursor)))
+                Ok(Some(util::read_datetime(&mut cursor)))
             }
             None => Ok(None),
         }
@@ -177,7 +181,11 @@ impl<'a> EdgeManager<'a> {
         }
 
         let key = self.key(out_id, t, in_id);
-        batch.put_cf(self.cf, &key, &build(&[Component::DateTime(new_update_datetime)]));
+        batch.put_cf(
+            self.cf,
+            &key,
+            &util::build(&[util::Component::DateTime(new_update_datetime)]),
+        );
         edge_range_manager.set(&mut batch, out_id, t, new_update_datetime, in_id)?;
         reversed_edge_range_manager.set(&mut batch, in_id, t, new_update_datetime, out_id)?;
         Ok(())
@@ -241,11 +249,11 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
-        build(&[
-            Component::Uuid(first_id),
-            Component::Type(t),
-            Component::DateTime(update_datetime),
-            Component::Uuid(second_id),
+        util::build(&[
+            util::Component::Uuid(first_id),
+            util::Component::Type(t),
+            util::Component::DateTime(update_datetime),
+            util::Component::Uuid(second_id),
         ])
     }
 
@@ -262,10 +270,10 @@ impl<'a> EdgeRangeManager<'a> {
         filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
-            let first_id = read_uuid(&mut cursor);
-            let t = read_type(&mut cursor);
-            let update_datetime = read_datetime(&mut cursor);
-            let second_id = read_uuid(&mut cursor);
+            let first_id = util::read_uuid(&mut cursor);
+            let t = util::read_type(&mut cursor);
+            let update_datetime = util::read_datetime(&mut cursor);
+            let second_id = util::read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
         })
     }
@@ -278,16 +286,20 @@ impl<'a> EdgeRangeManager<'a> {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
-                let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
-                let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
+                let high = high.unwrap_or_else(|| *util::MAX_DATETIME);
+                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Type(t)]);
+                let low_key = util::build(&[
+                    util::Component::Uuid(id),
+                    util::Component::Type(t),
+                    util::Component::DateTime(high),
+                ]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 Ok(Box::new(self.iterate(iterator, prefix)))
             }
             None => {
-                let prefix = build(&[Component::Uuid(id)]);
+                let prefix = util::build(&[util::Component::Uuid(id)]);
                 let iterator = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -314,7 +326,7 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     pub fn iterate_for_owner(&'a self, id: Uuid) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
-        let prefix = build(&[Component::Uuid(id)]);
+        let prefix = util::build(&[util::Component::Uuid(id)]);
         let iterator = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -366,14 +378,14 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
-        build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
+        util::build(&[util::Component::Uuid(vertex_id), util::Component::UnsizedString(name)])
     }
 
     pub fn iterate_for_owner(
         &'a self,
         vertex_id: Uuid,
     ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
-        let prefix = build(&[Component::Uuid(vertex_id)]);
+        let prefix = util::build(&[util::Component::Uuid(vertex_id)]);
 
         let iterator = self
             .db
@@ -387,9 +399,9 @@ impl<'a> VertexPropertyManager<'a> {
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
-            let owner_id = read_uuid(&mut cursor);
+            let owner_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
-            let name = read_unsized_string(&mut cursor);
+            let name = util::read_unsized_string(&mut cursor);
             let value = serde_json::from_slice(&v)?;
             Ok(((owner_id, name), value))
         }))
@@ -436,11 +448,11 @@ impl<'a> EdgePropertyManager<'a> {
     }
 
     fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Vec<u8> {
-        build(&[
-            Component::Uuid(out_id),
-            Component::Type(t),
-            Component::Uuid(in_id),
-            Component::UnsizedString(name),
+        util::build(&[
+            util::Component::Uuid(out_id),
+            util::Component::Type(t),
+            util::Component::Uuid(in_id),
+            util::Component::UnsizedString(name),
         ])
     }
 
@@ -450,7 +462,11 @@ impl<'a> EdgePropertyManager<'a> {
         t: &'a models::Type,
         in_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build(&[Component::Uuid(out_id), Component::Type(t), Component::Uuid(in_id)]);
+        let prefix = util::build(&[
+            util::Component::Uuid(out_id),
+            util::Component::Type(t),
+            util::Component::Uuid(in_id),
+        ]);
 
         let iterator = self
             .db
@@ -465,16 +481,16 @@ impl<'a> EdgePropertyManager<'a> {
             let (k, v) = item;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_out_id = read_uuid(&mut cursor);
+            let edge_property_out_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_out_id, out_id);
 
-            let edge_property_t = read_type(&mut cursor);
+            let edge_property_t = util::read_type(&mut cursor);
             debug_assert_eq!(&edge_property_t, t);
 
-            let edge_property_in_id = read_uuid(&mut cursor);
+            let edge_property_in_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_in_id, in_id);
 
-            let edge_property_name = read_unsized_string(&mut cursor);
+            let edge_property_name = util::read_unsized_string(&mut cursor);
 
             let value = serde_json::from_slice(&v)?;
             Ok((

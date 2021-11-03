@@ -1,7 +1,7 @@
-use super::super::bytes::*;
 use crate::errors::Result;
 use crate::models;
 use crate::sledds::datastore::SledHolder;
+use crate::util;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use serde_json::Value as JsonValue;
@@ -40,7 +40,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
     }
 
     fn key(&self, id: Uuid) -> Vec<u8> {
-        build(&[Component::Uuid(id)])
+        util::build(&[util::Component::Uuid(id)])
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
@@ -51,7 +51,7 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
         match self.tree.get(&self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(read_type(&mut cursor)))
+                Ok(Some(util::read_type(&mut cursor)))
             }
             None => Ok(None),
         }
@@ -64,17 +64,17 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
             let id = {
                 debug_assert_eq!(k.len(), 16);
                 let mut cursor = Cursor::new(k);
-                read_uuid(&mut cursor)
+                util::read_uuid(&mut cursor)
             };
 
             let mut cursor = Cursor::new(v);
-            let t = read_type(&mut cursor);
+            let t = util::read_type(&mut cursor);
             Ok((id, t))
         })
     }
 
     pub fn iterate_for_range(&self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + '_ {
-        let low_key = build(&[Component::Uuid(id)]);
+        let low_key = util::build(&[util::Component::Uuid(id)]);
         let low_key_bytes: &[u8] = low_key.as_ref();
         let iter = self.tree.range(low_key_bytes..);
         self.iterate(iter)
@@ -82,7 +82,8 @@ impl<'db: 'tree, 'tree> VertexManager<'db, 'tree> {
 
     pub fn create(&self, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        self.tree.insert(&key, build(&[Component::Type(&vertex.t)]))?;
+        self.tree
+            .insert(&key, util::build(&[util::Component::Type(&vertex.t)]))?;
         Ok(())
     }
 
@@ -147,10 +148,10 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid) -> Vec<u8> {
-        build(&[
-            Component::Uuid(outbound_id),
-            Component::Type(t),
-            Component::Uuid(inbound_id),
+        util::build(&[
+            util::Component::Uuid(outbound_id),
+            util::Component::Type(t),
+            util::Component::Uuid(inbound_id),
         ])
     }
 
@@ -158,7 +159,7 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
         match self.tree.get(self.key(outbound_id, t, inbound_id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(read_datetime(&mut cursor)))
+                Ok(Some(util::read_datetime(&mut cursor)))
             }
             None => Ok(None),
         }
@@ -181,7 +182,7 @@ impl<'db, 'tree> EdgeManager<'db, 'tree> {
 
         let key = self.key(outbound_id, t, inbound_id);
         self.tree
-            .insert(key, build(&[Component::DateTime(new_update_datetime)]))?;
+            .insert(key, util::build(&[util::Component::DateTime(new_update_datetime)]))?;
         edge_range_manager.set(outbound_id, t, new_update_datetime, inbound_id)?;
         reversed_edge_range_manager.set(inbound_id, t, new_update_datetime, outbound_id)?;
         Ok(())
@@ -232,11 +233,11 @@ impl<'tree> EdgeRangeManager<'tree> {
     }
 
     fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
-        build(&[
-            Component::Uuid(first_id),
-            Component::Type(t),
-            Component::DateTime(update_datetime),
-            Component::Uuid(second_id),
+        util::build(&[
+            util::Component::Uuid(first_id),
+            util::Component::Type(t),
+            util::Component::DateTime(update_datetime),
+            util::Component::Uuid(second_id),
         ])
     }
 
@@ -245,10 +246,10 @@ impl<'tree> EdgeRangeManager<'tree> {
         filtered.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let first_id = read_uuid(&mut cursor);
-            let t = read_type(&mut cursor);
-            let update_datetime = read_datetime(&mut cursor);
-            let second_id = read_uuid(&mut cursor);
+            let first_id = util::read_uuid(&mut cursor);
+            let t = util::read_type(&mut cursor);
+            let update_datetime = util::read_datetime(&mut cursor);
+            let second_id = util::read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
         })
     }
@@ -261,15 +262,19 @@ impl<'tree> EdgeRangeManager<'tree> {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'iter>> {
         match t {
             Some(t) => {
-                let high = high.unwrap_or_else(|| *MAX_DATETIME);
-                let prefix = build(&[Component::Uuid(id), Component::Type(t)]);
-                let low_key = build(&[Component::Uuid(id), Component::Type(t), Component::DateTime(high)]);
+                let high = high.unwrap_or_else(|| *util::MAX_DATETIME);
+                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Type(t)]);
+                let low_key = util::build(&[
+                    util::Component::Uuid(id),
+                    util::Component::Type(t),
+                    util::Component::DateTime(high),
+                ]);
                 let low_key_bytes: &[u8] = low_key.as_ref();
                 let iterator = self.tree.range(low_key_bytes..);
                 Ok(Box::new(self.iterate(iterator, prefix)))
             }
             None => {
-                let prefix = build(&[Component::Uuid(id)]);
+                let prefix = util::build(&[util::Component::Uuid(id)]);
                 let prefix_bytes: &[u8] = prefix.as_ref();
                 let iterator = self.tree.range(prefix_bytes..);
                 let mapped = self.iterate(iterator, prefix);
@@ -298,7 +303,7 @@ impl<'tree> EdgeRangeManager<'tree> {
         &'trans self,
         id: Uuid,
     ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'iter {
-        let prefix: Vec<u8> = build(&[Component::Uuid(id)]);
+        let prefix: Vec<u8> = util::build(&[util::Component::Uuid(id)]);
         let iterator = self.tree.scan_prefix(&prefix);
         self.iterate(iterator, prefix)
     }
@@ -331,19 +336,19 @@ impl<'tree> VertexPropertyManager<'tree> {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
-        build(&[Component::Uuid(vertex_id), Component::UnsizedString(name)])
+        util::build(&[util::Component::Uuid(vertex_id), util::Component::UnsizedString(name)])
     }
 
     pub fn iterate_for_owner(&self, vertex_id: Uuid) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + '_> {
-        let prefix = build(&[Component::Uuid(vertex_id)]);
+        let prefix = util::build(&[util::Component::Uuid(vertex_id)]);
         let iterator = self.tree.scan_prefix(&prefix);
 
         Ok(iterator.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
-            let owner_id = read_uuid(&mut cursor);
+            let owner_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
-            let name = read_unsized_string(&mut cursor);
+            let name = util::read_unsized_string(&mut cursor);
             let value = serde_json::from_slice(&v)?;
             Ok(((owner_id, name), value))
         }))
@@ -381,11 +386,11 @@ impl<'tree> EdgePropertyManager<'tree> {
     }
 
     fn key(&self, outbound_id: Uuid, t: &models::Type, inbound_id: Uuid, name: &str) -> Vec<u8> {
-        build(&[
-            Component::Uuid(outbound_id),
-            Component::Type(t),
-            Component::Uuid(inbound_id),
-            Component::UnsizedString(name),
+        util::build(&[
+            util::Component::Uuid(outbound_id),
+            util::Component::Type(t),
+            util::Component::Uuid(inbound_id),
+            util::Component::UnsizedString(name),
         ])
     }
 
@@ -395,10 +400,10 @@ impl<'tree> EdgePropertyManager<'tree> {
         t: &'a models::Type,
         inbound_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = build(&[
-            Component::Uuid(outbound_id),
-            Component::Type(t),
-            Component::Uuid(inbound_id),
+        let prefix = util::build(&[
+            util::Component::Uuid(outbound_id),
+            util::Component::Type(t),
+            util::Component::Uuid(inbound_id),
         ]);
 
         let iterator = self.tree.scan_prefix(&prefix);
@@ -407,16 +412,16 @@ impl<'tree> EdgePropertyManager<'tree> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_outbound_id = read_uuid(&mut cursor);
+            let edge_property_outbound_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_outbound_id, outbound_id);
 
-            let edge_property_t = read_type(&mut cursor);
+            let edge_property_t = util::read_type(&mut cursor);
             debug_assert_eq!(&edge_property_t, t);
 
-            let edge_property_inbound_id = read_uuid(&mut cursor);
+            let edge_property_inbound_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_inbound_id, inbound_id);
 
-            let edge_property_name = read_unsized_string(&mut cursor);
+            let edge_property_name = util::read_unsized_string(&mut cursor);
 
             let value = serde_json::from_slice(&v)?;
             Ok((
