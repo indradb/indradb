@@ -72,6 +72,10 @@ impl<'a> Component<'a> {
     }
 }
 
+// Serializes component(s) into bytes.
+///
+/// # Arguments
+/// * `components`: The components to serialize to bytes.
 pub fn build(components: &[Component]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
@@ -95,12 +99,20 @@ fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
     timestamp * 1_000_000_000 + nanoseconds
 }
 
+/// Reads a UUID from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
 pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
     Uuid::from_slice(&buf).unwrap()
 }
 
+/// Reads a type from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
 pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
@@ -117,12 +129,20 @@ pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
     }
 }
 
-pub fn read_unsized_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
+/// Reads a fixed-length string from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
+pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
     let mut buf = String::new();
     cursor.read_to_string(&mut buf).unwrap();
     buf
 }
 
+/// Reads a datetime from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
 pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
