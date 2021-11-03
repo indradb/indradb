@@ -12,10 +12,12 @@ on:
     branches:
       - master
       - v1
+      - v2
   pull_request:
     branches:
       - master
       - v1
+      - v2
 
 jobs:
   test:
