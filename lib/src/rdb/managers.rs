@@ -378,7 +378,7 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
-        util::build(&[util::Component::Uuid(vertex_id), util::Component::UnsizedString(name)])
+        util::build(&[util::Component::Uuid(vertex_id), util::Component::FixedLengthString(name)])
     }
 
     pub fn iterate_for_owner(
@@ -452,7 +452,7 @@ impl<'a> EdgePropertyManager<'a> {
             util::Component::Uuid(out_id),
             util::Component::Type(t),
             util::Component::Uuid(in_id),
-            util::Component::UnsizedString(name),
+            util::Component::FixedLengthString(name),
         ])
     }
 
