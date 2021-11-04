@@ -71,13 +71,6 @@ impl From<RocksDbError> for Error {
     }
 }
 
-#[cfg(feature = "sled-datastore")]
-impl From<SledError> for Error {
-    fn from(err: SledError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
-    }
-}
-
 impl From<TempFilePersistError> for Error {
     fn from(err: TempFilePersistError) -> Self {
         Error::Datastore { inner: Box::new(err) }
