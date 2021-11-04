@@ -104,23 +104,12 @@ If you want to use the rocksdb-backed datastore, use the `rocksdb` subcommand; e
 indradb-server rocksdb [/path/to/rocksdb.rdb] [options]
 ```
 
-### Sled
+### Postgres, Sled, etc.
 
-If you want to a datastore based on [sled](http://sled.rs/), use the `sled` subcommand; e.g.:
+It's possible to develop other datastores implementations in separate crates, since the IndraDB exposes the necessary traits to implement:
 
-```bash
-indradb-server sled [path/to/sled] [options]
-```
-
-If the sled directory does not exist, it will be created.
-
-**NOTE:** The sled datastore is not production-ready yet. sled itself is pre-1.0, and makes no guarantees about on-disk format stability. Upgrading IndraDB may require you to [manually migrate the sled datastore.](https://docs.rs/sled/0.34.6/sled/struct.Db.html#method.export) Additionally, there is a [standing issue](https://github.com/indradb/indradb/issues/98) that prevents the sled datastore from having the same level of safety as the RocksDB datastore.
-
-### Postgres, etc.
-
-It's possible to develop other datastores implementations in separate crates, since the IndraDB exposes the necessary traits to implement. For an example of this, see the [postgres datastore.](https://github.com/indradb/postgres)
-
-**NOTE:** The postgres datastore only works on older (pre-1.0) versions of IndraDB.
+* Postgres is available through [indradb-postgres.](https://github.com/indradb/postgres)
+* Sled is available through [indradb-sled.](https://github.com/indradb/sled)
 
 ## Testing
 

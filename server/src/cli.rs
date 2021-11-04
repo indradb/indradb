@@ -1,5 +1,4 @@
 use clap::{value_t, App, Arg, SubCommand};
-use indradb::SledConfig;
 use std::ffi::OsString;
 
 pub struct CliArgs {
@@ -16,17 +15,12 @@ pub enum CliDatastoreArgs {
         max_open_files: i32,
         repair: bool,
     },
-    Sled {
-        path: OsString,
-        sled_config: SledConfig,
-    },
 }
 
 const ADDRESS: &str = "ADDRESS";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
 const ROCKSDB_REPAIR: &str = "ROCKSDB_REPAIR";
-const SLED_COMPRESSION: &str = "SLED_COMPRESSION";
 const MEMORY_PERSIST_PATH: &str = "MEMORY_PERSIST_PATH";
 
 pub fn parse_cli_args() -> CliArgs {
@@ -72,21 +66,10 @@ pub fn parse_cli_args() -> CliArgs {
                 .takes_value(false),
         );
 
-    let sled_subcommand = SubCommand::with_name("sled")
-        .about("Start an indradb instance backed by sled")
-        .arg(&database_path_argument)
-        .arg(Arg::with_name(SLED_COMPRESSION)
-            .long("compression")
-            .value_name(SLED_COMPRESSION)
-            .help("If set to true, compression will be enabled at the default zstd factor of 5. If set to an integer, compression will be enabled at the zstd specified factor.")
-            .takes_value(true)
-            .default_value("false"));
-
     let matches = App::new("indradb-server")
         .arg(&addr)
         .subcommand(memory_subcommand)
         .subcommand(rocksdb_subcommand)
-        .subcommand(sled_subcommand)
         .get_matches();
 
     CliArgs {
@@ -104,20 +87,6 @@ pub fn parse_cli_args() -> CliArgs {
                 path: matches.value_of_os(DATABASE_PATH).unwrap().to_os_string(),
                 max_open_files: value_t!(matches, ROCKSDB_MAX_OPEN_FILES, i32).unwrap_or_else(|e| e.exit()),
                 repair: matches.is_present(ROCKSDB_REPAIR),
-            }
-        } else if let Some(matches) = matches.subcommand_matches("sled") {
-            let sled_compression = matches.value_of(SLED_COMPRESSION).unwrap();
-            CliDatastoreArgs::Sled {
-                path: matches.value_of_os(DATABASE_PATH).unwrap().to_os_string(),
-                sled_config: match sled_compression {
-                    "true" => indradb::SledConfig::with_compression(None),
-                    "false" => indradb::SledConfig::default(),
-                    _ => indradb::SledConfig::with_compression(Some(
-                        sled_compression
-                            .parse::<i32>()
-                            .expect("Could not parse argument `sled_compression`: must be a bool or i32"),
-                    )),
-                },
             }
         } else {
             CliDatastoreArgs::Memory { path: None }
