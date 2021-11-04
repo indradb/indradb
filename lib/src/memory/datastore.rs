@@ -305,7 +305,10 @@ impl InternalMemoryDatastore {
             if let Some(property_value) = self.vertex_properties.remove(&property_key) {
                 let (property_vertex_id, property_name) = property_key;
                 if let Some(property_container) = self.vertex_property_values.get_mut(&property_name) {
-                    debug_assert!(property_container.get_mut(&property_value).unwrap().remove(&property_vertex_id));
+                    debug_assert!(property_container
+                        .get_mut(&property_value)
+                        .unwrap()
+                        .remove(&property_vertex_id));
                 }
             }
         }
@@ -335,7 +338,10 @@ impl InternalMemoryDatastore {
             if let Some(property_value) = self.edge_properties.remove(&property_key) {
                 let (property_edge_key, property_name) = property_key;
                 if let Some(property_container) = self.edge_property_values.get_mut(&property_name) {
-                    debug_assert!(property_container.get_mut(&property_value).unwrap().remove(&property_edge_key));
+                    debug_assert!(property_container
+                        .get_mut(&property_value)
+                        .unwrap()
+                        .remove(&property_edge_key));
                 }
             }
         }

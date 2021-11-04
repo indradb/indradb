@@ -1,6 +1,6 @@
 use crate::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
-    Vertex, VertexQueryExt,
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
+    Type, Vertex, VertexQueryExt,
 };
 
 use chrono::offset::Utc;

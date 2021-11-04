@@ -130,9 +130,7 @@ vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
 
 impl PropertyPresenceVertexQuery {
     pub fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            name: name.into(),
-        }
+        Self { name: name.into() }
     }
 }
 
@@ -440,9 +438,7 @@ edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
 
 impl PropertyPresenceEdgeQuery {
     pub fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            name: name.into(),
-        }
+        Self { name: name.into() }
     }
 }
 

@@ -26,7 +26,7 @@ pub enum Error {
     },
 
     /// A query occurred on a property that isn't indexed
-    NotIndexed
+    NotIndexed,
 }
 
 impl StdError for Error {
