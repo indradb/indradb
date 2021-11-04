@@ -1,5 +1,5 @@
-use super::edges::EdgeKey;
-use crate::{Edge, JsonValue, Vertex};
+use crate::{Edge, EdgeKey, JsonValue, Vertex};
+
 use uuid::Uuid;
 
 /// Represents a vertex property.

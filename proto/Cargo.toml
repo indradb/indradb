@@ -1,6 +1,6 @@
 [package]
 name = "indradb-proto"
-version = "2.1.0"
+version = "2.2.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "Protobuf/gRPC interfaces for IndraDB"
 homepage = "https://indradb.github.io"
@@ -35,7 +35,7 @@ tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "2.1.0"
+version = "2.2.0"
 
 [build-dependencies]
 tonic-build = "0.5.2"

@@ -1,7 +1,8 @@
-use super::super::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
-    Type, Vertex, VertexQueryExt,
+use crate::{
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
+    Vertex, VertexQueryExt,
 };
+
 use chrono::offset::Utc;
 use chrono::Timelike;
 

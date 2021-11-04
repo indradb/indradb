@@ -1,6 +1,7 @@
 use super::edges::EdgeKey;
 use super::json::JsonValue;
 use super::vertices::Vertex;
+
 use uuid::Uuid;
 
 /// An item to insert, as part of a bulk insert request.
