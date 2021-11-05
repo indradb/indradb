@@ -11,10 +11,10 @@ use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, String), models::JsonValue);
+pub type OwnedPropertyItem = ((Uuid, models::Type), models::JsonValue);
 pub type VertexItem = (Uuid, models::Type);
 pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), models::JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, models::Type), models::JsonValue);
 
 pub struct VertexManager<'a> {
     pub db: &'a DB,
@@ -83,7 +83,7 @@ impl<'a> VertexManager<'a> {
         let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
-            vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name[..])?;
+            vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name)?;
         }
 
         let edge_manager = EdgeManager::new(self.db);
@@ -214,7 +214,7 @@ impl<'a> EdgeManager<'a> {
                 edge_property_out_id,
                 &edge_property_t,
                 edge_property_in_id,
-                &edge_property_name[..],
+                &edge_property_name,
             )?;
         }
 
@@ -376,10 +376,10 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    fn key(&self, vertex_id: Uuid, name: &str) -> Vec<u8> {
+    fn key(&self, vertex_id: Uuid, name: &models::Type) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(vertex_id),
-            util::Component::FixedLengthString(name),
+            util::Component::FixedLengthString(&name.0),
         ])
     }
 
@@ -403,13 +403,14 @@ impl<'a> VertexPropertyManager<'a> {
             let mut cursor = Cursor::new(k);
             let owner_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
-            let name = util::read_fixed_length_string(&mut cursor);
+            let name_str = util::read_fixed_length_string(&mut cursor);
+            let name = unsafe { models::Type::new_unchecked(name_str) };
             let value = serde_json::from_slice(&v)?;
             Ok(((owner_id, name), value))
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &str) -> Result<Option<models::JsonValue>> {
+    pub fn get(&self, vertex_id: Uuid, name: &models::Type) -> Result<Option<models::JsonValue>> {
         let key = self.key(vertex_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
@@ -418,14 +419,14 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str, value: &models::JsonValue) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &models::Type, value: &models::JsonValue) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &str) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &models::Type) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(vertex_id, name));
         Ok(())
     }
@@ -449,12 +450,12 @@ impl<'a> EdgePropertyManager<'a> {
         }
     }
 
-    fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Vec<u8> {
+    fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &models::Type) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(out_id),
             util::Component::Type(t),
             util::Component::Uuid(in_id),
-            util::Component::FixedLengthString(name),
+            util::Component::FixedLengthString(&name.0),
         ])
     }
 
@@ -492,7 +493,8 @@ impl<'a> EdgePropertyManager<'a> {
             let edge_property_in_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_in_id, in_id);
 
-            let edge_property_name = util::read_fixed_length_string(&mut cursor);
+            let edge_property_name_str = util::read_fixed_length_string(&mut cursor);
+            let edge_property_name = unsafe { models::Type::new_unchecked(edge_property_name_str) };
 
             let value = serde_json::from_slice(&v)?;
             Ok((
@@ -509,7 +511,7 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<models::JsonValue>> {
+    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &models::Type) -> Result<Option<models::JsonValue>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
@@ -524,7 +526,7 @@ impl<'a> EdgePropertyManager<'a> {
         out_id: Uuid,
         t: &models::Type,
         in_id: Uuid,
-        name: &str,
+        name: &models::Type,
         value: &models::JsonValue,
     ) -> Result<()> {
         let key = self.key(out_id, t, in_id, name);
@@ -539,7 +541,7 @@ impl<'a> EdgePropertyManager<'a> {
         out_id: Uuid,
         t: &models::Type,
         in_id: Uuid,
-        name: &str,
+        name: &models::Type,
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name));
         Ok(())

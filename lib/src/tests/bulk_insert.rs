@@ -29,12 +29,12 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         BulkInsertItem::Edge(key.clone()),
         BulkInsertItem::VertexProperty(
             outbound_v.id,
-            "vertex_property_name".to_string(),
+            Type::new("vertex_property_name").unwrap(),
             JsonValue::new(serde_json::Value::String("vertex_property_value".to_string())),
         ),
         BulkInsertItem::EdgeProperty(
             key.clone(),
-            "edge_property_name".to_string(),
+            Type::new("edge_property_name").unwrap(),
             JsonValue::new(serde_json::Value::String("edge_property_value".to_string())),
         ),
     ];
@@ -64,7 +64,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert!(edges[0].created_datetime <= end_time);
 
     let vertex_properties = trans
-        .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property("vertex_property_name"))
+        .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property(Type::new("vertex_property_name").unwrap()))
         .unwrap();
 
     assert_eq!(vertex_properties.len(), 1);
@@ -75,7 +75,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     );
 
     let edge_properties = trans
-        .get_edge_properties(SpecificEdgeQuery::single(key.clone()).property("edge_property_name"))
+        .get_edge_properties(SpecificEdgeQuery::single(key.clone()).property(Type::new("edge_property_name").unwrap()))
         .unwrap();
 
     assert_eq!(edge_properties.len(), 1);

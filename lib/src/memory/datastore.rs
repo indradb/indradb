@@ -6,6 +6,7 @@ use std::result::Result as StdResult;
 use std::sync::{Arc, RwLock};
 
 use crate::errors::{Error, Result};
+use crate::util;
 use crate::{
     Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, JsonValue,
     NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
@@ -39,16 +40,16 @@ struct InternalMemoryDatastore {
     vertices: BTreeMap<Uuid, Type>,
     edges: BTreeMap<EdgeKey, DateTime<Utc>>,
     reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
-    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
-    edge_properties: BTreeMap<(EdgeKey, String), JsonValue>,
-    vertex_property_values: HashMap<String, HashMap<JsonValue, HashSet<Uuid>>>,
-    edge_property_values: HashMap<String, HashMap<JsonValue, HashSet<EdgeKey>>>,
+    vertex_properties: BTreeMap<(Uuid, Type), JsonValue>,
+    edge_properties: BTreeMap<(EdgeKey, Type), JsonValue>,
+    vertex_property_values: HashMap<Type, HashMap<JsonValue, HashSet<Uuid>>>,
+    edge_property_values: HashMap<Type, HashMap<JsonValue, HashSet<EdgeKey>>>,
 }
 
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
-    fn get_all_vertices_with_property(&self, property_name: &str, error_if_missing: bool) -> Result<HashSet<Uuid>> {
+    fn get_all_vertices_with_property(&self, property_name: &Type, error_if_missing: bool) -> Result<HashSet<Uuid>> {
         let mut vertices = HashSet::<Uuid>::default();
         if let Some(container) = self.vertex_property_values.get(property_name) {
             for sub_container in container.values() {
@@ -62,7 +63,7 @@ impl InternalMemoryDatastore {
         Ok(vertices)
     }
 
-    fn get_all_edges_with_property(&self, property_name: &str, error_if_missing: bool) -> Result<HashSet<EdgeKey>> {
+    fn get_all_edges_with_property(&self, property_name: &Type, error_if_missing: bool) -> Result<HashSet<EdgeKey>> {
         let mut edges = HashSet::<EdgeKey>::default();
         if let Some(container) = self.edge_property_values.get(property_name) {
             for sub_container in container.values() {
@@ -278,8 +279,8 @@ impl InternalMemoryDatastore {
         for vertex_id in vertices {
             self.vertices.remove(&vertex_id);
 
-            let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
-            for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
+            let mut deletable_vertex_properties: Vec<(Uuid, Type)> = Vec::new();
+            for (property_key, _) in self.vertex_properties.range((vertex_id, Type::default())..) {
                 let &(ref property_vertex_id, _) = property_key;
 
                 if &vertex_id != property_vertex_id {
@@ -300,7 +301,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn delete_vertex_properties(&mut self, keys: Vec<(Uuid, String)>) {
+    fn delete_vertex_properties(&mut self, keys: Vec<(Uuid, Type)>) {
         for property_key in keys {
             if let Some(property_value) = self.vertex_properties.remove(&property_key) {
                 let (property_vertex_id, property_name) = property_key;
@@ -319,8 +320,8 @@ impl InternalMemoryDatastore {
             self.edges.remove(&edge_key);
             self.reversed_edges.remove(&edge_key.reversed());
 
-            let mut deletable_edge_properties: Vec<(EdgeKey, String)> = Vec::new();
-            for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
+            let mut deletable_edge_properties: Vec<(EdgeKey, Type)> = Vec::new();
+            for (property_key, _) in self.edge_properties.range((edge_key.clone(), Type::default())..) {
                 let &(ref property_edge_key, _) = property_key;
 
                 if &edge_key != property_edge_key {
@@ -333,7 +334,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn delete_edge_properties(&mut self, keys: Vec<(EdgeKey, String)>) {
+    fn delete_edge_properties(&mut self, keys: Vec<(EdgeKey, Type)>) {
         for property_key in keys {
             if let Some(property_value) = self.edge_properties.remove(&property_key) {
                 let (property_edge_key, property_name) = property_key;
@@ -414,7 +415,7 @@ impl Datastore for MemoryDatastore {
         })
     }
 
-    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    fn index_vertex_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
         let name = name.into();
         let mut datastore = self.datastore.write().unwrap();
 
@@ -442,7 +443,7 @@ impl Datastore for MemoryDatastore {
         Ok(())
     }
 
-    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    fn index_edge_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
         let name = name.into();
         let mut datastore = self.datastore.write().unwrap();
 
@@ -591,8 +592,8 @@ impl Transaction for MemoryTransaction {
 
         let mut result = Vec::new();
         for (id, t) in vertex_values {
-            let from = &(id, "".to_string());
-            let to = &(crate::util::next_uuid(id).unwrap(), "".to_string());
+            let from = &(id, Type::default());
+            let to = &(util::next_uuid(id).unwrap(), Type::default());
 
             let properties = datastore.vertex_properties.range(from..to);
             result.push(VertexProperties::new(
@@ -611,7 +612,7 @@ impl Transaction for MemoryTransaction {
 
         let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
-        let mut deletable_vertex_properties = Vec::<(Uuid, String)>::new();
+        let mut deletable_vertex_properties = Vec::<(Uuid, Type)>::new();
         for (id, _) in &vertex_values {
             deletable_vertex_properties.push((*id, q.name.clone()));
         }
@@ -634,7 +635,7 @@ impl Transaction for MemoryTransaction {
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
-        let mut deletable_vertex_properties = Vec::<(Uuid, String)>::new();
+        let mut deletable_vertex_properties = Vec::<(Uuid, Type)>::new();
         for (id, _) in vertex_values.into_iter() {
             deletable_vertex_properties.push((id, q.name.clone()));
         }
@@ -664,7 +665,7 @@ impl Transaction for MemoryTransaction {
 
         let mut result = Vec::new();
         for (id, t) in edge_values {
-            let from = &(id.clone(), "".to_string());
+            let from = &(id.clone(), Type::default());
 
             let properties = datastore
                 .edge_properties
@@ -685,7 +686,7 @@ impl Transaction for MemoryTransaction {
         let mut datastore = self.datastore.write().unwrap();
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
 
-        let mut deletable_edge_properties = Vec::<(EdgeKey, String)>::new();
+        let mut deletable_edge_properties = Vec::<(EdgeKey, Type)>::new();
         for (key, _) in &edge_values {
             deletable_edge_properties.push((key.clone(), q.name.clone()));
         }
@@ -710,7 +711,7 @@ impl Transaction for MemoryTransaction {
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
-        let mut deletable_edge_properties = Vec::<(EdgeKey, String)>::new();
+        let mut deletable_edge_properties = Vec::<(EdgeKey, Type)>::new();
         for (key, _) in edge_values {
             deletable_edge_properties.push((key, q.name.clone()));
         }

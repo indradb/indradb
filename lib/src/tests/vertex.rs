@@ -162,7 +162,7 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(datastore: &mut D) {
     let q = SpecificVertexQuery::single(outbound_id);
     trans
         .set_vertex_properties(
-            q.clone().property("foo"),
+            q.clone().property(models::Type::new("foo").unwrap()),
             &models::JsonValue::new(serde_json::Value::Bool(true)),
         )
         .unwrap();

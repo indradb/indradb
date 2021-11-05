@@ -100,50 +100,50 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     ///
     /// # Arguments
     /// * `name`: The name of the property to get.
-    fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+    fn property<T: Into<Type>>(self, name: T) -> VertexPropertyQuery {
         VertexPropertyQuery::new(self.into(), name)
     }
 
-    fn with_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceVertexQuery {
+    fn with_property<T: Into<Type>>(self, name: T) -> PipePropertyPresenceVertexQuery {
         PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, true)
     }
 
-    fn without_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceVertexQuery {
+    fn without_property<T: Into<Type>>(self, name: T) -> PipePropertyPresenceVertexQuery {
         PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, false)
     }
 
-    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueVertexQuery {
+    fn with_property_equal_to<T: Into<Type>>(self, name: T, value: JsonValue) -> PipePropertyValueVertexQuery {
         PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueVertexQuery {
+    fn with_property_not_equal_to<T: Into<Type>>(self, name: T, value: JsonValue) -> PipePropertyValueVertexQuery {
         PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, false)
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceVertexQuery {
-    pub name: String,
+    pub name: Type,
 }
 
 vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
 
 impl PropertyPresenceVertexQuery {
-    pub fn new<S: Into<String>>(name: S) -> Self {
+    pub fn new<T: Into<Type>>(name: T) -> Self {
         Self { name: name.into() }
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyValueVertexQuery {
-    pub name: String,
+    pub name: Type,
     pub value: JsonValue,
 }
 
 vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
 
 impl PropertyValueVertexQuery {
-    pub fn new<S: Into<String>>(name: S, value: JsonValue) -> Self {
+    pub fn new<T: Into<Type>>(name: T, value: JsonValue) -> Self {
         Self {
             name: name.into(),
             value,
@@ -154,14 +154,14 @@ impl PropertyValueVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyPresenceVertexQuery {
     pub inner: Box<VertexQuery>,
-    pub name: String,
+    pub name: Type,
     pub exists: bool,
 }
 
 vertex_query_type!(PipePropertyPresenceVertexQuery, PipePropertyPresence);
 
 impl PipePropertyPresenceVertexQuery {
-    pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, exists: bool) -> Self {
+    pub fn new<T: Into<Type>>(inner: Box<VertexQuery>, name: T, exists: bool) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -173,7 +173,7 @@ impl PipePropertyPresenceVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyValueVertexQuery {
     pub inner: Box<VertexQuery>,
-    pub name: String,
+    pub name: Type,
     pub value: JsonValue,
     pub equal: bool,
 }
@@ -181,7 +181,7 @@ pub struct PipePropertyValueVertexQuery {
 vertex_query_type!(PipePropertyValueVertexQuery, PipePropertyValue);
 
 impl PipePropertyValueVertexQuery {
-    pub fn new<S: Into<String>>(inner: Box<VertexQuery>, name: S, value: JsonValue, equal: bool) -> Self {
+    pub fn new<T: Into<Type>>(inner: Box<VertexQuery>, name: T, value: JsonValue, equal: bool) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -358,7 +358,7 @@ pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
 
     /// The name of the property to get.
-    pub name: String,
+    pub name: Type,
 }
 
 impl VertexPropertyQuery {
@@ -367,7 +367,7 @@ impl VertexPropertyQuery {
     /// Arguments
     /// * `inner`: The vertex query to build off of.
     /// * `name`: The name of the property to get.
-    pub fn new<S: Into<String>>(inner: VertexQuery, name: S) -> Self {
+    pub fn new<T: Into<Type>>(inner: VertexQuery, name: T) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -408,50 +408,50 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     ///
     /// # Arguments
     /// * `name`: The name of the property to get.
-    fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
+    fn property<T: Into<Type>>(self, name: T) -> EdgePropertyQuery {
         EdgePropertyQuery::new(self.into(), name)
     }
 
-    fn with_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceEdgeQuery {
+    fn with_property<T: Into<Type>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
         PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, true)
     }
 
-    fn without_property<S: Into<String>>(self, name: S) -> PipePropertyPresenceEdgeQuery {
+    fn without_property<T: Into<Type>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
         PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, false)
     }
 
-    fn with_property_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueEdgeQuery {
+    fn with_property_equal_to<T: Into<Type>>(self, name: T, value: JsonValue) -> PipePropertyValueEdgeQuery {
         PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    fn with_property_not_equal_to<S: Into<String>>(self, name: S, value: JsonValue) -> PipePropertyValueEdgeQuery {
+    fn with_property_not_equal_to<T: Into<Type>>(self, name: T, value: JsonValue) -> PipePropertyValueEdgeQuery {
         PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, false)
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceEdgeQuery {
-    pub name: String,
+    pub name: Type,
 }
 
 edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
 
 impl PropertyPresenceEdgeQuery {
-    pub fn new<S: Into<String>>(name: S) -> Self {
+    pub fn new<T: Into<Type>>(name: T) -> Self {
         Self { name: name.into() }
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PropertyValueEdgeQuery {
-    pub name: String,
+    pub name: Type,
     pub value: JsonValue,
 }
 
 edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
 
 impl PropertyValueEdgeQuery {
-    pub fn new<S: Into<String>>(name: S, value: JsonValue) -> Self {
+    pub fn new<T: Into<Type>>(name: T, value: JsonValue) -> Self {
         Self {
             name: name.into(),
             value,
@@ -462,14 +462,14 @@ impl PropertyValueEdgeQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyPresenceEdgeQuery {
     pub inner: Box<EdgeQuery>,
-    pub name: String,
+    pub name: Type,
     pub exists: bool,
 }
 
 edge_query_type!(PipePropertyPresenceEdgeQuery, PipePropertyPresence);
 
 impl PipePropertyPresenceEdgeQuery {
-    pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, exists: bool) -> Self {
+    pub fn new<T: Into<Type>>(inner: Box<EdgeQuery>, name: T, exists: bool) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -481,7 +481,7 @@ impl PipePropertyPresenceEdgeQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyValueEdgeQuery {
     pub inner: Box<EdgeQuery>,
-    pub name: String,
+    pub name: Type,
     pub value: JsonValue,
     pub equal: bool,
 }
@@ -489,7 +489,7 @@ pub struct PipePropertyValueEdgeQuery {
 edge_query_type!(PipePropertyValueEdgeQuery, PipePropertyValue);
 
 impl PipePropertyValueEdgeQuery {
-    pub fn new<S: Into<String>>(inner: Box<EdgeQuery>, name: S, value: JsonValue, equal: bool) -> Self {
+    pub fn new<T: Into<Type>>(inner: Box<EdgeQuery>, name: T, value: JsonValue, equal: bool) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -641,7 +641,7 @@ pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
 
     /// The name of the property to get.
-    pub name: String,
+    pub name: Type,
 }
 
 impl EdgePropertyQuery {
@@ -650,7 +650,7 @@ impl EdgePropertyQuery {
     /// Arguments
     /// * `inner`: The edge query to build off of.
     /// * `name`: The name of the property to get.
-    pub fn new<S: Into<String>>(inner: EdgeQuery, name: S) -> Self {
+    pub fn new<T: Into<Type>>(inner: EdgeQuery, name: T) -> Self {
         Self {
             inner,
             name: name.into(),

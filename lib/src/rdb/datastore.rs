@@ -319,11 +319,11 @@ impl Datastore for RocksdbDatastore {
         Ok(RocksdbTransaction::new(self.db.clone()))
     }
 
-    fn index_vertex_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    fn index_vertex_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
         unimplemented!();
     }
 
-    fn index_edge_property<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    fn index_edge_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
         unimplemented!();
     }
 }
