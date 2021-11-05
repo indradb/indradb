@@ -66,7 +66,10 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
         )
         .unwrap();
     trans
-        .set_vertex_properties(q2.clone().property(Type::new("b").unwrap()), &JsonValue::new(serde_json::Value::Bool(true)))
+        .set_vertex_properties(
+            q2.clone().property(Type::new("b").unwrap()),
+            &JsonValue::new(serde_json::Value::Bool(true)),
+        )
         .unwrap();
 
     let result_1 = trans.get_all_vertex_properties(q1).unwrap();

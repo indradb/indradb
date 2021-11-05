@@ -64,7 +64,9 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert!(edges[0].created_datetime <= end_time);
 
     let vertex_properties = trans
-        .get_vertex_properties(SpecificVertexQuery::single(outbound_v.id).property(Type::new("vertex_property_name").unwrap()))
+        .get_vertex_properties(
+            SpecificVertexQuery::single(outbound_v.id).property(Type::new("vertex_property_name").unwrap()),
+        )
         .unwrap();
 
     assert_eq!(vertex_properties.len(), 1);

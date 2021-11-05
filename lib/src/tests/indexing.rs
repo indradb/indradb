@@ -33,7 +33,9 @@ fn setup_edge_with_indexed_property<D: Datastore>(datastore: &mut D, property_na
 
 pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let result = trans.get_vertices(models::PropertyPresenceVertexQuery::new(models::Type::new("foo").unwrap()));
+    let result = trans.get_vertices(models::PropertyPresenceVertexQuery::new(
+        models::Type::new("foo").unwrap(),
+    ));
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -42,7 +44,9 @@ pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &mut 
 
 pub fn should_not_query_unindexed_edge_property<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let result = trans.get_edges(models::PropertyPresenceEdgeQuery::new(models::Type::new("foo").unwrap()));
+    let result = trans.get_edges(models::PropertyPresenceEdgeQuery::new(
+        models::Type::new("foo").unwrap(),
+    ));
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -167,10 +171,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
-        .get_vertices(
-            q.clone()
-                .with_property_not_equal_to(property_name.clone(), json_true),
-        )
+        .get_vertices(q.clone().with_property_not_equal_to(property_name.clone(), json_true))
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
@@ -226,10 +227,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &mut D) {
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
-        .get_edges(
-            q.clone()
-                .with_property_not_equal_to(property_name.clone(), json_true),
-        )
+        .get_edges(q.clone().with_property_not_equal_to(property_name.clone(), json_true))
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key.clone());

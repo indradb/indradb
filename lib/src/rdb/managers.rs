@@ -419,7 +419,13 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &models::Type, value: &models::JsonValue) -> Result<()> {
+    pub fn set(
+        &self,
+        batch: &mut WriteBatch,
+        vertex_id: Uuid,
+        name: &models::Type,
+        value: &models::JsonValue,
+    ) -> Result<()> {
         let key = self.key(vertex_id, name);
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
@@ -511,7 +517,13 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &models::Type) -> Result<Option<models::JsonValue>> {
+    pub fn get(
+        &self,
+        out_id: Uuid,
+        t: &models::Type,
+        in_id: Uuid,
+        name: &models::Type,
+    ) -> Result<Option<models::JsonValue>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
