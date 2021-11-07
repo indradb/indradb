@@ -147,58 +147,40 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
-        for vertex_id in vertices {
-            self.vertices.remove(&vertex_id);
+    fn delete_vertex(&mut self, vertex_id: Uuid) {
+        self.vertices.remove(&vertex_id);
 
-            let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
+        let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
 
-            for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
-                let &(ref property_vertex_id, _) = property_key;
+        for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
+            let &(ref property_vertex_id, _) = property_key;
 
-                if &vertex_id != property_vertex_id {
-                    break;
-                }
-
-                deletable_vertex_properties.push(property_key.clone());
+            if &vertex_id != property_vertex_id {
+                break;
             }
 
-            for property_key in deletable_vertex_properties {
-                self.vertex_properties.remove(&property_key);
+            self.vertex_properties.remove(&property_key);
+        }
+
+        for edge_key in self.edges.keys() {
+            if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
+                self.delete_edge(*edge_key);
             }
-
-            let mut deletable_edges: Vec<EdgeKey> = Vec::new();
-
-            for edge_key in self.edges.keys() {
-                if edge_key.outbound_id == vertex_id || edge_key.inbound_id == vertex_id {
-                    deletable_edges.push(edge_key.clone());
-                }
-            }
-
-            self.delete_edges(deletable_edges);
         }
     }
 
-    fn delete_edges(&mut self, edges: Vec<EdgeKey>) {
-        for edge_key in edges {
-            self.edges.remove(&edge_key);
-            self.reversed_edges.remove(&edge_key.reversed());
+    fn delete_edge(&mut self, edge_key: EdgeKey) {
+        self.edges.remove(&edge_key);
+        self.reversed_edges.remove(&edge_key.reversed());
 
-            let mut deletable_edge_properties: Vec<(EdgeKey, String)> = Vec::new();
+        for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
+            let &(ref property_edge_key, _) = property_key;
 
-            for (property_key, _) in self.edge_properties.range((edge_key.clone(), "".to_string())..) {
-                let &(ref property_edge_key, _) = property_key;
-
-                if &edge_key != property_edge_key {
-                    break;
-                }
-
-                deletable_edge_properties.push(property_key.clone());
+            if &edge_key != property_edge_key {
+                break;
             }
 
-            for property_key in deletable_edge_properties {
-                self.edge_properties.remove(&property_key);
-            }
+            self.edge_properties.remove(&property_key);
         }
     }
 }
@@ -296,14 +278,14 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_vertices = datastore
-            .get_vertex_values_by_query(q.into())?
-            .map(|(k, _)| k)
-            .collect();
-        datastore.delete_vertices(deletable_vertices);
-        Ok(())
+
+        let count = datastore.get_vertex_values_by_query(q.into())?.map(|(k, _)| {
+            datastore.delete_vertex(k);
+        }).count();
+
+        Ok(count as u64)
     }
 
     fn get_vertex_count(&self) -> Result<u64> {
@@ -336,11 +318,14 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q.into())?.map(|(k, _)| k).collect();
-        datastore.delete_edges(deletable_edges);
-        Ok(())
+
+        let count = datastore.get_edge_values_by_query(q.into())?.map(|(k, _)| {
+            datastore.delete_edge(k);
+        }).count();
+
+        Ok(count as u64)
     }
 
     fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
@@ -406,28 +391,25 @@ impl Transaction for MemoryTransaction {
     }
 
     #[allow(clippy::needless_collect)]
-    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
-        for (id, _) in vertex_values.into_iter() {
+        let count = datastore.get_vertex_values_by_query(q.inner)?.map(|(id, _)| {
             datastore.vertex_properties.insert((id, q.name.clone()), value.clone());
-        }
+        }).count();
 
-        Ok(())
+        Ok(count as u64)
     }
 
     #[allow(clippy::needless_collect)]
-    fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
+    fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
+        let count = datastore.get_vertex_values_by_query(q.inner)?.filter_map(|(id, _)| {
+            datastore.vertex_properties.remove(&(id, q.name.clone()))
+        }).count();
 
-        for (id, _) in vertex_values.into_iter() {
-            datastore.vertex_properties.remove(&(id, q.name.clone()));
-        }
-
-        Ok(())
+        Ok(count as u64)
     }
 
     fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
@@ -470,25 +452,23 @@ impl Transaction for MemoryTransaction {
     }
 
     #[allow(clippy::needless_collect)]
-    fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
-        let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
 
-        for (key, _) in edge_values.into_iter() {
+        let count = datastore.get_edge_values_by_query(q.inner)?.map(|(key, _)| {
             datastore.edge_properties.insert((key, q.name.clone()), value.clone());
-        }
+        }).count();
 
-        Ok(())
+        Ok(count as u64)
     }
 
-    fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
+    fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<u64> {
         let mut datastore = self.datastore.write().unwrap();
-        let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
 
-        for (key, _) in edge_values {
-            datastore.edge_properties.remove(&(key, q.name.clone()));
-        }
+        let count = datastore.get_edge_values_by_query(q.inner)?.filter_map(|(key, _)| {
+            datastore.edge_properties.remove(&(key, q.name.clone()))
+        }).count();
 
-        Ok(())
+        Ok(count as u64)
     }
 }
