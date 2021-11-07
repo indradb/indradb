@@ -103,7 +103,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<u64>;
 
     /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
@@ -127,7 +127,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<u64>;
 
     /// Gets the number of edges associated with a vertex.
     ///
@@ -154,13 +154,13 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<u64>;
 
     /// Deletes vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<()>;
+    fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<u64>;
 
     /// Gets edge properties.
     ///
@@ -179,11 +179,11 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<u64>;
 
     /// Deletes edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
+    fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<u64>;
 }
