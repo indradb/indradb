@@ -36,7 +36,7 @@ pub enum Error {
 
     /// An error occurred in the underlying datastore
     Datastore {
-        inner: Box<dyn StdError + Send>,
+        inner: Box<dyn StdError + Send + Sync>,
     },
 }
 
