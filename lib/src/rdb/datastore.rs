@@ -332,7 +332,10 @@ impl Datastore for RocksdbDatastore {
     }
 
     fn transaction(&self) -> Result<Self::Trans> {
-        Ok(RocksdbTransaction::new(self.db.clone(), self.indexed_properties.clone()))
+        Ok(RocksdbTransaction::new(
+            self.db.clone(),
+            self.indexed_properties.clone(),
+        ))
     }
 
     fn index_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
@@ -353,7 +356,7 @@ impl Datastore for RocksdbDatastore {
         let edge_property_value_manager = EdgePropertyValueManager::new(&db);
         let metadata_manager = MetadataManager::new(&db);
         metadata_manager.set_indexed_properties(&mut batch, &indexed_properties)?;
-        
+
         for item in vertex_manager.iterate_for_range(Uuid::default()) {
             let (vertex_id, _) = item?;
             if let Some(property_value) = vertex_property_manager.get(vertex_id, &name)? {

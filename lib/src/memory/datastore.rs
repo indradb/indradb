@@ -134,14 +134,12 @@ impl InternalMemoryDatastore {
             VertexQuery::PropertyValue(q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
                     if let Some(sub_container) = container.get(&q.value) {
-                        let iter = Box::new(
-                            sub_container.iter().filter_map(move |member| {
-                                match member {
-                                    IndexedPropertyMember::Vertex(id) => self.vertices.get(&id).map(|value| (*id, value.clone())),
-                                    _ => None
-                                }
-                            }),
-                        );
+                        let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                            IndexedPropertyMember::Vertex(id) => {
+                                self.vertices.get(&id).map(|value| (*id, value.clone()))
+                            }
+                            _ => None,
+                        }));
                         return Ok(iter);
                     }
                     Ok(iter_vertex_values!(self, Vec::default().into_iter()))
@@ -166,12 +164,13 @@ impl InternalMemoryDatastore {
 
                 let ids: HashSet<Uuid> = if let Some(container) = self.property_values.get(&q.name) {
                     if let Some(members) = container.get(&q.value) {
-                        members.iter().filter_map(|member| {
-                            match member {
+                        members
+                            .iter()
+                            .filter_map(|member| match member {
                                 IndexedPropertyMember::Vertex(id) => Some(id.clone()),
                                 _ => None,
-                            }
-                        }).collect()
+                            })
+                            .collect()
                     } else {
                         HashSet::default()
                     }
@@ -244,14 +243,12 @@ impl InternalMemoryDatastore {
             EdgeQuery::PropertyValue(q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
                     if let Some(sub_container) = container.get(&q.value) {
-                        let iter = Box::new(
-                            sub_container.iter().filter_map(move |member| {
-                                match member {
-                                    IndexedPropertyMember::Edge(key) => self.edges.get(&key).map(|value| (key.clone(), value.clone())),
-                                    _ => None
-                                }
-                            }),
-                        );
+                        let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                            IndexedPropertyMember::Edge(key) => {
+                                self.edges.get(&key).map(|value| (key.clone(), value.clone()))
+                            }
+                            _ => None,
+                        }));
                         return Ok(iter);
                     }
                     Ok(iter_edge_values!(self, Vec::default().into_iter()))
@@ -276,12 +273,13 @@ impl InternalMemoryDatastore {
 
                 let keys: HashSet<EdgeKey> = if let Some(container) = self.property_values.get(&q.name) {
                     if let Some(members) = container.get(&q.value) {
-                        members.iter().filter_map(|member| {
-                            match member {
+                        members
+                            .iter()
+                            .filter_map(|member| match member {
                                 IndexedPropertyMember::Edge(key) => Some(key.clone()),
                                 _ => None,
-                            }
-                        }).collect()
+                            })
+                            .collect()
                     } else {
                         HashSet::default()
                     }

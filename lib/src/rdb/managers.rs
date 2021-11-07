@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::ops::Deref;
@@ -612,7 +612,13 @@ impl<'a> VertexPropertyValueManager<'a> {
         })
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, property_name: &models::Type, property_value: &models::JsonValue) {
+    pub fn set(
+        &self,
+        batch: &mut WriteBatch,
+        vertex_id: Uuid,
+        property_name: &models::Type,
+        property_value: &models::JsonValue,
+    ) {
         let mut hasher = DefaultHasher::new();
         property_value.hash(&mut hasher);
         let hash = hasher.finish();
@@ -639,7 +645,14 @@ impl<'a> EdgePropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Type, json_hash: u64, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Vec<u8> {
+    fn key(
+        &self,
+        property_name: &models::Type,
+        json_hash: u64,
+        out_id: Uuid,
+        t: &models::Type,
+        in_id: Uuid,
+    ) -> Vec<u8> {
         util::build(&[
             util::Component::Type(property_name),
             util::Component::U64(json_hash),
@@ -649,7 +662,15 @@ impl<'a> EdgePropertyValueManager<'a> {
         ])
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, out_id: Uuid, t: &models::Type, in_id: Uuid, property_name: &models::Type, property_value: &models::JsonValue) {
+    pub fn set(
+        &self,
+        batch: &mut WriteBatch,
+        out_id: Uuid,
+        t: &models::Type,
+        in_id: Uuid,
+        property_name: &models::Type,
+        property_value: &models::JsonValue,
+    ) {
         let mut hasher = DefaultHasher::new();
         property_value.hash(&mut hasher);
         let hash = hasher.finish();
@@ -694,4 +715,3 @@ impl<'a> MetadataManager<'a> {
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
-

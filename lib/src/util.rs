@@ -59,12 +59,8 @@ impl<'a> Component<'a> {
 
     pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            Component::Uuid(uuid) => {
-                cursor.write_all(uuid.as_bytes())
-            }
-            Component::FixedLengthString(s) => {
-                cursor.write_all(s.as_bytes())
-            }
+            Component::Uuid(uuid) => cursor.write_all(uuid.as_bytes()),
+            Component::FixedLengthString(s) => cursor.write_all(s.as_bytes()),
             Component::Type(t) => {
                 cursor.write_all(&[t.0.len() as u8])?;
                 cursor.write_all(t.0.as_bytes())
@@ -73,9 +69,7 @@ impl<'a> Component<'a> {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)
             }
-            Component::U64(v) => {
-                cursor.write_u64::<BigEndian>(v)
-            }
+            Component::U64(v) => cursor.write_u64::<BigEndian>(v),
         }
     }
 }
