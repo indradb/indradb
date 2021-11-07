@@ -60,8 +60,8 @@ pub trait Datastore {
         Ok(())
     }
 
-    // Enables indexing on a specified property. When indexing is enabled,
-    // queries on properties are faster.
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
     //
     // # Arguments
     // * `name`: The name of the property to index.

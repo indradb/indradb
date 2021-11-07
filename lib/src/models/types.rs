@@ -5,6 +5,7 @@ use crate::errors::{ValidationError, ValidationResult};
 
 use serde::{Deserialize, Serialize};
 
+// TODO: rename, now that it's used for property names as well
 /// An edge or vertex type.
 ///
 /// Types must be less than 256 characters long, and can only contain letters,

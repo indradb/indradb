@@ -111,20 +111,21 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     }
 
     let mut items = Vec::with_capacity(2 * vertices.len() + 2 * edge_keys.len());
+    let t = Type::new("is_benchmark").unwrap();
     for vertex in vertices.into_iter() {
         items.push(BulkInsertItem::Vertex(vertex.clone()));
         items.push(BulkInsertItem::VertexProperty(
             vertex.id,
-            "is_benchmark".to_string(),
-            JsonValue::Bool(true),
+            t.clone(),
+            JsonValue::new(serde_json::Value::Bool(true)),
         ));
     }
     for edge_key in edge_keys.into_iter() {
         items.push(BulkInsertItem::Edge(edge_key.clone()));
         items.push(BulkInsertItem::EdgeProperty(
             edge_key,
-            "is_benchmark".to_string(),
-            JsonValue::Bool(true),
+            t.clone(),
+            JsonValue::new(serde_json::Value::Bool(true)),
         ));
     }
 

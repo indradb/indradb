@@ -2,7 +2,7 @@ use crate::{models, Datastore, EdgeQueryExt, Error, Transaction, VertexQueryExt}
 use uuid::Uuid;
 
 fn setup_vertex_with_indexed_property<D: Datastore>(datastore: &mut D, property_name: &models::Type) -> Uuid {
-    datastore.index_vertex_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
     let trans = datastore.transaction().unwrap();
     let v = models::Vertex::new(models::Type::new("test_vertex_type").unwrap());
     trans.create_vertex(&v).unwrap();
@@ -14,7 +14,7 @@ fn setup_vertex_with_indexed_property<D: Datastore>(datastore: &mut D, property_
 }
 
 fn setup_edge_with_indexed_property<D: Datastore>(datastore: &mut D, property_name: &models::Type) -> models::EdgeKey {
-    datastore.index_edge_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
     let trans = datastore.transaction().unwrap();
     let vertex_t = models::Type::new("test_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
@@ -68,7 +68,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(datastore: &mut D) {
         .unwrap();
 
     // Index property
-    datastore.index_vertex_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
 
     // Get the vertex
     let result = trans
@@ -104,7 +104,7 @@ pub fn should_index_existing_edge_property<D: Datastore>(datastore: &mut D) {
         .unwrap();
 
     // Index property
-    datastore.index_edge_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
 
     // Get the edge
     let result = trans
@@ -258,7 +258,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &mut D) {
 pub fn should_query_indexed_vertex_property_empty<D: Datastore>(datastore: &mut D) {
     let property_name = models::Type::new("queryable-vertex-property").unwrap();
     let trans = datastore.transaction().unwrap();
-    datastore.index_vertex_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
     let result = trans
         .get_vertices(models::PropertyPresenceVertexQuery::new(property_name))
         .unwrap();
@@ -268,7 +268,7 @@ pub fn should_query_indexed_vertex_property_empty<D: Datastore>(datastore: &mut 
 pub fn should_query_indexed_edge_property_empty<D: Datastore>(datastore: &mut D) {
     let property_name = models::Type::new("queryable-edge-property").unwrap();
     let trans = datastore.transaction().unwrap();
-    datastore.index_edge_property(property_name.clone()).unwrap();
+    datastore.index_property(property_name.clone()).unwrap();
     let result = trans
         .get_edges(models::PropertyPresenceEdgeQuery::new(property_name))
         .unwrap();

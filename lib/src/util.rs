@@ -38,6 +38,7 @@ pub enum Component<'a> {
     FixedLengthString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
+    U64(u64),
 }
 
 impl<'a> Component<'a> {
@@ -52,28 +53,30 @@ impl<'a> Component<'a> {
             Component::FixedLengthString(s) => s.len(),
             Component::Type(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
+            Component::U64(_) => 8,
         }
     }
 
     pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
             Component::Uuid(uuid) => {
-                cursor.write_all(uuid.as_bytes())?;
+                cursor.write_all(uuid.as_bytes())
             }
             Component::FixedLengthString(s) => {
-                cursor.write_all(s.as_bytes())?;
+                cursor.write_all(s.as_bytes())
             }
             Component::Type(t) => {
                 cursor.write_all(&[t.0.len() as u8])?;
-                cursor.write_all(t.0.as_bytes())?;
+                cursor.write_all(t.0.as_bytes())
             }
             Component::DateTime(datetime) => {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
-                cursor.write_u64::<BigEndian>(time_to_end)?;
+                cursor.write_u64::<BigEndian>(time_to_end)
             }
-        };
-
-        Ok(())
+            Component::U64(v) => {
+                cursor.write_u64::<BigEndian>(v)
+            }
+        }
     }
 }
 
@@ -152,6 +155,10 @@ pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
     let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
     assert!(time_to_end <= i64::MAX as u64);
     *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
+}
+
+pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
+    cursor.read_u64::<BigEndian>().unwrap()
 }
 
 /// Generates a UUID v1. This utility method uses a shared context and node ID

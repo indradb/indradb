@@ -1,3 +1,6 @@
+use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::ops::Deref;
 use std::u8;
@@ -19,13 +22,15 @@ pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, models::Type), models::J
 pub struct VertexManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
+    indexed_properties: &'a HashSet<models::Type>,
 }
 
 impl<'a> VertexManager<'a> {
-    pub fn new(db: &'a DB) -> Self {
+    pub fn new(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         VertexManager {
             cf: db.cf_handle("vertices:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
@@ -80,16 +85,16 @@ impl<'a> VertexManager<'a> {
     pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id));
 
-        let vertex_property_manager = VertexPropertyManager::new(self.db);
+        let vertex_property_manager = VertexPropertyManager::new(self.db, self.indexed_properties);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
             vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name)?;
         }
 
-        let edge_manager = EdgeManager::new(self.db);
+        let edge_manager = EdgeManager::new(self.db, self.indexed_properties);
 
         {
-            let edge_range_manager = EdgeRangeManager::new(self.db);
+            let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
             for item in edge_range_manager.iterate_for_owner(id) {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
@@ -104,7 +109,7 @@ impl<'a> VertexManager<'a> {
         }
 
         {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
+            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
             for item in reversed_edge_range_manager.iterate_for_owner(id) {
                 let (
                     reversed_edge_range_in_id,
@@ -135,13 +140,15 @@ impl<'a> VertexManager<'a> {
 pub struct EdgeManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
+    indexed_properties: &'a HashSet<models::Type>,
 }
 
 impl<'a> EdgeManager<'a> {
-    pub fn new(db: &'a DB) -> Self {
+    pub fn new(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         EdgeManager {
             cf: db.cf_handle("edges:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
@@ -171,8 +178,8 @@ impl<'a> EdgeManager<'a> {
         in_id: Uuid,
         new_update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        let edge_range_manager = EdgeRangeManager::new(self.db);
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
+        let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
 
         if let Some(update_datetime) = self.get(out_id, t, in_id)? {
             edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
@@ -200,13 +207,13 @@ impl<'a> EdgeManager<'a> {
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
-        let edge_range_manager = EdgeRangeManager::new(self.db);
+        let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
         edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
 
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
         reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
 
-        let edge_property_manager = EdgePropertyManager::new(self.db);
+        let edge_property_manager = EdgePropertyManager::new(self.db, self.indexed_properties);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
             let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
@@ -230,20 +237,23 @@ impl<'a> EdgeManager<'a> {
 pub struct EdgeRangeManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
+    indexed_properties: &'a HashSet<models::Type>,
 }
 
 impl<'a> EdgeRangeManager<'a> {
-    pub fn new(db: &'a DB) -> Self {
+    pub fn new(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("edge_ranges:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
-    pub fn new_reversed(db: &'a DB) -> Self {
+    pub fn new_reversed(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         EdgeRangeManager {
             cf: db.cf_handle("reversed_edge_ranges:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
@@ -366,13 +376,15 @@ impl<'a> EdgeRangeManager<'a> {
 pub struct VertexPropertyManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
+    indexed_properties: &'a HashSet<models::Type>,
 }
 
 impl<'a> VertexPropertyManager<'a> {
-    pub fn new(db: &'a DB) -> Self {
+    pub fn new(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         VertexPropertyManager {
             cf: db.cf_handle("vertex_properties:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
@@ -446,13 +458,15 @@ impl<'a> VertexPropertyManager<'a> {
 pub struct EdgePropertyManager<'a> {
     pub db: &'a DB,
     pub cf: &'a ColumnFamily,
+    indexed_properties: &'a HashSet<models::Type>,
 }
 
 impl<'a> EdgePropertyManager<'a> {
-    pub fn new(db: &'a DB) -> Self {
+    pub fn new(db: &'a DB, indexed_properties: &'a HashSet<models::Type>) -> Self {
         EdgePropertyManager {
             cf: db.cf_handle("edge_properties:v1").unwrap(),
             db,
+            indexed_properties,
         }
     }
 
@@ -564,3 +578,120 @@ impl<'a> EdgePropertyManager<'a> {
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
+
+pub struct VertexPropertyValueManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
+}
+
+impl<'a> VertexPropertyValueManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
+        VertexPropertyValueManager {
+            cf: db.cf_handle("vertex_property_values:v1").unwrap(),
+            db,
+        }
+    }
+
+    fn key(&self, property_name: &models::Type, json_hash: u64, vertex_id: Uuid) -> Vec<u8> {
+        util::build(&[
+            util::Component::Type(property_name),
+            util::Component::U64(json_hash),
+            util::Component::Uuid(vertex_id),
+        ])
+    }
+
+    pub fn iterate_all_keys(&'a self) -> impl Iterator<Item = (models::Type, u64, Uuid)> + 'a {
+        let iterator = self.db.iterator_cf(self.cf, IteratorMode::Start);
+        iterator.map(move |item| -> (models::Type, u64, Uuid) {
+            let (k, _) = item;
+            let mut cursor = Cursor::new(k);
+            let name = util::read_type(&mut cursor);
+            let value_hash = util::read_u64(&mut cursor);
+            let vertex_id = util::read_uuid(&mut cursor);
+            (name, value_hash, vertex_id)
+        })
+    }
+
+    pub fn set(&self, batch: &mut WriteBatch, vertex_id: Uuid, property_name: &models::Type, property_value: &models::JsonValue) {
+        let mut hasher = DefaultHasher::new();
+        property_value.hash(&mut hasher);
+        let hash = hasher.finish();
+        let key = self.key(property_name, hash, vertex_id);
+        batch.put_cf(self.cf, key, &[]);
+    }
+
+    pub fn compact(&self) {
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+    }
+}
+
+pub struct EdgePropertyValueManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
+}
+
+impl<'a> EdgePropertyValueManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
+        EdgePropertyValueManager {
+            cf: db.cf_handle("edge_property_values:v1").unwrap(),
+            db,
+        }
+    }
+
+    fn key(&self, property_name: &models::Type, json_hash: u64, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Vec<u8> {
+        util::build(&[
+            util::Component::Type(property_name),
+            util::Component::U64(json_hash),
+            util::Component::Uuid(out_id),
+            util::Component::Type(t),
+            util::Component::Uuid(in_id),
+        ])
+    }
+
+    pub fn set(&self, batch: &mut WriteBatch, out_id: Uuid, t: &models::Type, in_id: Uuid, property_name: &models::Type, property_value: &models::JsonValue) {
+        let mut hasher = DefaultHasher::new();
+        property_value.hash(&mut hasher);
+        let hash = hasher.finish();
+        let key = self.key(property_name, hash, out_id, t, in_id);
+        batch.put_cf(self.cf, key, &[]);
+    }
+
+    pub fn compact(&self) {
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+    }
+}
+
+pub struct MetadataManager<'a> {
+    pub db: &'a DB,
+    pub cf: &'a ColumnFamily,
+}
+
+impl<'a> MetadataManager<'a> {
+    pub fn new(db: &'a DB) -> Self {
+        MetadataManager {
+            cf: db.cf_handle("metadata:v1").unwrap(),
+            db,
+        }
+    }
+
+    pub fn get_indexed_properties(&self) -> Result<HashSet<models::Type>> {
+        match self.db.get_cf(self.cf, "indexed_properties")? {
+            Some(value_bytes) => Ok(bincode::deserialize(&value_bytes)?),
+            None => Ok(HashSet::default()),
+        }
+    }
+
+    pub fn set_indexed_properties(&self, batch: &mut WriteBatch, indices: &HashSet<models::Type>) -> Result<()> {
+        let value_bytes = bincode::serialize(&indices)?;
+        batch.put_cf(self.cf, "indexed_properties", &value_bytes);
+        Ok(())
+    }
+
+    pub fn compact(&self) {
+        self.db
+            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+    }
+}
+
