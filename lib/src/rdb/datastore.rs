@@ -6,7 +6,7 @@ use std::u64;
 use std::usize;
 
 use super::managers::*;
-use crate::errors::Result;
+use crate::errors::{Error, Result};
 use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
@@ -54,6 +54,14 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     }
 
     opts
+}
+
+fn guard_indexed_property(indexed_properties: &HashSet<Type>, property: &Type) -> Result<()> {
+    if !indexed_properties.contains(property) {
+        Err(Error::NotIndexed)
+    } else {
+        Ok(())
+    }
 }
 
 fn vertices_from_property_value_iterator<'a>(
@@ -250,20 +258,24 @@ fn execute_vertex_query(db: &DB, indexed_properties: &HashSet<Type>, q: VertexQu
             vertices
         }
         VertexQuery::PropertyPresence(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let vertex_property_value_manager = VertexPropertyValueManager::new(db);
             let iter = vertex_property_value_manager.iterate_for_name(&q.name);
             vertices_from_property_value_iterator(db, indexed_properties, iter)
         }
         VertexQuery::PropertyValue(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let vertex_property_value_manager = VertexPropertyValueManager::new(db);
             let iter = vertex_property_value_manager.iterate_for_value(&q.name, &q.value);
             vertices_from_property_value_iterator(db, indexed_properties, iter)
         }
         VertexQuery::PipePropertyPresence(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let property_query = PropertyPresenceVertexQuery::new(q.name).into();
             vertices_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.exists)
         }
         VertexQuery::PipePropertyValue(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let property_query = PropertyValueVertexQuery::new(q.name, q.value).into();
             vertices_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.equal)
         }
@@ -344,20 +356,24 @@ fn execute_edge_query(db: &DB, indexed_properties: &HashSet<Type>, q: EdgeQuery)
             Ok(edges)
         }
         EdgeQuery::PropertyPresence(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let edge_property_value_manager = EdgePropertyValueManager::new(db);
             let iter = edge_property_value_manager.iterate_for_name(&q.name);
             edges_from_property_value_iterator(db, indexed_properties, iter)
         }
         EdgeQuery::PropertyValue(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let edge_property_value_manager = EdgePropertyValueManager::new(db);
             let iter = edge_property_value_manager.iterate_for_value(&q.name, &q.value);
             edges_from_property_value_iterator(db, indexed_properties, iter)
         }
         EdgeQuery::PipePropertyPresence(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let property_query = PropertyPresenceEdgeQuery::new(q.name).into();
             edges_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.exists)
         }
         EdgeQuery::PipePropertyValue(q) => {
+            guard_indexed_property(indexed_properties, &q.name)?;
             let property_query = PropertyValueEdgeQuery::new(q.name, q.value).into();
             edges_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.equal)
         }
