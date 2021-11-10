@@ -1,13 +1,10 @@
 //! Utility functions. These are public because they may be useful for crates
 //! that implement Datastore/Transaction.
 
-use std::i32;
-use std::i64;
-use std::io::Read;
-use std::io::Write;
-use std::io::{Cursor, Error as IoError};
-use std::str;
-use std::u8;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::io::{Cursor, Error as IoError, Read, Write};
+use std::{i32, i64, str, u8};
 
 use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
@@ -38,7 +35,7 @@ pub enum Component<'a> {
     FixedLengthString(&'a str),
     Type(&'a models::Type),
     DateTime(DateTime<Utc>),
-    U64(u64),
+    JsonValue(&'a models::JsonValue),
 }
 
 impl<'a> Component<'a> {
@@ -53,7 +50,7 @@ impl<'a> Component<'a> {
             Component::FixedLengthString(s) => s.len(),
             Component::Type(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
-            Component::U64(_) => 8,
+            Component::JsonValue(_) => 8,
         }
     }
 
@@ -69,7 +66,12 @@ impl<'a> Component<'a> {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)
             }
-            Component::U64(v) => cursor.write_u64::<BigEndian>(v),
+            Component::JsonValue(json) => {
+                let mut hasher = DefaultHasher::new();
+                json.hash(&mut hasher);
+                let hash = hasher.finish();
+                cursor.write_u64::<BigEndian>(hash)
+            }
         }
     }
 }

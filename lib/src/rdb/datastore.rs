@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::i32;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
@@ -10,11 +10,13 @@ use crate::errors::Result;
 use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, JsonValue, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty,
+    EdgeQuery, JsonValue, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
+    PropertyValueEdgeQuery, PropertyValueVertexQuery, Transaction, Type, Vertex, VertexProperties, VertexProperty,
     VertexPropertyQuery, VertexQuery,
 };
 
 use chrono::offset::Utc;
+use chrono::DateTime;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use uuid::Uuid;
 
@@ -52,6 +54,114 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     }
 
     opts
+}
+
+fn vertices_from_property_value_iterator<'a>(
+    db: &DB,
+    indexed_properties: &HashSet<Type>,
+    iter: impl Iterator<Item = VertexPropertyValueKey> + 'a,
+) -> Result<Vec<VertexItem>> {
+    let vertex_manager = VertexManager::new(db, indexed_properties);
+
+    let mut vertices = Vec::new();
+    for (_, _, id) in iter {
+        if let Some(t) = vertex_manager.get(id)? {
+            vertices.push((id, t));
+        }
+    }
+
+    Ok(vertices)
+}
+
+fn vertices_from_piped_property_query(
+    db: &DB,
+    indexed_properties: &HashSet<Type>,
+    inner_query: VertexQuery,
+    property_query: VertexQuery,
+    intersection: bool,
+) -> Result<Vec<VertexItem>> {
+    let mut piped_vertices_mapping: HashMap<Uuid, Type> = execute_vertex_query(db, indexed_properties, inner_query)?
+        .into_iter()
+        .collect();
+    let piped_vertices: HashSet<Uuid> = piped_vertices_mapping.keys().cloned().collect();
+
+    let property_vertices: HashSet<Uuid> = {
+        execute_vertex_query(db, indexed_properties, property_query)?
+            .into_iter()
+            .map(move |item| {
+                let (id, _) = item;
+                id
+            })
+            .collect()
+    };
+
+    let merged_vertices: Box<dyn Iterator<Item = &Uuid>> = if intersection {
+        Box::new(piped_vertices.intersection(&property_vertices).into_iter())
+    } else {
+        Box::new(piped_vertices.difference(&property_vertices).into_iter())
+    };
+
+    Ok(merged_vertices
+        .map(move |id| (*id, piped_vertices_mapping.remove(id).unwrap()))
+        .collect())
+}
+
+fn edges_from_property_value_iterator<'a>(
+    db: &DB,
+    indexed_properties: &HashSet<Type>,
+    iter: impl Iterator<Item = EdgePropertyValueKey> + 'a,
+) -> Result<Vec<EdgeRangeItem>> {
+    let edge_manager = EdgeManager::new(db, indexed_properties);
+
+    let mut edges = Vec::new();
+    for (_, _, (out_id, t, in_id)) in iter {
+        if let Some(dt) = edge_manager.get(out_id, &t, in_id)? {
+            edges.push((out_id, t, dt, in_id));
+        }
+    }
+
+    Ok(edges)
+}
+
+fn edges_from_piped_property_query(
+    db: &DB,
+    indexed_properties: &HashSet<Type>,
+    inner_query: EdgeQuery,
+    property_query: EdgeQuery,
+    intersection: bool,
+) -> Result<Vec<EdgeRangeItem>> {
+    let mut piped_edges_mapping: HashMap<EdgeKey, DateTime<Utc>> =
+        execute_edge_query(db, indexed_properties, inner_query)?
+            .into_iter()
+            .map(move |item| {
+                let (out_id, t, dt, in_id) = item;
+                (EdgeKey::new(out_id, t, in_id), dt)
+            })
+            .collect();
+    let piped_edges: HashSet<EdgeKey> = piped_edges_mapping.keys().cloned().collect();
+
+    let property_edges: HashSet<EdgeKey> = {
+        execute_edge_query(db, indexed_properties, property_query)?
+            .into_iter()
+            .map(move |item| {
+                let (out_id, t, _, in_id) = item;
+                EdgeKey::new(out_id, t, in_id)
+            })
+            .collect()
+    };
+
+    let merged_edges: Box<dyn Iterator<Item = &EdgeKey>> = if intersection {
+        Box::new(piped_edges.intersection(&property_edges).into_iter())
+    } else {
+        Box::new(piped_edges.difference(&property_edges).into_iter())
+    };
+
+    Ok(merged_edges
+        .map(move |key| {
+            let dt = piped_edges_mapping.remove(key).unwrap();
+            (key.outbound_id, key.t.clone(), dt, key.inbound_id)
+        })
+        .collect())
 }
 
 fn execute_vertex_query(db: &DB, indexed_properties: &HashSet<Type>, q: VertexQuery) -> Result<Vec<VertexItem>> {
@@ -139,6 +249,30 @@ fn execute_vertex_query(db: &DB, indexed_properties: &HashSet<Type>, q: VertexQu
             let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
             vertices
         }
+        VertexQuery::PropertyPresence(q) => {
+            let vertex_property_value_manager = VertexPropertyValueManager::new(db);
+            let iter = vertex_property_value_manager.iterate_for_name(&q.name);
+            vertices_from_property_value_iterator(db, indexed_properties, iter)
+        }
+        VertexQuery::PropertyValue(q) => {
+            let vertex_property_value_manager = VertexPropertyValueManager::new(db);
+            let iter = vertex_property_value_manager.iterate_for_value(&q.name, &q.value);
+            vertices_from_property_value_iterator(db, indexed_properties, iter)
+        }
+        VertexQuery::PipePropertyPresence(q) => vertices_from_piped_property_query(
+            db,
+            indexed_properties,
+            *q.inner,
+            PropertyPresenceVertexQuery::new(q.name).into(),
+            q.exists,
+        ),
+        VertexQuery::PipePropertyValue(q) => vertices_from_piped_property_query(
+            db,
+            indexed_properties,
+            *q.inner,
+            PropertyValueVertexQuery::new(q.name, q.value).into(),
+            q.equal,
+        ),
     }
 }
 
@@ -169,8 +303,8 @@ fn execute_edge_query(db: &DB, indexed_properties: &HashSet<Type>, q: EdgeQuery)
             let vertices = execute_vertex_query(db, indexed_properties, *q.inner)?;
 
             let edge_range_manager = match q.direction {
-                EdgeDirection::Outbound => EdgeRangeManager::new(db, indexed_properties),
-                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db, indexed_properties),
+                EdgeDirection::Outbound => EdgeRangeManager::new(db),
+                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db),
             };
 
             // Ideally we'd use iterators all the way down, but things
@@ -215,6 +349,30 @@ fn execute_edge_query(db: &DB, indexed_properties: &HashSet<Type>, q: EdgeQuery)
 
             Ok(edges)
         }
+        EdgeQuery::PropertyPresence(q) => {
+            let edge_property_value_manager = EdgePropertyValueManager::new(db);
+            let iter = edge_property_value_manager.iterate_for_name(&q.name);
+            edges_from_property_value_iterator(db, indexed_properties, iter)
+        }
+        EdgeQuery::PropertyValue(q) => {
+            let edge_property_value_manager = EdgePropertyValueManager::new(db);
+            let iter = edge_property_value_manager.iterate_for_value(&q.name, &q.value);
+            edges_from_property_value_iterator(db, indexed_properties, iter)
+        }
+        EdgeQuery::PipePropertyPresence(q) => edges_from_piped_property_query(
+            db,
+            indexed_properties,
+            *q.inner,
+            PropertyPresenceEdgeQuery::new(q.name).into(),
+            q.exists,
+        ),
+        EdgeQuery::PipePropertyValue(q) => edges_from_piped_property_query(
+            db,
+            indexed_properties,
+            *q.inner,
+            PropertyValueEdgeQuery::new(q.name, q.value).into(),
+            q.equal,
+        ),
     }
 }
 
@@ -279,8 +437,8 @@ impl Datastore for RocksdbDatastore {
         let indexed_properties = self.indexed_properties.read().unwrap();
         VertexManager::new(&db, &indexed_properties).compact();
         EdgeManager::new(&db, &indexed_properties).compact();
-        EdgeRangeManager::new(&db, &indexed_properties).compact();
-        EdgeRangeManager::new_reversed(&db, &indexed_properties).compact();
+        EdgeRangeManager::new(&db).compact();
+        EdgeRangeManager::new_reversed(&db).compact();
         VertexPropertyManager::new(&db, &indexed_properties).compact();
         EdgePropertyManager::new(&db, &indexed_properties).compact();
         VertexPropertyValueManager::new(&db).compact();
@@ -349,7 +507,7 @@ impl Datastore for RocksdbDatastore {
         let db = self.db.clone();
         let mut batch = WriteBatch::default();
         let vertex_manager = VertexManager::new(&db, &indexed_properties);
-        let edge_range_manager = EdgeRangeManager::new(&db, &indexed_properties);
+        let edge_range_manager = EdgeRangeManager::new(&db);
         let vertex_property_manager = VertexPropertyManager::new(&db, &indexed_properties);
         let edge_property_manager = EdgePropertyManager::new(&db, &indexed_properties);
         let vertex_property_value_manager = VertexPropertyValueManager::new(&db);
@@ -490,11 +648,10 @@ impl Transaction for RocksdbTransaction {
 
     fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
 
         let edge_range_manager = match direction {
-            EdgeDirection::Outbound => EdgeRangeManager::new(&db, &indexed_properties),
-            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&db, &indexed_properties),
+            EdgeDirection::Outbound => EdgeRangeManager::new(&db),
+            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(&db),
         };
 
         let count = edge_range_manager.iterate_for_range(id, t, None)?.count();
