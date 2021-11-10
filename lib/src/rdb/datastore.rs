@@ -259,20 +259,14 @@ fn execute_vertex_query(db: &DB, indexed_properties: &HashSet<Type>, q: VertexQu
             let iter = vertex_property_value_manager.iterate_for_value(&q.name, &q.value);
             vertices_from_property_value_iterator(db, indexed_properties, iter)
         }
-        VertexQuery::PipePropertyPresence(q) => vertices_from_piped_property_query(
-            db,
-            indexed_properties,
-            *q.inner,
-            PropertyPresenceVertexQuery::new(q.name).into(),
-            q.exists,
-        ),
-        VertexQuery::PipePropertyValue(q) => vertices_from_piped_property_query(
-            db,
-            indexed_properties,
-            *q.inner,
-            PropertyValueVertexQuery::new(q.name, q.value).into(),
-            q.equal,
-        ),
+        VertexQuery::PipePropertyPresence(q) => {
+            let property_query = PropertyPresenceVertexQuery::new(q.name).into();
+            vertices_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.exists)
+        }
+        VertexQuery::PipePropertyValue(q) => {
+            let property_query = PropertyValueVertexQuery::new(q.name, q.value).into();
+            vertices_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.equal)
+        }
     }
 }
 
@@ -359,20 +353,14 @@ fn execute_edge_query(db: &DB, indexed_properties: &HashSet<Type>, q: EdgeQuery)
             let iter = edge_property_value_manager.iterate_for_value(&q.name, &q.value);
             edges_from_property_value_iterator(db, indexed_properties, iter)
         }
-        EdgeQuery::PipePropertyPresence(q) => edges_from_piped_property_query(
-            db,
-            indexed_properties,
-            *q.inner,
-            PropertyPresenceEdgeQuery::new(q.name).into(),
-            q.exists,
-        ),
-        EdgeQuery::PipePropertyValue(q) => edges_from_piped_property_query(
-            db,
-            indexed_properties,
-            *q.inner,
-            PropertyValueEdgeQuery::new(q.name, q.value).into(),
-            q.equal,
-        ),
+        EdgeQuery::PipePropertyPresence(q) => {
+            let property_query = PropertyPresenceEdgeQuery::new(q.name).into();
+            edges_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.exists)
+        }
+        EdgeQuery::PipePropertyValue(q) => {
+            let property_query = PropertyValueEdgeQuery::new(q.name, q.value).into();
+            edges_from_piped_property_query(db, indexed_properties, *q.inner, property_query, q.equal)
+        }
     }
 }
 
