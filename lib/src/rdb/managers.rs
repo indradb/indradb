@@ -114,7 +114,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let edge_range_manager = EdgeRangeManager::new(self.db_ref);
-            for item in edge_range_manager.iterate_for_owner(id) {
+            for item in edge_range_manager.iterate_for_range(id, None, None)? {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(
@@ -129,7 +129,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
-            for item in reversed_edge_range_manager.iterate_for_owner(id) {
+            for item in reversed_edge_range_manager.iterate_for_range(id, None, None)? {
                 let (
                     reversed_edge_range_in_id,
                     reversed_edge_range_t,
@@ -345,14 +345,6 @@ impl<'a> EdgeRangeManager<'a> {
 
     pub fn iterate_for_all(&'a self) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
         let iterator = self.db_ref.db.iterator_cf(self.cf, IteratorMode::Start);
-        self.iterate(iterator)
-    }
-
-    pub fn iterate_for_owner(&'a self, id: Uuid) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
-        let prefix = util::build(&[util::Component::Uuid(id)]);
-        let iterator = self.db_ref.db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-        let iterator = take_with_prefix(iterator, prefix);
         self.iterate(iterator)
     }
 
