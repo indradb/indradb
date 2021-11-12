@@ -72,8 +72,11 @@ impl<'a> VertexManager<'a> {
         }
     }
 
-    fn iterate(&'a self, iterator: DBIterator<'a>) -> impl Iterator<Item = Result<VertexItem>> + 'a {
-        iterator.map(|item| -> Result<VertexItem> {
+    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
+        let low_key = util::build(&[util::Component::Uuid(id)]);
+        let iter = self.db_ref.db
+            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
+        iter.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
 
             let id = {
@@ -86,13 +89,6 @@ impl<'a> VertexManager<'a> {
             let t = util::read_type(&mut cursor);
             Ok((id, t))
         })
-    }
-
-    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
-        let low_key = util::build(&[util::Component::Uuid(id)]);
-        let iter = self.db_ref.db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
-        self.iterate(iter)
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
