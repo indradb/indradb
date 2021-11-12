@@ -524,13 +524,14 @@ impl Datastore for RocksdbDatastore {
             }
         }
 
-        for item in edge_range_manager.iterate_for_range(Uuid::default(), None, None)? {
+        for item in edge_range_manager.iterate_for_all() {
             let (out_id, t, _, in_id) = item?;
             if let Some(property_value) = edge_property_manager.get(out_id, &t, in_id, &name)? {
                 edge_property_value_manager.set(&mut batch, out_id, &t, in_id, &name, &property_value);
             }
         }
 
+        db.write(batch)?;
         Ok(())
     }
 }

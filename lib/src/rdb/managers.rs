@@ -280,14 +280,12 @@ impl<'a> EdgeRangeManager<'a> {
         ])
     }
 
-    fn iterate(
+    fn iterate<I>(
         &'a self,
-        iterator: DBIterator<'a>,
-        prefix: Vec<u8>,
-    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
-        let filtered = take_with_prefix(iterator, prefix);
-
-        filtered.map(move |item| -> Result<EdgeRangeItem> {
+        iterator: I,
+    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a
+    where I: Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a {
+        iterator.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = util::read_uuid(&mut cursor);
@@ -315,13 +313,15 @@ impl<'a> EdgeRangeManager<'a> {
                 ]);
                 let iterator = self.db_ref.db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
-                Ok(Box::new(self.iterate(iterator, prefix)))
+                let iterator = take_with_prefix(iterator, prefix);
+                Ok(Box::new(self.iterate(iterator)))
             }
             None => {
                 let prefix = util::build(&[util::Component::Uuid(id)]);
                 let iterator = self.db_ref.db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-                let mapped = self.iterate(iterator, prefix);
+                let iterator = take_with_prefix(iterator, prefix);
+                let mapped = self.iterate(iterator);
 
                 if let Some(high) = high {
                     // We can filter out `update_datetime`s greater than
@@ -343,11 +343,17 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
+    pub fn iterate_for_all(&'a self) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
+        let iterator = self.db_ref.db.iterator_cf(self.cf, IteratorMode::Start);
+        self.iterate(iterator)
+    }
+
     pub fn iterate_for_owner(&'a self, id: Uuid) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
         let prefix = util::build(&[util::Component::Uuid(id)]);
         let iterator = self.db_ref.db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
-        self.iterate(iterator, prefix)
+        let iterator = take_with_prefix(iterator, prefix);
+        self.iterate(iterator)
     }
 
     pub fn set(
