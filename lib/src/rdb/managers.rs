@@ -74,7 +74,9 @@ impl<'a> VertexManager<'a> {
 
     pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
         let low_key = util::build(&[util::Component::Uuid(id)]);
-        let iter = self.db_ref.db
+        let iter = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
         iter.map(|item| -> Result<VertexItem> {
             let (k, v) = item;
@@ -147,7 +149,8 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -242,7 +245,8 @@ impl<'a> EdgeManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -276,11 +280,10 @@ impl<'a> EdgeRangeManager<'a> {
         ])
     }
 
-    fn iterate<I>(
-        &'a self,
-        iterator: I,
-    ) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a
-    where I: Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a {
+    fn iterate<I>(&'a self, iterator: I) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a
+    where
+        I: Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a,
+    {
         iterator.map(move |item| -> Result<EdgeRangeItem> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
@@ -307,14 +310,18 @@ impl<'a> EdgeRangeManager<'a> {
                     util::Component::Type(t),
                     util::Component::DateTime(high),
                 ]);
-                let iterator = self.db_ref.db
+                let iterator = self
+                    .db_ref
+                    .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 let iterator = take_with_prefix(iterator, prefix);
                 Ok(Box::new(self.iterate(iterator)))
             }
             None => {
                 let prefix = util::build(&[util::Component::Uuid(id)]);
-                let iterator = self.db_ref.db
+                let iterator = self
+                    .db_ref
+                    .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
                 let iterator = take_with_prefix(iterator, prefix);
                 let mapped = self.iterate(iterator);
@@ -370,7 +377,8 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -401,7 +409,9 @@ impl<'a> VertexPropertyManager<'a> {
     ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
         let prefix = util::build(&[util::Component::Uuid(vertex_id)]);
 
-        let iterator = self.db_ref.db
+        let iterator = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = take_with_prefix(iterator, prefix);
@@ -460,7 +470,8 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -499,7 +510,9 @@ impl<'a> EdgePropertyManager<'a> {
             util::Component::Uuid(in_id),
         ]);
 
-        let iterator = self.db_ref.db
+        let iterator = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = take_with_prefix(iterator, prefix);
@@ -592,7 +605,8 @@ impl<'a> EdgePropertyManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -640,7 +654,9 @@ impl<'a> VertexPropertyValueManager<'a> {
         property_name: &models::Type,
     ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
         let prefix = util::build(&[util::Component::Type(property_name)]);
-        let iter = self.db_ref.db
+        let iter = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
@@ -654,7 +670,9 @@ impl<'a> VertexPropertyValueManager<'a> {
             util::Component::Type(property_name),
             util::Component::JsonValue(property_value),
         ]);
-        let iter = self.db_ref.db
+        let iter = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
@@ -682,7 +700,8 @@ impl<'a> VertexPropertyValueManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
@@ -734,7 +753,9 @@ impl<'a> EdgePropertyValueManager<'a> {
 
     pub fn iterate_for_name(&'a self, property_name: &models::Type) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
         let prefix = util::build(&[util::Component::Type(property_name)]);
-        let iter = self.db_ref.db
+        let iter = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
@@ -748,7 +769,9 @@ impl<'a> EdgePropertyValueManager<'a> {
             util::Component::Type(property_name),
             util::Component::JsonValue(property_value),
         ]);
-        let iter = self.db_ref.db
+        let iter = self
+            .db_ref
+            .db
             .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
@@ -780,7 +803,8 @@ impl<'a> EdgePropertyValueManager<'a> {
     }
 
     pub fn compact(&self) {
-        self.db_ref.db
+        self.db_ref
+            .db
             .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }

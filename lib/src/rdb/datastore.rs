@@ -318,8 +318,7 @@ fn execute_edge_query<'a>(db_ref: DBRef<'a>, q: EdgeQuery) -> Result<Vec<EdgeRan
                 let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
 
                 for item in edge_iterator {
-                    let (edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id) =
-                        item?;
+                    let (edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id) = item?;
 
                     if let Some(low) = q.low {
                         if edge_range_update_datetime < low {
@@ -678,8 +677,7 @@ impl Transaction for RocksdbTransaction {
         let manager = VertexPropertyManager::new(db_ref);
         let mut properties = Vec::new();
 
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter()
-        {
+        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
             let value = manager.get(id, &q.name)?;
 
             if let Some(value) = value {
