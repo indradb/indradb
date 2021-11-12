@@ -438,7 +438,7 @@ impl Datastore for MemoryDatastore {
         })
     }
 
-    fn index_property<T: Into<Type>>(&mut self, name: T) -> Result<()> {
+    fn index_property<T: Into<Type>>(&self, name: T) -> Result<()> {
         let name = name.into();
         let mut datastore = self.datastore.write().unwrap();
 

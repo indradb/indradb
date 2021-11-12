@@ -4,7 +4,6 @@ use std::fmt;
 
 use crate::ConversionError;
 
-use serde_json::value::Value as JsonValue;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::codec::Streaming;
@@ -161,6 +160,11 @@ impl Client {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         let response = self.0.transaction(Request::new(ReceiverStream::new(rx))).await?;
         Ok(Transaction::new(tx, response.into_inner()))
+    }
+
+    pub async fn index_property<T: Into<indradb::Type>>(&mut self, name: T) -> Result<(), ClientError> {
+        self.0.index_property(Request::new(name.into().into())).await?;
+        Ok(())
     }
 }
 
@@ -394,7 +398,7 @@ impl Transaction {
     pub async fn set_vertex_properties(
         &mut self,
         q: indradb::VertexPropertyQuery,
-        value: &JsonValue,
+        value: &indradb::JsonValue,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetVertexProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)
@@ -453,7 +457,7 @@ impl Transaction {
     pub async fn set_edge_properties(
         &mut self,
         q: indradb::EdgePropertyQuery,
-        value: &JsonValue,
+        value: &indradb::JsonValue,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetEdgeProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)

@@ -65,7 +65,7 @@ pub trait Datastore {
     //
     // # Arguments
     // * `name`: The name of the property to index.
-    fn index_property<T: Into<models::Type>>(&mut self, name: T) -> Result<()>;
+    fn index_property<T: Into<models::Type>>(&self, name: T) -> Result<()>;
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.

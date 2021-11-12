@@ -132,7 +132,7 @@ where
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct JsonValue(serde_json::Value);
+pub struct JsonValue(pub serde_json::Value);
 
 impl JsonValue {
     pub fn new(value: serde_json::Value) -> Self {

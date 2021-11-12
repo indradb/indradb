@@ -73,6 +73,14 @@ impl indradb::Datastore for ClientDatastore {
             .unwrap();
         Ok(ClientTransaction::new(trans, self.exec.clone()))
     }
+
+    fn index_property<T: Into<indradb::Type>>(&mut self, name: T) -> Result<()> {
+        self.exec
+            .borrow_mut()
+            .block_on(self.client.borrow_mut().index_property(name))
+            .unwrap();
+        Ok(())
+    }
 }
 
 struct ClientTransaction {
