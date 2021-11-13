@@ -131,7 +131,7 @@ where
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, Debug, Serialize, Deserialize)]
 pub struct JsonValue(pub serde_json::Value);
 
 impl JsonValue {
@@ -146,15 +146,15 @@ impl From<serde_json::Value> for JsonValue {
     }
 }
 
-impl Into<serde_json::Value> for JsonValue {
-    fn into(self: Self) -> serde_json::Value {
-        self.0
-    }
-}
-
 impl Hash for JsonValue {
     fn hash<H: Hasher>(&self, state: &mut H) {
         hash(&self.0, state);
+    }
+}
+
+impl PartialEq for JsonValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
     }
 }
 

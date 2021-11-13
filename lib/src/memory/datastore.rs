@@ -136,7 +136,7 @@ impl InternalMemoryDatastore {
                     if let Some(sub_container) = container.get(&q.value) {
                         let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
                             IndexedPropertyMember::Vertex(id) => {
-                                self.vertices.get(&id).map(|value| (*id, value.clone()))
+                                self.vertices.get(id).map(|value| (*id, value.clone()))
                             }
                             _ => None,
                         }));
@@ -167,7 +167,7 @@ impl InternalMemoryDatastore {
                         members
                             .iter()
                             .filter_map(|member| match member {
-                                IndexedPropertyMember::Vertex(id) => Some(id.clone()),
+                                IndexedPropertyMember::Vertex(id) => Some(*id),
                                 _ => None,
                             })
                             .collect()
@@ -244,9 +244,7 @@ impl InternalMemoryDatastore {
                 if let Some(container) = self.property_values.get(&q.name) {
                     if let Some(sub_container) = container.get(&q.value) {
                         let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                            IndexedPropertyMember::Edge(key) => {
-                                self.edges.get(&key).map(|value| (key.clone(), value.clone()))
-                            }
+                            IndexedPropertyMember::Edge(key) => self.edges.get(key).map(|value| (key.clone(), *value)),
                             _ => None,
                         }));
                         return Ok(iter);
@@ -460,10 +458,7 @@ impl Datastore for MemoryDatastore {
             }
         }
 
-        let existing_property_container = datastore
-            .property_values
-            .entry(name.clone())
-            .or_insert_with(HashMap::new);
+        let existing_property_container = datastore.property_values.entry(name).or_insert_with(HashMap::new);
         for (value, members) in property_container.into_iter() {
             let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
             for member in members {
@@ -637,9 +632,8 @@ impl Transaction for MemoryTransaction {
 
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
         let mut deletable_vertex_properties = Vec::<(Uuid, Type)>::new();
-        for (id, _) in vertex_values.into_iter() {
+        for (id, _) in datastore.get_vertex_values_by_query(q.inner)? {
             deletable_vertex_properties.push((id, q.name.clone()));
         }
         datastore.delete_vertex_properties(deletable_vertex_properties);

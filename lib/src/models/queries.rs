@@ -11,6 +11,8 @@ macro_rules! vertex_query_type {
     ($name:ident, $variant:ident) => {
         impl VertexQueryExt for $name {}
 
+        // we don't want to impl From since the reverse operation isn't allowed
+        #[allow(clippy::from_over_into)]
         impl Into<VertexQuery> for $name {
             fn into(self) -> VertexQuery {
                 VertexQuery::$variant(self)
@@ -23,6 +25,8 @@ macro_rules! edge_query_type {
     ($name:ident, $variant:ident) => {
         impl EdgeQueryExt for $name {}
 
+        // we don't want to impl From since the reverse operation isn't allowed
+        #[allow(clippy::from_over_into)]
         impl Into<EdgeQuery> for $name {
             fn into(self) -> EdgeQuery {
                 EdgeQuery::$variant(self)
