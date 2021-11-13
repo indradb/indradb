@@ -8,7 +8,6 @@ use std::convert::TryInto;
 use std::rc::Rc;
 use std::time::Duration;
 
-use serde_json::value::Value as JsonValue;
 use tokio::runtime::Runtime;
 use tokio::time::sleep;
 use tonic::transport::Endpoint;
@@ -74,7 +73,7 @@ impl indradb::Datastore for ClientDatastore {
         Ok(ClientTransaction::new(trans, self.exec.clone()))
     }
 
-    fn index_property<T: Into<indradb::Type>>(&mut self, name: T) -> Result<()> {
+    fn index_property<T: Into<indradb::Type>>(&self, name: T) -> Result<(), indradb::Error> {
         self.exec
             .borrow_mut()
             .block_on(self.client.borrow_mut().index_property(name))
@@ -197,7 +196,7 @@ impl indradb::Transaction for ClientTransaction {
             .unwrap())
     }
 
-    fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
+    fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &indradb::JsonValue) -> Result<(), indradb::Error> {
         self.exec
             .borrow_mut()
             .block_on(self.trans.borrow_mut().set_vertex_properties(q, value))
@@ -232,7 +231,7 @@ impl indradb::Transaction for ClientTransaction {
             .unwrap())
     }
 
-    fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &JsonValue) -> Result<(), indradb::Error> {
+    fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &indradb::JsonValue) -> Result<(), indradb::Error> {
         self.exec
             .borrow_mut()
             .block_on(self.trans.borrow_mut().set_edge_properties(q, value))
