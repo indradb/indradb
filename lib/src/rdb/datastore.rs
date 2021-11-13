@@ -56,7 +56,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     opts
 }
 
-fn guard_indexed_property<'a>(db_ref: DBRef<'a>, property: &Type) -> Result<()> {
+fn guard_indexed_property(db_ref: DBRef<'_>, property: &Type) -> Result<()> {
     if !db_ref.indexed_properties.contains(property) {
         Err(Error::NotIndexed)
     } else {
@@ -80,8 +80,8 @@ fn vertices_from_property_value_iterator<'a>(
     Ok(vertices)
 }
 
-fn vertices_from_piped_property_query<'a>(
-    db_ref: DBRef<'a>,
+fn vertices_from_piped_property_query(
+    db_ref: DBRef<'_>,
     inner_query: VertexQuery,
     property_query: VertexQuery,
     intersection: bool,
@@ -101,9 +101,9 @@ fn vertices_from_piped_property_query<'a>(
     };
 
     let merged_vertices: Box<dyn Iterator<Item = &Uuid>> = if intersection {
-        Box::new(piped_vertices.intersection(&property_vertices).into_iter())
+        Box::new(piped_vertices.intersection(&property_vertices))
     } else {
-        Box::new(piped_vertices.difference(&property_vertices).into_iter())
+        Box::new(piped_vertices.difference(&property_vertices))
     };
 
     Ok(merged_vertices
@@ -127,8 +127,8 @@ fn edges_from_property_value_iterator<'a>(
     Ok(edges)
 }
 
-fn edges_from_piped_property_query<'a>(
-    db_ref: DBRef<'a>,
+fn edges_from_piped_property_query(
+    db_ref: DBRef<'_>,
     inner_query: EdgeQuery,
     property_query: EdgeQuery,
     intersection: bool,
@@ -153,9 +153,9 @@ fn edges_from_piped_property_query<'a>(
     };
 
     let merged_edges: Box<dyn Iterator<Item = &EdgeKey>> = if intersection {
-        Box::new(piped_edges.intersection(&property_edges).into_iter())
+        Box::new(piped_edges.intersection(&property_edges))
     } else {
-        Box::new(piped_edges.difference(&property_edges).into_iter())
+        Box::new(piped_edges.difference(&property_edges))
     };
 
     Ok(merged_edges
@@ -166,7 +166,7 @@ fn edges_from_piped_property_query<'a>(
         .collect())
 }
 
-fn execute_vertex_query<'a>(db_ref: DBRef<'a>, q: VertexQuery) -> Result<Vec<VertexItem>> {
+fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexItem>> {
     match q {
         VertexQuery::Range(q) => {
             let vertex_manager = VertexManager::new(db_ref);
@@ -276,7 +276,7 @@ fn execute_vertex_query<'a>(db_ref: DBRef<'a>, q: VertexQuery) -> Result<Vec<Ver
     }
 }
 
-fn execute_edge_query<'a>(db_ref: DBRef<'a>, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
+fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
     match q {
         EdgeQuery::Specific(q) => {
             let edge_manager = EdgeManager::new(db_ref);

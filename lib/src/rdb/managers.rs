@@ -19,10 +19,10 @@ pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, models::Type), models::J
 pub type VertexPropertyValueKey = (models::Type, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Type, u64, (Uuid, models::Type, Uuid));
 
-fn take_with_prefix<'a>(
-    iterator: DBIterator<'a>,
+fn take_with_prefix(
+    iterator: DBIterator<'_>,
     prefix: Vec<u8>,
-) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a {
+) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> + '_ {
     iterator.take_while(move |item| -> bool {
         let (ref k, _) = *item;
         k.starts_with(&prefix)
