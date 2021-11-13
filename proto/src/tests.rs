@@ -196,7 +196,11 @@ impl indradb::Transaction for ClientTransaction {
             .unwrap())
     }
 
-    fn set_vertex_properties(&self, q: indradb::VertexPropertyQuery, value: &indradb::JsonValue) -> Result<(), indradb::Error> {
+    fn set_vertex_properties(
+        &self,
+        q: indradb::VertexPropertyQuery,
+        value: &indradb::JsonValue,
+    ) -> Result<(), indradb::Error> {
         self.exec
             .borrow_mut()
             .block_on(self.trans.borrow_mut().set_vertex_properties(q, value))
@@ -231,7 +235,11 @@ impl indradb::Transaction for ClientTransaction {
             .unwrap())
     }
 
-    fn set_edge_properties(&self, q: indradb::EdgePropertyQuery, value: &indradb::JsonValue) -> Result<(), indradb::Error> {
+    fn set_edge_properties(
+        &self,
+        q: indradb::EdgePropertyQuery,
+        value: &indradb::JsonValue,
+    ) -> Result<(), indradb::Error> {
         self.exec
             .borrow_mut()
             .block_on(self.trans.borrow_mut().set_edge_properties(q, value))
