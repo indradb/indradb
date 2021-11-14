@@ -177,7 +177,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
 
     if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
-            let vertex_type = indradb::Type::new(matches.value_of("type").unwrap())?;
+            let vertex_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
             let uuid = match matches.value_of("id") {
                 Some(id) => uuid::Uuid::parse_str(id)?,
                 None => indradb::util::generate_uuid_v1(),
@@ -223,7 +223,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
                 None => indradb::EdgeDirection::Outbound,
             };
             let edge_type = match matches.value_of("type") {
-                Some(edge_type) => Some(indradb::Type::new(edge_type)?),
+                Some(edge_type) => Some(indradb::Identifier::new(edge_type)?),
                 None => None,
             };
             let res = trans
@@ -310,7 +310,7 @@ fn build_vertex_query(matches: &clap::ArgMatches) -> Result<VertexQuery, Box<dyn
 }
 
 fn build_edge_key(matches: &clap::ArgMatches) -> Result<EdgeKey, Box<dyn StdError>> {
-    let edge_type = indradb::Type::new(matches.value_of("type").unwrap())?;
+    let edge_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
     let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
     let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
     let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);

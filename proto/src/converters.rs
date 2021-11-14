@@ -86,17 +86,17 @@ impl TryInto<Uuid> for crate::Uuid {
     }
 }
 
-impl From<indradb::Type> for crate::Type {
-    fn from(t: indradb::Type) -> Self {
-        crate::Type { value: t.0 }
+impl From<indradb::Identifier> for crate::Identifier {
+    fn from(t: indradb::Identifier) -> Self {
+        crate::Identifier { value: t.0 }
     }
 }
 
-impl TryInto<indradb::Type> for crate::Type {
+impl TryInto<indradb::Identifier> for crate::Identifier {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<indradb::Type, Self::Error> {
-        Ok(indradb::Type::new(self.value)?)
+    fn try_into(self) -> Result<indradb::Identifier, Self::Error> {
+        Ok(indradb::Identifier::new(self.value)?)
     }
 }
 
@@ -497,10 +497,10 @@ impl TryInto<indradb::BulkInsertItem> for crate::BulkInsertItem {
     }
 }
 
-impl TryInto<(Uuid, Option<indradb::Type>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
+impl TryInto<(Uuid, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(Uuid, Option<indradb::Type>, indradb::EdgeDirection), Self::Error> {
+    fn try_into(self) -> Result<(Uuid, Option<indradb::Identifier>, indradb::EdgeDirection), Self::Error> {
         let direction = self.direction().into();
         let id = required_field("id", self.id)?.try_into()?;
         let t = self.t.map(|t| t.try_into()).transpose()?;
@@ -508,8 +508,8 @@ impl TryInto<(Uuid, Option<indradb::Type>, indradb::EdgeDirection)> for crate::G
     }
 }
 
-impl From<(Uuid, Option<indradb::Type>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
-    fn from(value: (Uuid, Option<indradb::Type>, indradb::EdgeDirection)) -> Self {
+impl From<(Uuid, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
+    fn from(value: (Uuid, Option<indradb::Identifier>, indradb::EdgeDirection)) -> Self {
         let direction: crate::EdgeDirection = value.2.into();
         crate::GetEdgeCountRequest {
             id: Some(value.0.into()),

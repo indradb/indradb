@@ -1,5 +1,5 @@
 use crate::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type,
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
     Vertex, VertexQueryExt,
 };
 
@@ -8,7 +8,7 @@ use chrono::Timelike;
 use serde_json::Value as JsonValue;
 
 pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
-    let vertex_t = Type::new("test_vertex_type").unwrap();
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
 
@@ -23,7 +23,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     // start time, since some implementations may not have that level of
     // accuracy.
     let start_time = Utc::now().with_nanosecond(0).unwrap();
-    let edge_t = Type::new("test_edge_type").unwrap();
+    let edge_t = Identifier::new("test_edge_type").unwrap();
     let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
     let items = vec![
@@ -89,7 +89,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
 
 // Bulk insert allows for redundant vertex insertion
 pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(datastore: &mut D) {
-    let vertex_t = Type::new("test_vertex_type").unwrap();
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let vertex = Vertex::new(vertex_t);
 
     let trans = datastore.transaction().unwrap();
@@ -102,14 +102,14 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(datastore: &mut D) {
 // As an optimization, bulk insert does not verify that the vertices
 // associated with an inserted edge exist; this verifies that
 pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
-    let vertex_t = Type::new("test_vertex_type").unwrap();
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let v1 = Vertex::new(vertex_t.clone());
     let v2 = Vertex::new(vertex_t);
 
     let trans = datastore.transaction().unwrap();
     assert!(trans.create_vertex(&v1).unwrap());
 
-    let edge_t = Type::new("test_edge_type").unwrap();
+    let edge_t = Identifier::new("test_edge_type").unwrap();
 
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
     assert!(datastore.bulk_insert(items.into_iter()).is_ok());

@@ -9,7 +9,7 @@ use crate::errors::Result;
 use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    EdgeQuery, Identifier, NamedProperty, Transaction, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
     VertexQuery,
 };
 
@@ -427,7 +427,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
 
         let edge_range_manager = match direction {

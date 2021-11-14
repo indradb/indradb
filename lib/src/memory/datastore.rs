@@ -7,8 +7,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::errors::Result;
 use crate::{
-    Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, NamedProperty,
-    Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
+    Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, Identifier,
+    NamedProperty, Transaction, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use bincode::Error as BincodeError;
@@ -25,7 +25,7 @@ use uuid::Uuid;
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct InternalMemoryDatastore {
-    vertices: BTreeMap<Uuid, Type>,
+    vertices: BTreeMap<Uuid, Identifier>,
     edges: BTreeMap<EdgeKey, DateTime<Utc>>,
     reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
     vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
@@ -35,10 +35,10 @@ struct InternalMemoryDatastore {
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (Uuid, Type)>> {
+    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (Uuid, Identifier)>> {
         match q {
             VertexQuery::Range(range) => {
-                let mut iter: QueryIter<(&Uuid, &Type)> = if let Some(start_id) = range.start_id {
+                let mut iter: QueryIter<(&Uuid, &Identifier)> = if let Some(start_id) = range.start_id {
                     Box::new(self.vertices.range(start_id..))
                 } else {
                     Box::new(self.vertices.iter())
@@ -48,13 +48,13 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
-                let iter: QueryIter<(Uuid, Type)> =
+                let iter: QueryIter<(Uuid, Identifier)> =
                     Box::new(iter.take(range.limit as usize).map(|(k, v)| (*k, v.clone())));
 
                 Ok(iter)
             }
             VertexQuery::Specific(specific) => {
-                let iter: QueryIter<(Uuid, Type)> = Box::new(
+                let iter: QueryIter<(Uuid, Identifier)> = Box::new(
                     specific
                         .ids
                         .into_iter()
@@ -71,7 +71,7 @@ impl InternalMemoryDatastore {
                     EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
                 };
 
-                let mut iter: QueryIter<(Uuid, &Type)> = Box::new(
+                let mut iter: QueryIter<(Uuid, &Identifier)> = Box::new(
                     iter.map(move |id| (id, self.vertices.get(&id)))
                         .filter_map(|(k, v)| Some((k, v?))),
                 );
@@ -80,7 +80,7 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
-                let iter: QueryIter<(Uuid, Type)> =
+                let iter: QueryIter<(Uuid, Identifier)> =
                     Box::new(iter.take(pipe.limit as usize).map(|(k, v)| (k, v.clone())));
 
                 Ok(iter)
@@ -109,7 +109,7 @@ impl InternalMemoryDatastore {
                 let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = Box::new(iter.flat_map(move |(id, _)| {
                     let lower_bound = match &t {
                         Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-                        None => EdgeKey::new(id, Type::default(), Uuid::default()),
+                        None => EdgeKey::new(id, Identifier::default(), Uuid::default()),
                     };
 
                     let iter = if direction == EdgeDirection::Outbound {
@@ -343,12 +343,12 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         let lower_bound = match t {
             Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-            None => EdgeKey::new(id, Type::default(), Uuid::default()),
+            None => EdgeKey::new(id, Identifier::default(), Uuid::default()),
         };
 
         let range = if direction == EdgeDirection::Outbound {
@@ -408,7 +408,7 @@ impl Transaction for MemoryTransaction {
     #[allow(clippy::needless_collect)]
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
+        let vertex_values: Vec<(Uuid, Identifier)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
         for (id, _) in vertex_values.into_iter() {
             datastore.vertex_properties.insert((id, q.name.clone()), value.clone());
@@ -421,7 +421,7 @@ impl Transaction for MemoryTransaction {
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
+        let vertex_values: Vec<(Uuid, Identifier)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
         for (id, _) in vertex_values.into_iter() {
             datastore.vertex_properties.remove(&(id, q.name.clone()));

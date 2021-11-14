@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, EdgeKey, Type};
+use crate::{errors, EdgeKey, Identifier};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -100,7 +100,7 @@ pub struct RangeVertexQuery {
     pub limit: u32,
 
     /// Filters the type of vertices returned.
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
 
     /// Sets the lowest vertex ID to return.
     pub start_id: Option<Uuid>,
@@ -140,7 +140,7 @@ impl RangeVertexQuery {
     ///
     /// # Arguments
     /// * `t`: Sets the type filter.
-    pub fn t(self, t: Type) -> Self {
+    pub fn t(self, t: Identifier) -> Self {
         Self {
             limit: self.limit,
             t: Some(t),
@@ -205,7 +205,7 @@ pub struct PipeVertexQuery {
     pub limit: u32,
 
     /// Filters the type of vertices returned.
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
 }
 
 impl VertexQueryExt for PipeVertexQuery {}
@@ -243,7 +243,7 @@ impl PipeVertexQuery {
     ///
     /// # Arguments
     /// * `t`: Sets the type filter.
-    pub fn t(self, t: Type) -> Self {
+    pub fn t(self, t: Identifier) -> Self {
         Self {
             inner: self.inner,
             direction: self.direction,
@@ -365,7 +365,7 @@ pub struct PipeEdgeQuery {
     pub limit: u32,
 
     /// Filters the type of edges returned.
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
 
     /// Specifies the newest update datetime for returned edges.
     pub high: Option<DateTime<Utc>>,
@@ -414,7 +414,7 @@ impl PipeEdgeQuery {
     ///
     /// # Arguments
     /// * `t`: Sets the type filter.
-    pub fn t(self, t: Type) -> Self {
+    pub fn t(self, t: Identifier) -> Self {
         Self {
             inner: self.inner,
             direction: self.direction,

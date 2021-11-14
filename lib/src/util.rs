@@ -36,7 +36,7 @@ lazy_static! {
 pub enum Component<'a> {
     Uuid(Uuid),
     FixedLengthString(&'a str),
-    Type(&'a models::Type),
+    Identifier(&'a models::Identifier),
     DateTime(DateTime<Utc>),
 }
 
@@ -50,7 +50,7 @@ impl<'a> Component<'a> {
         match *self {
             Component::Uuid(_) => 16,
             Component::FixedLengthString(s) => s.len(),
-            Component::Type(t) => t.0.len() + 1,
+            Component::Identifier(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
         }
     }
@@ -63,7 +63,7 @@ impl<'a> Component<'a> {
             Component::FixedLengthString(s) => {
                 cursor.write_all(s.as_bytes())?;
             }
-            Component::Type(t) => {
+            Component::Identifier(t) => {
                 cursor.write_all(&[t.0.len() as u8])?;
                 cursor.write_all(t.0.as_bytes())?;
             }
@@ -114,11 +114,11 @@ pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
     Uuid::from_slice(&buf).unwrap()
 }
 
-/// Reads a type from bytes.
+/// Reads an identifier from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
+pub fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -130,7 +130,7 @@ pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
 
     unsafe {
         let s = str::from_utf8_unchecked(&buf).to_string();
-        models::Type::new_unchecked(s)
+        models::Identifier::new_unchecked(s)
     }
 }
 

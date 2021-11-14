@@ -13,9 +13,9 @@ use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, String), JsonValue);
-pub type VertexItem = (Uuid, models::Type);
-pub type EdgeRangeItem = (Uuid, models::Type, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Type, Uuid, String), JsonValue);
+pub type VertexItem = (Uuid, models::Identifier);
+pub type EdgeRangeItem = (Uuid, models::Identifier, DateTime<Utc>, Uuid);
+pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, String), JsonValue);
 
 pub struct VertexManager<'a> {
     pub db: &'a DB,
@@ -38,11 +38,11 @@ impl<'a> VertexManager<'a> {
         Ok(self.db.get_cf(self.cf, &self.key(id))?.is_some())
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<models::Type>> {
+    pub fn get(&self, id: Uuid) -> Result<Option<models::Identifier>> {
         match self.db.get_cf(self.cf, &self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(util::read_type(&mut cursor)))
+                Ok(Some(util::read_identifier(&mut cursor)))
             }
             None => Ok(None),
         }
@@ -59,7 +59,7 @@ impl<'a> VertexManager<'a> {
             };
 
             let mut cursor = Cursor::new(v);
-            let t = util::read_type(&mut cursor);
+            let t = util::read_identifier(&mut cursor);
             Ok((id, t))
         })
     }
@@ -74,7 +74,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Type(&vertex.t)]));
+        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Identifier(&vertex.t)]));
         Ok(())
     }
 
@@ -146,15 +146,15 @@ impl<'a> EdgeManager<'a> {
         }
     }
 
-    fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Vec<u8> {
+    fn key(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(out_id),
-            util::Component::Type(t),
+            util::Component::Identifier(t),
             util::Component::Uuid(in_id),
         ])
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
+    pub fn get(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
         match self.db.get_cf(self.cf, &self.key(out_id, t, in_id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
@@ -168,7 +168,7 @@ impl<'a> EdgeManager<'a> {
         &self,
         mut batch: &mut WriteBatch,
         out_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         in_id: Uuid,
         new_update_datetime: DateTime<Utc>,
     ) -> Result<()> {
@@ -195,7 +195,7 @@ impl<'a> EdgeManager<'a> {
         &self,
         mut batch: &mut WriteBatch,
         out_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         in_id: Uuid,
         update_datetime: DateTime<Utc>,
     ) -> Result<()> {
@@ -248,10 +248,10 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    fn key(&self, first_id: Uuid, t: &models::Type, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
+    fn key(&self, first_id: Uuid, t: &models::Identifier, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(first_id),
-            util::Component::Type(t),
+            util::Component::Identifier(t),
             util::Component::DateTime(update_datetime),
             util::Component::Uuid(second_id),
         ])
@@ -271,7 +271,7 @@ impl<'a> EdgeRangeManager<'a> {
             let (k, _) = item;
             let mut cursor = Cursor::new(k);
             let first_id = util::read_uuid(&mut cursor);
-            let t = util::read_type(&mut cursor);
+            let t = util::read_identifier(&mut cursor);
             let update_datetime = util::read_datetime(&mut cursor);
             let second_id = util::read_uuid(&mut cursor);
             Ok((first_id, t, update_datetime, second_id))
@@ -281,16 +281,16 @@ impl<'a> EdgeRangeManager<'a> {
     pub fn iterate_for_range(
         &'a self,
         id: Uuid,
-        t: Option<&models::Type>,
+        t: Option<&models::Identifier>,
         high: Option<DateTime<Utc>>,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
                 let high = high.unwrap_or_else(|| *util::MAX_DATETIME);
-                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Type(t)]);
+                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
                 let low_key = util::build(&[
                     util::Component::Uuid(id),
-                    util::Component::Type(t),
+                    util::Component::Identifier(t),
                     util::Component::DateTime(high),
                 ]);
                 let iterator = self
@@ -337,7 +337,7 @@ impl<'a> EdgeRangeManager<'a> {
         &self,
         batch: &mut WriteBatch,
         first_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
@@ -350,7 +350,7 @@ impl<'a> EdgeRangeManager<'a> {
         &self,
         batch: &mut WriteBatch,
         first_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
@@ -450,10 +450,10 @@ impl<'a> EdgePropertyManager<'a> {
         }
     }
 
-    fn key(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Vec<u8> {
+    fn key(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid, name: &str) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(out_id),
-            util::Component::Type(t),
+            util::Component::Identifier(t),
             util::Component::Uuid(in_id),
             util::Component::FixedLengthString(name),
         ])
@@ -462,12 +462,12 @@ impl<'a> EdgePropertyManager<'a> {
     pub fn iterate_for_owner(
         &'a self,
         out_id: Uuid,
-        t: &'a models::Type,
+        t: &'a models::Identifier,
         in_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
         let prefix = util::build(&[
             util::Component::Uuid(out_id),
-            util::Component::Type(t),
+            util::Component::Identifier(t),
             util::Component::Uuid(in_id),
         ]);
 
@@ -487,7 +487,7 @@ impl<'a> EdgePropertyManager<'a> {
             let edge_property_out_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_out_id, out_id);
 
-            let edge_property_t = util::read_type(&mut cursor);
+            let edge_property_t = util::read_identifier(&mut cursor);
             debug_assert_eq!(&edge_property_t, t);
 
             let edge_property_in_id = util::read_uuid(&mut cursor);
@@ -510,7 +510,7 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Type, in_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
+    pub fn get(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid, name: &str) -> Result<Option<JsonValue>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db.get_cf(self.cf, &key)? {
@@ -523,7 +523,7 @@ impl<'a> EdgePropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         out_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         in_id: Uuid,
         name: &str,
         value: &JsonValue,
@@ -538,7 +538,7 @@ impl<'a> EdgePropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         out_id: Uuid,
-        t: &models::Type,
+        t: &models::Identifier,
         in_id: Uuid,
         name: &str,
     ) -> Result<()> {

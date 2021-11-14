@@ -83,7 +83,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
+    fn create_vertex_from_type(&self, t: models::Identifier) -> Result<Uuid> {
         let v = models::Vertex::new(t);
 
         if !self.create_vertex(&v)? {
@@ -135,7 +135,8 @@ pub trait Transaction {
     /// * `id`: The id of the vertex.
     /// * `t`: Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
-    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
+    fn get_edge_count(&self, id: Uuid, t: Option<&models::Identifier>, direction: models::EdgeDirection)
+        -> Result<u64>;
 
     /// Gets vertex properties.
     ///

@@ -98,7 +98,7 @@ impl indradb::Transaction for ClientTransaction {
             .unwrap())
     }
 
-    fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
+    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
         Ok(self
             .exec
             .borrow_mut()
@@ -157,7 +157,7 @@ impl indradb::Transaction for ClientTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        t: Option<&indradb::Type>,
+        t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
         Ok(self

@@ -1,5 +1,6 @@
 use crate::{
-    Datastore, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Type, Vertex, VertexQueryExt,
+    Datastore, EdgeKey, EdgeQueryExt, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
+    VertexQueryExt,
 };
 
 use serde_json::Value as JsonValue;
@@ -7,7 +8,7 @@ use uuid::Uuid;
 
 pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let t = Type::new("test_edge_type").unwrap();
+    let t = Identifier::new("test_edge_type").unwrap();
     let v = Vertex::new(t);
     trans.create_vertex(&v).unwrap();
     let q = SpecificVertexQuery::single(v.id).property("foo");
@@ -38,7 +39,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let t = Type::new("a_vertex").unwrap();
+    let t = Identifier::new("a_vertex").unwrap();
     let v1 = &Vertex::new(t.clone());
     let v2 = &Vertex::new(t.clone());
     let v3 = &Vertex::new(t);
@@ -93,7 +94,7 @@ pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(datastore: &mut
 
     trans.delete_vertex_properties(q).unwrap();
 
-    let v = Vertex::new(Type::new("foo").unwrap());
+    let v = Vertex::new(Identifier::new("foo").unwrap());
     trans.create_vertex(&v).unwrap();
 
     let q = SpecificVertexQuery::single(v.id).property("foo");
@@ -102,12 +103,12 @@ pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(datastore: &mut
 
 pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = Type::new("test_edge_type").unwrap();
+    let vertex_t = Identifier::new("test_edge_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
-    let edge_t = Type::new("test_edge_type").unwrap();
+    let edge_t = Identifier::new("test_edge_type").unwrap();
     let key = EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     let q = SpecificEdgeQuery::single(key.clone()).property("edge-property");
 
@@ -139,12 +140,12 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let vertex_t = Type::new("test_vertex_type").unwrap();
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
-    let edge_t = Type::new("test_edge_type").unwrap();
+    let edge_t = Identifier::new("test_edge_type").unwrap();
     let key = EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
     let eq = SpecificEdgeQuery::single(key.clone());
     let q1 = eq.clone().property("edge-prop-1");
@@ -180,7 +181,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let key = EdgeKey::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     let q = SpecificEdgeQuery::single(key).property("bar");
     trans.set_edge_properties(q.clone(), &JsonValue::Null).unwrap();
     let result = trans.get_edge_properties(q).unwrap();
@@ -189,17 +190,17 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let key = EdgeKey::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     trans
         .delete_edge_properties(SpecificEdgeQuery::single(key).property("bar"))
         .unwrap();
 
-    let outbound_v = Vertex::new(Type::new("foo").unwrap());
-    let inbound_v = Vertex::new(Type::new("foo").unwrap());
+    let outbound_v = Vertex::new(Identifier::new("foo").unwrap());
+    let inbound_v = Vertex::new(Identifier::new("foo").unwrap());
     trans.create_vertex(&outbound_v).unwrap();
     trans.create_vertex(&inbound_v).unwrap();
 
-    let key = EdgeKey::new(outbound_v.id, Type::new("baz").unwrap(), inbound_v.id);
+    let key = EdgeKey::new(outbound_v.id, Identifier::new("baz").unwrap(), inbound_v.id);
     trans.create_edge(&key).unwrap();
     trans
         .delete_edge_properties(SpecificEdgeQuery::single(key).property("bleh"))
