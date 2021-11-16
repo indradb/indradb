@@ -5,7 +5,6 @@ use crate::{errors, EdgeKey, Type};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use uuid::Uuid;
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -103,7 +102,7 @@ pub struct RangeVertexQuery {
     pub t: Option<Type>,
 
     /// Sets the lowest vertex ID to return.
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<u64>,
 }
 
 impl VertexQueryExt for RangeVertexQuery {}
@@ -152,7 +151,7 @@ impl RangeVertexQuery {
     ///
     /// # Arguments
     /// * `start_id`: The lowest vertex ID to return.
-    pub fn start_id(self, start_id: Uuid) -> Self {
+    pub fn start_id(self, start_id: u64) -> Self {
         Self {
             limit: self.limit,
             t: self.t,
@@ -165,7 +164,7 @@ impl RangeVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<u64>,
 }
 
 impl VertexQueryExt for SpecificVertexQuery {}
@@ -176,7 +175,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `ids`: The IDs of the vertices to get.
-    pub fn new(ids: Vec<Uuid>) -> Self {
+    pub fn new(ids: Vec<u64>) -> Self {
         Self { ids }
     }
 
@@ -184,7 +183,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `id`: The ID of the vertex to get.
-    pub fn single(id: Uuid) -> Self {
+    pub fn single(id: u64) -> Self {
         Self { ids: vec![id] }
     }
 }

@@ -17,7 +17,6 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tempfile::NamedTempFile;
-use uuid::Uuid;
 
 // All of the data is actually stored in this struct, which is stored
 // internally to the datastore itself. This way, we can wrap an rwlock around
@@ -25,20 +24,20 @@ use uuid::Uuid;
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct InternalMemoryDatastore {
-    vertices: BTreeMap<Uuid, Type>,
+    vertices: BTreeMap<u64, Type>,
     edges: BTreeMap<EdgeKey, DateTime<Utc>>,
     reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
-    vertex_properties: BTreeMap<(Uuid, String), JsonValue>,
+    vertex_properties: BTreeMap<(u64, String), JsonValue>,
     edge_properties: BTreeMap<(EdgeKey, String), JsonValue>,
 }
 
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
-    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (Uuid, Type)>> {
+    fn get_vertex_values_by_query(&self, q: VertexQuery) -> Result<QueryIter<'_, (u64, Type)>> {
         match q {
             VertexQuery::Range(range) => {
-                let mut iter: QueryIter<(&Uuid, &Type)> = if let Some(start_id) = range.start_id {
+                let mut iter: QueryIter<(&u64, &Type)> = if let Some(start_id) = range.start_id {
                     Box::new(self.vertices.range(start_id..))
                 } else {
                     Box::new(self.vertices.iter())
@@ -48,13 +47,13 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
-                let iter: QueryIter<(Uuid, Type)> =
+                let iter: QueryIter<(u64, Type)> =
                     Box::new(iter.take(range.limit as usize).map(|(k, v)| (*k, v.clone())));
 
                 Ok(iter)
             }
             VertexQuery::Specific(specific) => {
-                let iter: QueryIter<(Uuid, Type)> = Box::new(
+                let iter: QueryIter<(u64, Type)> = Box::new(
                     specific
                         .ids
                         .into_iter()
@@ -66,12 +65,12 @@ impl InternalMemoryDatastore {
             VertexQuery::Pipe(pipe) => {
                 let edge_values = self.get_edge_values_by_query(*pipe.inner)?;
 
-                let iter: QueryIter<Uuid> = match pipe.direction {
+                let iter: QueryIter<u64> = match pipe.direction {
                     EdgeDirection::Outbound => Box::new(edge_values.map(|(key, _)| key.outbound_id)),
                     EdgeDirection::Inbound => Box::new(edge_values.map(|(key, _)| key.inbound_id)),
                 };
 
-                let mut iter: QueryIter<(Uuid, &Type)> = Box::new(
+                let mut iter: QueryIter<(u64, &Type)> = Box::new(
                     iter.map(move |id| (id, self.vertices.get(&id)))
                         .filter_map(|(k, v)| Some((k, v?))),
                 );
@@ -80,7 +79,7 @@ impl InternalMemoryDatastore {
                     iter = Box::new(iter.filter(move |(_, v)| v == &&t));
                 }
 
-                let iter: QueryIter<(Uuid, Type)> =
+                let iter: QueryIter<(u64, Type)> =
                     Box::new(iter.take(pipe.limit as usize).map(|(k, v)| (k, v.clone())));
 
                 Ok(iter)
@@ -108,8 +107,8 @@ impl InternalMemoryDatastore {
 
                 let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = Box::new(iter.flat_map(move |(id, _)| {
                     let lower_bound = match &t {
-                        Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-                        None => EdgeKey::new(id, Type::default(), Uuid::default()),
+                        Some(t) => EdgeKey::new(id, t.clone(), 0),
+                        None => EdgeKey::new(id, Type::default(), 0),
                     };
 
                     let iter = if direction == EdgeDirection::Outbound {
@@ -147,11 +146,11 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn delete_vertices(&mut self, vertices: Vec<Uuid>) {
+    fn delete_vertices(&mut self, vertices: Vec<u64>) {
         for vertex_id in vertices {
             self.vertices.remove(&vertex_id);
 
-            let mut deletable_vertex_properties: Vec<(Uuid, String)> = Vec::new();
+            let mut deletable_vertex_properties: Vec<(u64, String)> = Vec::new();
 
             for (property_key, _) in self.vertex_properties.range((vertex_id, "".to_string())..) {
                 let &(ref property_vertex_id, _) = property_key;
@@ -292,7 +291,7 @@ impl Transaction for MemoryTransaction {
     fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
         let datastore = self.datastore.read().unwrap();
         let iter = datastore.get_vertex_values_by_query(q.into())?;
-        let iter = iter.map(|(uuid, t)| Vertex::with_id(uuid, t));
+        let iter = iter.map(|(id, t)| Vertex::with_id(id, t));
         Ok(iter.collect())
     }
 
@@ -343,12 +342,12 @@ impl Transaction for MemoryTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: u64, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
         let datastore = self.datastore.read().unwrap();
 
         let lower_bound = match t {
-            Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
-            None => EdgeKey::new(id, Type::default(), Uuid::default()),
+            Some(t) => EdgeKey::new(id, t.clone(), 0),
+            None => EdgeKey::new(id, Type::default(), 0),
         };
 
         let range = if direction == EdgeDirection::Outbound {
@@ -391,7 +390,7 @@ impl Transaction for MemoryTransaction {
         let mut result = Vec::new();
         for (id, t) in vertex_values {
             let from = &(id, "".to_string());
-            let to = &(crate::util::next_uuid(id).unwrap(), "".to_string());
+            let to = &(id.checked_add(1).unwrap(), "".to_string());
 
             let properties = datastore.vertex_properties.range(from..to);
             result.push(VertexProperties::new(
@@ -408,7 +407,7 @@ impl Transaction for MemoryTransaction {
     #[allow(clippy::needless_collect)]
     fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
+        let vertex_values: Vec<(u64, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
         for (id, _) in vertex_values.into_iter() {
             datastore.vertex_properties.insert((id, q.name.clone()), value.clone());
@@ -421,7 +420,7 @@ impl Transaction for MemoryTransaction {
     fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
 
-        let vertex_values: Vec<(Uuid, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
+        let vertex_values: Vec<(u64, Type)> = datastore.get_vertex_values_by_query(q.inner)?.collect();
 
         for (id, _) in vertex_values.into_iter() {
             datastore.vertex_properties.remove(&(id, q.name.clone()));

@@ -9,7 +9,6 @@ use crate::{
 use chrono::offset::Utc;
 use chrono::Timelike;
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
@@ -52,16 +51,12 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(datastore: &mut D) {
         .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
             outbound_v.id,
             edge_t.clone(),
-            Uuid::default(),
+            0,
         )))
         .unwrap();
     assert_eq!(e.len(), 0);
     let e = trans
-        .get_edges(SpecificEdgeQuery::single(EdgeKey::new(
-            Uuid::default(),
-            edge_t,
-            inbound_v.id,
-        )))
+        .get_edges(SpecificEdgeQuery::single(EdgeKey::new(0, edge_t, inbound_v.id)))
         .unwrap();
     assert_eq!(e.len(), 0);
 }
@@ -106,7 +101,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let outbound_v = models::Vertex::new(vertex_t);
     trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, Uuid::default());
+    let key = models::EdgeKey::new(outbound_v.id, edge_t, 0);
     let result = trans.create_edge(&key);
     assert_eq!(result.unwrap(), false);
 }
@@ -140,11 +135,7 @@ pub fn should_not_delete_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     trans.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Type::new("test_edge_type").unwrap();
     trans
-        .delete_edges(SpecificEdgeQuery::single(EdgeKey::new(
-            outbound_v.id,
-            edge_t,
-            Uuid::default(),
-        )))
+        .delete_edges(SpecificEdgeQuery::single(EdgeKey::new(outbound_v.id, edge_t, 0)))
         .unwrap();
 }
 
@@ -170,9 +161,7 @@ pub fn should_get_an_edge_count_with_no_type<D: Datastore>(datastore: &mut D) {
 pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let t = models::Type::new("test_edge_type").unwrap();
-    let count = trans
-        .get_edge_count(Uuid::default(), Some(&t), EdgeDirection::Outbound)
-        .unwrap();
+    let count = trans.get_edge_count(0, Some(&t), EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -341,9 +330,9 @@ pub fn should_get_edges_piped<D: Datastore>(datastore: &mut D) {
     );
 }
 
-fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {
+fn check_edge_range(range: &[models::Edge], expected_outbound_id: u64, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<u64> = HashSet::new();
     let t = models::Type::new("test_edge_type").unwrap();
 
     for edge in range {

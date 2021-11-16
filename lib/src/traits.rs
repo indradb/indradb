@@ -3,7 +3,6 @@ use crate::models;
 use crate::models::{EdgeQueryExt, VertexQueryExt};
 use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
-use uuid::Uuid;
 
 /// Specifies a datastore implementation.
 ///
@@ -70,7 +69,7 @@ pub trait Datastore {
 /// See the documentation of individual implementations for details.
 pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
+    /// created - if this is false, it's because a vertex with the same id
     /// already exists.
     ///
     /// # Arguments
@@ -79,15 +78,15 @@ pub trait Transaction {
 
     /// Creates a new vertex with just a type specification. As opposed to
     /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
+    /// the vertex's ID. Returns the new vertex's ID.
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    fn create_vertex_from_type(&self, t: models::Type) -> Result<Uuid> {
+    fn create_vertex_from_type(&self, t: models::Type) -> Result<u64> {
         let v = models::Vertex::new(t);
 
         if !self.create_vertex(&v)? {
-            Err(Error::UuidTaken)
+            Err(Error::IdTaken)
         } else {
             Ok(v.id)
         }
@@ -135,7 +134,7 @@ pub trait Transaction {
     /// * `id`: The id of the vertex.
     /// * `t`: Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
-    fn get_edge_count(&self, id: Uuid, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
+    fn get_edge_count(&self, id: u64, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets vertex properties.
     ///

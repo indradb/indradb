@@ -32,7 +32,7 @@ pub enum Error {
         inner: SledError,
     },
 
-    UuidTaken,
+    IdTaken,
 
     /// An error occurred in the underlying datastore
     Datastore {
@@ -54,7 +54,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Json { ref inner } => write!(f, "json error: {}", inner),
-            Error::UuidTaken => write!(f, "UUID already taken"),
+            Error::IdTaken => write!(f, "ID already taken"),
             Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
             #[cfg(feature = "rocksdb-datastore")]
             #[allow(deprecated)]
@@ -113,8 +113,8 @@ pub enum ValidationError {
     InvalidValue,
     /// The value is too long
     ValueTooLong,
-    /// The input UUID is the maximum value, and cannot be incremented
-    CannotIncrementUuid,
+    /// The input id is the maximum value, and cannot be incremented
+    CannotIncrementId,
 }
 
 impl StdError for ValidationError {}
@@ -124,7 +124,7 @@ impl fmt::Display for ValidationError {
         match *self {
             ValidationError::InvalidValue => write!(f, "invalid value"),
             ValidationError::ValueTooLong => write!(f, "value too long"),
-            ValidationError::CannotIncrementUuid => write!(f, "could not increment the UUID"),
+            ValidationError::CannotIncrementId => write!(f, "could not increment the ID"),
         }
     }
 }

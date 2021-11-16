@@ -3,7 +3,6 @@ use crate::{
 };
 
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
@@ -81,7 +80,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_set_invalid_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let q = SpecificVertexQuery::single(Uuid::default()).property("foo");
+    let q = SpecificVertexQuery::single(0).property("foo");
     trans.set_vertex_properties(q.clone(), &JsonValue::Null).unwrap();
     let result = trans.get_vertex_properties(q).unwrap();
     assert_eq!(result.len(), 0);
@@ -89,7 +88,7 @@ pub fn should_not_set_invalid_vertex_properties<D: Datastore>(datastore: &mut D)
 
 pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let q = SpecificVertexQuery::single(Uuid::default()).property("foo");
+    let q = SpecificVertexQuery::single(0).property("foo");
 
     trans.delete_vertex_properties(q).unwrap();
 
@@ -180,7 +179,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let key = EdgeKey::new(0, Type::new("foo").unwrap(), 0);
     let q = SpecificEdgeQuery::single(key).property("bar");
     trans.set_edge_properties(q.clone(), &JsonValue::Null).unwrap();
     let result = trans.get_edge_properties(q).unwrap();
@@ -189,7 +188,7 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
 
 pub fn should_not_delete_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let key = EdgeKey::new(Uuid::default(), Type::new("foo").unwrap(), Uuid::default());
+    let key = EdgeKey::new(0, Type::new("foo").unwrap(), 0);
     trans
         .delete_edge_properties(SpecificEdgeQuery::single(key).property("bar"))
         .unwrap();

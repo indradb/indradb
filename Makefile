@@ -3,7 +3,7 @@ export RUST_BACKTRACE=1
 .PHONY: test bench fuzz check fmt
 
 test:
-	cd lib && cargo test --features=test-suite,rocksdb-datastore,sled-datastore $(TEST_NAME)
+	cd lib && cargo test --features=test-suite,rocksdb-datastore $(TEST_NAME)
 	cd proto && cargo test --features=test-suite $(TEST_NAME)
 
 bench:

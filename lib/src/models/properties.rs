@@ -1,13 +1,12 @@
 use crate::{Edge, EdgeKey, Vertex};
 
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 /// Represents a vertex property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexProperty {
     /// The id of the vertex.
-    pub id: Uuid,
+    pub id: u64,
 
     /// The property value.
     pub value: JsonValue,
@@ -19,7 +18,7 @@ impl VertexProperty {
     /// # Arguments
     /// * `id`: The id of the vertex.
     /// * `value`: The property value.
-    pub fn new(id: Uuid, value: JsonValue) -> Self {
+    pub fn new(id: u64, value: JsonValue) -> Self {
         Self { id, value }
     }
 }

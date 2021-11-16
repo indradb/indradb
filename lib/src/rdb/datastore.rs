@@ -6,7 +6,6 @@ use std::usize;
 
 use super::managers::*;
 use crate::errors::Result;
-use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
     EdgeQuery, NamedProperty, Transaction, Type, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
@@ -16,7 +15,6 @@ use crate::{
 use chrono::offset::Utc;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 
 const CF_NAMES: [&str; 6] = [
     "vertices:v1",
@@ -56,23 +54,14 @@ fn execute_vertex_query(db: &DB, q: VertexQuery) -> Result<Vec<VertexItem>> {
         VertexQuery::Range(q) => {
             let vertex_manager = VertexManager::new(db);
 
-            let next_uuid = match q.start_id {
-                Some(start_id) => {
-                    match next_uuid(start_id) {
-                        Ok(next_uuid) => next_uuid,
-                        // If we get an error back, it's because
-                        // `start_id` is the maximum possible value. We
-                        // know that no vertices exist whose ID is greater
-                        // than the maximum possible value, so just return
-                        // an empty list.
-                        Err(_) => return Ok(vec![]),
-                    }
-                }
-                None => Uuid::default(),
+            let next_id = match q.start_id {
+                Some(start_id) if start_id == u64::max_value() => return Ok(vec![]),
+                Some(start_id) => start_id + 1,
+                None => 0,
             };
 
             let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
-                Box::new(vertex_manager.iterate_for_range(next_uuid));
+                Box::new(vertex_manager.iterate_for_range(next_id));
 
             if let Some(ref t) = q.t {
                 iter = Box::new(iter.filter(move |item| match item {
@@ -378,7 +367,7 @@ impl Transaction for RocksdbTransaction {
     fn get_vertex_count(&self) -> Result<u64> {
         let db = self.db.clone();
         let vertex_manager = VertexManager::new(&db);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default());
+        let iterator = vertex_manager.iterate_for_range(0);
         Ok(iterator.count() as u64)
     }
 
@@ -427,7 +416,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: u64, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
 
         let edge_range_manager = match direction {
