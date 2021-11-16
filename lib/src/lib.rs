@@ -32,11 +32,6 @@ pub use crate::traits::*;
 
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
-#[cfg(feature = "sled-datastore")]
-mod sledds;
 
 #[cfg(feature = "rocksdb-datastore")]
 pub use crate::rdb::{RocksdbDatastore, RocksdbTransaction};
-
-#[cfg(feature = "sled-datastore")]
-pub use crate::sledds::{SledConfig, SledDatastore, SledTransaction};

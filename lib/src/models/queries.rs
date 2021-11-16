@@ -1,11 +1,39 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, EdgeKey, Identifier};
+use crate::{errors, EdgeKey, Identifier, JsonValue};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
 use uuid::Uuid;
+
+macro_rules! vertex_query_type {
+    ($name:ident, $variant:ident) => {
+        impl VertexQueryExt for $name {}
+
+        // we don't want to impl From since the reverse operation isn't allowed
+        #[allow(clippy::from_over_into)]
+        impl Into<VertexQuery> for $name {
+            fn into(self) -> VertexQuery {
+                VertexQuery::$variant(self)
+            }
+        }
+    };
+}
+
+macro_rules! edge_query_type {
+    ($name:ident, $variant:ident) => {
+        impl EdgeQueryExt for $name {}
+
+        // we don't want to impl From since the reverse operation isn't allowed
+        #[allow(clippy::from_over_into)]
+        impl Into<EdgeQuery> for $name {
+            fn into(self) -> EdgeQuery {
+                EdgeQuery::$variant(self)
+            }
+        }
+    };
+}
 
 /// Specifies what kind of items should be piped from one type of query to
 /// another.
@@ -52,24 +80,12 @@ pub enum VertexQuery {
     Range(RangeVertexQuery),
     Specific(SpecificVertexQuery),
     Pipe(PipeVertexQuery),
-}
 
-impl From<RangeVertexQuery> for VertexQuery {
-    fn from(query: RangeVertexQuery) -> Self {
-        VertexQuery::Range(query)
-    }
-}
+    PropertyPresence(PropertyPresenceVertexQuery),
+    PropertyValue(PropertyValueVertexQuery),
 
-impl From<SpecificVertexQuery> for VertexQuery {
-    fn from(query: SpecificVertexQuery) -> Self {
-        VertexQuery::Specific(query)
-    }
-}
-
-impl From<PipeVertexQuery> for VertexQuery {
-    fn from(query: PipeVertexQuery) -> Self {
-        VertexQuery::Pipe(query)
-    }
+    PipePropertyPresence(PipePropertyPresenceVertexQuery),
+    PipePropertyValue(PipePropertyValueVertexQuery),
 }
 
 /// Extension trait with methods available in all vertex queries.
@@ -88,8 +104,154 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     ///
     /// # Arguments
     /// * `name`: The name of the property to get.
-    fn property<S: Into<String>>(self, name: S) -> VertexPropertyQuery {
+    fn property<T: Into<Identifier>>(self, name: T) -> VertexPropertyQuery {
         VertexPropertyQuery::new(self.into(), name)
+    }
+
+    /// Gets vertices with a property.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    fn with_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceVertexQuery {
+        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, true)
+    }
+
+    /// Gets vertices without a property.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    fn without_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceVertexQuery {
+        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, false)
+    }
+
+    /// Gets vertices with a property equal to a given value.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    fn with_property_equal_to<T: Into<Identifier>>(self, name: T, value: JsonValue) -> PipePropertyValueVertexQuery {
+        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, true)
+    }
+
+    /// Gets vertices with a property not equal to a given value.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    fn with_property_not_equal_to<T: Into<Identifier>>(
+        self,
+        name: T,
+        value: JsonValue,
+    ) -> PipePropertyValueVertexQuery {
+        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, false)
+    }
+}
+
+/// Gets vertices with a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceVertexQuery {
+    /// The name of the property.
+    pub name: Identifier,
+}
+
+vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
+
+impl PropertyPresenceVertexQuery {
+    /// Creates a new vertex query for getting vertices with a property.
+    ///
+    /// Arguments
+    /// * `name`: The name of the property.
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets vertices with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyValueVertexQuery {
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: JsonValue,
+}
+
+vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
+
+impl PropertyValueVertexQuery {
+    /// Creates a new vertex query for getting vertices with a property with a
+    /// given value.
+    ///
+    /// Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    pub fn new<T: Into<Identifier>>(name: T, value: JsonValue) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+/// Gets vertices with a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceVertexQuery {
+    /// The query to filter.
+    pub inner: Box<VertexQuery>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// Whether we should look for property presence or lack thereof.
+    pub exists: bool,
+}
+
+vertex_query_type!(PipePropertyPresenceVertexQuery, PipePropertyPresence);
+
+impl PipePropertyPresenceVertexQuery {
+    /// Gets vertices with a property.
+    ///
+    /// Arguments
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `exists`: Whether we should look for property presence or lack thereof.
+    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, exists: bool) -> Self {
+        Self {
+            inner,
+            name: name.into(),
+            exists,
+        }
+    }
+}
+
+/// Gets vertices with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueVertexQuery {
+    /// The query to filter.
+    pub inner: Box<VertexQuery>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: JsonValue,
+    /// Whether we should look for property equality or non-equality.
+    pub equal: bool,
+}
+
+vertex_query_type!(PipePropertyValueVertexQuery, PipePropertyValue);
+
+impl PipePropertyValueVertexQuery {
+    /// Creates a new vertex query for getting vertices with a property with a
+    /// given value.
+    ///
+    /// Arguments
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    /// * `equal`: Whether we should look for property equality or non-equality.
+    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, value: JsonValue, equal: bool) -> Self {
+        Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
@@ -106,7 +268,7 @@ pub struct RangeVertexQuery {
     pub start_id: Option<Uuid>,
 }
 
-impl VertexQueryExt for RangeVertexQuery {}
+vertex_query_type!(RangeVertexQuery, Range);
 
 impl Default for RangeVertexQuery {
     fn default() -> Self {
@@ -168,7 +330,7 @@ pub struct SpecificVertexQuery {
     pub ids: Vec<Uuid>,
 }
 
-impl VertexQueryExt for SpecificVertexQuery {}
+vertex_query_type!(SpecificVertexQuery, Specific);
 
 impl SpecificVertexQuery {
     /// Creates a new vertex query for getting a list of vertices by their
@@ -208,7 +370,7 @@ pub struct PipeVertexQuery {
     pub t: Option<Identifier>,
 }
 
-impl VertexQueryExt for PipeVertexQuery {}
+vertex_query_type!(PipeVertexQuery, Pipe);
 
 impl PipeVertexQuery {
     /// Creates a new pipe vertex query.
@@ -260,7 +422,7 @@ pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
 
     /// The name of the property to get.
-    pub name: String,
+    pub name: Identifier,
 }
 
 impl VertexPropertyQuery {
@@ -269,7 +431,7 @@ impl VertexPropertyQuery {
     /// Arguments
     /// * `inner`: The vertex query to build off of.
     /// * `name`: The name of the property to get.
-    pub fn new<S: Into<String>>(inner: VertexQuery, name: S) -> Self {
+    pub fn new<T: Into<Identifier>>(inner: VertexQuery, name: T) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -286,18 +448,12 @@ impl VertexPropertyQuery {
 pub enum EdgeQuery {
     Specific(SpecificEdgeQuery),
     Pipe(PipeEdgeQuery),
-}
 
-impl From<SpecificEdgeQuery> for EdgeQuery {
-    fn from(query: SpecificEdgeQuery) -> Self {
-        EdgeQuery::Specific(query)
-    }
-}
+    PropertyPresence(PropertyPresenceEdgeQuery),
+    PropertyValue(PropertyValueEdgeQuery),
 
-impl From<PipeEdgeQuery> for EdgeQuery {
-    fn from(query: PipeEdgeQuery) -> Self {
-        EdgeQuery::Pipe(query)
-    }
+    PipePropertyPresence(PipePropertyPresenceEdgeQuery),
+    PipePropertyValue(PipePropertyValueEdgeQuery),
 }
 
 /// Extension trait that specifies methods exposed by all edge queries.
@@ -316,8 +472,150 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     ///
     /// # Arguments
     /// * `name`: The name of the property to get.
-    fn property<S: Into<String>>(self, name: S) -> EdgePropertyQuery {
+    fn property<T: Into<Identifier>>(self, name: T) -> EdgePropertyQuery {
         EdgePropertyQuery::new(self.into(), name)
+    }
+
+    /// Gets edges with a property.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    fn with_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
+        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, true)
+    }
+
+    /// Gets edges without a property.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    fn without_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
+        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, false)
+    }
+
+    /// Gets edges with a property equal to a given value.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    fn with_property_equal_to<T: Into<Identifier>>(self, name: T, value: JsonValue) -> PipePropertyValueEdgeQuery {
+        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, true)
+    }
+
+    /// Gets edges with a property not equal to a given value.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    fn with_property_not_equal_to<T: Into<Identifier>>(self, name: T, value: JsonValue) -> PipePropertyValueEdgeQuery {
+        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, false)
+    }
+}
+
+/// Gets edges with a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceEdgeQuery {
+    /// The name of the property.
+    pub name: Identifier,
+}
+
+edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
+
+impl PropertyPresenceEdgeQuery {
+    /// Creates a new edge query for getting edges with a property.
+    ///
+    /// Arguments
+    /// * `name`: The name of the property.
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PropertyValueEdgeQuery {
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: JsonValue,
+}
+
+edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
+
+impl PropertyValueEdgeQuery {
+    /// Creates a new edge query for getting edges with a property with a
+    /// given value.
+    ///
+    /// Arguments
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    pub fn new<T: Into<Identifier>>(name: T, value: JsonValue) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+/// Gets edges with a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceEdgeQuery {
+    /// The query to filter.
+    pub inner: Box<EdgeQuery>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// Whether we should look for property presence or lack thereof.
+    pub exists: bool,
+}
+
+edge_query_type!(PipePropertyPresenceEdgeQuery, PipePropertyPresence);
+
+impl PipePropertyPresenceEdgeQuery {
+    /// Gets edges with a property.
+    ///
+    /// Arguments
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `exists`: Whether we should look for property presence or lack thereof.
+    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, exists: bool) -> Self {
+        Self {
+            inner,
+            name: name.into(),
+            exists,
+        }
+    }
+}
+
+/// Gets edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueEdgeQuery {
+    /// The query to filter.
+    pub inner: Box<EdgeQuery>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: JsonValue,
+    /// Whether we should look for property equality or non-equality.
+    pub equal: bool,
+}
+
+edge_query_type!(PipePropertyValueEdgeQuery, PipePropertyValue);
+
+impl PipePropertyValueEdgeQuery {
+    /// Creates a new edge query for getting edges with a property with a
+    /// given value.
+    ///
+    /// Arguments
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `value`: The value of the property.
+    /// * `equal`: Whether we should look for property equality or non-equality.
+    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, value: JsonValue, equal: bool) -> Self {
+        Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        }
     }
 }
 
@@ -328,7 +626,7 @@ pub struct SpecificEdgeQuery {
     pub keys: Vec<EdgeKey>,
 }
 
-impl EdgeQueryExt for SpecificEdgeQuery {}
+edge_query_type!(SpecificEdgeQuery, Specific);
 
 impl SpecificEdgeQuery {
     /// Creates a new edge query for getting a list of edges by their
@@ -374,7 +672,7 @@ pub struct PipeEdgeQuery {
     pub low: Option<DateTime<Utc>>,
 }
 
-impl EdgeQueryExt for PipeEdgeQuery {}
+edge_query_type!(PipeEdgeQuery, Pipe);
 
 impl PipeEdgeQuery {
     /// Creates a new pipe edge query.
@@ -463,7 +761,7 @@ pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
 
     /// The name of the property to get.
-    pub name: String,
+    pub name: Identifier,
 }
 
 impl EdgePropertyQuery {
@@ -472,7 +770,7 @@ impl EdgePropertyQuery {
     /// Arguments
     /// * `inner`: The edge query to build off of.
     /// * `name`: The name of the property to get.
-    pub fn new<S: Into<String>>(inner: EdgeQuery, name: S) -> Self {
+    pub fn new<T: Into<Identifier>>(inner: EdgeQuery, name: T) -> Self {
         Self {
             inner,
             name: name.into(),

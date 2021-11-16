@@ -61,6 +61,10 @@ message VertexQuery {
         RangeVertexQuery range = 1;
         SpecificVertexQuery specific = 2;
         PipeVertexQuery pipe = 3;
+        PropertyPresenceVertexQuery property_presence = 4;
+        PropertyValueVertexQuery property_value = 5;
+        PipePropertyPresenceVertexQuery pipe_property_presence = 6;
+        PipePropertyValueVertexQuery pipe_property_value = 7;
     }
 }
 
@@ -94,10 +98,47 @@ message PipeVertexQuery {
 
 // Gets property values associated with vertices.
 message VertexPropertyQuery {
+    reserved 2;
     // The vertex query to build off of.
     VertexQuery inner = 1;
     // The name of the property to get.
-    string name = 2;
+    Identifier name = 3;
+}
+
+// Gets vertices with a property.
+message PropertyPresenceVertexQuery {
+    // The name of the property.
+    Identifier name = 1;
+}
+
+// Gets vertices with a property equal to a given value.
+message PropertyValueVertexQuery {
+    // The name of the property.
+    Identifier name = 1;
+    // The value of the property.
+    Json value = 2;
+}
+
+// Gets vertices with a property.
+message PipePropertyPresenceVertexQuery {
+    // The query to filter.
+    VertexQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // Whether we should look for property presence or lack thereof.
+    bool exists = 3;
+}
+
+// Gets vertices with a property equal to a given value.
+message PipePropertyValueVertexQuery {
+    // The query to filter.
+    VertexQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // The value of the property.
+    Json value = 3;
+    // Whether we should look for property equality or non-equality.
+    bool equal = 4;
 }
 
 // A query for edges.
@@ -105,6 +146,10 @@ message EdgeQuery {
     oneof query {
         SpecificEdgeQuery specific = 1;
         PipeEdgeQuery pipe = 2;
+        PropertyPresenceEdgeQuery property_presence = 3;
+        PropertyValueEdgeQuery property_value = 4;
+        PipePropertyPresenceEdgeQuery pipe_property_presence = 5;
+        PipePropertyValueEdgeQuery pipe_property_value = 6;
     }
 }
 
@@ -112,6 +157,42 @@ message EdgeQuery {
 message SpecificEdgeQuery {
     // The keys of the edges to get.
     repeated EdgeKey keys = 1;
+}
+
+// Gets edges with a property.
+message PropertyPresenceEdgeQuery {
+    // The name of the property.
+    Identifier name = 1;
+}
+
+// Gets edges with a property equal to a given value.
+message PropertyValueEdgeQuery {
+    // The name of the property.
+    Identifier name = 1;
+    // The value of the property.
+    Json value = 2;
+}
+
+// Gets edges with a property.
+message PipePropertyPresenceEdgeQuery {
+    // The query to filter.
+    EdgeQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // Whether we should look for property presence or lack thereof.
+    bool exists = 3;
+}
+
+// Gets edges with a property equal to a given value.
+message PipePropertyValueEdgeQuery {
+    // The query to filter.
+    EdgeQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // The value of the property.
+    Json value = 3;
+    // Whether we should look for property equality or non-equality.
+    bool equal = 4;
 }
 
 // Gets the edges associated with vertices.
@@ -132,10 +213,11 @@ message PipeEdgeQuery {
 
 // Gets property values associated with edges.
 message EdgePropertyQuery {
+    reserved 2;
     // The edge query to build off of.
     EdgeQuery inner = 1;
     // The name of the property to get.
-    string name = 2;
+    Identifier name = 3;
 }
 
 // Specifies what kind of items should be piped from one type of query to
@@ -153,8 +235,9 @@ enum EdgeDirection {
 
 // A property.
 message NamedProperty {
+    reserved 1;
     // The id of the vertex.
-    string name = 1;
+    Identifier name = 3;
     // The property value.
     Json value = 2;
 }
@@ -203,15 +286,17 @@ message BulkInsertItem {
 
 // A vertex property to insert.
 message VertexPropertyBulkInsertItem {
+    reserved 2;
     Uuid id = 1;
-    string name = 2;
+    Identifier name = 4;
     Json value = 3;
 }
 
 // An edge property to insert.
 message EdgePropertyBulkInsertItem {
+    reserved 2;
     EdgeKey key = 1;
-    string name = 2;
+    Identifier name = 4;
     Json value = 3;
 }
 
@@ -345,4 +430,8 @@ service IndraDB {
     
     // Runs a transaction.
     rpc Transaction(stream TransactionRequest) returns (stream TransactionResponse);
+
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
+    rpc IndexProperty(Identifier) returns (google.protobuf.Empty);
 }

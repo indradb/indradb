@@ -58,6 +58,18 @@ macro_rules! full_test_impl {
         define_test!(should_get_edges, $code);
         define_test!(should_get_edges_piped, $code);
 
+        // Indexing
+        define_test!(should_not_query_unindexed_vertex_property, $code);
+        define_test!(should_not_query_unindexed_edge_property, $code);
+        define_test!(should_index_existing_vertex_property, $code);
+        define_test!(should_index_existing_edge_property, $code);
+        define_test!(should_delete_indexed_vertex_property, $code);
+        define_test!(should_delete_indexed_edge_property, $code);
+        define_test!(should_update_indexed_vertex_property, $code);
+        define_test!(should_update_indexed_edge_property, $code);
+        define_test!(should_query_indexed_vertex_property_empty, $code);
+        define_test!(should_query_indexed_edge_property_empty, $code);
+
         // Properties
         define_test!(should_handle_vertex_properties, $code);
         define_test!(should_not_set_invalid_vertex_properties, $code);

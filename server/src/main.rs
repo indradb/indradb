@@ -39,14 +39,6 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             proto::run_server(Arc::new(datastore), listener).await?;
             Ok(())
         }
-        CliDatastoreArgs::Sled { path, sled_config } => {
-            let datastore = sled_config
-                .open(&path)
-                .expect("Expected to be able to create the Sled datastore");
-            println!("grpc://{}", binding);
-            proto::run_server(Arc::new(datastore), listener).await?;
-            Ok(())
-        }
         CliDatastoreArgs::Memory { path: None } => {
             let datastore = indradb::MemoryDatastore::default();
             println!("grpc://{}", binding);
