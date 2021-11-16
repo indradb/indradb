@@ -17,7 +17,7 @@ pub enum Op {
     CreateEdge(EdgeKey),
     GetEdges(EdgeQuery),
     DeleteEdges(EdgeQuery),
-    GetEdgeCount(Uuid, Option<Type>, EdgeDirection),
+    GetEdgeCount(Uuid, Option<Identifier>, EdgeDirection),
     GetVertexProperties(VertexPropertyQuery),
     GetAllVertexProperties(VertexQuery),
     SetVertexProperties(VertexPropertyQuery, JsonValue),
@@ -26,15 +26,15 @@ pub enum Op {
     GetAllEdgeProperties(EdgeQuery),
     SetEdgeProperties(EdgePropertyQuery, JsonValue),
     DeleteEdgeProperties(EdgePropertyQuery),
-    IndexProperty(Type),
+    IndexProperty(Identifier),
 }
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(Uuid, Type, JsonValue),
-    EdgeProperty(EdgeKey, Type, JsonValue),
+    VertexProperty(Uuid, Identifier, JsonValue),
+    EdgeProperty(EdgeKey, Identifier, JsonValue),
 }
 
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
@@ -55,7 +55,7 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct Vertex {
     pub id: Uuid,
-    pub t: Type,
+    pub t: Identifier,
 }
 
 impl Into<indradb::Vertex> for Vertex {
@@ -65,9 +65,9 @@ impl Into<indradb::Vertex> for Vertex {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Type(indradb::Type);
+pub struct Identifier(indradb::Identifier);
 
-impl<'a> Arbitrary<'a> for Type {
+impl<'a> Arbitrary<'a> for Identifier {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let s: String = u.arbitrary()?;
 
@@ -75,13 +75,13 @@ impl<'a> Arbitrary<'a> for Type {
             return Err(arbitrary::Error::NotEnoughData);
         }
 
-        let t = indradb::Type::new(s).map_err(|_| arbitrary::Error::IncorrectFormat)?;
+        let t = indradb::Identifier::new(s).map_err(|_| arbitrary::Error::IncorrectFormat)?;
         Ok(Self { 0: t })
     }
 }
 
-impl Into<indradb::Type> for Type {
-    fn into(self) -> indradb::Type {
+impl Into<indradb::Identifier> for Identifier {
+    fn into(self) -> indradb::Identifier {
         self.0
     }
 }
@@ -129,7 +129,7 @@ impl Into<indradb::VertexQuery> for VertexQuery {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct RangeVertexQuery {
     pub limit: u32,
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
     pub start_id: Option<Uuid>,
 }
 
@@ -161,7 +161,7 @@ pub struct PipeVertexQuery {
     pub inner: Box<EdgeQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
 }
 
 impl Into<indradb::PipeVertexQuery> for PipeVertexQuery {
@@ -177,7 +177,7 @@ impl Into<indradb::PipeVertexQuery> for PipeVertexQuery {
 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceVertexQuery {
-    pub name: Type,
+    pub name: Identifier,
 }
 
 impl Into<indradb::PropertyPresenceVertexQuery> for PropertyPresenceVertexQuery {
@@ -190,7 +190,7 @@ impl Into<indradb::PropertyPresenceVertexQuery> for PropertyPresenceVertexQuery 
 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueVertexQuery {
-    pub name: Type,
+    pub name: Identifier,
     pub value: JsonValue,
 }
 
@@ -206,7 +206,7 @@ impl Into<indradb::PropertyValueVertexQuery> for PropertyValueVertexQuery {
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PipePropertyPresenceVertexQuery {
     pub inner: Box<VertexQuery>,
-    pub name: Type,
+    pub name: Identifier,
     pub exists: bool,
 }
 
@@ -223,7 +223,7 @@ impl Into<indradb::PipePropertyPresenceVertexQuery> for PipePropertyPresenceVert
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PipePropertyValueVertexQuery {
     pub inner: Box<VertexQuery>,
-    pub name: Type,
+    pub name: Identifier,
     pub value: JsonValue,
     pub equal: bool,
 }
@@ -242,7 +242,7 @@ impl Into<indradb::PipePropertyValueVertexQuery> for PipePropertyValueVertexQuer
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
-    pub name: Type,
+    pub name: Identifier,
 }
 
 impl Into<indradb::VertexPropertyQuery> for VertexPropertyQuery {
@@ -295,7 +295,7 @@ pub struct PipeEdgeQuery {
     pub inner: Box<VertexQuery>,
     pub direction: EdgeDirection,
     pub limit: u32,
-    pub t: Option<Type>,
+    pub t: Option<Identifier>,
     pub high: Option<DateTime>,
     pub low: Option<DateTime>,
 }
@@ -315,7 +315,7 @@ impl Into<indradb::PipeEdgeQuery> for PipeEdgeQuery {
 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyPresenceEdgeQuery {
-    pub name: Type,
+    pub name: Identifier,
 }
 
 impl Into<indradb::PropertyPresenceEdgeQuery> for PropertyPresenceEdgeQuery {
@@ -328,7 +328,7 @@ impl Into<indradb::PropertyPresenceEdgeQuery> for PropertyPresenceEdgeQuery {
 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueEdgeQuery {
-    pub name: Type,
+    pub name: Identifier,
     pub value: JsonValue,
 }
 
@@ -344,7 +344,7 @@ impl Into<indradb::PropertyValueEdgeQuery> for PropertyValueEdgeQuery {
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PipePropertyPresenceEdgeQuery {
     pub inner: Box<EdgeQuery>,
-    pub name: Type,
+    pub name: Identifier,
     pub exists: bool,
 }
 
@@ -361,7 +361,7 @@ impl Into<indradb::PipePropertyPresenceEdgeQuery> for PipePropertyPresenceEdgeQu
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PipePropertyValueEdgeQuery {
     pub inner: Box<EdgeQuery>,
-    pub name: Type,
+    pub name: Identifier,
     pub value: JsonValue,
     pub equal: bool,
 }
@@ -380,7 +380,7 @@ impl Into<indradb::PipePropertyValueEdgeQuery> for PipePropertyValueEdgeQuery {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
-    pub name: Type,
+    pub name: Identifier,
 }
 
 impl Into<indradb::EdgePropertyQuery> for EdgePropertyQuery {
@@ -409,7 +409,7 @@ impl Into<indradb::VertexProperty> for VertexProperty {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct NamedProperty {
-    pub name: Type,
+    pub name: Identifier,
     pub value: JsonValue,
 }
 
@@ -470,7 +470,7 @@ impl Into<indradb::EdgeProperty> for EdgeProperty {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgeKey {
     pub outbound_id: Uuid,
-    pub t: Type,
+    pub t: Identifier,
     pub inbound_id: Uuid,
 }
 
@@ -682,7 +682,7 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::GetEdgeCount(id, t, direction) => {
                 let id: uuid::Uuid = id.into();
-                let t: Option<indradb::Type> = t.map(|t| t.into());
+                let t: Option<indradb::Identifier> = t.map(|t| t.into());
                 let direction: indradb::EdgeDirection = direction.into();
                 let v1 = t1.get_edge_count(id, t.as_ref(), direction);
                 let v2 = t2.get_edge_count(id, t.as_ref(), direction);

@@ -1,4 +1,4 @@
-use crate::{Edge, EdgeKey, JsonValue, Type, Vertex};
+use crate::{Edge, EdgeKey, Identifier, JsonValue, Vertex};
 
 use uuid::Uuid;
 
@@ -27,7 +27,7 @@ impl VertexProperty {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
     /// The id of the vertex.
-    pub name: Type,
+    pub name: Identifier,
 
     /// The property value.
     pub value: JsonValue,
@@ -39,7 +39,7 @@ impl NamedProperty {
     /// # Arguments
     /// * `name`: The name of the property.
     /// * `value`: The property value.
-    pub fn new(name: Type, value: JsonValue) -> Self {
+    pub fn new(name: Identifier, value: JsonValue) -> Self {
         Self { name, value }
     }
 }

@@ -17,7 +17,7 @@ full_test_impl!(MemoryDatastore::default());
 #[test]
 fn should_serialize() {
     use super::MemoryDatastore;
-    use crate::{Datastore, SpecificVertexQuery, Transaction, Type};
+    use crate::{Datastore, Identifier, SpecificVertexQuery, Transaction};
     use tempfile::NamedTempFile;
 
     let path = NamedTempFile::new().unwrap();
@@ -25,7 +25,7 @@ fn should_serialize() {
     let id = {
         let datastore = MemoryDatastore::create(path.path()).unwrap();
         let trans = datastore.transaction().unwrap();
-        let id = trans.create_vertex_from_type(Type::default()).unwrap();
+        let id = trans.create_vertex_from_type(Identifier::default()).unwrap();
         datastore.sync().unwrap();
         id
     };
@@ -36,5 +36,5 @@ fn should_serialize() {
     let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![id])).unwrap();
     assert_eq!(vertices.len(), 1);
     assert_eq!(vertices[0].id, id);
-    assert_eq!(vertices[0].t, Type::default());
+    assert_eq!(vertices[0].t, Identifier::default());
 }

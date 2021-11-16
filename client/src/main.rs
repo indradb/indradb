@@ -177,7 +177,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
 
     if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
-            let vertex_type = indradb::Type::new(matches.value_of("type").unwrap())?;
+            let vertex_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
             let uuid = match matches.value_of("id") {
                 Some(id) => uuid::Uuid::parse_str(id)?,
                 None => indradb::util::generate_uuid_v1(),
@@ -199,13 +199,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             println!("{:?}", edge_key);
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let vertex_query = build_vertex_query(matches)?;
-            let property_name = indradb::Type::new(matches.value_of("name").unwrap())?;
+            let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
             let property_value = indradb::JsonValue::new(serde_json::from_str(matches.value_of("value").unwrap())?);
             trans
                 .set_vertex_properties(VertexPropertyQuery::new(vertex_query, property_name), &property_value)
                 .await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
-            let property_name = indradb::Type::new(matches.value_of("name").unwrap())?;
+            let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
             let property_value = indradb::JsonValue::new(serde_json::from_str(matches.value_of("value").unwrap())?);
             let edge_query = build_edge_query(build_edge_key(matches)?);
             trans
@@ -223,7 +223,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
                 None => indradb::EdgeDirection::Outbound,
             };
             let edge_type = match matches.value_of("type") {
-                Some(edge_type) => Some(indradb::Type::new(edge_type)?),
+                Some(edge_type) => Some(indradb::Identifier::new(edge_type)?),
                 None => None,
             };
             let res = trans
@@ -247,7 +247,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             let property_name = matches.value_of("name");
             match property_name {
                 Some(property_name) => {
-                    let property_name = indradb::Type::new(property_name)?;
+                    let property_name = indradb::Identifier::new(property_name)?;
                     let vertex_property = trans
                         .get_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
                         .await?;
@@ -265,7 +265,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             let edge_query = build_edge_query(build_edge_key(matches)?);
             match property_name {
                 Some(property_name) => {
-                    let property_name = indradb::Type::new(property_name)?;
+                    let property_name = indradb::Identifier::new(property_name)?;
                     let edge_property = trans
                         .get_edge_properties(EdgePropertyQuery::new(edge_query, property_name))
                         .await?;
@@ -285,13 +285,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             trans.delete_edges(build_edge_query(build_edge_key(matches)?)).await?;
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
-            let property_name = indradb::Type::new(matches.value_of("name").unwrap())?;
+            let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
 
             trans
                 .delete_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
                 .await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
-            let property_name = indradb::Type::new(matches.value_of("name").unwrap())?;
+            let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
 
             trans
                 .delete_edge_properties(EdgePropertyQuery::new(
@@ -312,7 +312,7 @@ fn build_vertex_query(matches: &clap::ArgMatches) -> Result<VertexQuery, Box<dyn
 }
 
 fn build_edge_key(matches: &clap::ArgMatches) -> Result<EdgeKey, Box<dyn StdError>> {
-    let edge_type = indradb::Type::new(matches.value_of("type").unwrap())?;
+    let edge_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
     let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
     let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
     let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);

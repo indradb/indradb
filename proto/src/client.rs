@@ -162,7 +162,7 @@ impl Client {
         Ok(Transaction::new(tx, response.into_inner()))
     }
 
-    pub async fn index_property<T: Into<indradb::Type>>(&mut self, name: T) -> Result<(), ClientError> {
+    pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
         self.0.index_property(Request::new(name.into().into())).await?;
         Ok(())
     }
@@ -264,7 +264,7 @@ impl Transaction {
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    pub async fn create_vertex_from_type(&mut self, t: indradb::Type) -> Result<Uuid, ClientError> {
+    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<Uuid, ClientError> {
         let request = crate::TransactionRequestVariant::CreateVertexFromType(t.into());
         Ok(self.request_single(request).await?.try_into()?)
     }
@@ -347,7 +347,7 @@ impl Transaction {
     pub async fn get_edge_count(
         &mut self,
         id: Uuid,
-        t: Option<&indradb::Type>,
+        t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, ClientError> {
         let request = crate::TransactionRequestVariant::GetEdgeCount((id, t.cloned(), direction).into());

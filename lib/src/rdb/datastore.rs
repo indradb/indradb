@@ -10,8 +10,8 @@ use crate::errors::{Error, Result};
 use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, JsonValue, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
-    PropertyValueEdgeQuery, PropertyValueVertexQuery, Transaction, Type, Vertex, VertexProperties, VertexProperty,
+    EdgeQuery, Identifier, JsonValue, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
+    PropertyValueEdgeQuery, PropertyValueVertexQuery, Transaction, Vertex, VertexProperties, VertexProperty,
     VertexPropertyQuery, VertexQuery,
 };
 
@@ -56,7 +56,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     opts
 }
 
-fn guard_indexed_property(db_ref: DBRef<'_>, property: &Type) -> Result<()> {
+fn guard_indexed_property(db_ref: DBRef<'_>, property: &Identifier) -> Result<()> {
     if !db_ref.indexed_properties.contains(property) {
         Err(Error::NotIndexed)
     } else {
@@ -86,7 +86,7 @@ fn vertices_from_piped_property_query(
     property_query: VertexQuery,
     intersection: bool,
 ) -> Result<Vec<VertexItem>> {
-    let mut piped_vertices_mapping: HashMap<Uuid, Type> =
+    let mut piped_vertices_mapping: HashMap<Uuid, Identifier> =
         execute_vertex_query(db_ref, inner_query)?.into_iter().collect();
     let piped_vertices: HashSet<Uuid> = piped_vertices_mapping.keys().cloned().collect();
 
@@ -378,7 +378,7 @@ fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeIt
 #[derive(Debug)]
 pub struct RocksdbDatastore {
     db: Arc<DB>,
-    indexed_properties: Arc<RwLock<HashSet<Type>>>,
+    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
 }
 
 impl RocksdbDatastore {
@@ -496,7 +496,7 @@ impl Datastore for RocksdbDatastore {
         ))
     }
 
-    fn index_property<T: Into<Type>>(&self, name: T) -> Result<()> {
+    fn index_property<T: Into<Identifier>>(&self, name: T) -> Result<()> {
         let name = name.into();
 
         let mut indexed_properties = self.indexed_properties.write().unwrap();
@@ -539,11 +539,11 @@ impl Datastore for RocksdbDatastore {
 #[derive(Debug)]
 pub struct RocksdbTransaction {
     db: Arc<DB>,
-    indexed_properties: Arc<RwLock<HashSet<Type>>>,
+    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
 }
 
 impl RocksdbTransaction {
-    fn new(db: Arc<DB>, indexed_properties: Arc<RwLock<HashSet<Type>>>) -> Self {
+    fn new(db: Arc<DB>, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
         RocksdbTransaction { db, indexed_properties }
     }
 }
@@ -655,7 +655,7 @@ impl Transaction for RocksdbTransaction {
         Ok(())
     }
 
-    fn get_edge_count(&self, id: Uuid, t: Option<&Type>, direction: EdgeDirection) -> Result<u64> {
+    fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);

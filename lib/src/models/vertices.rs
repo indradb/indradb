@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use crate::{util::generate_uuid_v1, Type};
+use crate::{util::generate_uuid_v1, Identifier};
 use uuid::Uuid;
 
 /// A vertex.
@@ -13,7 +13,7 @@ pub struct Vertex {
     pub id: Uuid,
 
     /// The type of the vertex.
-    pub t: Type,
+    pub t: Identifier,
 }
 
 impl Vertex {
@@ -25,7 +25,7 @@ impl Vertex {
     /// # Arguments
     ///
     /// * `t`: The type of the vertex.
-    pub fn new(t: Type) -> Self {
+    pub fn new(t: Identifier) -> Self {
         Self::with_id(generate_uuid_v1(), t)
     }
 
@@ -35,7 +35,7 @@ impl Vertex {
     ///
     /// * `id`: The id of the vertex.
     /// * `t`: The type of the vertex.
-    pub fn with_id(id: Uuid, t: Type) -> Self {
+    pub fn with_id(id: Uuid, t: Identifier) -> Self {
         Vertex { id, t }
     }
 }

@@ -81,7 +81,7 @@ impl indradb::Datastore for ClientDatastore {
         Ok(ClientTransaction::new(trans, self.exec.clone()))
     }
 
-    fn index_property<T: Into<indradb::Type>>(&self, name: T) -> Result<(), indradb::Error> {
+    fn index_property<T: Into<indradb::Identifier>>(&self, name: T) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -113,7 +113,7 @@ impl indradb::Transaction for ClientTransaction {
         )
     }
 
-    fn create_vertex_from_type(&self, t: indradb::Type) -> Result<Uuid, indradb::Error> {
+    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -156,7 +156,7 @@ impl indradb::Transaction for ClientTransaction {
     fn get_edge_count(
         &self,
         id: Uuid,
-        t: Option<&indradb::Type>,
+        t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
         map_client_result(
