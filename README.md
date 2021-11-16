@@ -18,10 +18,10 @@ For more details, see the [homepage](https://indradb.github.io). See also a [com
 
 ## Features
 
-* Support for directed and typed graphs.
-* Support for queries with multiple hops.
+* Directed and typed graphs.
+* JSON-based properties tied to vertices and edges.
+* Queries with multiple hops, and queries on indexed properties.
 * Cross-language support via gRPC, or direct embedding as a library.
-* Support for JSON-based properties tied to vertices and edges.
 * Pluggable underlying datastores, with several built-in datastores. [Postgresql is available separately](https://github.com/indradb/postgres).
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
