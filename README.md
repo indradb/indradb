@@ -2,7 +2,11 @@
  	<img src="https://indradb.github.io/logo.png">
 </p>
 
-# [IndraDB](https://indradb.github.io) ![CI](https://github.com/indradb/indradb/workflows/Test/badge.svg)
+# [IndraDB](https://indradb.github.io)
+
+[![Test](https://github.com/indradb/indradb/actions/workflows/test.yml/badge.svg)](https://github.com/indradb/indradb/actions/workflows/test.yml)
+[![crates.io](https://img.shields.io/crates/v/indradb-lib.svg)](https://crates.io/crates/indradb-lib)
+[![Released API docs](https://docs.rs/indradb-lib/badge.svg)](https://docs.rs/indradb-lib)
 
 A graph database written in rust.
 

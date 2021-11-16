@@ -22,7 +22,7 @@ pub enum Error {
 
     /// An error occurred in the underlying datastore
     Datastore {
-        inner: Box<dyn StdError + Send>,
+        inner: Box<dyn StdError + Send + Sync>,
     },
 
     /// A query occurred on a property that isn't indexed
