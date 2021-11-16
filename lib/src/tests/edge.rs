@@ -2,13 +2,12 @@ use std::collections::HashSet;
 
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
 use crate::{
-    models, Datastore, EdgeDirection, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
-    VertexQueryExt,
+    models, Datastore, EdgeDirection, EdgeKey, EdgeQueryExt, JsonValue, SpecificEdgeQuery, SpecificVertexQuery,
+    Transaction, VertexQueryExt,
 };
 
 use chrono::offset::Utc;
 use chrono::Timelike;
-use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &mut D) {
@@ -125,7 +124,10 @@ pub fn should_delete_a_valid_edge<D: Datastore>(datastore: &mut D) {
 
     let q = SpecificEdgeQuery::single(key);
     trans
-        .set_edge_properties(q.clone().property("foo"), &JsonValue::Bool(true))
+        .set_edge_properties(
+            q.clone().property(models::Type::new("foo").unwrap()),
+            &JsonValue::new(serde_json::Value::Bool(true)),
+        )
         .unwrap();
 
     trans.delete_edges(q.clone()).unwrap();

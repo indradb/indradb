@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use super::util::{create_edge_from, create_edges};
 use crate::{models, Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, Transaction, VertexQueryExt};
 
-use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
 pub fn should_create_vertex_from_type<D: Datastore>(datastore: &mut D) {
@@ -162,7 +161,10 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(outbound_id);
     trans
-        .set_vertex_properties(q.clone().property("foo"), &JsonValue::Bool(true))
+        .set_vertex_properties(
+            q.clone().property(models::Type::new("foo").unwrap()),
+            &models::JsonValue::new(serde_json::Value::Bool(true)),
+        )
         .unwrap();
     trans.delete_vertices(q.clone()).unwrap();
     let v = trans.get_vertices(q).unwrap();

@@ -24,6 +24,9 @@ pub enum Error {
     Datastore {
         inner: Box<dyn StdError + Send + Sync>,
     },
+
+    /// A query occurred on a property that isn't indexed
+    NotIndexed,
 }
 
 impl StdError for Error {
@@ -42,6 +45,7 @@ impl fmt::Display for Error {
             Error::Json { ref inner } => write!(f, "json error: {}", inner),
             Error::UuidTaken => write!(f, "UUID already taken"),
             Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
+            Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
         }
     }
 }

@@ -1,9 +1,11 @@
+use std::convert::TryFrom;
 use std::str::FromStr;
 
 use crate::errors::{ValidationError, ValidationResult};
 
 use serde::{Deserialize, Serialize};
 
+// TODO: rename, now that it's used for property names as well
 /// An edge or vertex type.
 ///
 /// Types must be less than 256 characters long, and can only contain letters,
@@ -56,6 +58,14 @@ impl FromStr for Type {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::new(s.to_string())
+    }
+}
+
+impl TryFrom<String> for Type {
+    type Error = ValidationError;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        Self::new(s)
     }
 }
 

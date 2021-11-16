@@ -26,14 +26,15 @@ pub enum Op {
     GetAllEdgeProperties(EdgeQuery),
     SetEdgeProperties(EdgePropertyQuery, JsonValue),
     DeleteEdgeProperties(EdgePropertyQuery),
+    IndexProperty(Type),
 }
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(Uuid, String, JsonValue),
-    EdgeProperty(EdgeKey, String, JsonValue),
+    VertexProperty(Uuid, Type, JsonValue),
+    EdgeProperty(EdgeKey, Type, JsonValue),
 }
 
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
@@ -42,10 +43,10 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
             BulkInsertItem::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.into()),
             BulkInsertItem::Edge(key) => indradb::BulkInsertItem::Edge(key.into()),
             BulkInsertItem::VertexProperty(id, name, value) => {
-                indradb::BulkInsertItem::VertexProperty(id.into(), name, value.into())
+                indradb::BulkInsertItem::VertexProperty(id.into(), name.into(), value.into())
             }
             BulkInsertItem::EdgeProperty(key, name, value) => {
-                indradb::BulkInsertItem::EdgeProperty(key.into(), name, value.into())
+                indradb::BulkInsertItem::EdgeProperty(key.into(), name.into(), value.into())
             }
         }
     }
@@ -105,14 +106,22 @@ pub enum VertexQuery {
     Range(RangeVertexQuery),
     Specific(SpecificVertexQuery),
     Pipe(PipeVertexQuery),
+    PropertyPresence(PropertyPresenceVertexQuery),
+    PropertyValue(PropertyValueVertexQuery),
+    PipePropertyPresence(PipePropertyPresenceVertexQuery),
+    PipePropertyValue(PipePropertyValueVertexQuery),
 }
 
 impl Into<indradb::VertexQuery> for VertexQuery {
     fn into(self) -> indradb::VertexQuery {
         match self {
-            VertexQuery::Range(range) => indradb::VertexQuery::Range(range.into()),
-            VertexQuery::Specific(specific) => indradb::VertexQuery::Specific(specific.into()),
-            VertexQuery::Pipe(pipe) => indradb::VertexQuery::Pipe(pipe.into()),
+            VertexQuery::Range(q) => indradb::VertexQuery::Range(q.into()),
+            VertexQuery::Specific(q) => indradb::VertexQuery::Specific(q.into()),
+            VertexQuery::Pipe(q) => indradb::VertexQuery::Pipe(q.into()),
+            VertexQuery::PropertyPresence(q) => indradb::VertexQuery::PropertyPresence(q.into()),
+            VertexQuery::PropertyValue(q) => indradb::VertexQuery::PropertyValue(q.into()),
+            VertexQuery::PipePropertyPresence(q) => indradb::VertexQuery::PipePropertyPresence(q.into()),
+            VertexQuery::PipePropertyValue(q) => indradb::VertexQuery::PipePropertyValue(q.into()),
         }
     }
 }
@@ -166,17 +175,81 @@ impl Into<indradb::PipeVertexQuery> for PipeVertexQuery {
     }
 }
 
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceVertexQuery {
+    pub name: Type,
+}
+
+impl Into<indradb::PropertyPresenceVertexQuery> for PropertyPresenceVertexQuery {
+    fn into(self) -> indradb::PropertyPresenceVertexQuery {
+        indradb::PropertyPresenceVertexQuery {
+            name: self.name.into(),
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PropertyValueVertexQuery {
+    pub name: Type,
+    pub value: JsonValue,
+}
+
+impl Into<indradb::PropertyValueVertexQuery> for PropertyValueVertexQuery {
+    fn into(self) -> indradb::PropertyValueVertexQuery {
+        indradb::PropertyValueVertexQuery {
+            name: self.name.into(),
+            value: self.value.into(),
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceVertexQuery {
+    pub inner: Box<VertexQuery>,
+    pub name: Type,
+    pub exists: bool,
+}
+
+impl Into<indradb::PipePropertyPresenceVertexQuery> for PipePropertyPresenceVertexQuery {
+    fn into(self) -> indradb::PipePropertyPresenceVertexQuery {
+        indradb::PipePropertyPresenceVertexQuery {
+            inner: Box::new((*self.inner).into()),
+            name: self.name.into(),
+            exists: self.exists,
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueVertexQuery {
+    pub inner: Box<VertexQuery>,
+    pub name: Type,
+    pub value: JsonValue,
+    pub equal: bool,
+}
+
+impl Into<indradb::PipePropertyValueVertexQuery> for PipePropertyValueVertexQuery {
+    fn into(self) -> indradb::PipePropertyValueVertexQuery {
+        indradb::PipePropertyValueVertexQuery {
+            inner: Box::new((*self.inner).into()),
+            name: self.name.into(),
+            value: self.value.into(),
+            equal: self.equal,
+        }
+    }
+}
+
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexPropertyQuery {
     pub inner: VertexQuery,
-    pub name: String,
+    pub name: Type,
 }
 
 impl Into<indradb::VertexPropertyQuery> for VertexPropertyQuery {
     fn into(self) -> indradb::VertexPropertyQuery {
         indradb::VertexPropertyQuery {
             inner: self.inner.into(),
-            name: self.name,
+            name: self.name.into(),
         }
     }
 }
@@ -185,6 +258,10 @@ impl Into<indradb::VertexPropertyQuery> for VertexPropertyQuery {
 pub enum EdgeQuery {
     Specific(SpecificEdgeQuery),
     Pipe(PipeEdgeQuery),
+    PropertyPresence(PropertyPresenceEdgeQuery),
+    PropertyValue(PropertyValueEdgeQuery),
+    PipePropertyPresence(PipePropertyPresenceEdgeQuery),
+    PipePropertyValue(PipePropertyValueEdgeQuery),
 }
 
 impl Into<indradb::EdgeQuery> for EdgeQuery {
@@ -192,6 +269,10 @@ impl Into<indradb::EdgeQuery> for EdgeQuery {
         match self {
             EdgeQuery::Specific(specific) => indradb::EdgeQuery::Specific(specific.into()),
             EdgeQuery::Pipe(pipe) => indradb::EdgeQuery::Pipe(pipe.into()),
+            EdgeQuery::PropertyPresence(q) => indradb::EdgeQuery::PropertyPresence(q.into()),
+            EdgeQuery::PropertyValue(q) => indradb::EdgeQuery::PropertyValue(q.into()),
+            EdgeQuery::PipePropertyPresence(q) => indradb::EdgeQuery::PipePropertyPresence(q.into()),
+            EdgeQuery::PipePropertyValue(q) => indradb::EdgeQuery::PipePropertyValue(q.into()),
         }
     }
 }
@@ -232,17 +313,81 @@ impl Into<indradb::PipeEdgeQuery> for PipeEdgeQuery {
     }
 }
 
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PropertyPresenceEdgeQuery {
+    pub name: Type,
+}
+
+impl Into<indradb::PropertyPresenceEdgeQuery> for PropertyPresenceEdgeQuery {
+    fn into(self) -> indradb::PropertyPresenceEdgeQuery {
+        indradb::PropertyPresenceEdgeQuery {
+            name: self.name.into(),
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PropertyValueEdgeQuery {
+    pub name: Type,
+    pub value: JsonValue,
+}
+
+impl Into<indradb::PropertyValueEdgeQuery> for PropertyValueEdgeQuery {
+    fn into(self) -> indradb::PropertyValueEdgeQuery {
+        indradb::PropertyValueEdgeQuery {
+            name: self.name.into(),
+            value: self.value.into(),
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PipePropertyPresenceEdgeQuery {
+    pub inner: Box<EdgeQuery>,
+    pub name: Type,
+    pub exists: bool,
+}
+
+impl Into<indradb::PipePropertyPresenceEdgeQuery> for PipePropertyPresenceEdgeQuery {
+    fn into(self) -> indradb::PipePropertyPresenceEdgeQuery {
+        indradb::PipePropertyPresenceEdgeQuery {
+            inner: Box::new((*self.inner).into()),
+            name: self.name.into(),
+            exists: self.exists,
+        }
+    }
+}
+
+#[derive(Arbitrary, PartialEq, Clone, Debug)]
+pub struct PipePropertyValueEdgeQuery {
+    pub inner: Box<EdgeQuery>,
+    pub name: Type,
+    pub value: JsonValue,
+    pub equal: bool,
+}
+
+impl Into<indradb::PipePropertyValueEdgeQuery> for PipePropertyValueEdgeQuery {
+    fn into(self) -> indradb::PipePropertyValueEdgeQuery {
+        indradb::PipePropertyValueEdgeQuery {
+            inner: Box::new((*self.inner).into()),
+            name: self.name.into(),
+            value: self.value.into(),
+            equal: self.equal,
+        }
+    }
+}
+
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgePropertyQuery {
     pub inner: EdgeQuery,
-    pub name: String,
+    pub name: Type,
 }
 
 impl Into<indradb::EdgePropertyQuery> for EdgePropertyQuery {
     fn into(self) -> indradb::EdgePropertyQuery {
         indradb::EdgePropertyQuery {
             inner: self.inner.into(),
-            name: self.name,
+            name: self.name.into(),
         }
     }
 }
@@ -264,14 +409,14 @@ impl Into<indradb::VertexProperty> for VertexProperty {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct NamedProperty {
-    pub name: String,
+    pub name: Type,
     pub value: JsonValue,
 }
 
 impl Into<indradb::NamedProperty> for NamedProperty {
     fn into(self) -> indradb::NamedProperty {
         indradb::NamedProperty {
-            name: self.name,
+            name: self.name.into(),
             value: self.value.into(),
         }
     }
@@ -421,6 +566,12 @@ impl Into<serde_json::Value> for JsonValue {
     }
 }
 
+impl Into<indradb::JsonValue> for JsonValue {
+    fn into(self) -> indradb::JsonValue {
+        indradb::JsonValue::new(self.into())
+    }
+}
+
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum JsonNumber {
     PosInt(u64),
@@ -551,7 +702,7 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let value: serde_json::Value = value.into();
+                let value: indradb::JsonValue = value.into();
                 let v1 = t1.set_vertex_properties(q.clone(), &value);
                 let v2 = t2.set_vertex_properties(q, &value);
                 cmp!(v1, v2);
@@ -576,7 +727,7 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let value: serde_json::Value = value.into();
+                let value: indradb::JsonValue = value.into();
                 let v1 = t1.set_edge_properties(q.clone(), &value);
                 let v2 = t2.set_edge_properties(q, &value);
                 cmp!(v1, v2);
@@ -585,6 +736,11 @@ fuzz_target!(|ops: Vec<Op>| {
                 let q: indradb::EdgePropertyQuery = q.into();
                 let v1 = t1.delete_edge_properties(q.clone());
                 let v2 = t2.delete_edge_properties(q);
+                cmp!(v1, v2);
+            },
+            Op::IndexProperty(t) => {
+                let v1 = d1.index_property(t.clone());
+                let v2 = d2.index_property(t);
                 cmp!(v1, v2);
             }
         }
