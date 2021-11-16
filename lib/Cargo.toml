@@ -17,7 +17,6 @@ path = "src/lib.rs"
 [features]
 default = []
 rocksdb-datastore = ["rocksdb"]
-sled-datastore = ["sled"]
 test-suite = []
 bench-suite = []
 
@@ -32,6 +31,3 @@ tempfile = "^3.2.0"
 
 # Rocksdb dependencies
 rocksdb = { version = "0.17.0", optional = true }
-
-# Sled dependencies
-sled = { version = "0.34.6", optional = true, features = ["compression", "no_metrics"] }

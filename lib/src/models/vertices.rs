@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use crate::Type;
+use crate::Identifier;
 
 use chrono::Utc;
 
@@ -14,7 +14,7 @@ pub struct Vertex {
     pub id: u64,
 
     /// The type of the vertex.
-    pub t: Type,
+    pub t: Identifier,
 }
 
 impl Vertex {
@@ -23,7 +23,7 @@ impl Vertex {
     /// # Arguments
     ///
     /// * `t`: The type of the vertex.
-    pub fn new(t: Type) -> Self {
+    pub fn new(t: Identifier) -> Self {
         let id = Utc::now().timestamp_nanos() as u64;
         Self::with_id(id, t)
     }
@@ -34,7 +34,7 @@ impl Vertex {
     ///
     /// * `id`: The id of the vertex.
     /// * `t`: The type of the vertex.
-    pub fn with_id(id: u64, t: Type) -> Self {
+    pub fn with_id(id: u64, t: Identifier) -> Self {
         Vertex { id, t }
     }
 }

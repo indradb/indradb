@@ -4,7 +4,6 @@ use std::fmt;
 
 use crate::ConversionError;
 
-use serde_json::value::Value as JsonValue;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::codec::Streaming;
@@ -162,6 +161,11 @@ impl Client {
         let response = self.0.transaction(Request::new(ReceiverStream::new(rx))).await?;
         Ok(Transaction::new(tx, response.into_inner()))
     }
+
+    pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
+        self.0.index_property(Request::new(name.into().into())).await?;
+        Ok(())
+    }
 }
 
 /// A transaction.
@@ -260,7 +264,7 @@ impl Transaction {
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    pub async fn create_vertex_from_type(&mut self, t: indradb::Type) -> Result<Uuid, ClientError> {
+    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<Uuid, ClientError> {
         let request = crate::TransactionRequestVariant::CreateVertexFromType(t.into());
         Ok(self.request_single(request).await?.try_into()?)
     }
@@ -343,7 +347,7 @@ impl Transaction {
     pub async fn get_edge_count(
         &mut self,
         id: Uuid,
-        t: Option<&indradb::Type>,
+        t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, ClientError> {
         let request = crate::TransactionRequestVariant::GetEdgeCount((id, t.cloned(), direction).into());
@@ -394,7 +398,7 @@ impl Transaction {
     pub async fn set_vertex_properties(
         &mut self,
         q: indradb::VertexPropertyQuery,
-        value: &JsonValue,
+        value: &indradb::JsonValue,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetVertexProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)
@@ -453,7 +457,7 @@ impl Transaction {
     pub async fn set_edge_properties(
         &mut self,
         q: indradb::EdgePropertyQuery,
-        value: &JsonValue,
+        value: &indradb::JsonValue,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetEdgeProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)

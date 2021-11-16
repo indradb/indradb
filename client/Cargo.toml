@@ -24,7 +24,7 @@ uuid = { version = "0.8.2", features = ["serde"] }
 [dependencies.indradb-lib]
 path = "../lib"
 version = "2.2.0"
-features = ["rocksdb-datastore", "sled-datastore"]
+features = ["rocksdb-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"

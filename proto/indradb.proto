@@ -10,11 +10,10 @@ message Uuid {
     bytes value = 1;
 }
 
-// An edge or vertex type.
-//
-// Types must be less than 256 characters long, and can only contain letters,
-// numbers, dashes and underscores.
-message Type {
+/// A string that must be less than 256 characters long, and can only contain
+/// letters, numbers, dashes and underscores. This is used for vertex and edge
+/// types, as well as property names.
+message Identifier {
     string value = 1;
 }
 
@@ -40,7 +39,7 @@ message EdgeKey {
     // The id of the outbound vertex.
     Uuid outbound_id = 1;
     // The type of the edge.
-    Type t = 2;
+    Identifier t = 2;
     // The id of the inbound vertex.
     Uuid inbound_id = 3;
 }
@@ -53,7 +52,7 @@ message Vertex {
     // The id of the vertex.
     Uuid id = 1;
     // The type of the vertex.
-    Type t = 2;
+    Identifier t = 2;
 }
 
 // A query for vertices.
@@ -62,6 +61,10 @@ message VertexQuery {
         RangeVertexQuery range = 1;
         SpecificVertexQuery specific = 2;
         PipeVertexQuery pipe = 3;
+        PropertyPresenceVertexQuery property_presence = 4;
+        PropertyValueVertexQuery property_value = 5;
+        PipePropertyPresenceVertexQuery pipe_property_presence = 6;
+        PipePropertyValueVertexQuery pipe_property_value = 7;
     }
 }
 
@@ -70,7 +73,7 @@ message RangeVertexQuery {
     // Limits the number of vertices to get.
     uint32 limit = 1;
     // Filters the type of vertices returned.
-    Type t = 2;
+    Identifier t = 2;
     // Sets the lowest vertex ID to return.
     Uuid start_id = 3;
 }
@@ -90,15 +93,52 @@ message PipeVertexQuery {
     // Limits the number of vertices to get.
     uint32 limit = 3;
     // Filters the type of vertices returned.
-    Type t = 4;
+    Identifier t = 4;
 }
 
 // Gets property values associated with vertices.
 message VertexPropertyQuery {
+    reserved 2;
     // The vertex query to build off of.
     VertexQuery inner = 1;
     // The name of the property to get.
-    string name = 2;
+    Identifier name = 3;
+}
+
+// Gets vertices with a property.
+message PropertyPresenceVertexQuery {
+    // The name of the property.
+    Identifier name = 1;
+}
+
+// Gets vertices with a property equal to a given value.
+message PropertyValueVertexQuery {
+    // The name of the property.
+    Identifier name = 1;
+    // The value of the property.
+    Json value = 2;
+}
+
+// Gets vertices with a property.
+message PipePropertyPresenceVertexQuery {
+    // The query to filter.
+    VertexQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // Whether we should look for property presence or lack thereof.
+    bool exists = 3;
+}
+
+// Gets vertices with a property equal to a given value.
+message PipePropertyValueVertexQuery {
+    // The query to filter.
+    VertexQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // The value of the property.
+    Json value = 3;
+    // Whether we should look for property equality or non-equality.
+    bool equal = 4;
 }
 
 // A query for edges.
@@ -106,6 +146,10 @@ message EdgeQuery {
     oneof query {
         SpecificEdgeQuery specific = 1;
         PipeEdgeQuery pipe = 2;
+        PropertyPresenceEdgeQuery property_presence = 3;
+        PropertyValueEdgeQuery property_value = 4;
+        PipePropertyPresenceEdgeQuery pipe_property_presence = 5;
+        PipePropertyValueEdgeQuery pipe_property_value = 6;
     }
 }
 
@@ -115,6 +159,42 @@ message SpecificEdgeQuery {
     repeated EdgeKey keys = 1;
 }
 
+// Gets edges with a property.
+message PropertyPresenceEdgeQuery {
+    // The name of the property.
+    Identifier name = 1;
+}
+
+// Gets edges with a property equal to a given value.
+message PropertyValueEdgeQuery {
+    // The name of the property.
+    Identifier name = 1;
+    // The value of the property.
+    Json value = 2;
+}
+
+// Gets edges with a property.
+message PipePropertyPresenceEdgeQuery {
+    // The query to filter.
+    EdgeQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // Whether we should look for property presence or lack thereof.
+    bool exists = 3;
+}
+
+// Gets edges with a property equal to a given value.
+message PipePropertyValueEdgeQuery {
+    // The query to filter.
+    EdgeQuery inner = 1;
+    // The name of the property.
+    Identifier name = 2;
+    // The value of the property.
+    Json value = 3;
+    // Whether we should look for property equality or non-equality.
+    bool equal = 4;
+}
+
 // Gets the edges associated with vertices.
 message PipeEdgeQuery {
     // The vertex query to build off of.
@@ -122,7 +202,7 @@ message PipeEdgeQuery {
     // Whether to get outbound or inbound edges on the vertices.
     EdgeDirection direction = 2;
     // Filters the type of edges returned.
-    Type t = 3;
+    Identifier t = 3;
     // Specifies the newest update datetime for returned edges.
     google.protobuf.Timestamp high = 4;
     // Specifies the oldest update datetime for returned edges.
@@ -133,10 +213,11 @@ message PipeEdgeQuery {
 
 // Gets property values associated with edges.
 message EdgePropertyQuery {
+    reserved 2;
     // The edge query to build off of.
     EdgeQuery inner = 1;
     // The name of the property to get.
-    string name = 2;
+    Identifier name = 3;
 }
 
 // Specifies what kind of items should be piped from one type of query to
@@ -154,8 +235,9 @@ enum EdgeDirection {
 
 // A property.
 message NamedProperty {
+    reserved 1;
     // The id of the vertex.
-    string name = 1;
+    Identifier name = 3;
     // The property value.
     Json value = 2;
 }
@@ -204,21 +286,23 @@ message BulkInsertItem {
 
 // A vertex property to insert.
 message VertexPropertyBulkInsertItem {
+    reserved 2;
     Uuid id = 1;
-    string name = 2;
+    Identifier name = 4;
     Json value = 3;
 }
 
 // An edge property to insert.
 message EdgePropertyBulkInsertItem {
+    reserved 2;
     EdgeKey key = 1;
-    string name = 2;
+    Identifier name = 4;
     Json value = 3;
 }
 
 message GetEdgeCountRequest {
     Uuid id = 1;
-    Type t = 2;
+    Identifier t = 2;
     EdgeDirection direction = 3;
 }
 
@@ -244,7 +328,7 @@ message TransactionRequest {
         // Creates a new vertex with just a type specification. As opposed to
         // `CreateVertex`, this is used when you do not want to manually specify
         // the vertex's UUID. Returns the new vertex's UUID.
-        Type create_vertex_from_type = 3;
+        Identifier create_vertex_from_type = 3;
 
         // Gets a range of vertices specified by a query.
         VertexQuery get_vertices = 4;
@@ -346,4 +430,8 @@ service IndraDB {
     
     // Runs a transaction.
     rpc Transaction(stream TransactionRequest) returns (stream TransactionResponse);
+
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
+    rpc IndexProperty(Identifier) returns (google.protobuf.Empty);
 }

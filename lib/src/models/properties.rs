@@ -1,6 +1,4 @@
-use crate::{Edge, EdgeKey, Vertex};
-
-use serde_json::Value as JsonValue;
+use crate::{Edge, EdgeKey, Identifier, JsonValue, Vertex};
 
 /// Represents a vertex property.
 #[derive(Clone, Debug, PartialEq)]
@@ -27,7 +25,7 @@ impl VertexProperty {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
     /// The id of the vertex.
-    pub name: String,
+    pub name: Identifier,
 
     /// The property value.
     pub value: JsonValue,
@@ -37,9 +35,9 @@ impl NamedProperty {
     /// Creates a new vertex property.
     ///
     /// # Arguments
-    /// * `id`: The id of the vertex.
+    /// * `name`: The name of the property.
     /// * `value`: The property value.
-    pub fn new(name: String, value: JsonValue) -> Self {
+    pub fn new(name: Identifier, value: JsonValue) -> Self {
         Self { name, value }
     }
 }

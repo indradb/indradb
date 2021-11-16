@@ -1,11 +1,12 @@
-use crate::models::{BulkInsertItem, EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, Type, Vertex};
+use crate::models::{
+    BulkInsertItem, EdgeDirection, EdgeKey, Identifier, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+};
 use crate::traits::{Datastore, Transaction};
 
-use serde_json::Value as JsonValue;
 use test::Bencher;
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_create_vertex").unwrap();
+    let t = Identifier::new("bench_create_vertex").unwrap();
 
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
@@ -17,7 +18,7 @@ pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     let id = {
         let trans = datastore.transaction().unwrap();
-        let t = Type::new("bench_get_vertices").unwrap();
+        let t = Identifier::new("bench_get_vertices").unwrap();
         let v = Vertex::new(t);
         trans.create_vertex(&v).unwrap();
         v.id
@@ -31,7 +32,7 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_create_edge").unwrap();
+    let t = Identifier::new("bench_create_edge").unwrap();
 
     let (outbound_id, inbound_id) = {
         let trans = datastore.transaction().unwrap();
@@ -50,7 +51,7 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_get_edges").unwrap();
+    let t = Identifier::new("bench_get_edges").unwrap();
 
     let key = {
         let trans = datastore.transaction().unwrap();
@@ -71,7 +72,7 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 }
 
 pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_get_edge_count").unwrap();
+    let t = Identifier::new("bench_get_edge_count").unwrap();
 
     let outbound_id = {
         let trans = datastore.transaction().unwrap();
@@ -95,7 +96,7 @@ pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
 const BULK_INSERT_COUNT: usize = 100;
 
 pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
-    let t = Type::new("bench_bulk_insert").unwrap();
+    let t = Identifier::new("bench_bulk_insert").unwrap();
 
     let mut vertices = Vec::with_capacity(BULK_INSERT_COUNT);
     for _ in 0..BULK_INSERT_COUNT {
@@ -110,20 +111,21 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     }
 
     let mut items = Vec::with_capacity(2 * vertices.len() + 2 * edge_keys.len());
+    let t = Identifier::new("is_benchmark").unwrap();
     for vertex in vertices.into_iter() {
         items.push(BulkInsertItem::Vertex(vertex.clone()));
         items.push(BulkInsertItem::VertexProperty(
             vertex.id,
-            "is_benchmark".to_string(),
-            JsonValue::Bool(true),
+            t.clone(),
+            JsonValue::new(serde_json::Value::Bool(true)),
         ));
     }
     for edge_key in edge_keys.into_iter() {
         items.push(BulkInsertItem::Edge(edge_key.clone()));
         items.push(BulkInsertItem::EdgeProperty(
             edge_key,
-            "is_benchmark".to_string(),
-            JsonValue::Bool(true),
+            t.clone(),
+            JsonValue::new(serde_json::Value::Bool(true)),
         ));
     }
 

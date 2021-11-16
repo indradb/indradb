@@ -1,7 +1,4 @@
-use super::edges::EdgeKey;
-use super::vertices::Vertex;
-
-use serde_json::Value as JsonValue;
+use crate::{EdgeKey, Identifier, JsonValue, Vertex};
 
 /// An item to insert, as part of a bulk insert request.
 #[derive(Clone, Debug, PartialEq)]
@@ -11,7 +8,7 @@ pub enum BulkInsertItem {
     /// An edge to insert.
     Edge(EdgeKey),
     /// A vertex property to insert.
-    VertexProperty(u64, String, JsonValue),
+    VertexProperty(u64, Identifier, JsonValue),
     /// An edge property to insert.
-    EdgeProperty(EdgeKey, String, JsonValue),
+    EdgeProperty(EdgeKey, Identifier, JsonValue),
 }

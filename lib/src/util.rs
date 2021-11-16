@@ -1,13 +1,10 @@
 //! Utility functions. These are public because they may be useful for crates
 //! that implement Datastore/Transaction.
 
-use std::i32;
-use std::i64;
-use std::io::Read;
-use std::io::Write;
-use std::io::{Cursor, Error as IoError};
-use std::str;
-use std::u8;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::io::{Cursor, Error as IoError, Read, Write};
+use std::{i32, i64, str, u8};
 
 use crate::models;
 
@@ -29,8 +26,9 @@ lazy_static! {
 pub enum Component<'a> {
     U64(u64),
     FixedLengthString(&'a str),
-    Type(&'a models::Type),
+    Identifier(&'a models::Identifier),
     DateTime(DateTime<Utc>),
+    JsonValue(&'a models::JsonValue),
 }
 
 impl<'a> Component<'a> {
@@ -43,30 +41,31 @@ impl<'a> Component<'a> {
         match *self {
             Component::U64(_) => 8,
             Component::FixedLengthString(s) => s.len(),
-            Component::Type(t) => t.0.len() + 1,
+            Component::Identifier(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
+            Component::JsonValue(_) => 8,
         }
     }
 
     pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
-            Component::U64(v) => {
-                cursor.write_u64::<BigEndian>(v)?;
-            }
-            Component::FixedLengthString(s) => {
-                cursor.write_all(s.as_bytes())?;
-            }
-            Component::Type(t) => {
-                cursor.write_all(&[t.0.len() as u8])?;
-                cursor.write_all(t.0.as_bytes())?;
+            Component::U64(v) => cursor.write_u64::<BigEndian>(v),
+            Component::FixedLengthString(s) => cursor.write_all(s.as_bytes()),
+            Component::Identifier(i) => {
+                cursor.write_all(&[i.0.len() as u8])?;
+                cursor.write_all(i.0.as_bytes())
             }
             Component::DateTime(datetime) => {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
-                cursor.write_u64::<BigEndian>(time_to_end)?;
+                cursor.write_u64::<BigEndian>(time_to_end)
             }
-        };
-
-        Ok(())
+            Component::JsonValue(json) => {
+                let mut hasher = DefaultHasher::new();
+                json.hash(&mut hasher);
+                let hash = hasher.finish();
+                cursor.write_u64::<BigEndian>(hash)
+            }
+        }
     }
 }
 
@@ -106,11 +105,11 @@ pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
     cursor.read_u64::<BigEndian>().unwrap()
 }
 
-/// Reads a type from bytes.
+/// Reads an identifier from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
+pub fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -122,7 +121,7 @@ pub fn read_type<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Type {
 
     unsafe {
         let s = str::from_utf8_unchecked(&buf).to_string();
-        models::Type::new_unchecked(s)
+        models::Identifier::new_unchecked(s)
     }
 }
 

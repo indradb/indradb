@@ -1,7 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::models;
 use crate::models::{EdgeQueryExt, VertexQueryExt};
-use serde_json::value::Value as JsonValue;
 use std::vec::Vec;
 
 /// Specifies a datastore implementation.
@@ -59,6 +58,13 @@ pub trait Datastore {
 
         Ok(())
     }
+
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
+    //
+    // # Arguments
+    // * `name`: The name of the property to index.
+    fn index_property<T: Into<models::Identifier>>(&self, name: T) -> Result<()>;
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.
@@ -82,7 +88,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    fn create_vertex_from_type(&self, t: models::Type) -> Result<u64> {
+    fn create_vertex_from_type(&self, t: models::Identifier) -> Result<u64> {
         let v = models::Vertex::new(t);
 
         if !self.create_vertex(&v)? {
@@ -134,7 +140,7 @@ pub trait Transaction {
     /// * `id`: The id of the vertex.
     /// * `t`: Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
-    fn get_edge_count(&self, id: u64, t: Option<&models::Type>, direction: models::EdgeDirection) -> Result<u64>;
+    fn get_edge_count(&self, id: u64, t: Option<&models::Identifier>, direction: models::EdgeDirection) -> Result<u64>;
 
     /// Gets vertex properties.
     ///
@@ -153,7 +159,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
@@ -178,7 +184,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes edge properties.
     ///
