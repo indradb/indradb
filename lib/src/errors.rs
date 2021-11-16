@@ -7,8 +7,6 @@ use bincode::Error as BincodeError;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
-#[cfg(feature = "sled-datastore")]
-use sled::Error as SledError;
 use tempfile::PersistError as TempFilePersistError;
 
 /// An error triggered by the datastore
@@ -18,18 +16,6 @@ pub enum Error {
     /// Json (de-)serialization failed
     Json {
         inner: JsonError,
-    },
-
-    #[cfg(feature = "rocksdb-datastore")]
-    #[deprecated(since = "2.1.0", note = "use the Datastore variant instead")]
-    Rocksdb {
-        inner: RocksDbError,
-    },
-
-    #[cfg(feature = "sled-datastore")]
-    #[deprecated(since = "2.1.0", note = "use the Datastore variant instead")]
-    Sled {
-        inner: SledError,
     },
 
     UuidTaken,
@@ -56,12 +42,6 @@ impl fmt::Display for Error {
             Error::Json { ref inner } => write!(f, "json error: {}", inner),
             Error::UuidTaken => write!(f, "UUID already taken"),
             Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
-            #[cfg(feature = "rocksdb-datastore")]
-            #[allow(deprecated)]
-            Error::Rocksdb { ref inner } => write!(f, "rocksdb error: {}", inner),
-            #[cfg(feature = "sled-datastore")]
-            #[allow(deprecated)]
-            Error::Sled { ref inner } => write!(f, "sled error: {}", inner),
         }
     }
 }
@@ -69,20 +49,6 @@ impl fmt::Display for Error {
 impl From<JsonError> for Error {
     fn from(err: JsonError) -> Self {
         Error::Json { inner: err }
-    }
-}
-
-#[cfg(feature = "rocksdb-datastore")]
-impl From<RocksDbError> for Error {
-    fn from(err: RocksDbError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
-    }
-}
-
-#[cfg(feature = "sled-datastore")]
-impl From<SledError> for Error {
-    fn from(err: SledError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
     }
 }
 
@@ -94,6 +60,13 @@ impl From<IoError> for Error {
 
 impl From<BincodeError> for Error {
     fn from(err: BincodeError) -> Self {
+        Error::Datastore { inner: Box::new(err) }
+    }
+}
+
+#[cfg(feature = "rocksdb-datastore")]
+impl From<RocksDbError> for Error {
+    fn from(err: RocksDbError) -> Self {
         Error::Datastore { inner: Box::new(err) }
     }
 }
