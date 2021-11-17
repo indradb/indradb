@@ -1,8 +1,16 @@
 use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::Identifier;
 
 use chrono::Utc;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref INIT_TIMESTAMP: u64 = Utc::now().timestamp_nanos() as u64;
+}
+
+static OFFSET: AtomicU64 = AtomicU64::new(1);
 
 /// A vertex.
 ///
@@ -24,7 +32,7 @@ impl Vertex {
     ///
     /// * `t`: The type of the vertex.
     pub fn new(t: Identifier) -> Self {
-        let id = Utc::now().timestamp_nanos() as u64;
+        let id = *INIT_TIMESTAMP + OFFSET.fetch_add(1, Ordering::Relaxed);
         Self::with_id(id, t)
     }
 
