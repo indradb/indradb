@@ -5,11 +5,6 @@ package indradb;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-// A UUID.
-message Uuid {
-    bytes value = 1;
-}
-
 /// A string that must be less than 256 characters long, and can only contain
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
@@ -36,12 +31,13 @@ message Edge {
 
 // Represents a uniquely identifiable key to an edge.
 message EdgeKey {
+    reserved 1, 3;
     // The id of the outbound vertex.
-    Uuid outbound_id = 1;
+    uint64 outbound_id = 4;
     // The type of the edge.
     Identifier t = 2;
     // The id of the inbound vertex.
-    Uuid inbound_id = 3;
+    uint64 inbound_id = 5;
 }
 
 // A vertex.
@@ -49,8 +45,9 @@ message EdgeKey {
 // Vertices are how you would represent nouns in the datastore. An example
 // might be a user, or a movie. All vertices have a unique ID and a type.
 message Vertex {
+    reserved 1;
     // The id of the vertex.
-    Uuid id = 1;
+    uint64 id = 3;
     // The type of the vertex.
     Identifier t = 2;
 }
@@ -70,18 +67,20 @@ message VertexQuery {
 
 // Gets a range of vertices.
 message RangeVertexQuery {
+    reserved 3;
     // Limits the number of vertices to get.
     uint32 limit = 1;
     // Filters the type of vertices returned.
     Identifier t = 2;
     // Sets the lowest vertex ID to return.
-    Uuid start_id = 3;
+    uint64 start_id = 4;
 }
 
 // Gets a specific set of vertices.
 message SpecificVertexQuery {
+    reserved 1;
     // The IDs of the vertices to get.
-    repeated Uuid ids = 1;
+    repeated uint64 ids = 2;
 }
 
 // Gets the vertices associated with edges.
@@ -244,8 +243,9 @@ message NamedProperty {
 
 // Represents a vertex property.
 message VertexProperty {
+    reserved 1;
     // The id of the vertex.
-    Uuid id = 1;
+    uint64 id = 3;
     // The property value.
     Json value = 2;
 }
@@ -286,8 +286,8 @@ message BulkInsertItem {
 
 // A vertex property to insert.
 message VertexPropertyBulkInsertItem {
-    reserved 2;
-    Uuid id = 1;
+    reserved 1, 2;
+    uint64 id = 5;
     Identifier name = 4;
     Json value = 3;
 }
@@ -301,7 +301,8 @@ message EdgePropertyBulkInsertItem {
 }
 
 message GetEdgeCountRequest {
-    Uuid id = 1;
+    reserved 1;
+    uint64 id = 4;
     Identifier t = 2;
     EdgeDirection direction = 3;
 }
@@ -321,13 +322,13 @@ message TransactionRequest {
 
     oneof request {
         // Creates a new vertex. Returns whether the vertex was successfully
-        // created - if this is false, it's because a vertex with the same UUID
+        // created - if this is false, it's because a vertex with the same ID
         // already exists.
         Vertex create_vertex = 2;
 
         // Creates a new vertex with just a type specification. As opposed to
         // `CreateVertex`, this is used when you do not want to manually specify
-        // the vertex's UUID. Returns the new vertex's UUID.
+        // the vertex's ID. Returns the new vertex's ID.
         Identifier create_vertex_from_type = 3;
 
         // Gets a range of vertices specified by a query.
@@ -381,6 +382,8 @@ message TransactionRequest {
 }
 
 message TransactionResponse {
+    reserved 5;
+
     // The ID of the request associated with this response.
     uint32 request_id = 1;
 
@@ -392,7 +395,7 @@ message TransactionResponse {
         // A response with a count.
         uint64 count = 4;
         // A response with a vertex ID.
-        Uuid id = 5;
+        uint64 id = 12;
         // A response with a vertex.
         Vertex vertex = 6;
         // A response with an edge.

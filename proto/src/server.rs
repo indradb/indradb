@@ -8,7 +8,6 @@ use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
 use tokio_stream::{Stream, StreamExt};
 use tonic::transport::{Error as TonicTransportError, Server as TonicServer};
 use tonic::{Request, Response, Status, Streaming};
-use uuid::Uuid;
 
 const CHANNEL_CAPACITY: usize = 100;
 
@@ -127,8 +126,8 @@ where
         create_response(crate::TransactionResponseVariant::Count(count))
     };
 
-    let create_id_response = move |id: Uuid| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Id(id.into()))
+    let create_id_response = move |id: u64| -> Result<crate::TransactionResponse, Status> {
+        create_response(crate::TransactionResponseVariant::Id(id))
     };
 
     let create_vertex_response = move |vertex: indradb::Vertex| -> Result<crate::TransactionResponse, Status> {

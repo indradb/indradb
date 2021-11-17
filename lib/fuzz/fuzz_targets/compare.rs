@@ -17,7 +17,7 @@ pub enum Op {
     CreateEdge(EdgeKey),
     GetEdges(EdgeQuery),
     DeleteEdges(EdgeQuery),
-    GetEdgeCount(Uuid, Option<Identifier>, EdgeDirection),
+    GetEdgeCount(u64, Option<Identifier>, EdgeDirection),
     GetVertexProperties(VertexPropertyQuery),
     GetAllVertexProperties(VertexQuery),
     SetVertexProperties(VertexPropertyQuery, JsonValue),
@@ -33,7 +33,7 @@ pub enum Op {
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(Uuid, Identifier, JsonValue),
+    VertexProperty(u64, Identifier, JsonValue),
     EdgeProperty(EdgeKey, Identifier, JsonValue),
 }
 
@@ -54,7 +54,7 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct Vertex {
-    pub id: Uuid,
+    pub id: u64,
     pub t: Identifier,
 }
 
@@ -130,7 +130,7 @@ impl Into<indradb::VertexQuery> for VertexQuery {
 pub struct RangeVertexQuery {
     pub limit: u32,
     pub t: Option<Identifier>,
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<u64>,
 }
 
 impl Into<indradb::RangeVertexQuery> for RangeVertexQuery {
@@ -145,7 +145,7 @@ impl Into<indradb::RangeVertexQuery> for RangeVertexQuery {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct SpecificVertexQuery {
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<u64>,
 }
 
 impl Into<indradb::SpecificVertexQuery> for SpecificVertexQuery {
@@ -394,7 +394,7 @@ impl Into<indradb::EdgePropertyQuery> for EdgePropertyQuery {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexProperty {
-    pub id: Uuid,
+    pub id: u64,
     pub value: JsonValue,
 }
 
@@ -469,9 +469,9 @@ impl Into<indradb::EdgeProperty> for EdgeProperty {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgeKey {
-    pub outbound_id: Uuid,
+    pub outbound_id: u64,
     pub t: Identifier,
-    pub inbound_id: Uuid,
+    pub inbound_id: u64,
 }
 
 impl Into<indradb::EdgeKey> for EdgeKey {
@@ -496,23 +496,6 @@ impl Into<indradb::Edge> for Edge {
             key: self.key.into(),
             created_datetime: self.created_datetime.into(),
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Uuid(uuid::Uuid);
-
-impl<'a> Arbitrary<'a> for Uuid {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Self {
-            0: uuid::Uuid::from_u128(u.arbitrary()?),
-        })
-    }
-}
-
-impl Into<uuid::Uuid> for Uuid {
-    fn into(self) -> uuid::Uuid {
-        self.0
     }
 }
 
@@ -681,7 +664,6 @@ fuzz_target!(|ops: Vec<Op>| {
                 cmp!(v1, v2);
             }
             Op::GetEdgeCount(id, t, direction) => {
-                let id: uuid::Uuid = id.into();
                 let t: Option<indradb::Identifier> = t.map(|t| t.into());
                 let direction: indradb::EdgeDirection = direction.into();
                 let v1 = t1.get_edge_count(id, t.as_ref(), direction);

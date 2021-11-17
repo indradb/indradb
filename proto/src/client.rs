@@ -9,7 +9,6 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::codec::Streaming;
 use tonic::transport::{Channel, Endpoint, Error as TonicTransportError};
 use tonic::{Request, Status};
-use uuid::Uuid;
 
 const CHANNEL_CAPACITY: usize = 100;
 
@@ -248,7 +247,7 @@ impl Transaction {
     }
 
     /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
+    /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
     ///
     /// # Arguments
@@ -260,11 +259,11 @@ impl Transaction {
 
     /// Creates a new vertex with just a type specification. As opposed to
     /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
+    /// the vertex's ID. Returns the new vertex's ID.
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<Uuid, ClientError> {
+    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<u64, ClientError> {
         let request = crate::TransactionRequestVariant::CreateVertexFromType(t.into());
         Ok(self.request_single(request).await?.try_into()?)
     }
@@ -346,7 +345,7 @@ impl Transaction {
     /// * `direction`: The direction of edges to get.
     pub async fn get_edge_count(
         &mut self,
-        id: Uuid,
+        id: u64,
         t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, ClientError> {

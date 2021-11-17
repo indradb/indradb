@@ -1,7 +1,7 @@
 mod errors;
 use std::error::Error as StdError;
 
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{value_t, App, AppSettings, Arg, SubCommand};
 use indradb::{
     EdgeKey, EdgePropertyQuery, EdgeQuery, SpecificEdgeQuery, SpecificVertexQuery, VertexPropertyQuery, VertexQuery,
 };
@@ -10,9 +10,7 @@ use std::convert::TryInto;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
-    let vertex_id_arg = Arg::with_name("uuid")
-        .help("the UUID of the target vertex")
-        .required(true);
+    let vertex_id_arg = Arg::with_name("id").help("the ID of the target vertex").required(true);
     let outbound_id_arg = Arg::with_name("outbound_id")
         .help("the outbound vertex ID")
         .required(true);
@@ -53,9 +51,9 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                         .arg(Arg::with_name("type").help("the vertex type").required(true).index(1))
                         .arg(
                             Arg::with_name("id")
-                                .help("the optional vertex ID, as a UUID string; if not set, an ID will be generated")
+                                .help("the optional vertex ID; if not set, an ID will be generated")
                                 .long("id")
-                                .value_name("uuid")
+                                .value_name("id")
                                 .takes_value(true),
                         ),
                 )
@@ -86,12 +84,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                 .subcommand(
                     SubCommand::with_name("edge")
                         .about("counts the number of edges")
-                        .arg(
-                            Arg::with_name("id")
-                                .help("the vertex ID, as a UUID string")
-                                .required(true)
-                                .index(1),
-                        )
+                        .arg(Arg::with_name("id").help("the vertex ID").required(true).index(1))
                         .arg(
                             Arg::with_name("inbound")
                                 .help("get inbound edges; if not set, outbound edges will be fetched instead")
@@ -178,14 +171,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
     if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             let vertex_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
-            let uuid = match matches.value_of("id") {
-                Some(id) => uuid::Uuid::parse_str(id)?,
-                None => indradb::util::generate_uuid_v1(),
+            let vertex = match matches.value_of("id") {
+                Some(id) => indradb::Vertex::with_id(id.parse::<u64>()?, vertex_type),
+                None => indradb::Vertex::new(vertex_type),
             };
-            let vertex = indradb::Vertex::with_id(uuid, vertex_type);
             let res = trans.create_vertex(&vertex).await?;
             if !res {
-                return Err(Box::new(indradb::Error::UuidTaken));
+                return Err(Box::new(indradb::Error::IdTaken));
             }
 
             println!("{:?}", vertex);
@@ -217,7 +209,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             let vertex_count = trans.get_vertex_count().await?;
             println!("{}", vertex_count);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
-            let vertex_id = uuid::Uuid::parse_str(matches.value_of("id").unwrap())?;
+            let vertex_id = value_t!(matches, "id", u64)?;
             let edge_direction = match matches.value_of("inbound") {
                 Some(_) => indradb::EdgeDirection::Inbound,
                 None => indradb::EdgeDirection::Outbound,
@@ -306,15 +298,14 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
 }
 
 fn build_vertex_query(matches: &clap::ArgMatches) -> Result<VertexQuery, Box<dyn StdError>> {
-    let vertex_id = uuid::Uuid::parse_str(matches.value_of("uuid").unwrap())?;
-
+    let vertex_id = value_t!(matches, "id", u64)?;
     Ok(VertexQuery::Specific(SpecificVertexQuery::single(vertex_id)))
 }
 
 fn build_edge_key(matches: &clap::ArgMatches) -> Result<EdgeKey, Box<dyn StdError>> {
     let edge_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
-    let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
-    let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+    let outbound_id = value_t!(matches, "outbound_id", u64)?;
+    let inbound_id = value_t!(matches, "inbound_id", u64)?;
     let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
 
     Ok(edge_key)

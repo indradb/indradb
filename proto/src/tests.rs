@@ -11,7 +11,6 @@ use std::time::Duration;
 use tokio::runtime::Runtime;
 use tokio::time::sleep;
 use tonic::transport::Endpoint;
-use uuid::Uuid;
 
 fn map_client_result<T>(result: Result<T, crate::ClientError>) -> Result<T, indradb::Error> {
     result.map_err(|err| {
@@ -113,7 +112,7 @@ impl indradb::Transaction for ClientTransaction {
         )
     }
 
-    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
+    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<u64, indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -155,7 +154,7 @@ impl indradb::Transaction for ClientTransaction {
 
     fn get_edge_count(
         &self,
-        id: Uuid,
+        id: u64,
         t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, indradb::Error> {
