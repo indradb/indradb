@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.0 (not yet released)
+
+* Support for property indexing (PR #193)
+* Renamed `Type` to `Identifier` (PR #202)
+* Changed property names from strings to `Identifier` (PR #193)
+* Removed sled datastore from core (PR #196)
+* Removed deprecated error variants (PR #193)
+* Made `Error` type `Sync` (PR #198)
+
 ## 2.2.0 (11/3/2021)
 
 * Added a `--repair` flag (PR #182)

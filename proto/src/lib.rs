@@ -27,4 +27,4 @@ pub use server::run as run_server;
 pub use server::Server;
 
 #[cfg(feature = "test-suite")]
-mod tests;
+pub mod tests;
