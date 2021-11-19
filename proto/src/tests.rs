@@ -29,7 +29,7 @@ fn map_client_result<T>(result: Result<T, crate::ClientError>) -> Result<T, indr
     })
 }
 
-struct ClientDatastore {
+pub struct ClientDatastore {
     client: Rc<RefCell<crate::Client>>,
     exec: Rc<RefCell<Runtime>>,
 }
@@ -38,7 +38,7 @@ struct ClientDatastore {
 // the linter think this is dead code, so ignore the warning for now
 #[allow(dead_code)]
 impl ClientDatastore {
-    fn new(port: u16, exec: Runtime) -> Self {
+    pub fn new(port: u16, exec: Runtime) -> Self {
         let endpoint: Endpoint = format!("http://127.0.0.1:{}", port).try_into().unwrap();
 
         for _ in 0..5 {
@@ -90,7 +90,7 @@ impl indradb::Datastore for ClientDatastore {
     }
 }
 
-struct ClientTransaction {
+pub struct ClientTransaction {
     trans: Rc<RefCell<crate::Transaction>>,
     exec: Rc<RefCell<Runtime>>,
 }
