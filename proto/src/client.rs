@@ -163,7 +163,11 @@ impl Client {
     }
 
     pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
-        self.0.index_property(Request::new(name.into().into())).await?;
+        self.0
+            .index_property(Request::new(crate::IndexPropertyRequest {
+                name: Some(name.into().into()),
+            }))
+            .await?;
         Ok(())
     }
 }
