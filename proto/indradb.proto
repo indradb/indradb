@@ -300,6 +300,11 @@ message EdgePropertyBulkInsertItem {
     Json value = 3;
 }
 
+// A request to index a property.
+message IndexPropertyRequest {
+    Identifier name = 1;
+}
+
 message GetEdgeCountRequest {
     Uuid id = 1;
     Identifier t = 2;
@@ -433,5 +438,5 @@ service IndraDB {
 
     // Enables indexing on a specified property. When indexing is enabled on a
     // property, it's possible to query on its presence and values.
-    rpc IndexProperty(Identifier) returns (google.protobuf.Empty);
+    rpc IndexProperty(IndexPropertyRequest) returns (google.protobuf.Empty);
 }

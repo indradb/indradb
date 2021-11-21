@@ -623,6 +623,15 @@ impl TryInto<indradb::BulkInsertItem> for crate::BulkInsertItem {
     }
 }
 
+impl TryInto<indradb::Identifier> for crate::IndexPropertyRequest {
+    type Error = ConversionError;
+
+    fn try_into(self) -> Result<indradb::Identifier, Self::Error> {
+        let name = required_field("name", self.name)?.try_into()?;
+        Ok(name)
+    }
+}
+
 impl TryInto<(Uuid, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
     type Error = ConversionError;
 

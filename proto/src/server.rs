@@ -91,7 +91,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
 
-    async fn index_property(&self, request: Request<crate::Identifier>) -> Result<Response<()>, Status> {
+    async fn index_property(&self, request: Request<crate::IndexPropertyRequest>) -> Result<Response<()>, Status> {
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
         map_indradb_result(self.datastore.clone().index_property(name))?;
         Ok(Response::new(()))
