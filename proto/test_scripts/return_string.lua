@@ -1,0 +1,2 @@
+return "hello"
+-- ok: "hello"

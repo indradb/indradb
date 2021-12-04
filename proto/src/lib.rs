@@ -20,6 +20,8 @@ mod client;
 pub use client::{Client, ClientError, Transaction};
 
 #[cfg(feature = "server")]
+mod scripting;
+#[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
 pub use server::run as run_server;

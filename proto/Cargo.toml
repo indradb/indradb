@@ -29,8 +29,9 @@ chrono = "0.4.19"
 prost = "0.8.0"
 prost-derive = "0.8.0"
 prost-types = "0.8.0"
+rlua = "0.18.0"
 tonic = "0.5.2"
-tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
+tokio = { version = "^1.11.0", features = ["rt", "rt-multi-thread"], optional = true }
 tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
 
 [dependencies.indradb-lib]

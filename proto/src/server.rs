@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use std::ffi::OsString;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -35,6 +36,18 @@ pub struct Server<
     T: indradb::Transaction + Send + Sync + 'static,
 > {
     datastore: Arc<D>,
+    script_root: Option<OsString>
+}
+
+impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
+    Server<D, T>
+{
+    pub fn new(datastore: Arc<D>, script_root: Option<OsString>) -> Self {
+        Self { 
+            datastore,
+            script_root,
+        }
+    }
 }
 
 #[tonic::async_trait]
@@ -95,6 +108,25 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
         map_indradb_result(self.datastore.clone().index_property(name))?;
         Ok(Response::new(()))
+    }
+
+    type EvalScriptStream =
+        Pin<Box<dyn Stream<Item = Result<crate::EvalScriptResponse, Status>> + Send + Sync + 'static>>;
+    async fn eval_script(
+        &self,
+        request: Request<crate::EvalScriptRequest>,
+    ) -> Result<Response<Self::EvalScriptStream>, Status> {
+        let (mut tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        let request = request.into_inner();
+        let source = request.source;
+        let arg = request.arg.try_into()?.0;
+
+        tokio::task::spawn_blocking(move || {
+            let scripting_engine = crate::scripting::Engine::new(self.datastore.clone(), self.script_root.map(|s| s.as_ref()));
+            scripting_engine.exec(&source, arg, tx);
+        });
+
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
 }
 
@@ -276,12 +308,12 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D, T>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
+pub async fn run<D, T>(datastore: Arc<D>, script_root: Option<OsString>, listener: TcpListener) -> Result<(), TonicTransportError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
     T: indradb::Transaction + Send + Sync + 'static,
 {
-    let svc = crate::indra_db_server::IndraDbServer::new(Server { datastore });
+    let svc = crate::indra_db_server::IndraDbServer::new(Server { datastore, script_root });
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
         .add_service(svc)
