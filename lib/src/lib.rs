@@ -30,6 +30,9 @@ pub use crate::memory::{MemoryDatastore, MemoryTransaction};
 pub use crate::models::*;
 pub use crate::traits::*;
 
+#[cfg(all(feature = "plugin", feature = "rocksdb-datastore"))]
+pub mod plugin;
+
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
 

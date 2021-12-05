@@ -7,7 +7,12 @@ import time
 import subprocess
 
 VERSION_MATCHER = re.compile(r'^version = "([^"]+)\.([^"]+)\.([^"]+)"$')
-VERSIONED_CATEGORIES = {"[package]", "[dependencies.indradb-lib]", "[dependencies.indradb-proto]"}
+VERSIONED_CATEGORIES = {
+    "[package]",
+    "[dependencies.indradb-lib]",
+    "[dependencies.indradb-proto]",
+    "[dependencies.indradb-plugin]",
+}
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
@@ -44,6 +49,7 @@ def main():
         raise Exception("Invalid version specification")
 
     update_version("lib/Cargo.toml", new_version)
+    update_version("plugin/Cargo.toml", new_version)
     update_version("proto/Cargo.toml", new_version)
     update_version("server/Cargo.toml", new_version)
     update_version("client/Cargo.toml", new_version)

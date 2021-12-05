@@ -1,7 +1,16 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fs;
+use std::fmt;
+use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::error::Error as StdError;
 
+use indradb::Datastore;
+use indradb::plugin::ProxyDatastore;
+use libloading::Library;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
@@ -28,19 +37,121 @@ fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T,
     res.map_err(|err| Status::invalid_argument(format!("{}", err)))
 }
 
+#[derive(Debug)]
+pub enum PluginError {
+    Io(Box<io::Error>),
+    LibLoading(libloading::Error),
+    Transport(TonicTransportError),
+    VersionMismatch {
+        library_path: PathBuf,
+        indradb_version_info: indradb::plugin::VersionInfo,
+        library_version_info: indradb::plugin::VersionInfo
+    }
+}
+
+impl StdError for PluginError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match *self {
+            PluginError::Io(ref err) => Some(err),
+            PluginError::LibLoading(ref err) => Some(err),
+            PluginError::Transport(ref err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for PluginError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PluginError::Io(ref err) => write!(f, "i/o error: {}", err),
+            PluginError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
+            PluginError::Transport(ref err) => write!(f, "transport error: {}", err),
+            PluginError::VersionMismatch {ref library_path, ref indradb_version_info, ref library_version_info} => {
+                write!(f, "version mismatch: library '{}'={}; IndraDB={}", library_path.to_string_lossy(), library_version_info, indradb_version_info)
+            },
+        }
+    }
+}
+
+impl From<io::Error> for PluginError {
+    fn from(err: io::Error) -> Self {
+        PluginError::Io(Box::new(err))
+    }
+}
+
+impl From<libloading::Error> for PluginError {
+    fn from(err: libloading::Error) -> Self {
+        PluginError::LibLoading(err)
+    }
+}
+
+impl From<TonicTransportError> for PluginError {
+    fn from(err: TonicTransportError) -> Self {
+        PluginError::Transport(err)
+    }
+}
+
+#[derive(Default)]
+struct Plugins {
+    libraries: Vec<Library>,
+    entries: HashMap<String, Box<dyn indradb::plugin::Plugin>>,
+}
+
 /// The IndraDB server implementation.
 #[derive(Clone)]
-pub struct Server<
-    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
-    T: indradb::Transaction + Send + Sync + 'static,
-> {
-    datastore: Arc<D>,
+pub struct Server {
+    datastore: Arc<ProxyDatastore>,
+    plugins: Arc<Plugins>,
+}
+
+impl Server {
+    pub fn new(datastore: Arc<ProxyDatastore>) -> Self {
+        Self {
+            datastore,
+            plugins: Arc::new(Plugins::default()),
+        }
+    }
+
+    pub unsafe fn new_with_plugins<P: AsRef<Path>>(datastore: Arc<ProxyDatastore>, plugin_path: P) -> Result<Self, PluginError> {
+        let mut libraries = Vec::new();
+        let mut plugin_entries = HashMap::new();
+
+        let indradb_version_info = indradb::plugin::indradb_version_info();
+
+        for entry in fs::read_dir(plugin_path)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                let library = Library::new(plugin_path.as_ref().as_os_str())?;
+
+                let decl = library
+                    .get::<*mut indradb::plugin::PluginDeclaration>(b"plugin_declaration\0")?
+                    .read();
+
+                if decl.version_info != indradb_version_info {
+                    return Err(PluginError::VersionMismatch {
+                        library_path: entry.path(),
+                        library_version_info: decl.version_info,
+                        indradb_version_info,
+                    });
+                }
+
+                (decl.register)(&mut plugin_entries);
+                libraries.push(library);
+            }
+        }
+
+        Ok(Self {
+            datastore,
+            plugins: Arc::new(Plugins {
+                libraries,
+                entries: plugin_entries,
+            }),
+        })
+    }
 }
 
 #[tonic::async_trait]
-impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
-    crate::indra_db_server::IndraDb for Server<D, T>
-{
+impl crate::indra_db_server::IndraDb for Server {
     async fn ping(&self, _: Request<()>) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
@@ -95,6 +206,20 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
         map_indradb_result(self.datastore.clone().index_property(name))?;
         Ok(Response::new(()))
+    }
+
+    async fn execute_plugin(&self, request: Request<crate::ExecutePluginRequest>) -> Result<Response<crate::ExecutePluginResponse>, Status> {
+        let request = request.into_inner();
+        let arg = request.arg.try_into()?;
+
+        if let Some(plugin) = self.plugins.entries.get(&request.name) {
+            let response = map_indradb_result(plugin.call(arg))?;
+            Ok(Response::new(crate::ExecutePluginResponse {
+                value: Some(response.into()),
+            }))
+        } else {
+            Err(Status::not_found("unknown plugin"))
+        }
     }
 }
 
@@ -276,16 +401,35 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D, T>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
-where
-    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
-    T: indradb::Transaction + Send + Sync + 'static,
-{
-    let svc = crate::indra_db_server::IndraDbServer::new(Server { datastore });
+pub async fn run(datastore: Arc<ProxyDatastore>, listener: TcpListener) -> Result<(), TonicTransportError> {
+    let service = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
-        .add_service(svc)
+        .add_service(service)
         .serve_with_incoming(incoming)
         .await?;
+
+    Ok(())
+}
+
+/// Runs the IndraDB server with plugins enabled.
+///
+/// # Arguments
+/// * `datastore`: The underlying datastore to use.
+/// * `listener`: The TCP listener to run the gRPC server on.
+/// * `plugin_path`: Path to the plugins.
+///
+/// # Errors
+/// This will return an error if the gRPC fails to start on the given
+/// listener.
+pub async unsafe fn run_with_plugins<P: AsRef<Path>>(datastore: Arc<ProxyDatastore>, listener: TcpListener, plugin_path: P) -> Result<(), PluginError> {
+    let server = Server::new_with_plugins(datastore, plugin_path)?;
+    let service = crate::indra_db_server::IndraDbServer::new(server);
+    let incoming = TcpListenerStream::new(listener);
+    TonicServer::builder()
+        .add_service(service)
+        .serve_with_incoming(incoming)
+        .await?;
+
     Ok(())
 }

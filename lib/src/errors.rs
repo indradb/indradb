@@ -27,6 +27,9 @@ pub enum Error {
 
     /// A query occurred on a property that isn't indexed
     NotIndexed,
+
+    /// For functionality that isn't supported
+    Unsupported,
 }
 
 impl StdError for Error {
@@ -46,6 +49,7 @@ impl fmt::Display for Error {
             Error::UuidTaken => write!(f, "UUID already taken"),
             Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
+            Error::Unsupported => write!(f, "functionality not supported"),
         }
     }
 }

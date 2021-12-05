@@ -10,16 +10,12 @@ use uuid::Uuid;
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore {
-    type Trans: Transaction;
-
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
-    fn sync(&self) -> Result<()> {
-        Err(Error::Unsupported)
-    }
+    fn sync(&self) -> Result<()>;
 
     /// Creates a new transaction.
-    fn transaction(&self) -> Result<Self::Trans>;
+    fn transaction(&self) -> Result<Box<dyn Transaction>>;
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
@@ -34,10 +30,7 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `items`: The items to insert.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where
-        I: Iterator<Item = models::BulkInsertItem>,
-    {
+    fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
         let trans = self.transaction()?;
 
         for item in items {
@@ -50,11 +43,11 @@ pub trait Datastore {
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id).property(name);
-                    trans.set_vertex_properties(query, &value)?;
+                    trans.set_vertex_properties(&query, &value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
                     let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    trans.set_edge_properties(query, &value)?;
+                    trans.set_edge_properties(&query, &value)?;
                 }
             }
         }
@@ -67,7 +60,7 @@ pub trait Datastore {
     //
     // # Arguments
     // * `name`: The name of the property to index.
-    fn index_property<T: Into<models::Identifier>>(&self, name: T) -> Result<()>;
+    fn index_property(&self, name: &models::Identifier) -> Result<()>;
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.
@@ -91,8 +84,8 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    fn create_vertex_from_type(&self, t: models::Identifier) -> Result<Uuid> {
-        let v = models::Vertex::new(t);
+    fn create_vertex_from_type(&self, t: &models::Identifier) -> Result<Uuid> {
+        let v = models::Vertex::new(t.clone());
 
         if !self.create_vertex(&v)? {
             Err(Error::UuidTaken)
@@ -105,13 +98,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>>;
+    fn get_vertices(&self, q: &models::VertexQuery) -> Result<Vec<models::Vertex>>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_vertices(&self, q: &models::VertexQuery) -> Result<()>;
 
     /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
@@ -129,13 +122,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>>;
+    fn get_edges(&self, q: &models::EdgeQuery) -> Result<Vec<models::Edge>>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_edges(&self, q: &models::EdgeQuery) -> Result<()>;
 
     /// Gets the number of edges associated with a vertex.
     ///
@@ -150,49 +143,49 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
+    fn get_vertex_properties(&self, q: &models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
 
     /// Gets all vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>>;
+    fn get_all_vertex_properties(&self, q: &models::VertexQuery) -> Result<Vec<models::VertexProperties>>;
 
     /// Sets a vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: &models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<()>;
+    fn delete_vertex_properties(&self, q: &models::VertexPropertyQuery) -> Result<()>;
 
     /// Gets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
+    fn get_edge_properties(&self, q: &models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
 
     /// Gets all edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>>;
+    fn get_all_edge_properties(&self, q: &models::EdgeQuery) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: &models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
 
     /// Deletes edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
+    fn delete_edge_properties(&self, q: &models::EdgePropertyQuery) -> Result<()>;
 }
