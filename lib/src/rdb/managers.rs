@@ -96,13 +96,13 @@ impl<'a> VertexManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db_ref);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
-            vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name)?;
+            vertex_property_manager.delete(batch, vertex_property_owner_id, &vertex_property_name)?;
         }
 
         let edge_manager = EdgeManager::new(self.db_ref);
@@ -113,7 +113,7 @@ impl<'a> VertexManager<'a> {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(
-                    &mut batch,
+                    batch,
                     edge_range_out_id,
                     &edge_range_t,
                     edge_range_in_id,
@@ -133,7 +133,7 @@ impl<'a> VertexManager<'a> {
                 ) = item?;
                 debug_assert_eq!(reversed_edge_range_in_id, id);
                 edge_manager.delete(
-                    &mut batch,
+                    batch,
                     reversed_edge_range_out_id,
                     &reversed_edge_range_t,
                     reversed_edge_range_in_id,
@@ -185,7 +185,7 @@ impl<'a> EdgeManager<'a> {
 
     pub fn set(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -195,8 +195,8 @@ impl<'a> EdgeManager<'a> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
 
         if let Some(update_datetime) = self.get(out_id, t, in_id)? {
-            edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
-            reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
+            edge_range_manager.delete(batch, out_id, t, update_datetime, in_id)?;
+            reversed_edge_range_manager.delete(batch, in_id, t, update_datetime, out_id)?;
         }
 
         let key = self.key(out_id, t, in_id);
@@ -205,14 +205,14 @@ impl<'a> EdgeManager<'a> {
             &key,
             &util::build(&[util::Component::DateTime(new_update_datetime)]),
         );
-        edge_range_manager.set(&mut batch, out_id, t, new_update_datetime, in_id)?;
-        reversed_edge_range_manager.set(&mut batch, in_id, t, new_update_datetime, out_id)?;
+        edge_range_manager.set(batch, out_id, t, new_update_datetime, in_id)?;
+        reversed_edge_range_manager.set(batch, in_id, t, new_update_datetime, out_id)?;
         Ok(())
     }
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -221,16 +221,16 @@ impl<'a> EdgeManager<'a> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
         let edge_range_manager = EdgeRangeManager::new(self.db_ref);
-        edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
+        edge_range_manager.delete(batch, out_id, t, update_datetime, in_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
-        reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
+        reversed_edge_range_manager.delete(batch, in_id, t, update_datetime, out_id)?;
 
         let edge_property_manager = EdgePropertyManager::new(self.db_ref);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
             let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
-                &mut batch,
+                batch,
                 edge_property_out_id,
                 &edge_property_t,
                 edge_property_in_id,
