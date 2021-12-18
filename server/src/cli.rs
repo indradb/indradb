@@ -4,6 +4,7 @@ use std::ffi::OsString;
 pub struct CliArgs {
     pub addr: String,
     pub datastore_args: CliDatastoreArgs,
+    pub plugin_path: Option<OsString>,
 }
 
 pub enum CliDatastoreArgs {
@@ -18,6 +19,7 @@ pub enum CliDatastoreArgs {
 }
 
 const ADDRESS: &str = "ADDRESS";
+const PLUGIN_PATH: &str = "PLUGIN_PATH";
 const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
 const ROCKSDB_REPAIR: &str = "ROCKSDB_REPAIR";
@@ -36,6 +38,13 @@ pub fn parse_cli_args() -> CliArgs {
         .help("The address to listen on, defaults to 127.0.0.1:27615")
         .takes_value(true)
         .default_value("127.0.0.1:27615");
+
+    let plugin_path = Arg::with_name(PLUGIN_PATH)
+        .short("p")
+        .long("plugins")
+        .value_name(PLUGIN_PATH)
+        .help("Path to plugins")
+        .takes_value(true);
 
     let memory_subcommand = SubCommand::with_name("memory")
         .about("Start an indradb instance backed by memory. This is the default, so including this subcommand is only useful if you want to set options.")
@@ -68,6 +77,7 @@ pub fn parse_cli_args() -> CliArgs {
 
     let matches = App::new("indradb-server")
         .arg(&addr)
+        .arg(&plugin_path)
         .subcommand(memory_subcommand)
         .subcommand(rocksdb_subcommand)
         .get_matches();
@@ -91,5 +101,6 @@ pub fn parse_cli_args() -> CliArgs {
         } else {
             CliDatastoreArgs::Memory { path: None }
         },
+        plugin_path: matches.value_of_os(PLUGIN_PATH).map(|s| s.to_os_string()),
     }
 }

@@ -22,9 +22,9 @@ pub use client::{Client, ClientError, Transaction};
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::run as run_server;
-#[cfg(feature = "server")]
 pub use server::Server;
+#[cfg(feature = "server")]
+pub use server::{run as run_server, run_with_plugins as run_server_with_plugins};
 
 #[cfg(feature = "test-suite")]
 pub mod tests;

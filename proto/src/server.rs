@@ -101,8 +101,10 @@ impl From<TonicTransportError> for PluginError {
 
 #[derive(Default)]
 struct Plugins {
-    libraries: Vec<Library>,
     entries: HashMap<String, Box<dyn indradb::plugin::Plugin>>,
+    // Kept to ensure libraries aren't dropped
+    #[allow(dead_code)]
+    libraries: Vec<Library>,
 }
 
 /// The IndraDB server implementation.
@@ -451,6 +453,10 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
+///
+/// # Safety
+/// Loading and executing plugins is inherently unsafe. Only run libraries that
+/// you've vetted.
 pub async unsafe fn run_with_plugins<D, T, P>(
     datastore: Arc<D>,
     listener: TcpListener,

@@ -3,6 +3,7 @@ extern crate clap;
 mod cli;
 
 use std::error::Error;
+use std::ffi::OsString;
 use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::sync::Arc;
@@ -12,13 +13,35 @@ use crate::cli::CliDatastoreArgs;
 use indradb_proto as proto;
 use tokio::net::TcpListener;
 
+async fn run_server<D, T>(
+    datastore: D,
+    listener: TcpListener,
+    plugin_path: Option<OsString>,
+) -> Result<(), Box<dyn Error>>
+where
+    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
+    T: indradb::Transaction + Send + Sync + 'static,
+{
+    let binding = listener.local_addr()?;
+    println!("grpc://{}", binding);
+
+    if let Some(plugin_path) = plugin_path {
+        unsafe {
+            proto::run_server_with_plugins(Arc::new(datastore), listener, plugin_path).await?;
+        }
+    } else {
+        proto::run_server(Arc::new(datastore), listener).await?;
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
     let args = cli::parse_cli_args();
 
     let addr = args.addr.to_socket_addrs()?.next().unwrap();
     let listener = TcpListener::bind(addr).await?;
-    let binding = listener.local_addr()?;
 
     match args.datastore_args {
         CliDatastoreArgs::Rocksdb {
@@ -35,25 +58,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
-            println!("grpc://{}", binding);
-            proto::run_server(Arc::new(datastore), listener).await?;
-            Ok(())
+            run_server(datastore, listener, args.plugin_path).await
         }
-        CliDatastoreArgs::Memory { path: None } => {
-            let datastore = indradb::MemoryDatastore::default();
-            println!("grpc://{}", binding);
-            proto::run_server(Arc::new(datastore), listener).await?;
-            Ok(())
-        }
-        CliDatastoreArgs::Memory { path: Some(path) } => {
-            let datastore = if Path::new(path.as_os_str()).exists() {
-                Arc::new(indradb::MemoryDatastore::read(path)?)
-            } else {
-                Arc::new(indradb::MemoryDatastore::create(path)?)
+        CliDatastoreArgs::Memory { path } => {
+            let datastore = match path {
+                None => indradb::MemoryDatastore::default(),
+                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read(path)?,
+                Some(path) => indradb::MemoryDatastore::create(path)?,
             };
-            println!("grpc://{}", binding);
-            proto::run_server(datastore.clone(), listener).await?;
-            Ok(())
+            run_server(datastore, listener, args.plugin_path).await
         }
     }
 }
