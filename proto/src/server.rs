@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::error::Error as StdError;
 
 use indradb::Datastore;
-use indradb::plugin::ProxyDatastore;
 use libloading::Library;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -99,20 +98,23 @@ struct Plugins {
 
 /// The IndraDB server implementation.
 #[derive(Clone)]
-pub struct Server {
-    datastore: Arc<ProxyDatastore>,
+pub struct Server<
+    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
+    T: indradb::Transaction + Send + Sync + 'static,
+> {
+    datastore: Arc<D>,
     plugins: Arc<Plugins>,
 }
 
-impl Server {
-    pub fn new(datastore: Arc<ProxyDatastore>) -> Self {
+impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static> Server<D, T> {
+    pub fn new(datastore: Arc<D>) -> Self {
         Self {
             datastore,
             plugins: Arc::new(Plugins::default()),
         }
     }
 
-    pub unsafe fn new_with_plugins<P: AsRef<Path>>(datastore: Arc<ProxyDatastore>, plugin_path: P) -> Result<Self, PluginError> {
+    pub unsafe fn new_with_plugins<P: AsRef<Path>>(datastore: Arc<D>, plugin_path: P) -> Result<Self, PluginError> {
         let mut libraries = Vec::new();
         let mut plugin_entries = HashMap::new();
 
@@ -151,7 +153,7 @@ impl Server {
 }
 
 #[tonic::async_trait]
-impl crate::indra_db_server::IndraDb for Server {
+impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static> crate::indra_db_server::IndraDb for Server<D, T> {
     async fn ping(&self, _: Request<()>) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
@@ -213,7 +215,10 @@ impl crate::indra_db_server::IndraDb for Server {
         let arg = request.arg.try_into()?;
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
-            let response = map_indradb_result(plugin.call(arg))?;
+            let response = {
+                let trans = map_indradb_result(self.datastore.clone().transaction())?;
+                map_indradb_result(plugin.call(Box::new(trans), arg))?
+            };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),
             }))
@@ -401,7 +406,11 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run(datastore: Arc<ProxyDatastore>, listener: TcpListener) -> Result<(), TonicTransportError> {
+pub async fn run<D, T>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
+where
+    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
+    T: indradb::Transaction + Send + Sync + 'static,
+{
     let service = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
@@ -422,7 +431,12 @@ pub async fn run(datastore: Arc<ProxyDatastore>, listener: TcpListener) -> Resul
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async unsafe fn run_with_plugins<P: AsRef<Path>>(datastore: Arc<ProxyDatastore>, listener: TcpListener, plugin_path: P) -> Result<(), PluginError> {
+pub async unsafe fn run_with_plugins<D, T, P>(datastore: Arc<D>, listener: TcpListener, plugin_path: P) -> Result<(), PluginError>
+where
+    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
+    T: indradb::Transaction + Send + Sync + 'static,
+    P: AsRef<Path>,
+{
     let server = Server::new_with_plugins(datastore, plugin_path)?;
     let service = crate::indra_db_server::IndraDbServer::new(server);
     let incoming = TcpListenerStream::new(listener);

@@ -105,13 +105,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>>;
+    fn get_vertices(&self, q: models::VertexQuery) -> Result<Vec<models::Vertex>>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_vertices(&self, q: models::VertexQuery) -> Result<()>;
 
     /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
@@ -129,13 +129,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>>;
+    fn get_edges(&self, q: models::EdgeQuery) -> Result<Vec<models::Edge>>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_edges(&self, q: models::EdgeQuery) -> Result<()>;
 
     /// Gets the number of edges associated with a vertex.
     ///
@@ -156,7 +156,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>>;
+    fn get_all_vertex_properties(&self, q: models::VertexQuery) -> Result<Vec<models::VertexProperties>>;
 
     /// Sets a vertex properties.
     ///
@@ -181,7 +181,7 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>>;
+    fn get_all_edge_properties(&self, q: models::EdgeQuery) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///

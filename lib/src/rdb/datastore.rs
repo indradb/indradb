@@ -565,7 +565,7 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -579,7 +579,7 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -621,7 +621,7 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<Edge>> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -636,7 +636,7 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -688,7 +688,7 @@ impl Transaction for RocksdbTransaction {
         Ok(properties)
     }
 
-    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<VertexProperties>> {
+    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -760,7 +760,7 @@ impl Transaction for RocksdbTransaction {
         Ok(properties)
     }
 
-    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);

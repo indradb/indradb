@@ -497,14 +497,14 @@ impl Transaction for MemoryTransaction {
         Ok(inserted)
     }
 
-    fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
         let datastore = self.datastore.read().unwrap();
         let iter = datastore.get_vertex_values_by_query(q.into())?;
         let iter = iter.map(|(uuid, t)| Vertex::with_id(uuid, t));
         Ok(iter.collect())
     }
 
-    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let deletable_vertices = datastore
             .get_vertex_values_by_query(q.into())?
@@ -531,7 +531,7 @@ impl Transaction for MemoryTransaction {
         Ok(true)
     }
 
-    fn get_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<Edge>> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = {
             let datastore = self.datastore.read().unwrap();
             let iter = datastore.get_edge_values_by_query(q.into())?;
@@ -544,7 +544,7 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
         let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q.into())?.map(|(k, _)| k).collect();
         datastore.delete_edges(deletable_edges);
@@ -592,7 +592,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<VertexProperties>> {
+    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
         let datastore = self.datastore.read().unwrap();
         let vertex_values = datastore.get_vertex_values_by_query(q.into())?;
 
@@ -664,7 +664,7 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let datastore = self.datastore.read().unwrap();
         let edge_values = datastore.get_edge_values_by_query(q.into())?;
 
