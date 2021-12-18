@@ -196,7 +196,7 @@ impl indradb::Transaction for ClientTransaction {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_vertex_properties(q, &value)),
+                .block_on(self.trans.borrow_mut().set_vertex_properties(q, value)),
         )
     }
 
@@ -235,7 +235,7 @@ impl indradb::Transaction for ClientTransaction {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_edge_properties(q, &value)),
+                .block_on(self.trans.borrow_mut().set_edge_properties(q, value)),
         )
     }
 
