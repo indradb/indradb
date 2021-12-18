@@ -131,6 +131,10 @@ where
     }
 }
 
+/// A [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+/// that extends `serde_json::Value` with extra traits useful for datastore
+/// storage and querying. Publicly facing APIs do not use these values, so
+/// it's generally only useful for datastore authors.
 #[derive(Clone, Eq, Debug, Serialize, Deserialize)]
 pub struct JsonValue(pub serde_json::Value);
 

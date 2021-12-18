@@ -1,5 +1,5 @@
 use crate::models::{
-    BulkInsertItem, EdgeDirection, EdgeKey, Identifier, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+    BulkInsertItem, EdgeDirection, EdgeKey, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 use crate::traits::{Datastore, Transaction};
 
@@ -117,7 +117,7 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
         items.push(BulkInsertItem::VertexProperty(
             vertex.id,
             t.clone(),
-            JsonValue::new(serde_json::Value::Bool(true)),
+            serde_json::Value::Bool(true),
         ));
     }
     for edge_key in edge_keys.into_iter() {
@@ -125,7 +125,7 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
         items.push(BulkInsertItem::EdgeProperty(
             edge_key,
             t.clone(),
-            JsonValue::new(serde_json::Value::Bool(true)),
+            serde_json::Value::Bool(true),
         ));
     }
 

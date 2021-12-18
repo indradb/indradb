@@ -566,12 +566,6 @@ impl Into<serde_json::Value> for JsonValue {
     }
 }
 
-impl Into<indradb::JsonValue> for JsonValue {
-    fn into(self) -> indradb::JsonValue {
-        indradb::JsonValue::new(self.into())
-    }
-}
-
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum JsonNumber {
     PosInt(u64),
@@ -702,9 +696,9 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_vertex_properties(q.clone(), &value);
-                let v2 = t2.set_vertex_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = t1.set_vertex_properties(q.clone(), value.clone());
+                let v2 = t2.set_vertex_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteVertexProperties(q) => {
@@ -727,9 +721,9 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_edge_properties(q.clone(), &value);
-                let v2 = t2.set_edge_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = t1.set_edge_properties(q.clone(), value.clone());
+                let v2 = t2.set_edge_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteEdgeProperties(q) => {
