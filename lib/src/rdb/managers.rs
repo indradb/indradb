@@ -12,10 +12,10 @@ use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::JsonValue);
+pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
 pub type VertexItem = (Uuid, models::Identifier);
 pub type EdgeRangeItem = (Uuid, models::Identifier, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, (Uuid, models::Identifier, Uuid));
 
@@ -425,7 +425,7 @@ impl<'a> VertexPropertyManager<'a> {
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::JsonValue>> {
+    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::Json>> {
         let key = self.key(vertex_id, name);
 
         match self.db_ref.db.get_cf(self.cf, &key)? {
@@ -439,7 +439,7 @@ impl<'a> VertexPropertyManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         name: &models::Identifier,
-        value: &models::JsonValue,
+        value: &models::Json,
     ) -> Result<()> {
         let is_indexed = self.db_ref.indexed_properties.contains(name);
         let key = self.key(vertex_id, name);
@@ -551,7 +551,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
-    ) -> Result<Option<models::JsonValue>> {
+    ) -> Result<Option<models::Json>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db_ref.db.get_cf(self.cf, &key)? {
@@ -567,7 +567,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
-        value: &models::JsonValue,
+        value: &models::Json,
     ) -> Result<()> {
         let is_indexed = self.db_ref.indexed_properties.contains(name);
         let key = self.key(out_id, t, in_id, name);
@@ -621,10 +621,10 @@ impl<'a> VertexPropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Identifier, property_value: &models::JsonValue, vertex_id: Uuid) -> Vec<u8> {
+    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
             util::Component::Uuid(vertex_id),
         ])
     }
@@ -661,11 +661,11 @@ impl<'a> VertexPropertyValueManager<'a> {
     pub fn iterate_for_value(
         &'a self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
         ]);
         let iter = self
             .db_ref
@@ -679,7 +679,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
         batch.put_cf(self.cf, key, &[]);
@@ -690,7 +690,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
         batch.delete_cf(self.cf, key);
@@ -719,14 +719,14 @@ impl<'a> EdgePropertyValueManager<'a> {
     fn key(
         &self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
     ) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
             util::Component::Uuid(out_id),
             util::Component::Identifier(t),
             util::Component::Uuid(in_id),
@@ -763,11 +763,11 @@ impl<'a> EdgePropertyValueManager<'a> {
     pub fn iterate_for_value(
         &'a self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
         ]);
         let iter = self
             .db_ref
@@ -783,7 +783,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, out_id, t, in_id);
         batch.put_cf(self.cf, key, &[]);
@@ -796,7 +796,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, out_id, t, in_id);
         batch.delete_cf(self.cf, key);

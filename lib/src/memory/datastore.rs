@@ -9,7 +9,7 @@ use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
     Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, Identifier,
-    JsonValue, NamedProperty, Transaction, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
+    Json, NamedProperty, Transaction, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use bincode::Error as BincodeError;
@@ -46,9 +46,9 @@ struct InternalMemoryDatastore {
     vertices: BTreeMap<Uuid, Identifier>,
     edges: BTreeMap<EdgeKey, DateTime<Utc>>,
     reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
-    vertex_properties: BTreeMap<(Uuid, Identifier), JsonValue>,
-    edge_properties: BTreeMap<(EdgeKey, Identifier), JsonValue>,
-    property_values: HashMap<Identifier, HashMap<JsonValue, HashSet<IndexedPropertyMember>>>,
+    vertex_properties: BTreeMap<(Uuid, Identifier), Json>,
+    edge_properties: BTreeMap<(EdgeKey, Identifier), Json>,
+    property_values: HashMap<Identifier, HashMap<Json, HashSet<IndexedPropertyMember>>>,
 }
 
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
@@ -141,7 +141,7 @@ impl InternalMemoryDatastore {
             }
             VertexQuery::PropertyValue(q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = JsonValue::new(q.value);
+                    let wrapped_value = Json::new(q.value);
                     if let Some(sub_container) = container.get(&wrapped_value) {
                         let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
                             IndexedPropertyMember::Vertex(id) => {
@@ -172,7 +172,7 @@ impl InternalMemoryDatastore {
                 let vertex_values = self.get_vertex_values_by_query(*q.inner)?;
 
                 let ids: HashSet<Uuid> = if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = JsonValue::new(q.value.clone());
+                    let wrapped_value = Json::new(q.value.clone());
                     if let Some(members) = container.get(&wrapped_value) {
                         members
                             .iter()
@@ -252,7 +252,7 @@ impl InternalMemoryDatastore {
             }
             EdgeQuery::PropertyValue(q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = JsonValue::new(q.value);
+                    let wrapped_value = Json::new(q.value);
                     if let Some(sub_container) = container.get(&wrapped_value) {
                         let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
                             IndexedPropertyMember::Edge(key) => self.edges.get(key).map(|value| (key.clone(), *value)),
@@ -281,7 +281,7 @@ impl InternalMemoryDatastore {
                 let edge_values = self.get_edge_values_by_query(*q.inner)?;
 
                 let keys: HashSet<EdgeKey> = if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = JsonValue::new(q.value);
+                    let wrapped_value = Json::new(q.value);
                     if let Some(members) = container.get(&wrapped_value) {
                         members
                             .iter()
@@ -452,7 +452,7 @@ impl Datastore for MemoryDatastore {
         let name = name.into();
         let mut datastore = self.datastore.write().unwrap();
 
-        let mut property_container: HashMap<JsonValue, HashSet<IndexedPropertyMember>> = HashMap::new();
+        let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
         for id in datastore.vertices.keys() {
             if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
                 property_container
@@ -628,7 +628,7 @@ impl Transaction for MemoryTransaction {
         }
         datastore.delete_vertex_properties(deletable_vertex_properties);
 
-        let wrapped_value = JsonValue::new(value);
+        let wrapped_value = Json::new(value);
         for (id, _) in &vertex_values {
             datastore
                 .vertex_properties
@@ -704,7 +704,7 @@ impl Transaction for MemoryTransaction {
         }
         datastore.delete_edge_properties(deletable_edge_properties);
 
-        let wrapped_value = JsonValue::new(value);
+        let wrapped_value = Json::new(value);
         for (key, _) in &edge_values {
             datastore
                 .edge_properties
