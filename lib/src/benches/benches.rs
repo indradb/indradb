@@ -130,6 +130,6 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     }
 
     b.iter(|| {
-        datastore.bulk_insert(items.clone().into_iter()).unwrap();
+        datastore.bulk_insert(items.clone()).unwrap();
     });
 }

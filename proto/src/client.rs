@@ -137,11 +137,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `items`: The items to insert.
-    pub async fn bulk_insert<I>(&mut self, items: I) -> Result<(), ClientError>
-    where
-        I: Iterator<Item = indradb::BulkInsertItem>,
-    {
-        let items: Vec<indradb::BulkInsertItem> = items.collect();
+    pub async fn bulk_insert(&mut self, items: Vec<indradb::BulkInsertItem>) -> Result<(), ClientError> {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
             for item in items.into_iter() {
@@ -162,10 +158,10 @@ impl Client {
         Ok(Transaction::new(tx, response.into_inner()))
     }
 
-    pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
+    pub async fn index_property(&mut self, name: indradb::Identifier) -> Result<(), ClientError> {
         self.0
             .index_property(Request::new(crate::IndexPropertyRequest {
-                name: Some(name.into().into()),
+                name: Some(name.into()),
             }))
             .await?;
         Ok(())
@@ -402,7 +398,7 @@ impl Transaction {
     pub async fn set_vertex_properties(
         &mut self,
         q: indradb::VertexPropertyQuery,
-        value: &serde_json::Value,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetVertexProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)
@@ -461,7 +457,7 @@ impl Transaction {
     pub async fn set_edge_properties(
         &mut self,
         q: indradb::EdgePropertyQuery,
-        value: &serde_json::Value,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetEdgeProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)

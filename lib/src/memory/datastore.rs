@@ -447,39 +447,6 @@ impl Datastore for MemoryDatastore {
             datastore: Arc::clone(&self.datastore),
         })
     }
-
-    fn index_property<T: Into<Identifier>>(&self, name: T) -> Result<()> {
-        let name = name.into();
-        let mut datastore = self.datastore.write().unwrap();
-
-        let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
-        for id in datastore.vertices.keys() {
-            if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
-                property_container
-                    .entry(value.clone())
-                    .or_insert_with(HashSet::new)
-                    .insert(IndexedPropertyMember::Vertex(*id));
-            }
-        }
-        for key in datastore.edges.keys() {
-            if let Some(value) = datastore.edge_properties.get(&(key.clone(), name.clone())) {
-                property_container
-                    .entry(value.clone())
-                    .or_insert_with(HashSet::new)
-                    .insert(IndexedPropertyMember::Edge(key.clone()));
-            }
-        }
-
-        let existing_property_container = datastore.property_values.entry(name).or_insert_with(HashMap::new);
-        for (value, members) in property_container.into_iter() {
-            let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
-            for member in members {
-                existing_members.insert(member);
-            }
-        }
-
-        Ok(())
-    }
 }
 
 /// A transaction for manipulating in-memory datastores.
@@ -726,6 +693,38 @@ impl Transaction for MemoryTransaction {
             deletable_edge_properties.push((key, q.name.clone()));
         }
         datastore.delete_edge_properties(deletable_edge_properties);
+        Ok(())
+    }
+
+    fn index_property(&self, name: Identifier) -> Result<()> {
+        let mut datastore = self.datastore.write().unwrap();
+
+        let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
+        for id in datastore.vertices.keys() {
+            if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(IndexedPropertyMember::Vertex(*id));
+            }
+        }
+        for key in datastore.edges.keys() {
+            if let Some(value) = datastore.edge_properties.get(&(key.clone(), name.clone())) {
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(IndexedPropertyMember::Edge(key.clone()));
+            }
+        }
+
+        let existing_property_container = datastore.property_values.entry(name).or_insert_with(HashMap::new);
+        for (value, members) in property_container.into_iter() {
+            let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
+            for member in members {
+                existing_members.insert(member);
+            }
+        }
+
         Ok(())
     }
 }

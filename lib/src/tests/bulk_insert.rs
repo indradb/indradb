@@ -16,7 +16,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         BulkInsertItem::Vertex(inbound_v.clone()),
     ];
 
-    datastore.bulk_insert(items.into_iter()).unwrap();
+    datastore.bulk_insert(items).unwrap();
 
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
@@ -39,7 +39,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         ),
     ];
 
-    datastore.bulk_insert(items.into_iter()).unwrap();
+    datastore.bulk_insert(items).unwrap();
 
     let end_time = Utc::now();
 
@@ -99,7 +99,7 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(datastore: &mut D) {
     assert!(trans.create_vertex(&vertex).unwrap());
 
     let items = vec![BulkInsertItem::Vertex(vertex)];
-    assert!(datastore.bulk_insert(items.into_iter()).is_ok());
+    assert!(datastore.bulk_insert(items).is_ok());
 }
 
 // As an optimization, bulk insert does not verify that the vertices
@@ -115,7 +115,7 @@ pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(datastore: &mut D) {
     let edge_t = Identifier::new("test_edge_type").unwrap();
 
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
-    assert!(datastore.bulk_insert(items.into_iter()).is_ok());
+    assert!(datastore.bulk_insert(items).is_ok());
     let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t, v1.id))];
-    assert!(datastore.bulk_insert(items.into_iter()).is_ok());
+    assert!(datastore.bulk_insert(items).is_ok());
 }

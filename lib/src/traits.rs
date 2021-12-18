@@ -23,43 +23,11 @@ pub trait Datastore {
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
-    /// Note that datastores have discretion on how to approach safeguard vs
-    /// performance tradeoffs. In particular:
-    /// * If the datastore is disk-backed, it may or may not flush before
-    ///   returning.
-    /// * The datastore might not verify for correctness; e.g., it might not
-    ///   ensure that the relevant vertices exist before inserting an edge.
-    /// If you want maximum protection, use the equivalent functions in
-    /// transactions, which will provide more safeguards.
-    ///
     /// # Arguments
     /// * `items`: The items to insert.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where
-        I: Iterator<Item = models::BulkInsertItem>,
-    {
+    fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
         let trans = self.transaction()?;
-
-        for item in items {
-            match item {
-                models::BulkInsertItem::Vertex(vertex) => {
-                    trans.create_vertex(&vertex)?;
-                }
-                models::BulkInsertItem::Edge(edge_key) => {
-                    trans.create_edge(&edge_key)?;
-                }
-                models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
-                    trans.set_vertex_properties(query, value)?;
-                }
-                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    trans.set_edge_properties(query, value)?;
-                }
-            }
-        }
-
-        Ok(())
+        trans.bulk_insert(items)
     }
 
     // Enables indexing on a specified property. When indexing is enabled on a
@@ -67,7 +35,10 @@ pub trait Datastore {
     //
     // # Arguments
     // * `name`: The name of the property to index.
-    fn index_property<T: Into<models::Identifier>>(&self, name: T) -> Result<()>;
+    fn index_property(&self, name: models::Identifier) -> Result<()> {
+        let trans = self.transaction()?;
+        trans.index_property(name)
+    }
 }
 
 /// Specifies a transaction implementation, which are provided by datastores.
@@ -200,4 +171,38 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
+
+    /// Bulk inserts many vertices, edges, and/or properties.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
+    fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(vertex) => {
+                    self.create_vertex(&vertex)?;
+                }
+                models::BulkInsertItem::Edge(edge_key) => {
+                    self.create_edge(&edge_key)?;
+                }
+                models::BulkInsertItem::VertexProperty(id, name, value) => {
+                    let query = models::SpecificVertexQuery::single(id).property(name);
+                    self.set_vertex_properties(query, value)?;
+                }
+                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
+                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
+                    self.set_edge_properties(query, value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
+    //
+    // # Arguments
+    // * `name`: The name of the property to index.
+    fn index_property(&self, name: models::Identifier) -> Result<()>;
 }

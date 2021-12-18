@@ -65,10 +65,12 @@ impl indradb::Datastore for ClientDatastore {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
     }
 
-    fn bulk_insert<I>(&self, items: I) -> Result<(), indradb::Error>
-    where
-        I: Iterator<Item = indradb::BulkInsertItem>,
-    {
+    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
+        let trans = map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().transaction()))?;
+        Ok(ClientTransaction::new(trans, self.exec.clone()))
+    }
+
+    fn bulk_insert(&self, items: Vec<indradb::BulkInsertItem>) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -76,12 +78,7 @@ impl indradb::Datastore for ClientDatastore {
         )
     }
 
-    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
-        let trans = map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().transaction()))?;
-        Ok(ClientTransaction::new(trans, self.exec.clone()))
-    }
-
-    fn index_property<T: Into<indradb::Identifier>>(&self, name: T) -> Result<(), indradb::Error> {
+    fn index_property(&self, name: indradb::Identifier) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -196,7 +193,7 @@ impl indradb::Transaction for ClientTransaction {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_vertex_properties(q, &value)),
+                .block_on(self.trans.borrow_mut().set_vertex_properties(q, value)),
         )
     }
 
@@ -232,7 +229,7 @@ impl indradb::Transaction for ClientTransaction {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_edge_properties(q, &value)),
+                .block_on(self.trans.borrow_mut().set_edge_properties(q, value)),
         )
     }
 
@@ -242,6 +239,14 @@ impl indradb::Transaction for ClientTransaction {
                 .borrow_mut()
                 .block_on(self.trans.borrow_mut().delete_edge_properties(q)),
         )
+    }
+
+    fn bulk_insert(&self, _items: Vec<indradb::BulkInsertItem>) -> Result<(), indradb::Error> {
+        unimplemented!();
+    }
+
+    fn index_property(&self, _name: indradb::Identifier) -> Result<(), indradb::Error> {
+        unimplemented!();
     }
 }
 

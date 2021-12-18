@@ -207,7 +207,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         };
 
         let datastore = self.datastore.clone();
-        map_indradb_result(datastore.bulk_insert(items.into_iter()))?;
+        map_indradb_result(datastore.bulk_insert(items))?;
         Ok(Response::new(()))
     }
 

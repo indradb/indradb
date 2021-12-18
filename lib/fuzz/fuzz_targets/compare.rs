@@ -629,8 +629,8 @@ fuzz_target!(|ops: Vec<Op>| {
         match op {
             Op::BulkInsert(items) => {
                 let items: Vec<indradb::BulkInsertItem> = items.into_iter().map(|i| i.into()).collect();
-                let v1 = d1.bulk_insert(items.clone().into_iter());
-                let v2 = d2.bulk_insert(items.into_iter());
+                let v1 = d1.bulk_insert(items.clone());
+                let v2 = d2.bulk_insert(items);
                 cmp!(v1, v2);
             }
             Op::CreateVertex(vertex) => {
@@ -733,8 +733,8 @@ fuzz_target!(|ops: Vec<Op>| {
                 cmp!(v1, v2);
             },
             Op::IndexProperty(t) => {
-                let v1 = d1.index_property(t.clone());
-                let v2 = d2.index_property(t);
+                let v1 = d1.index_property(t.clone().into());
+                let v2 = d2.index_property(t.into());
                 cmp!(v1, v2);
             }
         }
