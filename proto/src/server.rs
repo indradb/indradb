@@ -120,7 +120,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
 
         let indradb_version_info = indradb::plugin::indradb_version_info();
 
-        for entry in fs::read_dir(plugin_path)? {
+        for entry in fs::read_dir(plugin_path.as_ref())? {
             let entry = entry?;
             if entry.file_type()?.is_file() {
                 let library = Library::new(plugin_path.as_ref().as_os_str())?;
@@ -212,7 +212,11 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
 
     async fn execute_plugin(&self, request: Request<crate::ExecutePluginRequest>) -> Result<Response<crate::ExecutePluginResponse>, Status> {
         let request = request.into_inner();
-        let arg = request.arg.try_into()?;
+        let arg = if let Some(arg) = request.arg {
+            map_conversion_result(arg.try_into())?
+        } else {
+            serde_json::Value::Null
+        };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
             let response = {
