@@ -120,6 +120,10 @@ pub struct Server<
 impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
     Server<D, T>
 {
+    /// Creates a new server.
+    ///
+    /// # Arguments
+    /// * `datastore`: The underlying datastore to use.
     pub fn new(datastore: Arc<D>) -> Self {
         Self {
             datastore,
@@ -127,6 +131,18 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         }
     }
 
+    /// Creates a new server with plugins enabled.
+    ///
+    /// # Arguments
+    /// * `datastore`: The underlying datastore to use.
+    /// * `plugin_path`: Path to the plugins.
+    ///
+    /// # Errors
+    /// This will return an error if the plugin(s) failed to load.
+    ///
+    /// # Safety
+    /// Loading and executing plugins is inherently unsafe. Only run libraries
+    /// that you've vetted.
     pub unsafe fn new_with_plugins<P: AsRef<Path>>(datastore: Arc<D>, plugin_path: P) -> Result<Self, PluginError> {
         let mut libraries = Vec::new();
         let mut plugin_entries = HashMap::new();
