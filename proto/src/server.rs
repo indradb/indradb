@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::fs;
+use std::error::Error as StdError;
 use std::fmt;
+use std::fs;
 use std::io;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
-use std::path::{Path, PathBuf};
-use std::error::Error as StdError;
 
-use indradb::Datastore;
 use libloading::Library;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -44,8 +43,8 @@ pub enum PluginError {
     VersionMismatch {
         library_path: PathBuf,
         indradb_version_info: indradb::plugin::VersionInfo,
-        library_version_info: indradb::plugin::VersionInfo
-    }
+        library_version_info: indradb::plugin::VersionInfo,
+    },
 }
 
 impl StdError for PluginError {
@@ -65,9 +64,19 @@ impl fmt::Display for PluginError {
             PluginError::Io(ref err) => write!(f, "i/o error: {}", err),
             PluginError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
             PluginError::Transport(ref err) => write!(f, "transport error: {}", err),
-            PluginError::VersionMismatch {ref library_path, ref indradb_version_info, ref library_version_info} => {
-                write!(f, "version mismatch: library '{}'={}; IndraDB={}", library_path.to_string_lossy(), library_version_info, indradb_version_info)
-            },
+            PluginError::VersionMismatch {
+                ref library_path,
+                ref indradb_version_info,
+                ref library_version_info,
+            } => {
+                write!(
+                    f,
+                    "version mismatch: library '{}'={}; IndraDB={}",
+                    library_path.to_string_lossy(),
+                    library_version_info,
+                    indradb_version_info
+                )
+            }
         }
     }
 }
@@ -106,7 +115,9 @@ pub struct Server<
     plugins: Arc<Plugins>,
 }
 
-impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static> Server<D, T> {
+impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
+    Server<D, T>
+{
     pub fn new(datastore: Arc<D>) -> Self {
         Self {
             datastore,
@@ -153,7 +164,9 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
 }
 
 #[tonic::async_trait]
-impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static> crate::indra_db_server::IndraDb for Server<D, T> {
+impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
+    crate::indra_db_server::IndraDb for Server<D, T>
+{
     async fn ping(&self, _: Request<()>) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
@@ -210,7 +223,10 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         Ok(Response::new(()))
     }
 
-    async fn execute_plugin(&self, request: Request<crate::ExecutePluginRequest>) -> Result<Response<crate::ExecutePluginResponse>, Status> {
+    async fn execute_plugin(
+        &self,
+        request: Request<crate::ExecutePluginRequest>,
+    ) -> Result<Response<crate::ExecutePluginResponse>, Status> {
         let request = request.into_inner();
         let arg = if let Some(arg) = request.arg {
             map_conversion_result(arg.try_into())?
@@ -435,7 +451,11 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async unsafe fn run_with_plugins<D, T, P>(datastore: Arc<D>, listener: TcpListener, plugin_path: P) -> Result<(), PluginError>
+pub async unsafe fn run_with_plugins<D, T, P>(
+    datastore: Arc<D>,
+    listener: TcpListener,
+    plugin_path: P,
+) -> Result<(), PluginError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
     T: indradb::Transaction + Send + Sync + 'static,

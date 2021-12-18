@@ -576,7 +576,7 @@ impl Transaction for RocksdbTransaction {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
 
         let iter = iter.map(move |(id, t)| {
             let vertex = Vertex::with_id(id, t);
@@ -590,7 +590,7 @@ impl Transaction for RocksdbTransaction {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
         let vertex_manager = VertexManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
@@ -632,7 +632,7 @@ impl Transaction for RocksdbTransaction {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q.into())?.into_iter();
+        let iter = execute_edge_query(db_ref, q)?.into_iter();
 
         let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
             let key = EdgeKey::new(out_id, t, in_id);
@@ -649,7 +649,7 @@ impl Transaction for RocksdbTransaction {
         let db_ref = DBRef::new(&db, &indexed_properties);
         let edge_manager = EdgeManager::new(db_ref);
         let vertex_manager = VertexManager::new(db_ref);
-        let iter = execute_edge_query(db_ref, q.into())?;
+        let iter = execute_edge_query(db_ref, q)?;
         let mut batch = WriteBatch::default();
 
         for (out_id, t, update_datetime, in_id) in iter {
@@ -699,7 +699,7 @@ impl Transaction for RocksdbTransaction {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
         let manager = VertexPropertyManager::new(db_ref);
 
         let iter = iter.map(move |(id, t)| {
@@ -772,7 +772,7 @@ impl Transaction for RocksdbTransaction {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q.into())?.into_iter();
+        let iter = execute_edge_query(db_ref, q)?.into_iter();
         let manager = EdgePropertyManager::new(db_ref);
 
         let iter = iter.map(move |(out_id, t, time, in_id)| {

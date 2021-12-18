@@ -45,7 +45,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
 
     let trans = datastore.transaction().unwrap();
     let vertices = trans
-        .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]))
+        .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into())
         .unwrap();
 
     assert_eq!(vertices.len(), 2);
@@ -54,7 +54,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = trans.get_edges(SpecificEdgeQuery::single(key.clone())).unwrap();
+    let edges = trans.get_edges(SpecificEdgeQuery::single(key.clone()).into()).unwrap();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].key.outbound_id, outbound_v.id);

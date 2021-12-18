@@ -14,7 +14,7 @@ pub fn indradb_version_info() -> VersionInfo {
 #[derive(Debug, Eq, PartialEq)]
 pub struct VersionInfo {
     rustc: String,
-    core: String
+    core: String,
 }
 
 impl fmt::Display for VersionInfo {

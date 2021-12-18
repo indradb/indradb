@@ -503,17 +503,14 @@ impl Transaction for MemoryTransaction {
 
     fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
         let datastore = self.datastore.read().unwrap();
-        let iter = datastore.get_vertex_values_by_query(q.into())?;
+        let iter = datastore.get_vertex_values_by_query(q)?;
         let iter = iter.map(|(uuid, t)| Vertex::with_id(uuid, t));
         Ok(iter.collect())
     }
 
     fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_vertices = datastore
-            .get_vertex_values_by_query(q.into())?
-            .map(|(k, _)| k)
-            .collect();
+        let deletable_vertices = datastore.get_vertex_values_by_query(q)?.map(|(k, _)| k).collect();
         datastore.delete_vertices(deletable_vertices);
         Ok(())
     }
@@ -538,7 +535,7 @@ impl Transaction for MemoryTransaction {
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = {
             let datastore = self.datastore.read().unwrap();
-            let iter = datastore.get_edge_values_by_query(q.into())?;
+            let iter = datastore.get_edge_values_by_query(q)?;
             iter.collect()
         };
 
@@ -550,7 +547,7 @@ impl Transaction for MemoryTransaction {
 
     fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q.into())?.map(|(k, _)| k).collect();
+        let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q)?.map(|(k, _)| k).collect();
         datastore.delete_edges(deletable_edges);
         Ok(())
     }
@@ -598,7 +595,7 @@ impl Transaction for MemoryTransaction {
 
     fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
         let datastore = self.datastore.read().unwrap();
-        let vertex_values = datastore.get_vertex_values_by_query(q.into())?;
+        let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         let mut result = Vec::new();
         for (id, t) in vertex_values {
@@ -673,7 +670,7 @@ impl Transaction for MemoryTransaction {
 
     fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let datastore = self.datastore.read().unwrap();
-        let edge_values = datastore.get_edge_values_by_query(q.into())?;
+        let edge_values = datastore.get_edge_values_by_query(q)?;
 
         let mut result = Vec::new();
         for (id, t) in edge_values {

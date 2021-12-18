@@ -15,7 +15,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let mut inserted_ids = create_vertices(&trans);
 
-    let range = trans.get_vertices(RangeVertexQuery::new()).unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::new().into()).unwrap();
 
     assert!(range.len() >= 5);
 
@@ -35,7 +35,7 @@ pub fn should_get_range_vertices<D: Datastore>(datastore: &mut D) {
 pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
-    let range = trans.get_vertices(RangeVertexQuery::new().limit(0)).unwrap();
+    let range = trans.get_vertices(RangeVertexQuery::new().limit(0).into()).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -43,7 +43,11 @@ pub fn should_get_range_vertices_out_of_range<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     create_vertices(&trans);
     let range = trans
-        .get_vertices(RangeVertexQuery::new().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()))
+        .get_vertices(
+            RangeVertexQuery::new()
+                .start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap())
+                .into(),
+        )
         .unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -52,7 +56,9 @@ pub fn should_get_no_vertices_with_type_filter<D: Datastore>(datastore: &mut D) 
     let trans = datastore.transaction().unwrap();
     let type_filter = models::Identifier::new("foo").unwrap();
     create_vertices(&trans);
-    let range = trans.get_vertices(RangeVertexQuery::new().t(type_filter)).unwrap();
+    let range = trans
+        .get_vertices(RangeVertexQuery::new().t(type_filter).into())
+        .unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -61,7 +67,9 @@ pub fn should_get_single_vertex<D: Datastore>(datastore: &mut D) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
-    let range = trans.get_vertices(SpecificVertexQuery::single(vertex.id)).unwrap();
+    let range = trans
+        .get_vertices(SpecificVertexQuery::single(vertex.id).into())
+        .unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, vertex.id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -73,7 +81,7 @@ pub fn should_get_single_vertex_nonexisting<D: Datastore>(datastore: &mut D) {
     let vertex = models::Vertex::new(vertex_t);
     trans.create_vertex(&vertex).unwrap();
     let range = trans
-        .get_vertices(SpecificVertexQuery::single(Uuid::default()))
+        .get_vertices(SpecificVertexQuery::single(Uuid::default()).into())
         .unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -83,12 +91,9 @@ pub fn should_get_vertices<D: Datastore>(datastore: &mut D) {
     let mut inserted_ids = create_vertices(&trans);
 
     let range = trans
-        .get_vertices(SpecificVertexQuery::new(vec![
-            inserted_ids[0],
-            inserted_ids[1],
-            inserted_ids[2],
-            Uuid::default(),
-        ]))
+        .get_vertices(
+            SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()]).into(),
+        )
         .unwrap();
 
     assert!(range.len() == 3);
@@ -122,7 +127,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .t(edge_t.clone())
         .inbound()
         .limit(1);
-    let range = trans.get_vertices(query_1.clone()).unwrap();
+    let range = trans.get_vertices(query_1.clone().into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -134,7 +139,7 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .inbound()
         .limit(1)
         .t(models::Identifier::new("test_inbound_vertex_type").unwrap());
-    let range = trans.get_vertices(query_2).unwrap();
+    let range = trans.get_vertices(query_2.into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -146,12 +151,12 @@ pub fn should_get_vertices_piped<D: Datastore>(datastore: &mut D) {
         .inbound()
         .limit(1)
         .t(models::Identifier::new("foo").unwrap());
-    let range = trans.get_vertices(query_3).unwrap();
+    let range = trans.get_vertices(query_3.into()).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
     let query_4 = query_1.inbound().limit(1).t(edge_t).outbound().limit(1);
-    let range = trans.get_vertices(query_4).unwrap();
+    let range = trans.get_vertices(query_4.into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0], v);
 }
@@ -166,8 +171,8 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(datastore: &mut D) {
             serde_json::Value::Bool(true),
         )
         .unwrap();
-    trans.delete_vertices(q.clone()).unwrap();
-    let v = trans.get_vertices(q).unwrap();
+    trans.delete_vertices(q.clone().into()).unwrap();
+    let v = trans.get_vertices(q.into()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let count = trans
@@ -181,8 +186,8 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(datastore: &mut D) {
     let inbound_id = inbound_ids[0];
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(inbound_id);
-    trans.delete_vertices(q.clone()).unwrap();
-    let v = trans.get_vertices(q).unwrap();
+    trans.delete_vertices(q.clone().into()).unwrap();
+    let v = trans.get_vertices(q.into()).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let count = trans
@@ -194,7 +199,7 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(datastore: &mut D) {
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     trans
-        .delete_vertices(SpecificVertexQuery::single(Uuid::default()))
+        .delete_vertices(SpecificVertexQuery::single(Uuid::default()).into())
         .unwrap();
 }
 
