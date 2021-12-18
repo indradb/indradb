@@ -76,6 +76,11 @@ pub trait Datastore {
 /// implementations carry different guarantees. Depending on the
 /// implementation, it may not be possible to rollback the changes on error.
 /// See the documentation of individual implementations for details.
+///
+/// Note that this trait and its members purposefully do not employ any
+/// generic arguments. While that would improve ergonomics, it would remove
+/// object safety, which we want in order to be able to pass
+/// `Box<dyn Transaction>` around (e.g. for plugins.)
 pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same UUID
