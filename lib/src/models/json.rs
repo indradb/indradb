@@ -131,34 +131,38 @@ where
     }
 }
 
+/// A [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+/// that extends `serde_json::Value` with extra traits useful for datastore
+/// storage and querying. Publicly facing APIs do not use these values, so
+/// it's generally only useful for datastore authors.
 #[derive(Clone, Eq, Debug, Serialize, Deserialize)]
-pub struct JsonValue(pub serde_json::Value);
+pub struct Json(pub serde_json::Value);
 
-impl JsonValue {
+impl Json {
     pub fn new(value: serde_json::Value) -> Self {
         Self { 0: value }
     }
 }
 
-impl From<serde_json::Value> for JsonValue {
+impl From<serde_json::Value> for Json {
     fn from(value: serde_json::Value) -> Self {
-        JsonValue { 0: value }
+        Json { 0: value }
     }
 }
 
-impl Hash for JsonValue {
+impl Hash for Json {
     fn hash<H: Hasher>(&self, state: &mut H) {
         hash(&self.0, state);
     }
 }
 
-impl PartialEq for JsonValue {
+impl PartialEq for Json {
     fn eq(&self, other: &Self) -> bool {
         self.partial_cmp(other) == Some(Ordering::Equal)
     }
 }
 
-impl PartialOrd for JsonValue {
+impl PartialOrd for Json {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         partial_cmp(&self.0, &other.0)
     }

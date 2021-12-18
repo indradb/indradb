@@ -1,6 +1,6 @@
 use crate::{
-    Datastore, EdgeKey, EdgeQueryExt, Identifier, JsonValue, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
-    Vertex, VertexQueryExt,
+    Datastore, EdgeKey, EdgeQueryExt, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
+    VertexQueryExt,
 };
 
 use uuid::Uuid;
@@ -18,21 +18,21 @@ pub fn should_handle_vertex_properties<D: Datastore>(datastore: &mut D) {
 
     // Set and get the value as true
     trans
-        .set_vertex_properties(q.clone(), &JsonValue::new(serde_json::Value::Bool(true)))
+        .set_vertex_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
     let result = trans.get_vertex_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
-    assert_eq!(result[0].value, JsonValue::new(serde_json::Value::Bool(true)));
+    assert_eq!(result[0].value, serde_json::Value::Bool(true));
 
     // Set and get the value as false
     trans
-        .set_vertex_properties(q.clone(), &JsonValue::new(serde_json::Value::Bool(false)))
+        .set_vertex_properties(q.clone(), serde_json::Value::Bool(false))
         .unwrap();
     let result = trans.get_vertex_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
-    assert_eq!(result[0].value, JsonValue::new(serde_json::Value::Bool(false)));
+    assert_eq!(result[0].value, serde_json::Value::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_vertex_properties(q.clone()).unwrap();
@@ -62,13 +62,13 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     trans
         .set_vertex_properties(
             q2.clone().property(Identifier::new("a").unwrap()),
-            &JsonValue::new(serde_json::Value::Bool(false)),
+            serde_json::Value::Bool(false),
         )
         .unwrap();
     trans
         .set_vertex_properties(
             q2.clone().property(Identifier::new("b").unwrap()),
-            &JsonValue::new(serde_json::Value::Bool(true)),
+            serde_json::Value::Bool(true),
         )
         .unwrap();
 
@@ -80,15 +80,9 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     assert_eq!(result_2.len(), 1);
     assert_eq!(result_2[0].props.len(), 2);
     assert_eq!(result_2[0].props[0].name, Identifier::new("a").unwrap());
-    assert_eq!(
-        result_2[0].props[0].value,
-        JsonValue::new(serde_json::Value::Bool(false))
-    );
+    assert_eq!(result_2[0].props[0].value, serde_json::Value::Bool(false));
     assert_eq!(result_2[0].props[1].name, Identifier::new("b").unwrap());
-    assert_eq!(
-        result_2[0].props[1].value,
-        JsonValue::new(serde_json::Value::Bool(true))
-    );
+    assert_eq!(result_2[0].props[1].value, serde_json::Value::Bool(true));
 
     let result_3 = trans.get_all_vertex_properties(q3).unwrap();
     assert_eq!(result_3.len(), 1);
@@ -98,9 +92,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
 pub fn should_not_set_invalid_vertex_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let q = SpecificVertexQuery::single(Uuid::default()).property(Identifier::new("foo").unwrap());
-    trans
-        .set_vertex_properties(q.clone(), &JsonValue::new(serde_json::Value::Null))
-        .unwrap();
+    trans.set_vertex_properties(q.clone(), serde_json::Value::Null).unwrap();
     let result = trans.get_vertex_properties(q).unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -137,21 +129,21 @@ pub fn should_handle_edge_properties<D: Datastore>(datastore: &mut D) {
 
     // Set and get the value as true
     trans
-        .set_edge_properties(q.clone(), &JsonValue::new(serde_json::Value::Bool(true)))
+        .set_edge_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
     let result = trans.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
-    assert_eq!(result[0].value, JsonValue::new(serde_json::Value::Bool(true)));
+    assert_eq!(result[0].value, serde_json::Value::Bool(true));
 
     // Set and get the value as false
     trans
-        .set_edge_properties(q.clone(), &JsonValue::new(serde_json::Value::Bool(false)))
+        .set_edge_properties(q.clone(), serde_json::Value::Bool(false))
         .unwrap();
     let result = trans.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
-    assert_eq!(result[0].value, JsonValue::new(serde_json::Value::Bool(false)));
+    assert_eq!(result[0].value, serde_json::Value::Bool(false));
 
     // Delete & check that it's deleted
     trans.delete_edge_properties(q.clone()).unwrap();
@@ -181,19 +173,19 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
 
     // Set and get the value as true
     trans
-        .set_edge_properties(q1.clone(), &JsonValue::new(serde_json::Value::Bool(false)))
+        .set_edge_properties(q1.clone(), serde_json::Value::Bool(false))
         .unwrap();
     trans
-        .set_edge_properties(q2.clone(), &JsonValue::new(serde_json::Value::Bool(true)))
+        .set_edge_properties(q2.clone(), serde_json::Value::Bool(true))
         .unwrap();
 
     let result = trans.get_all_edge_properties(eq.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].props.len(), 2);
     assert_eq!(result[0].props[0].name, Identifier::new("edge-prop-1").unwrap());
-    assert_eq!(result[0].props[0].value, JsonValue::new(serde_json::Value::Bool(false)));
+    assert_eq!(result[0].props[0].value, serde_json::Value::Bool(false));
     assert_eq!(result[0].props[1].name, Identifier::new("edge-prop-2").unwrap());
-    assert_eq!(result[0].props[1].value, JsonValue::new(serde_json::Value::Bool(true)));
+    assert_eq!(result[0].props[1].value, serde_json::Value::Bool(true));
 
     // Delete & check that they are deleted
     trans.delete_edge_properties(q1).unwrap();
@@ -208,9 +200,7 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
     let key = EdgeKey::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     let q = SpecificEdgeQuery::single(key).property(Identifier::new("bar").unwrap());
-    trans
-        .set_edge_properties(q.clone(), &JsonValue::new(serde_json::Value::Null))
-        .unwrap();
+    trans.set_edge_properties(q.clone(), serde_json::Value::Null).unwrap();
     let result = trans.get_edge_properties(q).unwrap();
     assert_eq!(result.len(), 0);
 }

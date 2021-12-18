@@ -1,6 +1,6 @@
 use crate::{
-    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, Identifier, JsonValue, SpecificEdgeQuery, SpecificVertexQuery,
-    Transaction, Vertex, VertexQueryExt,
+    BulkInsertItem, Datastore, EdgeKey, EdgeQueryExt, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Transaction,
+    Vertex, VertexQueryExt,
 };
 
 use chrono::offset::Utc;
@@ -30,12 +30,12 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
         BulkInsertItem::VertexProperty(
             outbound_v.id,
             Identifier::new("vertex_property_name").unwrap(),
-            JsonValue::new(serde_json::Value::String("vertex_property_value".to_string())),
+            serde_json::Value::String("vertex_property_value".to_string()),
         ),
         BulkInsertItem::EdgeProperty(
             key.clone(),
             Identifier::new("edge_property_name").unwrap(),
-            JsonValue::new(serde_json::Value::String("edge_property_value".to_string())),
+            serde_json::Value::String("edge_property_value".to_string()),
         ),
     ];
 
@@ -73,7 +73,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(vertex_properties[0].id, outbound_v.id);
     assert_eq!(
         vertex_properties[0].value,
-        JsonValue::new(serde_json::Value::String("vertex_property_value".to_string()))
+        serde_json::Value::String("vertex_property_value".to_string())
     );
 
     let edge_properties = trans
@@ -86,7 +86,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &mut D) {
     assert_eq!(edge_properties[0].key, key);
     assert_eq!(
         edge_properties[0].value,
-        JsonValue::new(serde_json::Value::String("edge_property_value".to_string()))
+        serde_json::Value::String("edge_property_value".to_string())
     );
 }
 

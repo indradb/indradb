@@ -48,11 +48,11 @@ pub trait Datastore {
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id).property(name);
-                    trans.set_vertex_properties(query, &value)?;
+                    trans.set_vertex_properties(query, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
                     let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    trans.set_edge_properties(query, &value)?;
+                    trans.set_edge_properties(query, value)?;
                 }
             }
         }
@@ -161,7 +161,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
@@ -186,7 +186,7 @@ pub trait Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes edge properties.
     ///

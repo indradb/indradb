@@ -20,11 +20,11 @@ pub enum Op {
     GetEdgeCount(Uuid, Option<Identifier>, EdgeDirection),
     GetVertexProperties(VertexPropertyQuery),
     GetAllVertexProperties(VertexQuery),
-    SetVertexProperties(VertexPropertyQuery, JsonValue),
+    SetVertexProperties(VertexPropertyQuery, Json),
     DeleteVertexProperties(VertexPropertyQuery),
     GetEdgeProperties(EdgePropertyQuery),
     GetAllEdgeProperties(EdgeQuery),
-    SetEdgeProperties(EdgePropertyQuery, JsonValue),
+    SetEdgeProperties(EdgePropertyQuery, Json),
     DeleteEdgeProperties(EdgePropertyQuery),
     IndexProperty(Identifier),
 }
@@ -33,8 +33,8 @@ pub enum Op {
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(Uuid, Identifier, JsonValue),
-    EdgeProperty(EdgeKey, Identifier, JsonValue),
+    VertexProperty(Uuid, Identifier, Json),
+    EdgeProperty(EdgeKey, Identifier, Json),
 }
 
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
@@ -191,7 +191,7 @@ impl Into<indradb::PropertyPresenceVertexQuery> for PropertyPresenceVertexQuery 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueVertexQuery {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::PropertyValueVertexQuery> for PropertyValueVertexQuery {
@@ -224,7 +224,7 @@ impl Into<indradb::PipePropertyPresenceVertexQuery> for PipePropertyPresenceVert
 pub struct PipePropertyValueVertexQuery {
     pub inner: Box<VertexQuery>,
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
     pub equal: bool,
 }
 
@@ -329,7 +329,7 @@ impl Into<indradb::PropertyPresenceEdgeQuery> for PropertyPresenceEdgeQuery {
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueEdgeQuery {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::PropertyValueEdgeQuery> for PropertyValueEdgeQuery {
@@ -362,7 +362,7 @@ impl Into<indradb::PipePropertyPresenceEdgeQuery> for PipePropertyPresenceEdgeQu
 pub struct PipePropertyValueEdgeQuery {
     pub inner: Box<EdgeQuery>,
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
     pub equal: bool,
 }
 
@@ -395,7 +395,7 @@ impl Into<indradb::EdgePropertyQuery> for EdgePropertyQuery {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexProperty {
     pub id: Uuid,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::VertexProperty> for VertexProperty {
@@ -410,7 +410,7 @@ impl Into<indradb::VertexProperty> for VertexProperty {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct NamedProperty {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::NamedProperty> for NamedProperty {
@@ -455,7 +455,7 @@ impl Into<indradb::EdgeProperties> for EdgeProperties {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
     pub key: EdgeKey,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::EdgeProperty> for EdgeProperty {
@@ -536,24 +536,24 @@ impl<'a> Arbitrary<'a> for DateTime {
 }
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
-pub enum JsonValue {
+pub enum Json {
     Null,
     Bool(bool),
     Number(JsonNumber),
     String(String),
-    Array(Vec<JsonValue>),
-    Object(HashMap<String, JsonValue>),
+    Array(Vec<Json>),
+    Object(HashMap<String, Json>),
 }
 
-impl Into<serde_json::Value> for JsonValue {
+impl Into<serde_json::Value> for Json {
     fn into(self) -> serde_json::Value {
         match self {
-            JsonValue::Null => serde_json::Value::Null,
-            JsonValue::Bool(b) => serde_json::Value::Bool(b),
-            JsonValue::Number(n) => serde_json::Value::Number(n.into()),
-            JsonValue::String(s) => serde_json::Value::String(s),
-            JsonValue::Array(v) => serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect()),
-            JsonValue::Object(o) => {
+            Json::Null => serde_json::Value::Null,
+            Json::Bool(b) => serde_json::Value::Bool(b),
+            Json::Number(n) => serde_json::Value::Number(n.into()),
+            Json::String(s) => serde_json::Value::String(s),
+            Json::Array(v) => serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect()),
+            Json::Object(o) => {
                 let mut m = serde_json::Map::new();
 
                 for (k, v) in o.into_iter() {
@@ -563,12 +563,6 @@ impl Into<serde_json::Value> for JsonValue {
                 serde_json::Value::Object(m)
             }
         }
-    }
-}
-
-impl Into<indradb::JsonValue> for JsonValue {
-    fn into(self) -> indradb::JsonValue {
-        indradb::JsonValue::new(self.into())
     }
 }
 
@@ -702,9 +696,9 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_vertex_properties(q.clone(), &value);
-                let v2 = t2.set_vertex_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = t1.set_vertex_properties(q.clone(), value.clone());
+                let v2 = t2.set_vertex_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteVertexProperties(q) => {
@@ -727,9 +721,9 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_edge_properties(q.clone(), &value);
-                let v2 = t2.set_edge_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = t1.set_edge_properties(q.clone(), value.clone());
+                let v2 = t2.set_edge_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteEdgeProperties(q) => {

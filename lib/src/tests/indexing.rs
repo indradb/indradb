@@ -8,7 +8,7 @@ fn setup_vertex_with_indexed_property<D: Datastore>(datastore: &mut D, property_
     trans.create_vertex(&v).unwrap();
     let q = models::SpecificVertexQuery::single(v.id).property(property_name.clone());
     trans
-        .set_vertex_properties(q.clone(), &models::JsonValue::new(serde_json::Value::Bool(true)))
+        .set_vertex_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
     v.id
 }
@@ -29,7 +29,7 @@ fn setup_edge_with_indexed_property<D: Datastore>(
     let q = models::SpecificEdgeQuery::single(key.clone()).property(property_name.clone());
     trans.create_edge(&key).unwrap();
     trans
-        .set_edge_properties(q.clone(), &models::JsonValue::new(serde_json::Value::Bool(true)))
+        .set_edge_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
     key
 }
@@ -64,10 +64,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(datastore: &mut D) {
     trans.create_vertex(&v).unwrap();
     let q = models::SpecificVertexQuery::single(v.id);
     trans
-        .set_vertex_properties(
-            q.clone().property(property_name.clone()),
-            &models::JsonValue::new(serde_json::Value::Bool(true)),
-        )
+        .set_vertex_properties(q.clone().property(property_name.clone()), serde_json::Value::Bool(true))
         .unwrap();
 
     // Index property
@@ -100,10 +97,7 @@ pub fn should_index_existing_edge_property<D: Datastore>(datastore: &mut D) {
     let q = models::SpecificEdgeQuery::single(key.clone());
     trans.create_edge(&key).unwrap();
     trans
-        .set_edge_properties(
-            q.clone().property(property_name.clone()),
-            &models::JsonValue::new(serde_json::Value::Bool(true)),
-        )
+        .set_edge_properties(q.clone().property(property_name.clone()), serde_json::Value::Bool(true))
         .unwrap();
 
     // Index property
@@ -147,15 +141,15 @@ pub fn should_delete_indexed_edge_property<D: Datastore>(datastore: &mut D) {
 }
 
 pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
-    let json_true = models::JsonValue::new(serde_json::Value::Bool(true));
-    let json_false = models::JsonValue::new(serde_json::Value::Bool(false));
+    let json_true = serde_json::Value::Bool(true);
+    let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-vertex-property").unwrap();
 
     let id = setup_vertex_with_indexed_property(datastore, &property_name);
     let trans = datastore.transaction().unwrap();
     let q = models::SpecificVertexQuery::single(id);
     trans
-        .set_vertex_properties(q.clone().property(property_name.clone()), &json_false)
+        .set_vertex_properties(q.clone().property(property_name.clone()), json_false.clone())
         .unwrap();
 
     // property foo should not be the old value
@@ -174,7 +168,10 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
-        .get_vertices(q.clone().with_property_not_equal_to(property_name.clone(), json_true))
+        .get_vertices(
+            q.clone()
+                .with_property_not_equal_to(property_name.clone(), json_true.clone()),
+        )
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
@@ -197,21 +194,21 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
     let result = trans
-        .get_vertices(q.with_property_not_equal_to(property_name.clone(), json_false))
+        .get_vertices(q.with_property_not_equal_to(property_name.clone(), json_false.clone()))
         .unwrap();
     assert_eq!(result.len(), 0);
 }
 
 pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &mut D) {
-    let json_true = models::JsonValue::new(serde_json::Value::Bool(true));
-    let json_false = models::JsonValue::new(serde_json::Value::Bool(false));
+    let json_true = serde_json::Value::Bool(true);
+    let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-edge-property").unwrap();
 
     let key = setup_edge_with_indexed_property(datastore, &property_name);
     let trans = datastore.transaction().unwrap();
     let q = models::SpecificEdgeQuery::single(key.clone());
     trans
-        .set_edge_properties(q.clone().property(property_name.clone()), &json_false)
+        .set_edge_properties(q.clone().property(property_name.clone()), json_false.clone())
         .unwrap();
 
     // property foo should not be the old value
