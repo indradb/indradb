@@ -191,12 +191,12 @@ impl indradb::Transaction for ClientTransaction {
     fn set_vertex_properties(
         &self,
         q: indradb::VertexPropertyQuery,
-        value: &indradb::JsonValue,
+        value: serde_json::Value,
     ) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_vertex_properties(q, value)),
+                .block_on(self.trans.borrow_mut().set_vertex_properties(q, &value)),
         )
     }
 
@@ -230,12 +230,12 @@ impl indradb::Transaction for ClientTransaction {
     fn set_edge_properties(
         &self,
         q: indradb::EdgePropertyQuery,
-        value: &indradb::JsonValue,
+        value: serde_json::Value,
     ) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_edge_properties(q, value)),
+                .block_on(self.trans.borrow_mut().set_edge_properties(q, &value)),
         )
     }
 

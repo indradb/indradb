@@ -200,13 +200,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let vertex_query = build_vertex_query(matches)?;
             let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
-            let property_value = indradb::JsonValue::new(serde_json::from_str(matches.value_of("value").unwrap())?);
+            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
             trans
                 .set_vertex_properties(VertexPropertyQuery::new(vertex_query, property_name), &property_value)
                 .await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = indradb::Identifier::new(matches.value_of("name").unwrap())?;
-            let property_value = indradb::JsonValue::new(serde_json::from_str(matches.value_of("value").unwrap())?);
+            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
             let edge_query = build_edge_query(build_edge_key(matches)?);
             trans
                 .set_edge_properties(EdgePropertyQuery::new(edge_query, property_name), &property_value)

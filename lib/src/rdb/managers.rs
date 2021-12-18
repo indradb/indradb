@@ -12,10 +12,10 @@ use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::JsonValue);
+pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
 pub type VertexItem = (Uuid, models::Identifier);
 pub type EdgeRangeItem = (Uuid, models::Identifier, DateTime<Utc>, Uuid);
-pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::JsonValue);
+pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, (Uuid, models::Identifier, Uuid));
 
@@ -96,13 +96,13 @@ impl<'a> VertexManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, mut batch: &mut WriteBatch, id: Uuid) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db_ref);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
-            vertex_property_manager.delete(&mut batch, vertex_property_owner_id, &vertex_property_name)?;
+            vertex_property_manager.delete(batch, vertex_property_owner_id, &vertex_property_name)?;
         }
 
         let edge_manager = EdgeManager::new(self.db_ref);
@@ -113,7 +113,7 @@ impl<'a> VertexManager<'a> {
                 let (edge_range_out_id, edge_range_t, edge_range_update_datetime, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(
-                    &mut batch,
+                    batch,
                     edge_range_out_id,
                     &edge_range_t,
                     edge_range_in_id,
@@ -133,7 +133,7 @@ impl<'a> VertexManager<'a> {
                 ) = item?;
                 debug_assert_eq!(reversed_edge_range_in_id, id);
                 edge_manager.delete(
-                    &mut batch,
+                    batch,
                     reversed_edge_range_out_id,
                     &reversed_edge_range_t,
                     reversed_edge_range_in_id,
@@ -185,7 +185,7 @@ impl<'a> EdgeManager<'a> {
 
     pub fn set(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -195,8 +195,8 @@ impl<'a> EdgeManager<'a> {
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
 
         if let Some(update_datetime) = self.get(out_id, t, in_id)? {
-            edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
-            reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
+            edge_range_manager.delete(batch, out_id, t, update_datetime, in_id)?;
+            reversed_edge_range_manager.delete(batch, in_id, t, update_datetime, out_id)?;
         }
 
         let key = self.key(out_id, t, in_id);
@@ -205,14 +205,14 @@ impl<'a> EdgeManager<'a> {
             &key,
             &util::build(&[util::Component::DateTime(new_update_datetime)]),
         );
-        edge_range_manager.set(&mut batch, out_id, t, new_update_datetime, in_id)?;
-        reversed_edge_range_manager.set(&mut batch, in_id, t, new_update_datetime, out_id)?;
+        edge_range_manager.set(batch, out_id, t, new_update_datetime, in_id)?;
+        reversed_edge_range_manager.set(batch, in_id, t, new_update_datetime, out_id)?;
         Ok(())
     }
 
     pub fn delete(
         &self,
-        mut batch: &mut WriteBatch,
+        batch: &mut WriteBatch,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -221,16 +221,16 @@ impl<'a> EdgeManager<'a> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
         let edge_range_manager = EdgeRangeManager::new(self.db_ref);
-        edge_range_manager.delete(&mut batch, out_id, t, update_datetime, in_id)?;
+        edge_range_manager.delete(batch, out_id, t, update_datetime, in_id)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
-        reversed_edge_range_manager.delete(&mut batch, in_id, t, update_datetime, out_id)?;
+        reversed_edge_range_manager.delete(batch, in_id, t, update_datetime, out_id)?;
 
         let edge_property_manager = EdgePropertyManager::new(self.db_ref);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
             let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
-                &mut batch,
+                batch,
                 edge_property_out_id,
                 &edge_property_t,
                 edge_property_in_id,
@@ -425,7 +425,7 @@ impl<'a> VertexPropertyManager<'a> {
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::JsonValue>> {
+    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::Json>> {
         let key = self.key(vertex_id, name);
 
         match self.db_ref.db.get_cf(self.cf, &key)? {
@@ -439,7 +439,7 @@ impl<'a> VertexPropertyManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         name: &models::Identifier,
-        value: &models::JsonValue,
+        value: &models::Json,
     ) -> Result<()> {
         let is_indexed = self.db_ref.indexed_properties.contains(name);
         let key = self.key(vertex_id, name);
@@ -551,7 +551,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
-    ) -> Result<Option<models::JsonValue>> {
+    ) -> Result<Option<models::Json>> {
         let key = self.key(out_id, t, in_id, name);
 
         match self.db_ref.db.get_cf(self.cf, &key)? {
@@ -567,7 +567,7 @@ impl<'a> EdgePropertyManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
-        value: &models::JsonValue,
+        value: &models::Json,
     ) -> Result<()> {
         let is_indexed = self.db_ref.indexed_properties.contains(name);
         let key = self.key(out_id, t, in_id, name);
@@ -621,10 +621,10 @@ impl<'a> VertexPropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Identifier, property_value: &models::JsonValue, vertex_id: Uuid) -> Vec<u8> {
+    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
             util::Component::Uuid(vertex_id),
         ])
     }
@@ -661,11 +661,11 @@ impl<'a> VertexPropertyValueManager<'a> {
     pub fn iterate_for_value(
         &'a self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
         ]);
         let iter = self
             .db_ref
@@ -679,7 +679,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
         batch.put_cf(self.cf, key, &[]);
@@ -690,7 +690,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         batch: &mut WriteBatch,
         vertex_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
         batch.delete_cf(self.cf, key);
@@ -719,14 +719,14 @@ impl<'a> EdgePropertyValueManager<'a> {
     fn key(
         &self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
     ) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
             util::Component::Uuid(out_id),
             util::Component::Identifier(t),
             util::Component::Uuid(in_id),
@@ -763,11 +763,11 @@ impl<'a> EdgePropertyValueManager<'a> {
     pub fn iterate_for_value(
         &'a self,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
-            util::Component::JsonValue(property_value),
+            util::Component::Json(property_value),
         ]);
         let iter = self
             .db_ref
@@ -783,7 +783,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, out_id, t, in_id);
         batch.put_cf(self.cf, key, &[]);
@@ -796,7 +796,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         t: &models::Identifier,
         in_id: Uuid,
         property_name: &models::Identifier,
-        property_value: &models::JsonValue,
+        property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, out_id, t, in_id);
         batch.delete_cf(self.cf, key);

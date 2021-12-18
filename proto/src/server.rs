@@ -360,7 +360,7 @@ where
         }
         crate::TransactionRequestVariant::SetVertexProperties(request) => {
             let (q, value) = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.set_vertex_properties(q, &value))?;
+            map_indradb_result(trans.set_vertex_properties(q, value))?;
             send!(tx, create_empty_response());
         }
         crate::TransactionRequestVariant::DeleteVertexProperties(request) => {
@@ -384,7 +384,7 @@ where
         }
         crate::TransactionRequestVariant::SetEdgeProperties(request) => {
             let (q, value) = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.set_edge_properties(q, &value))?;
+            map_indradb_result(trans.set_edge_properties(q, value))?;
             send!(tx, create_empty_response());
         }
         crate::TransactionRequestVariant::DeleteEdgeProperties(request) => {
