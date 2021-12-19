@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 use std::fmt;
 
-static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
-static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 pub fn indradb_version_info() -> VersionInfo {
     VersionInfo {
-        rustc: RUSTC_VERSION.to_string(),
-        core: CORE_VERSION.to_string(),
+        rustc: env!("RUSTC_VERSION").to_string(),
+        core: env!("CARGO_PKG_VERSION").to_string(),
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct VersionInfo {
-    rustc: String,
-    core: String,
+    pub rustc: String,
+    pub core: String,
 }
 
 impl fmt::Display for VersionInfo {
@@ -29,24 +26,31 @@ pub trait Plugin: 'static + Send + Sync {
 
 pub struct PluginDeclaration {
     pub version_info: VersionInfo,
-    pub register: unsafe extern "C" fn(&mut HashMap<String, Box<dyn Plugin>>),
+    pub entries: HashMap<String, Box<dyn Plugin>>,
 }
 
 #[macro_export]
-macro_rules! plugins {
-    ( $( $name:expr, $t:item ),* ) => {
+macro_rules! register_plugins {
+    ( $( $name:expr, $t:expr ),* ) => {
+        use indradb::plugin::PluginDeclaration;
         #[doc(hidden)]
         #[no_mangle]
-        pub static plugin_declaration: $crate::PluginDeclaration = $crate::PluginDeclaration {
-            version_info: VersionInfo {
-                rustc: $crate::RUSTC_VERSION,
-                core: $crate::CORE_VERSION,
+        pub unsafe extern "C" fn register() -> indradb::plugin::PluginDeclaration {
+            use std::collections::HashMap;
+            let mut entries = HashMap::new();
+            $(
+                {
+                    let t: Box<dyn indradb::plugin::Plugin> = $t;
+                    entries.insert($name.to_string(), t);
+                }
+            )*
+            PluginDeclaration {
+                version_info: indradb::plugin::VersionInfo {
+                    rustc: env!("RUSTC_VERSION").to_string(),
+                    core: env!("CARGO_PKG_VERSION").to_string(),
+                },
+                entries,
             }
-            register: extern "C" fn register(entries: &mut HashMap<String, Box<dyn Plugin>>) {
-                $(
-                    entries.insert($name.to_string(), Box::new($t));
-                )*
-            },
-        };
+        }
     };
 }

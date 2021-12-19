@@ -31,6 +31,7 @@ pub use crate::models::*;
 pub use crate::traits::*;
 
 #[cfg(feature = "plugin")]
+#[macro_use]
 pub mod plugin;
 
 #[cfg(feature = "rocksdb-datastore")]

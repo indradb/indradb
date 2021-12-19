@@ -1,0 +1,17 @@
+[package]
+name = "indradb-plugin-hello-world"
+version = "0.1.0"
+build = "build.rs"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+indradb-lib = { path = "../../lib", features = ["plugin"] }
+serde_json = "^1.0.57"
+
+[build-dependencies]
+rustc_version = "0.4.0"

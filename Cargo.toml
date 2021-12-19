@@ -3,5 +3,6 @@ members = [
     "lib",
     "proto",
     "server",
-    "client"
+    "client",
+    "plugins/hello_world"
 ]

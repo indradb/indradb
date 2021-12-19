@@ -154,9 +154,9 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
             if entry.file_type()?.is_file() {
                 let library = Library::new(plugin_path.as_ref().as_os_str())?;
 
-                let decl = library
-                    .get::<*mut indradb::plugin::PluginDeclaration>(b"plugin_declaration\0")?
-                    .read();
+                let func: libloading::Symbol<unsafe extern "C" fn() -> indradb::plugin::PluginDeclaration> =
+                    library.get(b"register")?;
+                let decl = func();
 
                 if decl.version_info != indradb_version_info {
                     return Err(PluginError::VersionMismatch {
@@ -166,7 +166,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
                     });
                 }
 
-                (decl.register)(&mut plugin_entries);
+                plugin_entries.extend(decl.entries);
                 libraries.push(library);
             }
         }
