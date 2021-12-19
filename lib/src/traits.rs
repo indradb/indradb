@@ -14,7 +14,9 @@ pub trait Datastore {
 
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
-    fn sync(&self) -> Result<()>;
+    fn sync(&self) -> Result<()> {
+        Err(Error::Unsupported)
+    }
 
     /// Creates a new transaction.
     fn transaction(&self) -> Result<Self::Trans>;
