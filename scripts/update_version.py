@@ -7,10 +7,14 @@ import time
 import subprocess
 
 VERSION_MATCHER = re.compile(r'^version = "([^"]+)\.([^"]+)\.([^"]+)"$')
-VERSIONED_CATEGORIES = {"[package]", "[dependencies.indradb-lib]", "[dependencies.indradb-proto]"}
+VERSIONED_CATEGORIES = {
+    "[package]",
+    "[dependencies.indradb-lib]",
+    "[dependencies.indradb-proto]",
+}
 
-def run(args, cwd="."):
-    print("%s => %s" % (cwd, args))
+def run(*args, cwd="."):
+    print(f"{cwd} => {args}")
     subprocess.check_call(args, cwd=cwd)
 
 def update_version(path, new_version):
@@ -48,20 +52,20 @@ def main():
     update_version("server/Cargo.toml", new_version)
     update_version("client/Cargo.toml", new_version)
 
-    run(["make", "check", "test"])
+    run("make", "check", "test")
 
     # a github action will pickup this tag push and create a release
     new_version_str = "v{}".format(".".join(str(x) for x in new_version))
-    run(["git", "commit", "-a", "-m", new_version_str])
-    run(["git", "tag", "-a", new_version_str, "-m", new_version_str])
-    run(["git", "push", "origin", new_version_str])
+    run("git", "commit", "-a", "-m", new_version_str)
+    run("git", "tag", "-a", new_version_str, "-m", new_version_str)
+    run("git", "push", "origin", new_version_str)
 
-    run(["cargo", "publish"], cwd="lib")
+    run("cargo", "publish", cwd="lib")
     time.sleep(15) # wait for lib to be accessible on crates.io
-    run(["cargo", "publish"], cwd="proto")
+    run("cargo", "publish", cwd="proto")
     time.sleep(15) # wait for proto to be accessible on crates.io
-    run(["cargo", "publish"], cwd="server")
-    run(["cargo", "publish"], cwd="client")
+    run("cargo", "publish", cwd="server")
+    run("cargo", "publish", cwd="client")
 
 if __name__ == "__main__":
     main()
