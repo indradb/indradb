@@ -4,5 +4,6 @@ members = [
     "proto",
     "server",
     "client",
-    "plugins/hello_world"
+    "plugins/hello_world",
+    "plugins/testing"
 ]

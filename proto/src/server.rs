@@ -152,7 +152,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         for entry in fs::read_dir(plugin_path.as_ref())? {
             let entry = entry?;
             if entry.file_type()?.is_file() {
-                let library = Library::new(plugin_path.as_ref().as_os_str())?;
+                let library = Library::new(entry.path())?;
 
                 let func: libloading::Symbol<unsafe extern "C" fn() -> indradb::plugin::PluginDeclaration> =
                     library.get(b"register")?;
