@@ -402,7 +402,7 @@ impl Transaction {
     pub async fn set_vertex_properties(
         &mut self,
         q: indradb::VertexPropertyQuery,
-        value: &serde_json::Value,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetVertexProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)
@@ -461,7 +461,7 @@ impl Transaction {
     pub async fn set_edge_properties(
         &mut self,
         q: indradb::EdgePropertyQuery,
-        value: &serde_json::Value,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
         let request = crate::TransactionRequestVariant::SetEdgeProperties((q, value.clone()).into());
         Ok(self.request_single(request).await?.try_into()?)
