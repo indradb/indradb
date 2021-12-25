@@ -6,5 +6,6 @@ members = [
     "client",
     "plugins/hello_world",
     "plugins/map_reduce",
+    "plugins/map_reduce_vertex_count",
     "plugins/testing",
 ]

@@ -104,6 +104,10 @@ async fn run_all_tests(plugins_path: &str) -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
+    run_test(&mut client, "vertex_count", json!(null), json!(0)).await?;
+
+    run_test(&mut client, "vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
+
     Ok(())
 }
 

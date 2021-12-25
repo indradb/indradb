@@ -21,7 +21,11 @@ impl fmt::Display for VersionInfo {
 }
 
 pub trait Plugin: 'static + Send + Sync {
-    fn call(&self, datastore: Box<dyn crate::Transaction>, arg: serde_json::Value) -> crate::Result<serde_json::Value>;
+    fn call(
+        &self,
+        trans: Box<dyn crate::Transaction + Send>,
+        arg: serde_json::Value,
+    ) -> crate::Result<serde_json::Value>;
 }
 
 pub struct PluginDeclaration {

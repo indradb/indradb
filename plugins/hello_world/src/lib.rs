@@ -3,7 +3,7 @@ pub struct HelloWorldPlugin {}
 impl indradb::plugin::Plugin for HelloWorldPlugin {
     fn call(
         &self,
-        _datastore: Box<dyn indradb::Transaction>,
+        _datastore: Box<dyn indradb::Transaction + Send>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, indradb::Error> {
         let greeting = format!("hello, {}", arg);
