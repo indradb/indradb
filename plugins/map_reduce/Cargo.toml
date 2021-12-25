@@ -1,0 +1,13 @@
+[package]
+name = "map_reduce"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossbeam-channel = "0.5.1"
+indradb-lib = { path = "../../lib" }
+serde_json = "^1.0.57"
+threadpool = "1.8.1"
+uuid = "~0.8.2"
