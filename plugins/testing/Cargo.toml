@@ -1,5 +1,5 @@
 [package]
-name = "testing"
+name = "indradb-plugin-testing"
 version = "0.1.0"
 edition = "2021"
 
