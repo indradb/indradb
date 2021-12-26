@@ -9,7 +9,7 @@ keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "indradb_proto"
@@ -34,10 +34,7 @@ tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
 tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
 libloading = { version = "0.7", optional = true }
 indradb-plugin-host = { path = "../plugins/host", optional = true }
-
-[dependencies.indradb-lib]
-path = "../lib"
-version = "2.2.0"
+indradb-lib = { path = "../lib" }
 
 [build-dependencies]
 tonic-build = "0.5.2"
