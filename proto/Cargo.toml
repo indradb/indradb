@@ -17,7 +17,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["client"]
-server = ["tokio", "tokio-stream", "libloading", "indradb-lib/plugin"]
+server = ["tokio", "tokio-stream", "libloading", "indradb-plugin-host"]
 client = ["tokio", "tokio-stream"]
 bench-suite = ["indradb-lib/bench-suite", "test-suite"]
 test-suite = ["indradb-lib/test-suite", "client", "server"]
@@ -33,6 +33,7 @@ tonic = "0.5.2"
 tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
 tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
 libloading = { version = "0.7", optional = true }
+indradb-plugin-host = { path = "../plugins/host", optional = true }
 
 [dependencies.indradb-lib]
 path = "../lib"

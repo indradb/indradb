@@ -1,16 +1,12 @@
 [package]
-name = "indradb-plugin-hello-world"
+name = "indradb-plugin-host"
 version = "0.1.0"
-build = "build.rs"
 edition = "2021"
-
-[lib]
-crate-type = ["cdylib"]
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indradb-plugin-host = { path = "../host" }
 indradb-lib = { path = "../../lib" }
 serde_json = "^1.0.57"
 

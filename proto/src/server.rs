@@ -42,8 +42,8 @@ pub enum PluginError {
     Transport(TonicTransportError),
     VersionMismatch {
         library_path: PathBuf,
-        indradb_version_info: indradb::plugin::VersionInfo,
-        library_version_info: indradb::plugin::VersionInfo,
+        indradb_version_info: indradb_plugin_host::VersionInfo,
+        library_version_info: indradb_plugin_host::VersionInfo,
     },
 }
 
@@ -101,7 +101,7 @@ impl From<TonicTransportError> for PluginError {
 
 #[derive(Default)]
 struct Plugins {
-    entries: HashMap<String, Box<dyn indradb::plugin::Plugin>>,
+    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin>>,
     // Kept to ensure libraries aren't dropped
     #[allow(dead_code)]
     libraries: Vec<Library>,
@@ -147,14 +147,14 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         let mut libraries = Vec::new();
         let mut plugin_entries = HashMap::new();
 
-        let indradb_version_info = indradb::plugin::indradb_version_info();
+        let indradb_version_info = indradb_plugin_host::indradb_version_info();
 
         for entry in fs::read_dir(plugin_path.as_ref())? {
             let entry = entry?;
             if entry.file_type()?.is_file() {
                 let library = Library::new(entry.path())?;
 
-                let func: libloading::Symbol<unsafe extern "C" fn() -> indradb::plugin::PluginDeclaration> =
+                let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
                     library.get(b"register")?;
                 let decl = func();
 

@@ -26,7 +26,7 @@ impl indradb_plugin_map_reduce::MapReduceDriver for MapReduceVertexCountDriver {
 
 pub struct MapReduceVertexCountPlugin {}
 
-impl indradb::plugin::Plugin for MapReduceVertexCountPlugin {
+impl indradb_plugin_host::Plugin for MapReduceVertexCountPlugin {
     fn call(
         &self,
         trans: Box<dyn indradb::Transaction + Send>,
@@ -40,4 +40,4 @@ impl indradb::plugin::Plugin for MapReduceVertexCountPlugin {
     }
 }
 
-indradb::register_plugins!(0, "vertex_count", Box::new(crate::MapReduceVertexCountPlugin {}));
+indradb_plugin_host::register_plugins!(0, "vertex_count", Box::new(crate::MapReduceVertexCountPlugin {}));

@@ -23,9 +23,9 @@ impl fmt::Display for VersionInfo {
 pub trait Plugin: 'static + Send + Sync {
     fn call(
         &self,
-        trans: Box<dyn crate::Transaction + Send>,
+        trans: Box<dyn indradb::Transaction + Send>,
         arg: serde_json::Value,
-    ) -> crate::Result<serde_json::Value>;
+    ) -> indradb::Result<serde_json::Value>;
 }
 
 pub struct PluginDeclaration {
@@ -36,20 +36,20 @@ pub struct PluginDeclaration {
 #[macro_export]
 macro_rules! register_plugins {
     ( $indradb_interface_version:expr, $( $name:expr, $t:expr ),* ) => {
-        use indradb::plugin::PluginDeclaration;
+        use indradb_plugin_host::PluginDeclaration;
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn register() -> indradb::plugin::PluginDeclaration {
+        pub unsafe extern "C" fn register() -> indradb_plugin_host::PluginDeclaration {
             use std::collections::HashMap;
             let mut entries = HashMap::new();
             $(
                 {
-                    let t: Box<dyn indradb::plugin::Plugin> = $t;
+                    let t: Box<dyn indradb_plugin_host::Plugin> = $t;
                     entries.insert($name.to_string(), t);
                 }
             )*
             PluginDeclaration {
-                version_info: indradb::plugin::VersionInfo {
+                version_info: indradb_plugin_host::VersionInfo {
                     // TODO: ensure env! executes at macro expansion time
                     rustc: env!("RUSTC_VERSION").to_string(),
                     indradb_interface: $indradb_interface_version,

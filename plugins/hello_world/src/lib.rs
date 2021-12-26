@@ -1,6 +1,6 @@
 pub struct HelloWorldPlugin {}
 
-impl indradb::plugin::Plugin for HelloWorldPlugin {
+impl indradb_plugin_host::Plugin for HelloWorldPlugin {
     fn call(
         &self,
         _datastore: Box<dyn indradb::Transaction + Send>,
@@ -11,4 +11,4 @@ impl indradb::plugin::Plugin for HelloWorldPlugin {
     }
 }
 
-indradb::register_plugins!(0, "hello_world", Box::new(crate::HelloWorldPlugin {}));
+indradb_plugin_host::register_plugins!(0, "hello_world", Box::new(crate::HelloWorldPlugin {}));

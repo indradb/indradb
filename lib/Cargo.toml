@@ -8,7 +8,6 @@ repository = "https://github.com/indradb/indradb"
 keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
-build = "build.rs"
 edition = "2018"
 
 [lib]
@@ -20,7 +19,6 @@ default = []
 rocksdb-datastore = ["rocksdb"]
 test-suite = []
 bench-suite = []
-plugin = []
 
 [dependencies]
 byteorder = "^1.4.2"
@@ -34,6 +32,3 @@ uuid = { version = "~0.8.2", features = ["v1", "serde"] }
 
 # Rocksdb dependencies
 rocksdb = { version = "0.17.0", optional = true }
-
-[build-dependencies]
-rustc_version = "0.4.0"

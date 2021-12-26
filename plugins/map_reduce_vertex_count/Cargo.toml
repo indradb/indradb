@@ -10,7 +10,8 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indradb-lib = { path = "../../lib", features = ["plugin"] }
+indradb-lib = { path = "../../lib" }
+indradb-plugin-host = { path = "../host" }
 indradb-plugin-map-reduce = { path = "../map_reduce" }
 serde_json = "^1.0.57"
 
