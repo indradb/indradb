@@ -9,6 +9,7 @@ keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 edition = "2021"
+readme = "../README.md"
 
 [[bin]]
 name = "indradb-client"

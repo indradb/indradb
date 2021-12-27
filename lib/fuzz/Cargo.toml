@@ -1,4 +1,3 @@
-
 [package]
 name = "indradb-lib-fuzz"
 version = "0.0.0"
