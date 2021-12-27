@@ -39,7 +39,7 @@ fn populate_plugins(plugins_dest_path: &Path) -> Result<(), Box<dyn Error>> {
     let mut plugins = Vec::<String>::new();
     for entry in fs::read_dir("plugins")? {
         let entry = entry?;
-        if entry.file_name() != "testing" {
+        if entry.file_name() != "testing" && entry.file_name() != "host" {
             plugins.push(entry.file_name().into_string().unwrap());
         }
     }
