@@ -321,6 +321,15 @@ message SetEdgePropertiesRequest {
     Json value = 2;
 }
 
+message ExecutePluginRequest {
+    string name = 1;
+    Json arg = 2;
+}
+
+message ExecutePluginResponse {
+    Json value = 1;
+}
+
 message TransactionRequest {
     uint32 request_id = 1;
 
@@ -439,4 +448,6 @@ service IndraDB {
     // Enables indexing on a specified property. When indexing is enabled on a
     // property, it's possible to query on its presence and values.
     rpc IndexProperty(IndexPropertyRequest) returns (google.protobuf.Empty);
+
+    rpc ExecutePlugin(ExecutePluginRequest) returns (ExecutePluginResponse);
 }
