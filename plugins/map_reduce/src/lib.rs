@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crossbeam_channel::{select, bounded, unbounded};
 use threadpool::ThreadPool;
 
 const DEFAULT_NUM_WORKERS: usize = 8;
@@ -31,8 +30,8 @@ pub fn map_reduce<D: MapReduceDriver>(
     trans: Box<dyn indradb::Transaction + Send>,
 ) -> Result<serde_json::Value, indradb::Error> {
     let pool = ThreadPool::new(min(driver.num_workers(), 2));
-    let (shutdown_sender, shutdown_receiver) = bounded::<()>(1);
-    let (sender, receiver) = unbounded::<Result<serde_json::Value, indradb::Error>>();
+    let (shutdown_sender, shutdown_receiver) = crossbeam_channel::bounded::<()>(1);
+    let (sender, receiver) = crossbeam_channel::unbounded::<Result<serde_json::Value, indradb::Error>>();
 
     {
         let driver = driver.clone();
@@ -85,17 +84,16 @@ pub fn map_reduce<D: MapReduceDriver>(
     let mut reducibles = Vec::<serde_json::Value>::new();
     let mut final_err = Option::<indradb::Error>::None;
     loop {
-        select! {
-            recv(receiver) -> msg => match msg.unwrap() {
+        if let Ok(msg) = receiver.recv_timeout(Duration::from_millis(100)) {
+            match msg {
                 Ok(value) => reducibles.push(value),
                 Err(err) => {
                     shutdown_sender.send(()).unwrap();
                     final_err = Some(err);
                     break;
                 }
-            },
-            default(Duration::from_millis(100)) => {}
-        };
+            }
+        }
 
         let is_idle = pool.active_count() == 0 && receiver.is_empty();
 
