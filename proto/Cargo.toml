@@ -10,6 +10,7 @@ categories = ["database", "database-implementations"]
 license = "MPL-2.0"
 build = "build.rs"
 edition = "2021"
+readme = "../README.md"
 
 [lib]
 name = "indradb_proto"
