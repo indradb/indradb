@@ -107,7 +107,21 @@ async fn run_all_tests(plugins_path: &str) -> Result<(), Box<dyn Error>> {
     .await?;
 
     run_test(&mut client, "vertex_count", json!(null), json!(0)).await?;
-
+    run_test(&mut client, "vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
+    client.bulk_insert(vec![
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("1").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("2").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("3").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("4").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("5").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("6").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("7").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("8").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("9").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("10").unwrap())),
+        indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("11").unwrap())),
+    ]).await?;
+    run_test(&mut client, "vertex_count", json!(null), json!(11)).await?;
     run_test(&mut client, "vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
 
     Ok(())

@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+indradb-lib = { path = "../../lib" }
 indradb-proto = { path = "../../proto" }
 serde_json = "^1.0.57"
 tempdir = "0.3.7"
