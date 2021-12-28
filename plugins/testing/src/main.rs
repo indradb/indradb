@@ -1,30 +1,24 @@
 use std::error::Error;
 use std::fs;
-use std::io::{self, BufRead};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command};
 
 use serde_json::json;
 use tempdir::TempDir;
 use tokio::time::{sleep, Duration};
-use tonic::transport::Endpoint;
 
 struct Server {
-    child: Child,
-    address: String,
+    child: Child
 }
 
 impl Server {
     pub fn start(plugins_dest_path: &str) -> Result<Self, Box<dyn Error>> {
-        let mut child = Command::new("target/debug/indradb-server")
-            .args(["--address", "127.0.0.1:0", "-p", plugins_dest_path, "memory"])
+        let child = Command::new("target/debug/indradb-server")
+            .args(["-p", plugins_dest_path, "memory"])
             .env("RUST_BACKTRACE", "1")
-            .stdout(Stdio::piped())
             .spawn()?;
 
-        let mut lines = io::BufReader::new(child.stdout.take().unwrap()).lines();
-        let address = lines.next().unwrap()?;
-        Ok(Server { child, address })
+        Ok(Server { child })
     }
 }
 
@@ -61,6 +55,34 @@ fn populate_plugins(plugins_dest_path: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+async fn get_client() -> Result<indradb_proto::Client, indradb_proto::ClientError> {
+    let mut client = indradb_proto::Client::new("grpc://127.0.0.1:27615".try_into().unwrap()).await?;
+    client.ping().await?;
+    Ok(client)
+}
+
+async fn get_client_retrying() -> Result<indradb_proto::Client, indradb_proto::ClientError> {
+    let mut retry_count = 10u8;
+    let mut last_err = Option::<indradb_proto::ClientError>::None;
+
+    while retry_count > 0 {
+        match get_client().await {
+            Ok(client) => return Ok(client),
+            Err(err) => {
+                last_err = Some(err);
+                if retry_count == 0 {
+                    break;
+                } else {
+                    sleep(Duration::from_secs(1)).await;
+                    retry_count -= 1;
+                }
+            }
+        }
+    }
+
+    Err(last_err.unwrap())
+}
+
 async fn run_test(
     client: &mut indradb_proto::Client,
     name: &str,
@@ -73,28 +95,8 @@ async fn run_test(
 }
 
 async fn run_all_tests(plugins_path: &str) -> Result<(), Box<dyn Error>> {
-    let server = Server::start(plugins_path)?;
-    let endpoint: Endpoint = server.address.clone().try_into()?;
-    let mut client = indradb_proto::Client::new(endpoint).await?;
-    let mut last_err: Option<indradb_proto::ClientError> = None;
-
-    for i in 0..10 {
-        sleep(Duration::from_secs(1)).await;
-        match client.ping().await {
-            Ok(_) => {
-                last_err = None;
-                break;
-            }
-            Err(err) => {
-                last_err = Some(err);
-                eprintln!("waiting for server [{}]", i + 1);
-            }
-        };
-    }
-    if let Some(err) = last_err {
-        eprintln!("server failed to start after a few seconds");
-        return Err(Box::new(err));
-    }
+    let _server = Server::start(plugins_path)?;
+    let mut client = get_client_retrying().await?;
 
     run_test(
         &mut client,

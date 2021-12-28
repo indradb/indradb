@@ -36,7 +36,11 @@ impl indradb_plugin_host::Plugin for MapReduceVertexCountPlugin {
             .get("t_filter")
             .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap());
         let driver = MapReduceVertexCountDriver { t_filter };
-        indradb_plugin_map_reduce::map_reduce(Arc::new(driver), trans)
+
+        match indradb_plugin_map_reduce::map_reduce(Arc::new(driver), trans)? {
+            serde_json::Value::Null => Ok(json!(0)),
+            value => Ok(value),
+        }
     }
 }
 
