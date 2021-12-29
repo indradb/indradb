@@ -42,7 +42,6 @@ def main():
         raise Exception("Invalid version specification")
 
     update_version("lib/Cargo.toml", new_version)
-    update_version("plugin/Cargo.toml", new_version)
     update_version("proto/Cargo.toml", new_version)
     update_version("server/Cargo.toml", new_version)
     update_version("client/Cargo.toml", new_version)
