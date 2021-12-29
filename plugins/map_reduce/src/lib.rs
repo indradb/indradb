@@ -1,5 +1,5 @@
 use std::cmp::max;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
@@ -33,6 +33,7 @@ pub fn map_reduce<D: MapReduceDriver>(
     let pool = ThreadPool::new(max(driver.num_workers(), 2));
     let (sender, receiver) = mpsc::channel::<Result<serde_json::Value, indradb::Error>>();
     let shutdown = Arc::new(AtomicBool::new(false));
+    let tasks = Arc::new(AtomicU64::new(1));
 
     {
         let driver = driver.clone();
@@ -41,13 +42,14 @@ pub fn map_reduce<D: MapReduceDriver>(
         let pool_clone = pool.clone();
         let sender = sender.clone();
         let shutdown = shutdown.clone();
+        let tasks = tasks.clone();
 
         pool.execute(move || {
             let mut last_id: Option<uuid::Uuid> = None;
 
             loop {
                 if shutdown.load(Ordering::Relaxed) {
-                    return;
+                    break;
                 }
 
                 let q = indradb::RangeVertexQuery {
@@ -60,9 +62,11 @@ pub fn map_reduce<D: MapReduceDriver>(
                     Ok(value) => value,
                     Err(err) => {
                         sender.send(Err(err)).unwrap();
-                        return;
+                        break;
                     }
                 };
+
+                tasks.fetch_add(vertices.len() as u64, Ordering::Relaxed);
 
                 let is_last_query = vertices.len() < query_limit as usize;
                 if let Some(last_vertex) = vertices.last() {
@@ -76,9 +80,11 @@ pub fn map_reduce<D: MapReduceDriver>(
                 }
 
                 if is_last_query {
-                    return;
+                    break;
                 }
             }
+
+            tasks.fetch_sub(1, Ordering::Relaxed);
         });
     }
 
@@ -86,8 +92,8 @@ pub fn map_reduce<D: MapReduceDriver>(
     let mut reducibles = Vec::<serde_json::Value>::new();
     let mut final_err = Option::<indradb::Error>::None;
     loop {
-        let mut is_idle = false;
-        if let Ok(msg) = receiver.recv_timeout(Duration::from_millis(100)) {
+        let is_idle = if let Ok(msg) = receiver.recv_timeout(Duration::from_millis(100)) {
+            tasks.fetch_sub(1, Ordering::Relaxed);
             match msg {
                 Ok(value) => reducibles.push(value),
                 Err(err) => {
@@ -96,11 +102,13 @@ pub fn map_reduce<D: MapReduceDriver>(
                     break;
                 }
             }
+            false
         } else {
-            is_idle = pool.active_count() == 0;
-        }
+            tasks.load(Ordering::Relaxed) == 0
+        };
 
         if reducibles.len() >= reducer_chunk_size || (is_idle && reducibles.len() > 1) {
+            tasks.fetch_add(1, Ordering::Relaxed);
             let reducibles_chunk: Vec<serde_json::Value> = reducibles.drain(..).collect();
             let driver = driver.clone();
             let sender = sender.clone();
