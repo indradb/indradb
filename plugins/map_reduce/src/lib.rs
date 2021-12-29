@@ -1,5 +1,6 @@
-use std::cmp::min;
-use std::sync::Arc;
+use std::cmp::max;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
 use threadpool::ThreadPool;
@@ -29,22 +30,23 @@ pub fn map_reduce<D: MapReduceDriver>(
     driver: Arc<D>,
     trans: Box<dyn indradb::Transaction + Send>,
 ) -> Result<serde_json::Value, indradb::Error> {
-    let pool = ThreadPool::new(min(driver.num_workers(), 2));
-    let (shutdown_sender, shutdown_receiver) = crossbeam_channel::bounded::<()>(1);
-    let (sender, receiver) = crossbeam_channel::unbounded::<Result<serde_json::Value, indradb::Error>>();
+    let pool = ThreadPool::new(max(driver.num_workers(), 2));
+    let (sender, receiver) = mpsc::channel::<Result<serde_json::Value, indradb::Error>>();
+    let shutdown = Arc::new(AtomicBool::new(false));
 
     {
         let driver = driver.clone();
-        let query_limit = min(driver.query_limit(), 1);
+        let query_limit = max(driver.query_limit(), 1);
         let t_filter = driver.t_filter();
         let pool_clone = pool.clone();
         let sender = sender.clone();
+        let shutdown = shutdown.clone();
 
         pool.execute(move || {
             let mut last_id: Option<uuid::Uuid> = None;
 
             loop {
-                if let Ok(()) = shutdown_receiver.try_recv() {
+                if shutdown.load(Ordering::Relaxed) {
                     return;
                 }
 
@@ -80,22 +82,23 @@ pub fn map_reduce<D: MapReduceDriver>(
         });
     }
 
-    let reducer_chunk_size = min(driver.reducer_chunk_size() as usize, 2);
+    let reducer_chunk_size = max(driver.reducer_chunk_size() as usize, 2);
     let mut reducibles = Vec::<serde_json::Value>::new();
     let mut final_err = Option::<indradb::Error>::None;
     loop {
+        let mut is_idle = false;
         if let Ok(msg) = receiver.recv_timeout(Duration::from_millis(100)) {
             match msg {
                 Ok(value) => reducibles.push(value),
                 Err(err) => {
-                    shutdown_sender.send(()).unwrap();
+                    shutdown.store(true, Ordering::Relaxed);
                     final_err = Some(err);
                     break;
                 }
             }
+        } else {
+            is_idle = pool.active_count() == 0;
         }
-
-        let is_idle = pool.active_count() == 0 && receiver.is_empty();
 
         if reducibles.len() >= reducer_chunk_size || (is_idle && reducibles.len() > 1) {
             let reducibles_chunk: Vec<serde_json::Value> = reducibles.drain(..).collect();
