@@ -137,11 +137,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `items`: The items to insert.
-    pub async fn bulk_insert<I>(&mut self, items: I) -> Result<(), ClientError>
-    where
-        I: Iterator<Item = indradb::BulkInsertItem>,
-    {
-        let items: Vec<indradb::BulkInsertItem> = items.collect();
+    pub async fn bulk_insert(&mut self, items: Vec<indradb::BulkInsertItem>) -> Result<(), ClientError> {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
             for item in items.into_iter() {
@@ -162,12 +158,11 @@ impl Client {
         Ok(Transaction::new(tx, response.into_inner()))
     }
 
-    pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
-        self.0
-            .index_property(Request::new(crate::IndexPropertyRequest {
-                name: Some(name.into().into()),
-            }))
-            .await?;
+    pub async fn index_property(&mut self, name: indradb::Identifier) -> Result<(), ClientError> {
+        let request = Request::new(crate::IndexPropertyRequest {
+            name: Some(name.into()),
+        });
+        self.0.index_property(request).await?;
         Ok(())
     }
 }

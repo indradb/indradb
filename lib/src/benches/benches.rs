@@ -27,7 +27,7 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
         let q = SpecificVertexQuery::single(id);
-        trans.get_vertices(q).unwrap();
+        trans.get_vertices(q.into()).unwrap();
     });
 }
 
@@ -67,7 +67,7 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     b.iter(|| {
         let trans = datastore.transaction().unwrap();
         let q = SpecificEdgeQuery::single(key.clone());
-        trans.get_edges(q).unwrap();
+        trans.get_edges(q.into()).unwrap();
     });
 }
 
@@ -130,6 +130,6 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, datastore: &mut D) {
     }
 
     b.iter(|| {
-        datastore.bulk_insert(items.clone().into_iter()).unwrap();
+        datastore.bulk_insert(items.clone()).unwrap();
     });
 }
