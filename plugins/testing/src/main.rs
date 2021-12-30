@@ -106,8 +106,8 @@ async fn run_all_tests(plugins_path: &str) -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
-    run_test(&mut client, "vertex_count", json!(null), json!(0)).await?;
-    run_test(&mut client, "vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
+    run_test(&mut client, "naive_vertex_count", json!(null), json!(0)).await?;
+    run_test(&mut client, "naive_vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
     client
         .bulk_insert(vec![
             indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("1").unwrap())),
@@ -123,8 +123,8 @@ async fn run_all_tests(plugins_path: &str) -> Result<(), Box<dyn Error>> {
             indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("11").unwrap())),
         ])
         .await?;
-    run_test(&mut client, "vertex_count", json!(null), json!(11)).await?;
-    run_test(&mut client, "vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
+    run_test(&mut client, "naive_vertex_count", json!(null), json!(11)).await?;
+    run_test(&mut client, "naive_vertex_count", json!({"t_filter": "foo"}), json!(0)).await?;
 
     Ok(())
 }

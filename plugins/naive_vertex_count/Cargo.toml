@@ -1,5 +1,5 @@
 [package]
-name = "indradb-plugin-map-reduce-vertex-count"
+name = "indradb-plugin-naive-vertex-count"
 version = "0.1.0"
 build = "build.rs"
 edition = "2021"
@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 [dependencies]
 indradb-lib = { path = "../../lib" }
 indradb-plugin-host = { path = "../host" }
-indradb-plugin-map-reduce = { path = "../map_reduce" }
+indradb-plugin-map-util = { path = "../map_util" }
 serde_json = "^1.0.57"
 
 [build-dependencies]
