@@ -12,7 +12,6 @@ crate-type = ["cdylib"]
 [dependencies]
 indradb-lib = { path = "../../lib" }
 indradb-plugin-host = { path = "../host" }
-indradb-plugin-map-util = { path = "../map_util" }
 serde_json = "^1.0.57"
 
 [build-dependencies]

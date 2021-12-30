@@ -1,3 +1,5 @@
+pub mod util;
+
 use std::collections::HashMap;
 use std::fmt;
 

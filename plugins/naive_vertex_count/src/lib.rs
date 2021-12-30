@@ -1,12 +1,14 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+use indradb_plugin_host as plugin;
+
 struct NaiveVertexCountMapper {
     count: AtomicU64,
     t_filter: Option<indradb::Identifier>,
 }
 
-impl indradb_plugin_map_util::VertexMapper for NaiveVertexCountMapper {
+impl plugin::util::VertexMapper for NaiveVertexCountMapper {
     fn t_filter(&self) -> Option<indradb::Identifier> {
         self.t_filter.clone()
     }
@@ -19,7 +21,7 @@ impl indradb_plugin_map_util::VertexMapper for NaiveVertexCountMapper {
 
 pub struct NaiveVertexCountPlugin {}
 
-impl indradb_plugin_host::Plugin for NaiveVertexCountPlugin {
+impl plugin::Plugin for NaiveVertexCountPlugin {
     fn call(
         &self,
         trans: Box<dyn indradb::Transaction + Send>,
@@ -32,10 +34,10 @@ impl indradb_plugin_host::Plugin for NaiveVertexCountPlugin {
                 .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap()),
         });
 
-        indradb_plugin_map_util::map(mapper.clone(), trans)?;
+        plugin::util::map(mapper.clone(), trans)?;
         let count = mapper.count.load(Ordering::Relaxed);
         Ok(count.into())
     }
 }
 
-indradb_plugin_host::register_plugins!(0, "naive_vertex_count", Box::new(crate::NaiveVertexCountPlugin {}));
+plugin::register_plugins!(0, "naive_vertex_count", Box::new(crate::NaiveVertexCountPlugin {}));
