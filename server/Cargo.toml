@@ -21,3 +21,6 @@ tonic = "0.5.2"
 tokio = { version = "1.11.0", features = ["macros", "rt-multi-thread"] }
 indradb-lib = { path = "../lib", features = ["rocksdb-datastore"] }
 indradb-proto = { path = "../proto", features = ["server"] }
+
+[dev-dependencies]
+serde_json = "^1.0.57"

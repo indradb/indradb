@@ -3,7 +3,6 @@ extern crate clap;
 mod cli;
 
 use std::error::Error;
-use std::ffi::OsString;
 use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::sync::Arc;
@@ -16,7 +15,7 @@ use tokio::net::TcpListener;
 async fn run_server<D, T>(
     datastore: D,
     listener: TcpListener,
-    plugin_path: Option<OsString>,
+    plugin_path: &Option<String>,
 ) -> Result<(), Box<dyn Error>>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
@@ -58,7 +57,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
 
             let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
-            run_server(datastore, listener, args.plugin_path).await
+            run_server(datastore, listener, &args.plugin_path).await
         }
         CliDatastoreArgs::Memory { path } => {
             let datastore = match path {
@@ -66,7 +65,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read(path)?,
                 Some(path) => indradb::MemoryDatastore::create(path)?,
             };
-            run_server(datastore, listener, args.plugin_path).await
+            run_server(datastore, listener, &args.plugin_path).await
         }
     }
 }

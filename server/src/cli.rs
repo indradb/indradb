@@ -4,7 +4,7 @@ use std::ffi::OsString;
 pub struct CliArgs {
     pub addr: String,
     pub datastore_args: CliDatastoreArgs,
-    pub plugin_path: Option<OsString>,
+    pub plugin_path: Option<String>,
 }
 
 pub enum CliDatastoreArgs {
@@ -101,6 +101,6 @@ pub fn parse_cli_args() -> CliArgs {
         } else {
             CliDatastoreArgs::Memory { path: None }
         },
-        plugin_path: matches.value_of_os(PLUGIN_PATH).map(|s| s.to_os_string()),
+        plugin_path: matches.value_of(PLUGIN_PATH).map(|s| s.to_string()),
     }
 }

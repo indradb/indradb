@@ -166,13 +166,13 @@ impl Client {
         Ok(())
     }
 
-    pub async fn execute_plugin(
+    pub async fn execute_plugin<S: Into<String>>(
         &mut self,
-        name: String,
+        name: S,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, ClientError> {
         let request = Request::new(crate::ExecutePluginRequest {
-            name,
+            name: name.into(),
             arg: Some(arg.into()),
         });
         let response = self.0.execute_plugin(request).await?;

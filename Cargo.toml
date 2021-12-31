@@ -8,5 +8,4 @@ members = [
     "plugins/hello_world",
     "plugins/host",
     "plugins/naive_vertex_count",
-    "plugins/testing",
 ]
