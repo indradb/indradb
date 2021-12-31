@@ -433,11 +433,13 @@ impl Datastore for MemoryDatastore {
 
     fn sync(&self) -> Result<()> {
         if let Some(ref persist_path) = self.path {
-            let temp_path = NamedTempFile::new()?;
+            let temp_path = NamedTempFile::new().map_err(|err| Error::Datastore { inner: Box::new(err) })?;
             let buf = BufWriter::new(temp_path.as_file());
             let datastore = self.datastore.read().unwrap();
             bincode::serialize_into(buf, &*datastore)?;
-            temp_path.persist(persist_path)?;
+            temp_path
+                .persist(persist_path)
+                .map_err(|err| Error::Datastore { inner: Box::new(err) })?;
         }
         Ok(())
     }
