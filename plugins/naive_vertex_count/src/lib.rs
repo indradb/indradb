@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -14,7 +13,7 @@ impl plugin::util::VertexMapper for NaiveVertexCountMapper {
         self.t_filter.clone()
     }
 
-    fn map(&self, _vertex: indradb::Vertex) -> Result<(), Box<dyn Error + Send>> {
+    fn map(&self, _vertex: indradb::Vertex) -> Result<(), plugin::Error> {
         self.count.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
@@ -27,7 +26,7 @@ impl plugin::Plugin for NaiveVertexCountPlugin {
         &self,
         trans: Box<dyn indradb::Transaction + Send + Sync + 'static>,
         arg: serde_json::Value,
-    ) -> Result<serde_json::Value, Box<dyn Error>> {
+    ) -> Result<serde_json::Value, plugin::Error> {
         let mapper = Arc::new(NaiveVertexCountMapper {
             count: AtomicU64::new(0),
             t_filter: arg

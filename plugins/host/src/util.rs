@@ -1,6 +1,7 @@
 use std::cmp::max;
-use std::error::Error;
 use std::sync::{Arc, Mutex};
+
+use crate::errors::Error;
 
 use threadpool::ThreadPool;
 
@@ -17,17 +18,17 @@ pub trait VertexMapper: Send + Sync + 'static {
     fn t_filter(&self) -> Option<indradb::Identifier> {
         None
     }
-    fn map(&self, vertex: indradb::Vertex) -> Result<(), Box<dyn Error + Send>>;
+    fn map(&self, vertex: indradb::Vertex) -> Result<(), Error>;
 }
 
 pub fn map<M: VertexMapper>(
     mapper: Arc<M>,
     trans: Arc<Box<dyn indradb::Transaction + Send + Sync + 'static>>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Error> {
     let pool = ThreadPool::new(max(mapper.num_workers(), 2));
     let query_limit = max(mapper.query_limit(), 1);
     let t_filter = mapper.t_filter();
-    let last_err: Arc<Mutex<Option<Box<dyn Error + Send>>>> = Arc::new(Mutex::new(None));
+    let last_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
     let mut last_id: Option<uuid::Uuid> = None;
 
     loop {
@@ -44,7 +45,7 @@ pub fn map<M: VertexMapper>(
         let vertices = match trans.get_vertices(q.into()) {
             Ok(value) => value,
             Err(err) => {
-                *last_err.lock().unwrap() = Some(Box::new(err));
+                *last_err.lock().unwrap() = Some(err.into());
                 break;
             }
         };
