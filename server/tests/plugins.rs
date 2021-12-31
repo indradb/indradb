@@ -15,7 +15,7 @@ struct Server {
 
 impl Server {
     pub fn start(plugins_dest_path: &str) -> Result<Self, Box<dyn Error>> {
-        let child = Command::new("target/debug/indradb-server")
+        let child = Command::new("../target/debug/indradb-server")
             .args(["-p", plugins_dest_path, "memory"])
             .env("RUST_BACKTRACE", "1")
             .spawn()?;
@@ -69,9 +69,9 @@ async fn run_test(
     Ok(())
 }
 
-#[tokio::main]
-pub async fn main() {
-    let _server = Server::start(&format!("target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
+#[tokio::test]
+pub async fn plugins() {
+    let _server = Server::start(&format!("../target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
     let mut client = get_client_retrying().await.unwrap();
 
     run_test(
