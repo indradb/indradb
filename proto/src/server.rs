@@ -255,7 +255,9 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
             let response = {
                 let trans = map_indradb_result(self.datastore.clone().transaction())?;
-                map_indradb_result(plugin.call(Box::new(trans), arg))?
+                plugin
+                    .call(Box::new(trans), arg)
+                    .map_err(|err| Status::internal(format!("{}", err)))?
             };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),

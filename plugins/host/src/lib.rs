@@ -1,6 +1,7 @@
 pub mod util;
 
 use std::collections::HashMap;
+use std::error::Error;
 use std::fmt;
 
 pub fn indradb_version_info() -> VersionInfo {
@@ -22,12 +23,12 @@ impl fmt::Display for VersionInfo {
     }
 }
 
-pub trait Plugin: 'static + Send + Sync {
+pub trait Plugin: Send + Sync + 'static {
     fn call(
         &self,
-        trans: Box<dyn indradb::Transaction + Send>,
+        trans: Box<dyn indradb::Transaction + Send + Sync + 'static>,
         arg: serde_json::Value,
-    ) -> indradb::Result<serde_json::Value>;
+    ) -> Result<serde_json::Value, Box<dyn Error>>;
 }
 
 pub struct PluginDeclaration {

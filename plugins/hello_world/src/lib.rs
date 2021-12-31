@@ -1,11 +1,13 @@
+use std::error::Error;
+
 pub struct HelloWorldPlugin {}
 
 impl indradb_plugin_host::Plugin for HelloWorldPlugin {
     fn call(
         &self,
-        _datastore: Box<dyn indradb::Transaction + Send>,
+        _datastore: Box<dyn indradb::Transaction + Send + Sync + 'static>,
         arg: serde_json::Value,
-    ) -> Result<serde_json::Value, indradb::Error> {
+    ) -> Result<serde_json::Value, Box<dyn Error>> {
         let greeting = format!("hello, {}", arg);
         Ok(serde_json::Value::String(greeting))
     }
