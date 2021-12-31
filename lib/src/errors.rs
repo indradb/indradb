@@ -1,29 +1,20 @@
 use std::error::Error as StdError;
 use std::fmt;
-use std::io::Error as IoError;
 use std::result::Result as StdResult;
 
 use bincode::Error as BincodeError;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
-use tempfile::PersistError as TempFilePersistError;
 
 /// An error triggered by the datastore
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
-    /// Json (de-)serialization failed
-    Json {
-        inner: JsonError,
-    },
-
     UuidTaken,
 
     /// An error occurred in the underlying datastore
-    Datastore {
-        inner: Box<dyn StdError + Send + Sync>,
-    },
+    Datastore(Box<dyn StdError + Send + Sync>),
 
     /// A query occurred on a property that isn't indexed
     NotIndexed,
@@ -35,8 +26,7 @@ pub enum Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
-            Error::Json { ref inner } => Some(inner),
-            Error::Datastore { ref inner } => Some(&**inner),
+            Error::Datastore(ref err) => Some(&**err),
             _ => None,
         }
     }
@@ -45,9 +35,8 @@ impl StdError for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Json { ref inner } => write!(f, "json error: {}", inner),
             Error::UuidTaken => write!(f, "UUID already taken"),
-            Error::Datastore { ref inner } => write!(f, "error in the underlying datastore: {}", inner),
+            Error::Datastore(ref err) => write!(f, "error in the underlying datastore: {}", err),
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
             Error::Unsupported => write!(f, "functionality not supported"),
         }
@@ -56,32 +45,20 @@ impl fmt::Display for Error {
 
 impl From<JsonError> for Error {
     fn from(err: JsonError) -> Self {
-        Error::Json { inner: err }
-    }
-}
-
-impl From<IoError> for Error {
-    fn from(err: IoError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
+        Error::Datastore(Box::new(err))
     }
 }
 
 impl From<BincodeError> for Error {
     fn from(err: BincodeError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
+        Error::Datastore(Box::new(err))
     }
 }
 
 #[cfg(feature = "rocksdb-datastore")]
 impl From<RocksDbError> for Error {
     fn from(err: RocksDbError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
-    }
-}
-
-impl From<TempFilePersistError> for Error {
-    fn from(err: TempFilePersistError) -> Self {
-        Error::Datastore { inner: Box::new(err) }
+        Error::Datastore(Box::new(err))
     }
 }
 
