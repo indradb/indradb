@@ -58,37 +58,31 @@ async fn get_client_retrying() -> Result<indradb_proto::Client, indradb_proto::C
     Err(last_err.unwrap())
 }
 
-async fn run_test(
-    client: &mut indradb_proto::Client,
-    name: &str,
-    arg: serde_json::Value,
-    expected_response: serde_json::Value,
-) -> Result<(), Box<dyn Error>> {
-    let response = client.execute_plugin(name.to_string(), arg).await?;
-    assert_eq!(response, expected_response);
-    Ok(())
-}
-
 #[tokio::test]
 pub async fn plugins() {
     let _server = Server::start(&format!("../target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
     let mut client = get_client_retrying().await.unwrap();
 
-    run_test(
-        &mut client,
-        "hello_world",
-        json!("plugin tester"),
-        json!("hello, \"plugin tester\""),
-    )
-    .await
-    .unwrap();
+    assert_eq!(
+        client
+            .execute_plugin("hello_world", json!("plugin tester"))
+            .await
+            .unwrap(),
+        json!("hello, \"plugin tester\"")
+    );
 
-    run_test(&mut client, "naive_vertex_count", json!(null), json!(0))
-        .await
-        .unwrap();
-    run_test(&mut client, "naive_vertex_count", json!({"t_filter": "foo"}), json!(0))
-        .await
-        .unwrap();
+    assert_eq!(
+        client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
+        json!(0)
+    );
+    assert_eq!(
+        client
+            .execute_plugin("naive_vertex_count", json!({"t_filter": "foo"}))
+            .await
+            .unwrap(),
+        json!(0)
+    );
+
     client
         .bulk_insert(vec![
             indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("1").unwrap())),
@@ -105,10 +99,15 @@ pub async fn plugins() {
         ])
         .await
         .unwrap();
-    run_test(&mut client, "naive_vertex_count", json!(null), json!(11))
-        .await
-        .unwrap();
-    run_test(&mut client, "naive_vertex_count", json!({"t_filter": "foo"}), json!(0))
-        .await
-        .unwrap();
+    assert_eq!(
+        client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
+        json!(11)
+    );
+    assert_eq!(
+        client
+            .execute_plugin("naive_vertex_count", json!({"t_filter": "foo"}))
+            .await
+            .unwrap(),
+        json!(0)
+    );
 }
