@@ -12,7 +12,7 @@ macro_rules! define_bench {
     };
 }
 
-/// Use this macro to enable the standard benchmarking suite for transactions.
+/// Use this macro to enable the standard benchmarking suite for datastores.
 #[macro_export]
 macro_rules! full_bench_impl {
     ($code:expr) => {
