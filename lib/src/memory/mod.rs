@@ -31,7 +31,9 @@ fn should_serialize() {
 
     let datastore = MemoryDatastore::read(path.path()).unwrap();
     assert_eq!(datastore.get_vertex_count().unwrap(), 1);
-    let vertices = datastore.get_vertices(SpecificVertexQuery::new(vec![id]).into()).unwrap();
+    let vertices = datastore
+        .get_vertices(SpecificVertexQuery::new(vec![id]).into())
+        .unwrap();
     assert_eq!(vertices.len(), 1);
     assert_eq!(vertices[0].id, id);
     assert_eq!(vertices[0].t, Identifier::default());

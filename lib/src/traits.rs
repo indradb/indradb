@@ -13,7 +13,7 @@ use uuid::Uuid;
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
-pub trait Datastore: Sized {
+pub trait Datastore {
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
     fn sync(&self) -> Result<()> {
@@ -23,7 +23,10 @@ pub trait Datastore: Sized {
     /// Creates a new transaction. Some datastore implementations do not
     /// support transactional updates, in which case this will return an
     /// error.
-    fn transaction(&self) -> Result<Self> {
+    fn transaction(&self) -> Result<Self>
+    where
+        Self: Sized,
+    {
         Err(Error::Unsupported)
     }
 
