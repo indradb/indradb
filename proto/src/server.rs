@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::error::Error as StdError;
 use std::fmt;
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -35,11 +33,13 @@ fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T,
     res.map_err(|err| Status::invalid_argument(format!("{}", err)))
 }
 
+// TODO: rename
 #[derive(Debug)]
 pub enum PluginError {
-    Io(Box<io::Error>),
     LibLoading(libloading::Error),
     Transport(TonicTransportError),
+    Pattern(glob::PatternError),
+    Glob(glob::GlobError),
     VersionMismatch {
         library_path: PathBuf,
         indradb_version_info: indradb_plugin_host::VersionInfo,
@@ -50,9 +50,11 @@ pub enum PluginError {
 impl StdError for PluginError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
-            PluginError::Io(ref err) => Some(err),
+            // PluginError::Io(ref err) => Some(err),
             PluginError::LibLoading(ref err) => Some(err),
             PluginError::Transport(ref err) => Some(err),
+            PluginError::Pattern(ref err) => Some(err),
+            PluginError::Glob(ref err) => Some(err),
             _ => None,
         }
     }
@@ -61,9 +63,11 @@ impl StdError for PluginError {
 impl fmt::Display for PluginError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            PluginError::Io(ref err) => write!(f, "i/o error: {}", err),
+            // PluginError::Io(ref err) => write!(f, "i/o error: {}", err),
             PluginError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
             PluginError::Transport(ref err) => write!(f, "transport error: {}", err),
+            PluginError::Pattern(ref err) => write!(f, "pattern error: {}", err),
+            PluginError::Glob(ref err) => write!(f, "glob error: {}", err),
             PluginError::VersionMismatch {
                 ref library_path,
                 ref indradb_version_info,
@@ -81,12 +85,6 @@ impl fmt::Display for PluginError {
     }
 }
 
-impl From<io::Error> for PluginError {
-    fn from(err: io::Error) -> Self {
-        PluginError::Io(Box::new(err))
-    }
-}
-
 impl From<libloading::Error> for PluginError {
     fn from(err: libloading::Error) -> Self {
         PluginError::LibLoading(err)
@@ -96,6 +94,18 @@ impl From<libloading::Error> for PluginError {
 impl From<TonicTransportError> for PluginError {
     fn from(err: TonicTransportError) -> Self {
         PluginError::Transport(err)
+    }
+}
+
+impl From<glob::PatternError> for PluginError {
+    fn from(err: glob::PatternError) -> Self {
+        PluginError::Pattern(err)
+    }
+}
+
+impl From<glob::GlobError> for PluginError {
+    fn from(err: glob::GlobError) -> Self {
+        PluginError::Glob(err)
     }
 }
 
@@ -135,7 +145,7 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
     ///
     /// # Arguments
     /// * `datastore`: The underlying datastore to use.
-    /// * `plugin_path`: Path to the plugins.
+    /// * `library_paths`: Paths to libraries to enable.
     ///
     /// # Errors
     /// This will return an error if the plugin(s) failed to load.
@@ -143,32 +153,29 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
     /// # Safety
     /// Loading and executing plugins is inherently unsafe. Only run libraries
     /// that you've vetted.
-    pub unsafe fn new_with_plugins<P: AsRef<Path>>(datastore: Arc<D>, plugin_path: P) -> Result<Self, PluginError> {
+    pub unsafe fn new_with_plugins(datastore: Arc<D>, library_paths: Vec<PathBuf>) -> Result<Self, PluginError> {
         let mut libraries = Vec::new();
         let mut plugin_entries = HashMap::new();
 
         let indradb_version_info = indradb_plugin_host::indradb_version_info();
 
-        for entry in fs::read_dir(plugin_path.as_ref())? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
-                let library = Library::new(entry.path())?;
+        for library_path in library_paths {
+            let library = Library::new(&library_path)?;
 
-                let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
-                    library.get(b"register")?;
-                let decl = func();
+            let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
+                library.get(b"register")?;
+            let decl = func();
 
-                if decl.version_info != indradb_version_info {
-                    return Err(PluginError::VersionMismatch {
-                        library_path: entry.path(),
-                        library_version_info: decl.version_info,
-                        indradb_version_info,
-                    });
-                }
-
-                plugin_entries.extend(decl.entries);
-                libraries.push(library);
+            if decl.version_info != indradb_version_info {
+                return Err(PluginError::VersionMismatch {
+                    library_path,
+                    library_version_info: decl.version_info,
+                    indradb_version_info,
+                });
             }
+
+            plugin_entries.extend(decl.entries);
+            libraries.push(library);
         }
 
         Ok(Self {
@@ -466,7 +473,8 @@ where
 /// # Arguments
 /// * `datastore`: The underlying datastore to use.
 /// * `listener`: The TCP listener to run the gRPC server on.
-/// * `plugin_path`: Path to the plugins.
+/// * `plugin_path_pattern`: A [glob](https://docs.rs/glob/0.3.0/glob/) to the
+///   plugin paths to be used.
 ///
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
@@ -475,17 +483,21 @@ where
 /// # Safety
 /// Loading and executing plugins is inherently unsafe. Only run libraries that
 /// you've vetted.
-pub async unsafe fn run_with_plugins<D, T, P>(
+pub async unsafe fn run_with_plugins<D, T>(
     datastore: Arc<D>,
     listener: TcpListener,
-    plugin_path: P,
+    plugin_path_pattern: &str,
 ) -> Result<(), PluginError>
 where
     D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
     T: indradb::Transaction + Send + Sync + 'static,
-    P: AsRef<Path>,
 {
-    let server = Server::new_with_plugins(datastore, plugin_path)?;
+    let mut plugin_paths = Vec::new();
+    for entry in glob::glob(plugin_path_pattern)? {
+        plugin_paths.push(entry?);
+    }
+
+    let server = Server::new_with_plugins(datastore, plugin_paths)?;
     let service = crate::indra_db_server::IndraDbServer::new(server);
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
