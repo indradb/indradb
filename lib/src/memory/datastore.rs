@@ -9,7 +9,7 @@ use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
     Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery, EdgeQuery, Identifier,
-    Json, NamedProperty, Transaction, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
+    Json, NamedProperty, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery, VertexQuery,
 };
 
 use bincode::Error as BincodeError;
@@ -429,8 +429,6 @@ impl MemoryDatastore {
 }
 
 impl Datastore for MemoryDatastore {
-    type Trans = MemoryTransaction;
-
     fn sync(&self) -> Result<()> {
         if let Some(ref persist_path) = self.path {
             let temp_path = NamedTempFile::new().map_err(|err| Error::Datastore(Box::new(err)))?;
@@ -444,20 +442,6 @@ impl Datastore for MemoryDatastore {
         Ok(())
     }
 
-    fn transaction(&self) -> Result<Self::Trans> {
-        Ok(MemoryTransaction {
-            datastore: Arc::clone(&self.datastore),
-        })
-    }
-}
-
-/// A transaction for manipulating in-memory datastores.
-#[derive(Debug)]
-pub struct MemoryTransaction {
-    datastore: Arc<RwLock<InternalMemoryDatastore>>,
-}
-
-impl Transaction for MemoryTransaction {
     fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
         let mut datastore = self.datastore.write().unwrap();
         let mut inserted = false;

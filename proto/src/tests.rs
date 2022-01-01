@@ -1,7 +1,7 @@
-//! Scaffolding for testing and benchmarking. This exposes implementations of
-//! Datastore and Transaction, so that the standard testing and benchmarking
-//! suite can be reused. Under the hood, they use tokio runtimes to call async
-//! functions from non-async functions.
+//! Scaffolding for testing and benchmarking. This exposes an implementation
+//! of Datastore, so that the standard testing and benchmarking suite can be
+//! reused. Under the hood, it uses a tokio runtime to call async functions
+//! from non-async functions.
 
 use std::cell::RefCell;
 use std::convert::TryInto;
@@ -59,15 +59,155 @@ impl ClientDatastore {
 }
 
 impl indradb::Datastore for ClientDatastore {
-    type Trans = ClientTransaction;
-
     fn sync(&self) -> Result<(), indradb::Error> {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
     }
 
-    fn transaction(&self) -> Result<ClientTransaction, indradb::Error> {
-        let trans = map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().transaction()))?;
-        Ok(ClientTransaction::new(trans, self.exec.clone()))
+    fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().create_vertex(v)),
+        )
+    }
+
+    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().create_vertex_from_type(t)),
+        )
+    }
+
+    fn get_vertices(&self, q: indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_vertices(q)),
+        )
+    }
+
+    fn delete_vertices(&self, q: indradb::VertexQuery) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().delete_vertices(q)),
+        )
+    }
+
+    fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_vertex_count()),
+        )
+    }
+
+    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().create_edge(e)))
+    }
+
+    fn get_edges(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get_edges(q)))
+    }
+
+    fn delete_edges(&self, q: indradb::EdgeQuery) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().delete_edges(q)),
+        )
+    }
+
+    fn get_edge_count(
+        &self,
+        id: Uuid,
+        t: Option<&indradb::Identifier>,
+        direction: indradb::EdgeDirection,
+    ) -> Result<u64, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_edge_count(id, t, direction)),
+        )
+    }
+
+    fn get_vertex_properties(
+        &self,
+        q: indradb::VertexPropertyQuery,
+    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_vertex_properties(q)),
+        )
+    }
+
+    fn get_all_vertex_properties(
+        &self,
+        q: indradb::VertexQuery,
+    ) -> Result<Vec<indradb::VertexProperties>, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_all_vertex_properties(q)),
+        )
+    }
+
+    fn set_vertex_properties(
+        &self,
+        q: indradb::VertexPropertyQuery,
+        value: serde_json::Value,
+    ) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().set_vertex_properties(q, value)),
+        )
+    }
+
+    fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().delete_vertex_properties(q)),
+        )
+    }
+
+    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_edge_properties(q)),
+        )
+    }
+
+    fn get_all_edge_properties(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::EdgeProperties>, indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().get_all_edge_properties(q)),
+        )
+    }
+
+    fn set_edge_properties(
+        &self,
+        q: indradb::EdgePropertyQuery,
+        value: serde_json::Value,
+    ) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().set_edge_properties(q, value)),
+        )
+    }
+
+    fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().delete_edge_properties(q)),
+        )
     }
 
     fn bulk_insert(&self, items: Vec<indradb::BulkInsertItem>) -> Result<(), indradb::Error> {
@@ -84,169 +224,6 @@ impl indradb::Datastore for ClientDatastore {
                 .borrow_mut()
                 .block_on(self.client.borrow_mut().index_property(name)),
         )
-    }
-}
-
-pub struct ClientTransaction {
-    trans: Rc<RefCell<crate::Transaction>>,
-    exec: Rc<RefCell<Runtime>>,
-}
-
-impl ClientTransaction {
-    fn new(trans: crate::Transaction, exec: Rc<RefCell<Runtime>>) -> Self {
-        ClientTransaction {
-            trans: Rc::new(RefCell::new(trans)),
-            exec,
-        }
-    }
-}
-
-impl indradb::Transaction for ClientTransaction {
-    fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().create_vertex(v)),
-        )
-    }
-
-    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().create_vertex_from_type(t)),
-        )
-    }
-
-    fn get_vertices(&self, q: indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.trans.borrow_mut().get_vertices(q)))
-    }
-
-    fn delete_vertices(&self, q: indradb::VertexQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().delete_vertices(q)),
-        )
-    }
-
-    fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_vertex_count()),
-        )
-    }
-
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.trans.borrow_mut().create_edge(e)))
-    }
-
-    fn get_edges(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.trans.borrow_mut().get_edges(q)))
-    }
-
-    fn delete_edges(&self, q: indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.trans.borrow_mut().delete_edges(q)))
-    }
-
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        t: Option<&indradb::Identifier>,
-        direction: indradb::EdgeDirection,
-    ) -> Result<u64, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_edge_count(id, t, direction)),
-        )
-    }
-
-    fn get_vertex_properties(
-        &self,
-        q: indradb::VertexPropertyQuery,
-    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_vertex_properties(q)),
-        )
-    }
-
-    fn get_all_vertex_properties(
-        &self,
-        q: indradb::VertexQuery,
-    ) -> Result<Vec<indradb::VertexProperties>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_all_vertex_properties(q)),
-        )
-    }
-
-    fn set_vertex_properties(
-        &self,
-        q: indradb::VertexPropertyQuery,
-        value: serde_json::Value,
-    ) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_vertex_properties(q, value)),
-        )
-    }
-
-    fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().delete_vertex_properties(q)),
-        )
-    }
-
-    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_edge_properties(q)),
-        )
-    }
-
-    fn get_all_edge_properties(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::EdgeProperties>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().get_all_edge_properties(q)),
-        )
-    }
-
-    fn set_edge_properties(
-        &self,
-        q: indradb::EdgePropertyQuery,
-        value: serde_json::Value,
-    ) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().set_edge_properties(q, value)),
-        )
-    }
-
-    fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.trans.borrow_mut().delete_edge_properties(q)),
-        )
-    }
-
-    fn bulk_insert(&self, _items: Vec<indradb::BulkInsertItem>) -> Result<(), indradb::Error> {
-        unimplemented!();
-    }
-
-    fn index_property(&self, _name: indradb::Identifier) -> Result<(), indradb::Error> {
-        unimplemented!();
     }
 }
 

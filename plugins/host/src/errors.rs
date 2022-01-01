@@ -4,12 +4,15 @@ use std::fmt;
 use indradb::Error as IndraDBError;
 use serde_json::Error as JsonError;
 
-/// An error triggered by the datastore
+/// A plugin error.
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
+    /// Json (de-)serialization error.
     Json(JsonError),
+    /// IndraDB error.
     IndraDB(IndraDBError),
+    /// Any other kind of error.
     Other(Box<dyn StdError + Send + Sync>),
 }
 

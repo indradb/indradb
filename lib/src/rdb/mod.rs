@@ -3,7 +3,7 @@
 mod datastore;
 mod managers;
 
-pub use self::datastore::{RocksdbDatastore, RocksdbTransaction};
+pub use self::datastore::RocksdbDatastore;
 
 #[cfg(feature = "bench-suite")]
 full_bench_impl!({

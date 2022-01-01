@@ -12,14 +12,9 @@ use crate::cli::CliDatastoreArgs;
 use indradb_proto as proto;
 use tokio::net::TcpListener;
 
-async fn run_server<D, T>(
-    datastore: D,
-    listener: TcpListener,
-    plugin_path: &Option<String>,
-) -> Result<(), Box<dyn Error>>
+async fn run_server<D>(datastore: D, listener: TcpListener, plugin_path: &Option<String>) -> Result<(), Box<dyn Error>>
 where
-    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
-    T: indradb::Transaction + Send + Sync + 'static,
+    D: indradb::Datastore + Send + Sync + 'static,
 {
     let binding = listener.local_addr()?;
     println!("grpc://{}", binding);
