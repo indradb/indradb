@@ -403,8 +403,6 @@ service IndraDB {
     //   returning.
     // * The datastore might not verify for correctness; e.g., it might not
     //   ensure that the relevant vertices exist before inserting an edge.
-    // If you want maximum protection, use the equivalent functions in
-    // transactions, which will provide more safeguards.
     rpc BulkInsert(stream BulkInsertItem) returns (google.protobuf.Empty);
 
     // Enables indexing on a specified property. When indexing is enabled on a
