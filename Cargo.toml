@@ -3,5 +3,8 @@ members = [
     "lib",
     "proto",
     "server",
-    "client"
+    "client",
+    "plugins/hello_world",
+    "plugins/host",
+    "plugins/naive_vertex_count",
 ]

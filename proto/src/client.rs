@@ -378,4 +378,20 @@ impl Client {
         self.0.index_property(request).await?;
         Ok(())
     }
+
+    pub async fn execute_plugin(
+        &mut self,
+        name: &str,
+        arg: serde_json::Value,
+    ) -> Result<serde_json::Value, ClientError> {
+        let request = Request::new(crate::ExecutePluginRequest {
+            name: name.to_string(),
+            arg: Some(arg.into()),
+        });
+        let response = self.0.execute_plugin(request).await?;
+        match response.into_inner().value {
+            Some(value) => Ok(value.try_into()?),
+            None => Ok(serde_json::Value::Null),
+        }
+    }
 }
