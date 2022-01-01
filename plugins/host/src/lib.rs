@@ -1,3 +1,5 @@
+//! Infrastructure for IndraDB plugins.
+
 mod decl;
 mod errors;
 pub mod util;

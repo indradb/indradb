@@ -1,3 +1,5 @@
+//! Demonstrates a basic plugin.
+
 use indradb_plugin_host as plugin;
 use std::sync::Arc;
 

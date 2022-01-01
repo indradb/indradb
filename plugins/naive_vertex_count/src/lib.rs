@@ -1,10 +1,16 @@
+//! A demonstration plugin that uses the vertex mapping infrastructure to
+//! count vertices. You wouldn't actually want to use this since IndraDB has
+//! much faster built-in functionality for counting vertices.
+
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use indradb_plugin_host as plugin;
 
 struct NaiveVertexCountMapper {
+    /// The number of vertices.
     count: AtomicU64,
+    /// What type of vertices to count.
     t_filter: Option<indradb::Identifier>,
 }
 

@@ -329,11 +329,13 @@ message CountResponse {
     uint64 count = 1;
 }
 
+// A request to execute a plugin.
 message ExecutePluginRequest {
     string name = 1;
     Json arg = 2;
 }
 
+// A response to a plugin execution.
 message ExecutePluginResponse {
     Json value = 1;
 }
@@ -418,5 +420,6 @@ service IndraDB {
     // property, it's possible to query on its presence and values.
     rpc IndexProperty(IndexPropertyRequest) returns (google.protobuf.Empty);
 
+    // Executes a plugin and returns back the response from the plugin.
     rpc ExecutePlugin(ExecutePluginRequest) returns (ExecutePluginResponse);
 }
