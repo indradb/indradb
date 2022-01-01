@@ -4,8 +4,8 @@ macro_rules! define_test {
     ($name:ident, $datastore_constructor:expr) => {
         #[test]
         fn $name() {
-            let mut datastore = $datastore_constructor;
-            $crate::tests::$name(&mut datastore);
+            let datastore = $datastore_constructor;
+            $crate::tests::$name(&datastore);
         }
     };
 }

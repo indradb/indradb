@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
 
 use crate::errors::Error;
 
@@ -25,7 +26,7 @@ impl fmt::Display for VersionInfo {
 pub trait Plugin: Send + Sync + 'static {
     fn call(
         &self,
-        trans: Box<dyn indradb::Transaction + Send + Sync + 'static>,
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, Error>;
 }

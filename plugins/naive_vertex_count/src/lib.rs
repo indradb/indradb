@@ -24,7 +24,7 @@ pub struct NaiveVertexCountPlugin {}
 impl plugin::Plugin for NaiveVertexCountPlugin {
     fn call(
         &self,
-        trans: Box<dyn indradb::Transaction + Send + Sync + 'static>,
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let mapper = Arc::new(NaiveVertexCountMapper {
@@ -34,7 +34,7 @@ impl plugin::Plugin for NaiveVertexCountPlugin {
                 .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap()),
         });
 
-        plugin::util::map(mapper.clone(), Arc::new(trans))?;
+        plugin::util::map(mapper.clone(), datastore)?;
         let count = mapper.count.load(Ordering::Relaxed);
         Ok(count.into())
     }

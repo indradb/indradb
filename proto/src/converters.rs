@@ -692,49 +692,6 @@ impl From<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePro
     }
 }
 
-macro_rules! convert_transaction_response {
-    ($variant:ident, $ty:ty) => {
-        impl TryInto<$ty> for crate::TransactionResponseVariant {
-            type Error = ConversionError;
-
-            fn try_into(self) -> Result<$ty, Self::Error> {
-                if let crate::TransactionResponseVariant::$variant(value) = self {
-                    Ok(value)
-                } else {
-                    Err(Self::Error::UnexpectedResponseType)
-                }
-            }
-        }
-    };
-}
-
-macro_rules! convert_errorable_transaction_response {
-    ($variant:ident, $ty:ty) => {
-        impl TryInto<$ty> for crate::TransactionResponseVariant {
-            type Error = ConversionError;
-
-            fn try_into(self) -> Result<$ty, Self::Error> {
-                if let crate::TransactionResponseVariant::$variant(value) = self {
-                    value.try_into()
-                } else {
-                    Err(Self::Error::UnexpectedResponseType)
-                }
-            }
-        }
-    };
-}
-
-convert_transaction_response!(Empty, ());
-convert_transaction_response!(Ok, bool);
-convert_transaction_response!(Count, u64);
-convert_errorable_transaction_response!(Id, Uuid);
-convert_errorable_transaction_response!(Vertex, indradb::Vertex);
-convert_errorable_transaction_response!(Edge, indradb::Edge);
-convert_errorable_transaction_response!(VertexProperty, indradb::VertexProperty);
-convert_errorable_transaction_response!(VertexProperties, indradb::VertexProperties);
-convert_errorable_transaction_response!(EdgeProperty, indradb::EdgeProperty);
-convert_errorable_transaction_response!(EdgeProperties, indradb::EdgeProperties);
-
 fn to_chrono_time(ts: prost_types::Timestamp) -> DateTime<Utc> {
     Utc.timestamp(ts.seconds, ts.nanos as u32)
 }

@@ -23,7 +23,7 @@ pub trait VertexMapper: Send + Sync + 'static {
 
 pub fn map<M: VertexMapper>(
     mapper: Arc<M>,
-    trans: Arc<Box<dyn indradb::Transaction + Send + Sync + 'static>>,
+    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
 ) -> Result<(), Error> {
     let pool = ThreadPool::new(max(mapper.num_workers(), 2));
     let query_limit = max(mapper.query_limit(), 1);
@@ -42,7 +42,7 @@ pub fn map<M: VertexMapper>(
             start_id: last_id,
         };
 
-        let vertices = match trans.get_vertices(q.into()) {
+        let vertices = match datastore.get_vertices(q.into()) {
             Ok(value) => value,
             Err(err) => {
                 *last_err.lock().unwrap() = Some(err.into());
