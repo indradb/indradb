@@ -6,53 +6,30 @@ use uuid::Uuid;
 
 /// Specifies a datastore implementation.
 ///
+/// Note that this trait and its members purposefully do not employ any
+/// generic arguments. While that would improve ergonomics, it would remove
+/// object safety, which we need for plugins.
+///
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore {
-    type Trans: Transaction;
-
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
     fn sync(&self) -> Result<()> {
         Err(Error::Unsupported)
     }
 
-    /// Creates a new transaction.
-    fn transaction(&self) -> Result<Self::Trans>;
-
-    /// Bulk inserts many vertices, edges, and/or properties.
-    ///
-    /// # Arguments
-    /// * `items`: The items to insert.
-    fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
-        let trans = self.transaction()?;
-        trans.bulk_insert(items)
+    /// Creates a new transaction. Some datastore implementations do not
+    /// support transactional updates, in which case this will return an
+    /// error.
+    fn transaction(&self) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Err(Error::Unsupported)
     }
 
-    // Enables indexing on a specified property. When indexing is enabled on a
-    // property, it's possible to query on its presence and values.
-    //
-    // # Arguments
-    // * `name`: The name of the property to index.
-    fn index_property(&self, name: models::Identifier) -> Result<()> {
-        let trans = self.transaction()?;
-        trans.index_property(name)
-    }
-}
-
-/// Specifies a transaction implementation, which are provided by datastores.
-///
-/// All datastore manipulations are done through transactions. Datastore
-/// implementations carry different guarantees. Depending on the
-/// implementation, it may not be possible to rollback the changes on error.
-/// See the documentation of individual implementations for details.
-///
-/// Note that this trait and its members purposefully do not employ any
-/// generic arguments. While that would improve ergonomics, it would remove
-/// object safety, which we want in order to be able to pass
-/// `Box<dyn Transaction>` around (e.g. for plugins.)
-pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same UUID
     /// already exists.

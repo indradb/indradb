@@ -11,8 +11,8 @@ use crate::util::next_uuid;
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
     EdgeQuery, Identifier, Json, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
-    PropertyValueEdgeQuery, PropertyValueVertexQuery, Transaction, Vertex, VertexProperties, VertexProperty,
-    VertexPropertyQuery, VertexQuery,
+    PropertyValueEdgeQuery, PropertyValueVertexQuery, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    VertexQuery,
 };
 
 use chrono::offset::Utc;
@@ -428,8 +428,6 @@ impl RocksdbDatastore {
 }
 
 impl Datastore for RocksdbDatastore {
-    type Trans = RocksdbTransaction;
-
     fn sync(&self) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
@@ -447,28 +445,6 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 
-    fn transaction(&self) -> Result<Self::Trans> {
-        Ok(RocksdbTransaction::new(
-            self.db.clone(),
-            self.indexed_properties.clone(),
-        ))
-    }
-}
-
-/// A transaction that is backed by rocksdb.
-#[derive(Debug)]
-pub struct RocksdbTransaction {
-    db: Arc<DB>,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
-}
-
-impl RocksdbTransaction {
-    fn new(db: Arc<DB>, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
-        RocksdbTransaction { db, indexed_properties }
-    }
-}
-
-impl Transaction for RocksdbTransaction {
     fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();

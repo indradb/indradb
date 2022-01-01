@@ -1,5 +1,5 @@
 //! Utility functions. These are public because they may be useful for crates
-//! that implement Datastore/Transaction.
+//! that implement Datastore.
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
