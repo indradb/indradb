@@ -11,25 +11,23 @@ use tonic::{Request, Response, Status, Streaming};
 
 const CHANNEL_CAPACITY: usize = 100;
 
-macro_rules! send {
-    ($tx:expr, $res:expr) => {
-        if let Err(err) = $tx.send($res).await {
-            eprintln!("could not send message to client: {}", err);
-        }
-    };
-}
-
-async fn send_many<IT, PT>(tx: mpsc::Sender<Result<PT, Status>>, result: Result<Vec<IT>, indradb::Error>)
+async fn send<IT, PT>(tx: mpsc::Sender<Result<PT, Status>>, result: Result<Vec<IT>, indradb::Error>)
 where
     IT: Into<PT>,
 {
     match map_indradb_result(result) {
         Ok(values) => {
             for value in values {
-                send!(tx, Ok(value.into()))
+                if let Err(err) = tx.send(Ok(value.into())).await {
+                    eprintln!("could not send message to client: {}", err);
+                }
             }
         }
-        Err(err) => send!(tx, Err(err)),
+        Err(err) => {
+            if let Err(err) = tx.send(Err(err)).await {
+                eprintln!("could not send message to client: {}", err);
+            }
+        }
     }
 }
 
@@ -82,7 +80,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_vertices(q)).await;
+            send(tx, datastore.get_vertices(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
@@ -110,7 +108,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_edges(q)).await;
+            send(tx, datastore.get_edges(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
@@ -140,7 +138,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_vertex_properties(q)).await;
+            send(tx, datastore.get_vertex_properties(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
@@ -155,7 +153,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_all_vertex_properties(q)).await;
+            send(tx, datastore.get_all_vertex_properties(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
@@ -188,7 +186,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q: indradb::EdgePropertyQuery = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_edge_properties(q)).await;
+            send(tx, datastore.get_edge_properties(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
@@ -203,7 +201,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
         tokio::spawn(async move {
-            send_many(tx, datastore.get_all_edge_properties(q)).await;
+            send(tx, datastore.get_all_edge_properties(q)).await;
         });
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
