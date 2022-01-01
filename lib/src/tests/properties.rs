@@ -54,7 +54,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     let q3 = SpecificVertexQuery::single(v3.id);
 
     // Check to make sure there are no initial properties
-    let all_result = trans.get_all_vertex_properties(q2.clone()).unwrap();
+    let all_result = trans.get_all_vertex_properties(q2.clone().into()).unwrap();
     assert_eq!(all_result.len(), 1);
     assert_eq!(all_result[0].props.len(), 0);
 
@@ -72,11 +72,11 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
         )
         .unwrap();
 
-    let result_1 = trans.get_all_vertex_properties(q1).unwrap();
+    let result_1 = trans.get_all_vertex_properties(q1.into()).unwrap();
     assert_eq!(result_1.len(), 1);
     assert_eq!(result_1[0].props.len(), 0);
 
-    let result_2 = trans.get_all_vertex_properties(q2).unwrap();
+    let result_2 = trans.get_all_vertex_properties(q2.into()).unwrap();
     assert_eq!(result_2.len(), 1);
     assert_eq!(result_2[0].props.len(), 2);
     assert_eq!(result_2[0].props[0].name, Identifier::new("a").unwrap());
@@ -84,7 +84,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(datastore: &mut D) {
     assert_eq!(result_2[0].props[1].name, Identifier::new("b").unwrap());
     assert_eq!(result_2[0].props[1].value, serde_json::Value::Bool(true));
 
-    let result_3 = trans.get_all_vertex_properties(q3).unwrap();
+    let result_3 = trans.get_all_vertex_properties(q3.into()).unwrap();
     assert_eq!(result_3.len(), 1);
     assert_eq!(result_3[0].props.len(), 0);
 }
@@ -167,7 +167,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.create_edge(&key).unwrap();
 
     // Check to make sure there's no initial value
-    let result = trans.get_all_edge_properties(eq.clone()).unwrap();
+    let result = trans.get_all_edge_properties(eq.clone().into()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].props.len(), 0);
 
@@ -179,7 +179,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
         .set_edge_properties(q2.clone(), serde_json::Value::Bool(true))
         .unwrap();
 
-    let result = trans.get_all_edge_properties(eq.clone()).unwrap();
+    let result = trans.get_all_edge_properties(eq.clone().into()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].props.len(), 2);
     assert_eq!(result[0].props[0].name, Identifier::new("edge-prop-1").unwrap());
@@ -191,7 +191,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(datastore: &mut D) {
     trans.delete_edge_properties(q1).unwrap();
     trans.delete_edge_properties(q2).unwrap();
 
-    let result = trans.get_all_edge_properties(eq).unwrap();
+    let result = trans.get_all_edge_properties(eq.into()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].props.len(), 0);
 }

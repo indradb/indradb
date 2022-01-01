@@ -36,9 +36,8 @@ fn setup_edge_with_indexed_property<D: Datastore>(
 
 pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let result = trans.get_vertices(models::PropertyPresenceVertexQuery::new(
-        models::Identifier::new("foo").unwrap(),
-    ));
+    let result =
+        trans.get_vertices(models::PropertyPresenceVertexQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -47,9 +46,8 @@ pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &mut 
 
 pub fn should_not_query_unindexed_edge_property<D: Datastore>(datastore: &mut D) {
     let trans = datastore.transaction().unwrap();
-    let result = trans.get_edges(models::PropertyPresenceEdgeQuery::new(
-        models::Identifier::new("foo").unwrap(),
-    ));
+    let result =
+        trans.get_edges(models::PropertyPresenceEdgeQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -72,13 +70,15 @@ pub fn should_index_existing_vertex_property<D: Datastore>(datastore: &mut D) {
 
     // Get the vertex
     let result = trans
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name.clone()))
+        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
 
     // Get the vertex with a piped query
-    let result = trans.get_vertices(q.with_property(property_name.clone())).unwrap();
+    let result = trans
+        .get_vertices(q.with_property(property_name.clone()).into())
+        .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
 }
@@ -105,13 +105,13 @@ pub fn should_index_existing_edge_property<D: Datastore>(datastore: &mut D) {
 
     // Get the edge
     let result = trans
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name.clone()))
+        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
 
     // Get the edge with a piped query
-    let result = trans.get_edges(q.with_property(property_name.clone())).unwrap();
+    let result = trans.get_edges(q.with_property(property_name.clone()).into()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
 }
@@ -121,9 +121,9 @@ pub fn should_delete_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
     let id = setup_vertex_with_indexed_property(datastore, &property_name);
     let trans = datastore.transaction().unwrap();
     let q = models::SpecificVertexQuery::single(id);
-    trans.delete_vertices(q.clone()).unwrap();
+    trans.delete_vertices(q.clone().into()).unwrap();
     let result = trans
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name))
+        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -133,9 +133,9 @@ pub fn should_delete_indexed_edge_property<D: Datastore>(datastore: &mut D) {
     let key = setup_edge_with_indexed_property(datastore, &property_name);
     let trans = datastore.transaction().unwrap();
     let q = models::SpecificEdgeQuery::single(key);
-    trans.delete_edges(q.clone()).unwrap();
+    trans.delete_edges(q.clone().into()).unwrap();
     let result = trans
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name))
+        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -154,23 +154,22 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
 
     // property foo should not be the old value
     let result = trans
-        .get_vertices(models::PropertyValueVertexQuery::new(
-            property_name.clone(),
-            json_true.clone(),
-        ))
+        .get_vertices(models::PropertyValueVertexQuery::new(property_name.clone(), json_true.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
         .get_vertices(
             q.clone()
-                .with_property_equal_to(property_name.clone(), json_true.clone()),
+                .with_property_equal_to(property_name.clone(), json_true.clone())
+                .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
         .get_vertices(
             q.clone()
-                .with_property_not_equal_to(property_name.clone(), json_true.clone()),
+                .with_property_not_equal_to(property_name.clone(), json_true.clone())
+                .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 1);
@@ -178,23 +177,24 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &mut D) {
 
     // property foo should be the new value
     let result = trans
-        .get_vertices(models::PropertyValueVertexQuery::new(
-            property_name.clone(),
-            json_false.clone(),
-        ))
+        .get_vertices(models::PropertyValueVertexQuery::new(property_name.clone(), json_false.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
     let result = trans
         .get_vertices(
             q.clone()
-                .with_property_equal_to(property_name.clone(), json_false.clone()),
+                .with_property_equal_to(property_name.clone(), json_false.clone())
+                .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
     let result = trans
-        .get_vertices(q.with_property_not_equal_to(property_name.clone(), json_false.clone()))
+        .get_vertices(
+            q.with_property_not_equal_to(property_name.clone(), json_false.clone())
+                .into(),
+        )
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -213,44 +213,44 @@ pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &mut D) {
 
     // property foo should not be the old value
     let result = trans
-        .get_edges(models::PropertyValueEdgeQuery::new(
-            property_name.clone(),
-            json_true.clone(),
-        ))
+        .get_edges(models::PropertyValueEdgeQuery::new(property_name.clone(), json_true.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
         .get_edges(
             q.clone()
-                .with_property_equal_to(property_name.clone(), json_true.clone()),
+                .with_property_equal_to(property_name.clone(), json_true.clone())
+                .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = trans
-        .get_edges(q.clone().with_property_not_equal_to(property_name.clone(), json_true))
+        .get_edges(
+            q.clone()
+                .with_property_not_equal_to(property_name.clone(), json_true)
+                .into(),
+        )
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key.clone());
 
     // property foo should be the new value
     let result = trans
-        .get_edges(models::PropertyValueEdgeQuery::new(
-            property_name.clone(),
-            json_false.clone(),
-        ))
+        .get_edges(models::PropertyValueEdgeQuery::new(property_name.clone(), json_false.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
     let result = trans
         .get_edges(
             q.clone()
-                .with_property_equal_to(property_name.clone(), json_false.clone()),
+                .with_property_equal_to(property_name.clone(), json_false.clone())
+                .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
     let result = trans
-        .get_edges(q.with_property_not_equal_to(property_name.clone(), json_false))
+        .get_edges(q.with_property_not_equal_to(property_name.clone(), json_false).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -260,7 +260,7 @@ pub fn should_query_indexed_vertex_property_empty<D: Datastore>(datastore: &mut 
     let trans = datastore.transaction().unwrap();
     datastore.index_property(property_name.clone()).unwrap();
     let result = trans
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name))
+        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -270,7 +270,7 @@ pub fn should_query_indexed_edge_property_empty<D: Datastore>(datastore: &mut D)
     let trans = datastore.transaction().unwrap();
     datastore.index_property(property_name.clone()).unwrap();
     let result = trans
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name))
+        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }

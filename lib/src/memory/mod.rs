@@ -33,7 +33,7 @@ fn should_serialize() {
     let datastore = MemoryDatastore::read(path.path()).unwrap();
     let trans = datastore.transaction().unwrap();
     assert_eq!(trans.get_vertex_count().unwrap(), 1);
-    let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![id])).unwrap();
+    let vertices = trans.get_vertices(SpecificVertexQuery::new(vec![id]).into()).unwrap();
     assert_eq!(vertices.len(), 1);
     assert_eq!(vertices[0].id, id);
     assert_eq!(vertices[0].t, Identifier::default());

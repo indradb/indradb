@@ -449,39 +449,6 @@ impl Datastore for MemoryDatastore {
             datastore: Arc::clone(&self.datastore),
         })
     }
-
-    fn index_property<T: Into<Identifier>>(&self, name: T) -> Result<()> {
-        let name = name.into();
-        let mut datastore = self.datastore.write().unwrap();
-
-        let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
-        for id in datastore.vertices.keys() {
-            if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
-                property_container
-                    .entry(value.clone())
-                    .or_insert_with(HashSet::new)
-                    .insert(IndexedPropertyMember::Vertex(*id));
-            }
-        }
-        for key in datastore.edges.keys() {
-            if let Some(value) = datastore.edge_properties.get(&(key.clone(), name.clone())) {
-                property_container
-                    .entry(value.clone())
-                    .or_insert_with(HashSet::new)
-                    .insert(IndexedPropertyMember::Edge(key.clone()));
-            }
-        }
-
-        let existing_property_container = datastore.property_values.entry(name).or_insert_with(HashMap::new);
-        for (value, members) in property_container.into_iter() {
-            let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
-            for member in members {
-                existing_members.insert(member);
-            }
-        }
-
-        Ok(())
-    }
 }
 
 /// A transaction for manipulating in-memory datastores.
@@ -503,19 +470,16 @@ impl Transaction for MemoryTransaction {
         Ok(inserted)
     }
 
-    fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
         let datastore = self.datastore.read().unwrap();
-        let iter = datastore.get_vertex_values_by_query(q.into())?;
+        let iter = datastore.get_vertex_values_by_query(q)?;
         let iter = iter.map(|(uuid, t)| Vertex::with_id(uuid, t));
         Ok(iter.collect())
     }
 
-    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_vertices = datastore
-            .get_vertex_values_by_query(q.into())?
-            .map(|(k, _)| k)
-            .collect();
+        let deletable_vertices = datastore.get_vertex_values_by_query(q)?.map(|(k, _)| k).collect();
         datastore.delete_vertices(deletable_vertices);
         Ok(())
     }
@@ -537,10 +501,10 @@ impl Transaction for MemoryTransaction {
         Ok(true)
     }
 
-    fn get_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<Edge>> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
         let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = {
             let datastore = self.datastore.read().unwrap();
-            let iter = datastore.get_edge_values_by_query(q.into())?;
+            let iter = datastore.get_edge_values_by_query(q)?;
             iter.collect()
         };
 
@@ -550,9 +514,9 @@ impl Transaction for MemoryTransaction {
         Ok(iter.collect())
     }
 
-    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q.into())?.map(|(k, _)| k).collect();
+        let deletable_edges: Vec<EdgeKey> = datastore.get_edge_values_by_query(q)?.map(|(k, _)| k).collect();
         datastore.delete_edges(deletable_edges);
         Ok(())
     }
@@ -598,9 +562,9 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<VertexProperties>> {
+    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
         let datastore = self.datastore.read().unwrap();
-        let vertex_values = datastore.get_vertex_values_by_query(q.into())?;
+        let vertex_values = datastore.get_vertex_values_by_query(q)?;
 
         let mut result = Vec::new();
         for (id, t) in vertex_values {
@@ -673,9 +637,9 @@ impl Transaction for MemoryTransaction {
         Ok(result)
     }
 
-    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let datastore = self.datastore.read().unwrap();
-        let edge_values = datastore.get_edge_values_by_query(q.into())?;
+        let edge_values = datastore.get_edge_values_by_query(q)?;
 
         let mut result = Vec::new();
         for (id, t) in edge_values {
@@ -731,6 +695,38 @@ impl Transaction for MemoryTransaction {
             deletable_edge_properties.push((key, q.name.clone()));
         }
         datastore.delete_edge_properties(deletable_edge_properties);
+        Ok(())
+    }
+
+    fn index_property(&self, name: Identifier) -> Result<()> {
+        let mut datastore = self.datastore.write().unwrap();
+
+        let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
+        for id in datastore.vertices.keys() {
+            if let Some(value) = datastore.vertex_properties.get(&(*id, name.clone())) {
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(IndexedPropertyMember::Vertex(*id));
+            }
+        }
+        for key in datastore.edges.keys() {
+            if let Some(value) = datastore.edge_properties.get(&(key.clone(), name.clone())) {
+                property_container
+                    .entry(value.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(IndexedPropertyMember::Edge(key.clone()));
+            }
+        }
+
+        let existing_property_container = datastore.property_values.entry(name).or_insert_with(HashMap::new);
+        for (value, members) in property_container.into_iter() {
+            let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
+            for member in members {
+                existing_members.insert(member);
+            }
+        }
+
         Ok(())
     }
 }
