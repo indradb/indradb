@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 use std::u32;
 
@@ -64,8 +63,6 @@ pub enum Query {
 
     Pipe(PipeQuery),
 
-    Property(PropertyQuery),
-
     PropertyPresence(PropertyPresenceQuery),
     PropertyValue(PropertyValueQuery),
     PipePropertyPresence(PipePropertyPresenceQuery),
@@ -81,14 +78,6 @@ pub trait QueryExt: Into<Query> {
 
     fn inbound(self) -> PipeQuery {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
-    }
-
-    /// Gets a property associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property to get.
-    fn property<T: Into<Identifier>>(self, name: T) -> PropertyQuery {
-        PropertyQuery::new(Box::new(self.into()), name)
     }
 
     /// Gets vertices with a property.
@@ -381,32 +370,6 @@ impl PipeQuery {
     }
 }
 
-/// Gets property values associated with vertices.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyQuery {
-    /// The query to build off of.
-    pub inner: Box<Query>,
-
-    /// The name of the property to get.
-    pub name: Identifier,
-}
-
-query_type!(PropertyQuery, Property);
-
-impl PropertyQuery {
-    /// Creates a new vertex property query.
-    ///
-    /// Arguments
-    /// * `inner`: The vertex query to build off of.
-    /// * `name`: The name of the property to get.
-    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-        }
-    }
-}
-
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
@@ -457,8 +420,6 @@ impl IncludeQuery {
 pub enum QueryOutputValue {
     Vertices(Vec<crate::Vertex>),
     Edges(Vec<crate::Edge>),
-    VertexProperties(Vec<crate::VertexProperty>),
-    EdgeProperties(Vec<crate::EdgeProperty>),
 }
 
 #[cfg(test)]

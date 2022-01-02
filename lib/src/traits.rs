@@ -78,12 +78,18 @@ pub trait Datastore {
     fn get(&self, q: models::Query) -> Result<Vec<(models::Query, models::QueryOutputValue)>>;
     fn delete(&self, q: models::Query) -> Result<()>;
 
+    fn get_all_properties(&self, q: models::Query) -> Result<Vec<(models::Query, models::Identifier, serde_json::Value)>>;
+
+    fn get_properties(&self, q: models::Query, name: models::Identifier) -> Result<Vec<(models::Query, serde_json::Value)>>;
+
     /// Sets properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_properties(&self, q: models::PropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_properties(&self, q: models::Query, name: models::Identifier, value: serde_json::Value) -> Result<()>;
+
+    fn delete_properties(&self, q: models::Query, name: models::Identifier) -> Result<()>;
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
@@ -99,12 +105,12 @@ pub trait Datastore {
                     self.create_edge(&edge_key)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
-                    self.set_properties(query, value)?;
+                    let query = models::SpecificVertexQuery::single(id);
+                    self.set_properties(query, name, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    self.set_properties(query, value)?;
+                    let query = models::SpecificEdgeQuery::single(edge_key);
+                    self.set_properties(query, name, value)?;
                 }
             }
         }

@@ -170,9 +170,7 @@ impl InternalMemoryDatastore {
 
                         let iter = iter.map(move |(key, value)| Edge::new(key, value)).collect();
                         QueryOutputValue::Edges(iter)
-                    },
-                    // TODO: in this case, need to query the parent
-                    _ => unreachable!()
+                    }
                 };
 
                 if let Query::Include(_) = *q.inner {
@@ -254,9 +252,6 @@ impl InternalMemoryDatastore {
                 let iter = iter.map(move |(key, value)| Edge::new(key, value)).collect();
                 QueryOutputValue::Edges(iter.collect())
             },
-            Query::Property(ref q) => {
-                todo!();
-            }
             Query::Include(ref q) => {
                 self.query(&*q.inner, output);
             }
@@ -455,22 +450,26 @@ impl Datastore for MemoryDatastore {
     }
 
     fn get(&self, q: Query) -> Result<Vec<(Query, QueryOutputValue)>> {
-        // TODO
         todo!();
     }
 
     fn delete(&self, q: Query) -> Result<()> {
-        // TODO
         todo!();
     }
 
-    /// Sets properties.
-    ///
-    /// # Arguments
-    /// * `q`: The query to run.
-    /// * `value`: The property value.
-    fn set_properties(&self, q: PropertyQuery, value: serde_json::Value) -> Result<()> {
-        // TODO
+    fn get_all_properties(&self, q: Query) -> Result<Vec<(Query, Identifier, serde_json::Value)>> {
+        todo!();
+    }
+
+    fn get_properties(&self, q: Query, name: Identifier) -> Result<Vec<(Query, serde_json::Value)>> {
+        todo!();
+    }
+
+    fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
+        todo!();
+    }
+
+    fn delete_properties(&self, q: Query, name: Identifier) -> Result<()> {
         todo!();
     }
 
