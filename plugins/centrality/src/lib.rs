@@ -44,7 +44,7 @@ impl fmt::Display for DidNotConvergeError {
 
 // TODO: separate mapper for when there's a weight property to pull
 struct CentralityMapper {
-    trans: Arc<Box<dyn indradb::Transaction + Send + Sync + 'static>>,
+    trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
     prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
     cur_centrality_map: Arc<Mutex<BTreeMap<uuid::Uuid, f64>>>,
     t_filter: Option<indradb::Identifier>,
@@ -52,7 +52,7 @@ struct CentralityMapper {
 
 impl CentralityMapper {
     fn new(
-        trans: Arc<Box<dyn indradb::Transaction + Send + Sync + 'static>>,
+        trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
         t_filter: Option<indradb::Identifier>,
     ) -> Self {
@@ -95,10 +95,9 @@ pub struct CentralityPlugin {}
 impl plugin::Plugin for CentralityPlugin {
     fn call(
         &self,
-        trans: Box<dyn indradb::Transaction + Send + Sync + 'static>,
+        trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
-        let trans = Arc::new(trans);
         let t_filter = arg
             .get("t_filter")
             .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap());
