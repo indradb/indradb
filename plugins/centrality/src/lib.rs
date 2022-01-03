@@ -44,7 +44,7 @@ impl fmt::Display for DidNotConvergeError {
 
 // TODO: separate mapper for when there's a weight property to pull
 struct CentralityMapper {
-    trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
     prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
     cur_centrality_map: Arc<Mutex<BTreeMap<uuid::Uuid, f64>>>,
     t_filter: Option<indradb::Identifier>,
@@ -52,12 +52,12 @@ struct CentralityMapper {
 
 impl CentralityMapper {
     fn new(
-        trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
         t_filter: Option<indradb::Identifier>,
     ) -> Self {
         Self {
-            trans,
+            datastore,
             prev_centrality_map,
             cur_centrality_map: Arc::new(Mutex::new(BTreeMap::default())),
             t_filter,
@@ -80,7 +80,7 @@ impl plugin::util::VertexMapper for CentralityMapper {
             .outbound()
             .inbound()
             .into();
-        let linked_vertices = self.trans.get_vertices(q)?;
+        let linked_vertices = self.datastore.get_vertices(q)?;
         let vote_weight = centrality / (linked_vertices.len() as f64);
         let mut map = self.cur_centrality_map.lock().unwrap();
         for vertex in &linked_vertices {
@@ -95,7 +95,7 @@ pub struct CentralityPlugin {}
 impl plugin::Plugin for CentralityPlugin {
     fn call(
         &self,
-        trans: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let t_filter = arg
@@ -107,11 +107,11 @@ impl plugin::Plugin for CentralityPlugin {
         let mut deltas = Vec::new();
         for _ in 0..DEFAULT_MAX_ITERATIONS {
             let mut mapper = Arc::new(CentralityMapper::new(
-                trans.clone(),
+                datastore.clone(),
                 prev_centrality_map.clone(),
                 t_filter.clone(),
             ));
-            plugin::util::map(mapper.clone(), trans.clone())?;
+            plugin::util::map(mapper.clone(), datastore.clone())?;
             let cur_centrality_map = Arc::get_mut(&mut mapper).unwrap().unpack();
             let mut delta = 0.0f64;
             for (id, centrality) in &cur_centrality_map {
