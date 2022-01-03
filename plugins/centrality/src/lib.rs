@@ -3,6 +3,7 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::mem::take;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use indradb::{EdgeQueryExt, VertexQueryExt};
 use indradb_plugin_host as plugin;
@@ -129,7 +130,10 @@ impl plugin::Plugin for CentralityPlugin {
         let mut prev_centrality_map = BTreeMap::default();
         let mut deltas = Vec::new();
 
-        for _ in 0..max_iterations {
+        for i in 0..max_iterations {
+            let start_time = Instant::now();
+            println!("centrality plugin: iteration {}", i);
+
             let mut mapper = Arc::new(CentralityMapper::new(
                 datastore.clone(),
                 prev_centrality_map.clone(),
@@ -138,6 +142,12 @@ impl plugin::Plugin for CentralityPlugin {
             plugin::util::map(mapper.clone(), datastore.clone())?;
 
             let delta = mapper.total_delta() / (vertex_count as f64);
+            println!(
+                "\rcentrality plugin: iteration {}: delta={}, runtime={}s",
+                i,
+                delta,
+                start_time.elapsed().as_secs()
+            );
             if delta < max_delta {
                 mapper.write(centrality_property_name)?;
                 return Ok(delta.into());
