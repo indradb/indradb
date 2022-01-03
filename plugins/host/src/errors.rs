@@ -25,7 +25,7 @@ impl StdError for Error {
             Error::Json(ref err) => Some(&*err),
             Error::IndraDB(ref err) => Some(&*err),
             Error::Other(ref err) => Some(&**err),
-            _ => None
+            _ => None,
         }
     }
 }
