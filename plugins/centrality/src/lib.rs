@@ -98,6 +98,8 @@ impl plugin::Plugin for CentralityPlugin {
         datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
+        let vertex_count = datastore.get_vertex_count()?;
+
         let t_filter = arg
             .get("t_filter")
             .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap());
@@ -118,6 +120,7 @@ impl plugin::Plugin for CentralityPlugin {
                 let prev_centrality = *prev_centrality_map.get(id).unwrap_or(&1.0);
                 delta += f64::abs(centrality - prev_centrality);
             }
+            delta /= vertex_count as f64;
             if delta < DEFAULT_MAX_DELTA {
                 return Ok(delta.into());
             }
