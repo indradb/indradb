@@ -188,7 +188,7 @@ impl InternalMemoryDatastore {
             }
             Query::PropertyValue(ref q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = Json::new(q.value);
+                    let wrapped_value = Json::new(q.value.clone());
                     if let Some(sub_container) = container.get(&wrapped_value) {
                         let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
                             IndexedPropertyMember::Vertex(id) => {
@@ -214,21 +214,19 @@ impl InternalMemoryDatastore {
                 let values = match piped_values {
                     QueryOutputValue::Edges(ref piped_edges) => {
                         let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
-                        let iter: QueryIter<Edge> = if q.exists {
-                            Box::new(piped_edges.iter().filter(move |e| edges_with_property.contains(&e.key)).cloned().collect())
-                        } else {
-                            Box::new(piped_edges.iter().filter(move |e| !edges_with_property.contains(&e.key)).cloned().collect())
-                        };
-                        QueryOutputValue::Edges(iter.collect())
+                        let iter = piped_edges.iter().filter(move |e| {
+                            let contains = edges_with_property.contains(&e.key);
+                            (q.exists && contains) || (!q.exists && !contains)
+                        });
+                        QueryOutputValue::Edges(iter.cloned().collect())
                     },
                     QueryOutputValue::Vertices(ref piped_vertices) => {
                         let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
-                        let iter: QueryIter<Vertex> = if q.exists {
-                            Box::new(piped_vertices.iter().filter(move |v| vertices_with_property.contains(&v.id)).cloned())
-                        } else {
-                            Box::new(piped_vertices.iter().filter(move |v| !vertices_with_property.contains(&v.id)).cloned())
-                        };
-                        QueryOutputValue::Vertices(iter.collect())
+                        let iter = piped_vertices.iter().filter(move |v| {
+                            let contains = vertices_with_property.contains(&v.id);
+                            (q.exists && contains) || (!q.exists && !contains)
+                        });
+                        QueryOutputValue::Vertices(iter.cloned().collect())
                     }
                 };
 
@@ -240,40 +238,54 @@ impl InternalMemoryDatastore {
                 values
             }
             Query::PipePropertyValue(ref q) => {
-                let vertex_values = self.get_vertex_values_by_query(*q.inner)?;
+                self.query(&*q.inner, output)?;
+                let (piped_query, piped_values) = output.pop().unwrap();
 
-                let ids: HashSet<Uuid> = if let Some(container) = self.property_values.get(&q.name) {
+                let empty_hashset = HashSet::default();
+                let indexed_members: &HashSet<IndexedPropertyMember> = if let Some(container) = self.property_values.get(&q.name) {
                     let wrapped_value = Json::new(q.value.clone());
-                    if let Some(members) = container.get(&wrapped_value) {
+                    if let Some(ref members) = container.get(&wrapped_value) {
                         members
-                            .iter()
-                            .filter_map(|member| match member {
-                                IndexedPropertyMember::Vertex(id) => Some(*id),
-                                _ => None,
-                            })
-                            .collect()
                     } else {
-                        HashSet::default()
+                        &empty_hashset
                     }
                 } else {
-                    HashSet::default()
+                    &empty_hashset
                 };
 
-                let iter: QueryIter<(Uuid, Identifier)> = if q.equal {
-                    Box::new(vertex_values.filter(move |(id, _)| ids.contains(id)))
-                } else {
-                    Box::new(vertex_values.filter(move |(id, _)| !ids.contains(id)))
+                let values = match piped_values {
+                    QueryOutputValue::Edges(ref piped_edges) => {
+                        let iter = piped_edges.iter().filter(move |e| {
+                            let contains = indexed_members.contains(&IndexedPropertyMember::Edge(e.key.clone()));
+                            (q.equal && contains) || (!q.equal && !contains)
+                        });
+                        QueryOutputValue::Edges(iter.cloned().collect())
+                    },
+                    QueryOutputValue::Vertices(ref piped_vertices) => {
+                        let iter = piped_vertices.iter().filter(move |v| {
+                            let contains = indexed_members.contains(&IndexedPropertyMember::Vertex(v.id));
+                            (q.equal && contains) || (!q.equal && !contains)
+                        });
+                        QueryOutputValue::Vertices(iter.cloned().collect())
+                    }
                 };
 
-                Ok(iter)
+                if let Query::Include(_) = *q.inner {
+                    // keep the value exported
+                    output.push((piped_query, piped_values));
+                }
+
+                values
             }
             Query::SpecificEdge(ref q) => {
-                let iter = iter_edge_values!(self, q.keys.into_iter());
-                let iter = iter.map(move |(key, value)| Edge::new(key, value)).collect();
+                let iter = iter_edge_values!(self, q.keys.clone().into_iter());
+                let iter = iter.map(move |(key, value)| Edge::new(key, value));
                 QueryOutputValue::Edges(iter.collect())
             },
             Query::Include(ref q) => {
-                self.query(&*q.inner, output);
+                self.query(&*q.inner, output)?;
+                let (_, piped_values) = output.pop().unwrap();
+                piped_values
             }
         };
 
@@ -470,15 +482,48 @@ impl Datastore for MemoryDatastore {
     }
 
     fn get(&self, q: Query) -> Result<Vec<(Query, QueryOutputValue)>> {
-        todo!();
+        let mut output = Vec::new();
+        let datastore = self.datastore.read().unwrap();
+        datastore.query(&q, &mut output)?;
+        Ok(output)
     }
 
     fn delete(&self, q: Query) -> Result<()> {
-        todo!();
+        let mut output = Vec::new();
+        let mut datastore = self.datastore.write().unwrap();
+        datastore.query(&q, &mut output)?;
+        for (_, value) in output {
+            match value {
+                QueryOutputValue::Vertices(vertices) => {
+                    datastore.delete_vertices(vertices);
+                },
+                QueryOutputValue::Edges(edges) => {
+                    datastore.delete_edges(edges);
+                }
+            }
+        }
     }
 
-    fn get_all_properties(&self, q: Query) -> Result<Vec<(Query, Identifier, serde_json::Value)>> {
-        todo!();
+    fn get_all_properties(&self, q: Query) -> Result<Vec<(models::Query, Vec<(models::Identifier, serde_json::Value)>)>> {
+        let mut output = Vec::new();
+        let datastore = self.datastore.read().unwrap();
+        datastore.query(&q, &mut output)?;
+
+        let mut result = Vec::new();
+        for (id, t) in vertex_values {
+            let from = &(id, Identifier::default());
+            let to = &(util::next_uuid(id).unwrap(), Identifier::default());
+
+            let properties = datastore.vertex_properties.range(from..to);
+            result.push(VertexProperties::new(
+                Vertex::with_id(id, t),
+                properties
+                    .map(|(n, p)| NamedProperty::new(n.1.clone(), p.0.clone()))
+                    .collect(),
+            ));
+        }
+
+        Ok(result)
     }
 
     fn get_properties(&self, q: Query, name: Identifier) -> Result<Vec<(Query, serde_json::Value)>> {

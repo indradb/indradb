@@ -78,7 +78,7 @@ pub trait Datastore {
     fn get(&self, q: models::Query) -> Result<Vec<(models::Query, models::QueryOutputValue)>>;
     fn delete(&self, q: models::Query) -> Result<()>;
 
-    fn get_all_properties(&self, q: models::Query) -> Result<Vec<(models::Query, models::Identifier, serde_json::Value)>>;
+    fn get_all_properties(&self, q: models::Query) -> Result<Vec<(models::Query, Vec<(models::Identifier, serde_json::Value)>)>>;
 
     fn get_properties(&self, q: models::Query, name: models::Identifier) -> Result<Vec<(models::Query, serde_json::Value)>>;
 
