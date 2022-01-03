@@ -106,11 +106,11 @@ pub trait Datastore {
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id);
-                    self.set_properties(query, name, value)?;
+                    self.set_properties(query.into(), name, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
                     let query = models::SpecificEdgeQuery::single(edge_key);
-                    self.set_properties(query, name, value)?;
+                    self.set_properties(query.into(), name, value)?;
                 }
             }
         }

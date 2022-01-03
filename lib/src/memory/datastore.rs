@@ -7,7 +7,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::errors::{Error, Result};
 use crate::util;
-use crate::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty, Identifier, Json, Vertex, VertexProperty, Query, PropertyQuery, IncludeQuery, QueryOutputValue};
+use crate::{Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty, Identifier, Json, Vertex, VertexProperty, Query, IncludeQuery, QueryOutputValue};
 
 use bincode::Error as BincodeError;
 use chrono::offset::Utc;
@@ -208,16 +208,36 @@ impl InternalMemoryDatastore {
                 }
             }
             Query::PipePropertyPresence(ref q) => {
-                let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
-                let vertex_values = self.get_vertex_values_by_query(*q.inner)?;
+                self.query(&*q.inner, output)?;
+                let (piped_query, piped_values) = output.pop().unwrap();
 
-                let iter: QueryIter<(Uuid, Identifier)> = if q.exists {
-                    Box::new(vertex_values.filter(move |(id, _)| vertices_with_property.contains(id)))
-                } else {
-                    Box::new(vertex_values.filter(move |(id, _)| !vertices_with_property.contains(id)))
+                let values = match piped_values {
+                    QueryOutputValue::Edges(ref piped_edges) => {
+                        let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
+                        let iter: QueryIter<Edge> = if q.exists {
+                            Box::new(piped_edges.iter().filter(move |e| edges_with_property.contains(&e.key)).cloned().collect())
+                        } else {
+                            Box::new(piped_edges.iter().filter(move |e| !edges_with_property.contains(&e.key)).cloned().collect())
+                        };
+                        QueryOutputValue::Edges(iter.collect())
+                    },
+                    QueryOutputValue::Vertices(ref piped_vertices) => {
+                        let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
+                        let iter: QueryIter<Vertex> = if q.exists {
+                            Box::new(piped_vertices.iter().filter(move |v| vertices_with_property.contains(&v.id)).cloned())
+                        } else {
+                            Box::new(piped_vertices.iter().filter(move |v| !vertices_with_property.contains(&v.id)).cloned())
+                        };
+                        QueryOutputValue::Vertices(iter.collect())
+                    }
                 };
 
-                Ok(iter)
+                if let Query::Include(_) = *q.inner {
+                    // keep the value exported
+                    output.push((piped_query, piped_values));
+                }
+
+                values
             }
             Query::PipePropertyValue(ref q) => {
                 let vertex_values = self.get_vertex_values_by_query(*q.inner)?;
