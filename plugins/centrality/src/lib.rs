@@ -8,7 +8,7 @@ use indradb::{EdgeQueryExt, VertexQueryExt};
 use indradb_plugin_host as plugin;
 
 const DEFAULT_MAX_ITERATIONS: u16 = 10;
-const DEFAULT_MAX_DELTA: f64 = 1.0;
+const DEFAULT_MAX_DELTA: f64 = 0.1;
 const DEFAULT_CENTRALITY_PROPERTY_NAME: &str = "centrality";
 
 #[derive(Debug)]
