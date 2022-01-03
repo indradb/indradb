@@ -126,6 +126,8 @@ impl plugin::Plugin for CentralityPlugin {
             deltas.push(delta);
         }
 
+        // TODO: persist
+
         Err(plugin::Error::Other(Box::new(DidNotConvergeError {
             target_delta: DEFAULT_MAX_DELTA,
             iterations: DEFAULT_MAX_ITERATIONS,
