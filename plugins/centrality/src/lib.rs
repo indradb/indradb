@@ -105,6 +105,7 @@ impl plugin::util::VertexMapper for CentralityMapper {
         let linked_vertices = self.datastore.get_vertices(q)?;
         let vote_weight = centrality / (linked_vertices.len() as f64);
         let mut cur_centrality_map = self.cur_centrality_map.lock().unwrap();
+        cur_centrality_map.entry(vertex.id).or_insert(0.0);
         for vertex in &linked_vertices {
             *cur_centrality_map.entry(vertex.id).or_insert(0.0) += vote_weight;
         }
