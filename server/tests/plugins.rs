@@ -61,11 +61,18 @@ async fn get_client_retrying() -> Result<indradb_proto::Client, indradb_proto::C
 }
 
 fn create_vertex(id: u128) -> indradb::Vertex {
-    indradb::Vertex::with_id(uuid::Uuid::from_u128(id), indradb::Identifier::new(id.to_string()).unwrap())
+    indradb::Vertex::with_id(
+        uuid::Uuid::from_u128(id),
+        indradb::Identifier::new(id.to_string()).unwrap(),
+    )
 }
 
 fn create_edge_key(out_id: u128, in_id: u128) -> indradb::EdgeKey {
-    indradb::EdgeKey::new(uuid::Uuid::from_u128(out_id), indradb::Identifier::new("link").unwrap(), uuid::Uuid::from_u128(in_id))
+    indradb::EdgeKey::new(
+        uuid::Uuid::from_u128(out_id),
+        indradb::Identifier::new("link").unwrap(),
+        uuid::Uuid::from_u128(in_id),
+    )
 }
 
 #[tokio::test]
@@ -128,9 +135,19 @@ pub async fn plugins() {
     // 2: 1.5
     // 3: 3.0
     // total delta: 0.0
-    let delta = client.execute_plugin("centrality", json!({})).await.unwrap().as_f64().unwrap();
+    let delta = client
+        .execute_plugin("centrality", json!({}))
+        .await
+        .unwrap()
+        .as_f64()
+        .unwrap();
     assert!(delta.abs() <= 0.00001);
-    let properties = client.get_vertex_properties(indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap())).await.unwrap();
+    let properties = client
+        .get_vertex_properties(
+            indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap()),
+        )
+        .await
+        .unwrap();
     let mut properties_map = HashMap::new();
     for prop in properties {
         properties_map.insert(prop.id.as_u128(), prop.value.as_f64().unwrap());

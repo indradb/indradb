@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::error::Error as StdError;
 use std::fmt;
+use std::io::{stdout, Write};
 use std::mem::take;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -133,7 +134,8 @@ impl plugin::Plugin for CentralityPlugin {
 
         for i in 0..max_iterations {
             let start_time = Instant::now();
-            println!("centrality plugin: iteration {}", i);
+            print!("centrality plugin: iteration {}", i);
+            stdout().flush().unwrap();
 
             let mut mapper = Arc::new(CentralityMapper::new(
                 datastore.clone(),
