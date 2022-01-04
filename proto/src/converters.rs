@@ -87,7 +87,7 @@ impl TryInto<Uuid> for crate::Uuid {
 
 impl From<indradb::Identifier> for crate::Identifier {
     fn from(t: indradb::Identifier) -> Self {
-        crate::Identifier { value: t.0 }
+        crate::Identifier { value: t.into_string() }
     }
 }
 
