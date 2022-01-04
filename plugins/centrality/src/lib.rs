@@ -28,37 +28,63 @@ impl StdError for DidNotConvergeError {
 
 impl fmt::Display for DidNotConvergeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "did not converge to target delta {:.4} after {} iterations", self.target_delta, self.iterations)
+        write!(
+            f,
+            "did not converge to target delta {:.4} after {} iterations",
+            self.target_delta, self.iterations
+        )
     }
 }
 
-// TODO: support filtering edge type
 struct EdgeFetcher {
     datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
-    t_filter: Option<indradb::Identifier>,
+    vertex_type_filter: Option<indradb::Identifier>,
+    edge_type_filter: Option<indradb::Identifier>,
     is_cached: bool,
     cache: Arc<RwLock<BTreeSet<(uuid::Uuid, uuid::Uuid)>>>,
 }
 
 impl EdgeFetcher {
-    fn new(
+    fn new_with_cache(
         datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
-        t_filter: Option<indradb::Identifier>,
-        enable_cache: bool,
+        vertex_type_filter: Option<indradb::Identifier>,
+        edge_type_filter: Option<indradb::Identifier>,
     ) -> Self {
         Self {
             datastore,
-            t_filter,
-            is_cached: enable_cache,
+            vertex_type_filter,
+            edge_type_filter,
+            is_cached: true,
+            cache: Arc::new(RwLock::new(BTreeSet::default())),
+        }
+    }
+
+    fn new(
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        edge_type_filter: Option<indradb::Identifier>,
+    ) -> Self {
+        Self {
+            datastore,
+            vertex_type_filter: None,
+            edge_type_filter,
+            is_cached: false,
             cache: Arc::new(RwLock::new(BTreeSet::default())),
         }
     }
 
     fn fetch(&self, vertex_id: uuid::Uuid) -> Result<Vec<uuid::Uuid>, plugin::Error> {
-        let q = indradb::SpecificVertexQuery::single(vertex_id)
-            .outbound()
-            .inbound()
-            .into();
+        let q = if let Some(ref edge_type_filter) = self.edge_type_filter {
+            indradb::SpecificVertexQuery::single(vertex_id)
+                .outbound()
+                .t(edge_type_filter.clone())
+                .inbound()
+                .into()
+        } else {
+            indradb::SpecificVertexQuery::single(vertex_id)
+                .outbound()
+                .inbound()
+                .into()
+        };
         Ok(self.datastore.get_vertices(q)?.into_iter().map(|v| v.id).collect())
     }
 
@@ -81,7 +107,7 @@ impl EdgeFetcher {
 
 impl plugin::util::VertexMapper for EdgeFetcher {
     fn t_filter(&self) -> Option<indradb::Identifier> {
-        self.t_filter.clone()
+        self.vertex_type_filter.clone()
     }
 
     fn map(&self, vertex: indradb::Vertex) -> Result<(), plugin::Error> {
@@ -158,7 +184,8 @@ impl plugin::Plugin for CentralityPlugin {
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let vertex_count = datastore.get_vertex_count()?;
-        let t_filter = parse_identifier(&arg, "t_filter")?;
+        let vertex_type_filter = parse_identifier(&arg, "vertex_type_filter")?;
+        let edge_type_filter = parse_identifier(&arg, "edge_type_filter")?;
         let centrality_property_name = parse_identifier(&arg, "centrality_property_name")?
             .unwrap_or_else(|| indradb::Identifier::new(DEFAULT_CENTRALITY_PROPERTY_NAME).unwrap());
         let max_iterations = parse_max_iterations(&arg)?;
@@ -168,12 +195,16 @@ impl plugin::Plugin for CentralityPlugin {
         let edge_fetcher = if cache_edges {
             print!("centrality plugin: caching edges");
             stdout().flush().unwrap();
-            let edge_fetcher = Arc::new(EdgeFetcher::new(datastore.clone(), t_filter.clone(), true));
+            let edge_fetcher = Arc::new(EdgeFetcher::new_with_cache(
+                datastore.clone(),
+                vertex_type_filter.clone(),
+                edge_type_filter,
+            ));
             plugin::util::map(edge_fetcher.clone(), datastore.clone())?;
             println!("\rcentrality plugin: caching edges: done");
             edge_fetcher
         } else {
-            Arc::new(EdgeFetcher::new(datastore.clone(), t_filter.clone(), false))
+            Arc::new(EdgeFetcher::new(datastore.clone(), edge_type_filter))
         };
 
         let mut prev_centrality_map = BTreeMap::default();
@@ -185,7 +216,7 @@ impl plugin::Plugin for CentralityPlugin {
 
             let mut mapper = Arc::new(CentralityMapper::new(
                 prev_centrality_map,
-                t_filter.clone(),
+                vertex_type_filter.clone(),
                 edge_fetcher.clone(),
             ));
             plugin::util::map(mapper.clone(), datastore.clone())?;
