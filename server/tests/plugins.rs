@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::process::{Child, Command};
 
+use indradb::VertexQueryExt;
 use serde_json::json;
 use tokio::time::{sleep, Duration};
 
@@ -58,10 +60,31 @@ async fn get_client_retrying() -> Result<indradb_proto::Client, indradb_proto::C
     Err(last_err.unwrap())
 }
 
+fn create_vertex(id: u128) -> indradb::Vertex {
+    indradb::Vertex::with_id(uuid::Uuid::from_u128(id), indradb::Identifier::new(id.to_string()).unwrap())
+}
+
+fn create_edge_key(out_id: u128, in_id: u128) -> indradb::EdgeKey {
+    indradb::EdgeKey::new(uuid::Uuid::from_u128(out_id), indradb::Identifier::new("link").unwrap(), uuid::Uuid::from_u128(in_id))
+}
+
 #[tokio::test]
 pub async fn plugins() {
     let _server = Server::start(&format!("../target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
     let mut client = get_client_retrying().await.unwrap();
+
+    // insert some sample data
+    client
+        .bulk_insert(vec![
+            indradb::BulkInsertItem::Vertex(create_vertex(1)),
+            indradb::BulkInsertItem::Vertex(create_vertex(2)),
+            indradb::BulkInsertItem::Vertex(create_vertex(3)),
+            indradb::BulkInsertItem::Edge(create_edge_key(1, 2)),
+            indradb::BulkInsertItem::Edge(create_edge_key(1, 3)),
+            indradb::BulkInsertItem::Edge(create_edge_key(2, 3)),
+        ])
+        .await
+        .unwrap();
 
     assert_eq!(
         client
@@ -73,7 +96,7 @@ pub async fn plugins() {
 
     assert_eq!(
         client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
-        json!(0)
+        json!(3)
     );
     assert_eq!(
         client
@@ -83,31 +106,16 @@ pub async fn plugins() {
         json!(0)
     );
 
-    client
-        .bulk_insert(vec![
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("1").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("2").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("3").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("4").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("5").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("6").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("7").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("8").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("9").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("10").unwrap())),
-            indradb::BulkInsertItem::Vertex(indradb::Vertex::new(indradb::Identifier::new("11").unwrap())),
-        ])
-        .await
-        .unwrap();
-    assert_eq!(
-        client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
-        json!(11)
-    );
-    assert_eq!(
-        client
-            .execute_plugin("naive_vertex_count", json!({"t_filter": "foo"}))
-            .await
-            .unwrap(),
-        json!(0)
-    );
+    let delta = client.execute_plugin("centrality", json!({})).await.unwrap().as_f64().unwrap();
+    assert!(delta.abs() <= 0.00001);
+
+    let properties = client.get_vertex_properties(indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap())).await.unwrap();
+    let mut properties_map = HashMap::new();
+    for prop in properties {
+        properties_map.insert(prop.id.as_u128(), prop.value.as_f64().unwrap());
+    }
+    assert_eq!(properties_map.len(), 3);
+    assert!(properties_map.get(&1).unwrap().abs() < 0.00001);
+    assert!(properties_map.get(&2).unwrap().abs() < 0.00001);
+    assert!(properties_map.get(&3).unwrap().abs() < 0.00001);
 }
