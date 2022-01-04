@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 use std::error::Error as StdError;
 use std::fmt;
+use std::sync::{Arc, Mutex};
 
 use crate::ConversionError;
 
@@ -359,16 +360,28 @@ impl Client {
     /// * `items`: The items to insert.
     pub async fn bulk_insert(&mut self, items: Vec<indradb::BulkInsertItem>) -> Result<(), ClientError> {
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-        tokio::spawn(async move {
-            for item in items.into_iter() {
-                if tx.send(item.into()).await.is_err() {
-                    return;
+        let last_err: Arc<Mutex<Option<ClientError>>> = Arc::new(Mutex::new(None));
+
+        {
+            let last_err = last_err.clone();
+            tokio::spawn(async move {
+                for item in items.into_iter() {
+                    if let Err(err) = tx.send(item.into()).await {
+                        *last_err.lock().unwrap() = Some(err.into());
+                        return;
+                    }
                 }
-            }
-        });
+            });
+        }
 
         self.0.bulk_insert(Request::new(ReceiverStream::new(rx))).await?;
-        Ok(())
+
+        let mut last_err = last_err.lock().unwrap();
+        if last_err.is_some() {
+            Err(last_err.take().unwrap())
+        } else {
+            Ok(())
+        }
     }
 
     pub async fn index_property(&mut self, name: indradb::Identifier) -> Result<(), ClientError> {
