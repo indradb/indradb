@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{stdout, Write};
 use std::mem::take;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 use indradb::{EdgeQueryExt, VertexQueryExt};
@@ -12,6 +12,7 @@ use indradb_plugin_host as plugin;
 const DEFAULT_MAX_ITERATIONS: u16 = 10;
 const DEFAULT_MAX_DELTA: f64 = 0.01;
 const DEFAULT_CENTRALITY_PROPERTY_NAME: &str = "centrality";
+const DEFAULT_CACHE_EDGES: bool = false;
 
 #[derive(Debug)]
 pub struct DidNotConvergeError {
@@ -45,25 +46,87 @@ impl fmt::Display for DidNotConvergeError {
     }
 }
 
+// TODO: support filtering edge type
+struct EdgeFetcher {
+    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+    t_filter: Option<indradb::Identifier>,
+    is_cached: bool,
+    cache: Arc<RwLock<BTreeSet<(uuid::Uuid, uuid::Uuid)>>>,
+}
+
+impl EdgeFetcher {
+    fn new(
+        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        t_filter: Option<indradb::Identifier>,
+        enable_cache: bool,
+    ) -> Self {
+        Self {
+            datastore,
+            t_filter,
+            is_cached: enable_cache,
+            cache: Arc::new(RwLock::new(BTreeSet::default())),
+        }
+    }
+
+    fn fetch(&self, vertex_id: uuid::Uuid) -> Result<Vec<uuid::Uuid>, plugin::Error> {
+        let q = indradb::SpecificVertexQuery::single(vertex_id)
+            .outbound()
+            .inbound()
+            .into();
+        Ok(self.datastore.get_vertices(q)?.into_iter().map(|v| v.id).collect())
+    }
+
+    fn get(&self, vertex_id: uuid::Uuid) -> Result<Vec<uuid::Uuid>, plugin::Error> {
+        if self.is_cached {
+            let cache = self.cache.read().unwrap();
+            let mut results = Vec::new();
+            for (out_id, in_id) in cache.range((vertex_id, uuid::Uuid::default())..) {
+                if *out_id != vertex_id {
+                    break;
+                }
+                results.push(*in_id);
+            }
+            Ok(results)
+        } else {
+            self.fetch(vertex_id)
+        }
+    }
+}
+
+impl plugin::util::VertexMapper for EdgeFetcher {
+    fn t_filter(&self) -> Option<indradb::Identifier> {
+        self.t_filter.clone()
+    }
+
+    fn map(&self, vertex: indradb::Vertex) -> Result<(), plugin::Error> {
+        let edges = self.fetch(vertex.id)?;
+        let mut cache = self.cache.write().unwrap();
+        for linked_vertex_id in edges {
+            cache.insert((vertex.id, linked_vertex_id));
+        }
+        Ok(())
+    }
+}
+
 // TODO: separate mapper for when there's a weight property to pull
 struct CentralityMapper {
-    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
     prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
     cur_centrality_map: Arc<Mutex<BTreeMap<uuid::Uuid, f64>>>,
     t_filter: Option<indradb::Identifier>,
+    edge_fetcher: Arc<EdgeFetcher>,
 }
 
 impl CentralityMapper {
     fn new(
-        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
         prev_centrality_map: BTreeMap<uuid::Uuid, f64>,
         t_filter: Option<indradb::Identifier>,
+        edge_fetcher: Arc<EdgeFetcher>,
     ) -> Self {
         Self {
-            datastore,
             prev_centrality_map,
             cur_centrality_map: Arc::new(Mutex::new(BTreeMap::default())),
             t_filter,
+            edge_fetcher,
         }
     }
 
@@ -77,16 +140,6 @@ impl CentralityMapper {
         delta
     }
 
-    fn write(&self, name: indradb::Identifier) -> Result<(), plugin::Error> {
-        let cur_centrality_map = self.cur_centrality_map.lock().unwrap();
-        let properties: Vec<indradb::BulkInsertItem> = cur_centrality_map
-            .iter()
-            .map(|(id, centrality)| indradb::BulkInsertItem::VertexProperty(*id, name.clone(), (*centrality).into()))
-            .collect();
-        self.datastore.bulk_insert(properties)?;
-        Ok(())
-    }
-
     fn unpack(&mut self) -> BTreeMap<uuid::Uuid, f64> {
         take(&mut self.cur_centrality_map.lock().unwrap())
     }
@@ -98,17 +151,13 @@ impl plugin::util::VertexMapper for CentralityMapper {
     }
 
     fn map(&self, vertex: indradb::Vertex) -> Result<(), plugin::Error> {
+        let linked_ids = self.edge_fetcher.get(vertex.id)?;
         let centrality = *self.prev_centrality_map.get(&vertex.id).unwrap_or(&1.0);
-        let q = indradb::SpecificVertexQuery::single(vertex.id)
-            .outbound()
-            .inbound()
-            .into();
-        let linked_vertices = self.datastore.get_vertices(q)?;
-        let vote_weight = centrality / (linked_vertices.len() as f64);
+        let vote_weight = centrality / (linked_ids.len() as f64);
         let mut cur_centrality_map = self.cur_centrality_map.lock().unwrap();
         *cur_centrality_map.entry(vertex.id).or_insert(0.0) += 1.0;
-        for vertex in &linked_vertices {
-            *cur_centrality_map.entry(vertex.id).or_insert(0.0) += vote_weight;
+        for linked_id in linked_ids {
+            *cur_centrality_map.entry(linked_id).or_insert(0.0) += vote_weight;
         }
         Ok(())
     }
@@ -128,6 +177,18 @@ impl plugin::Plugin for CentralityPlugin {
             .unwrap_or_else(|| indradb::Identifier::new(DEFAULT_CENTRALITY_PROPERTY_NAME).unwrap());
         let max_iterations = parse_max_iterations(&arg)?;
         let max_delta = parse_max_delta(&arg)?;
+        let cache_edges = parse_cache_edges(&arg)?;
+
+        let edge_fetcher = if cache_edges {
+            print!("centrality plugin: caching edges");
+            stdout().flush().unwrap();
+            let edge_fetcher = Arc::new(EdgeFetcher::new(datastore.clone(), t_filter.clone(), true));
+            plugin::util::map(edge_fetcher.clone(), datastore.clone())?;
+            println!("\rcentrality plugin: caching edges: done");
+            edge_fetcher
+        } else {
+            Arc::new(EdgeFetcher::new(datastore.clone(), t_filter.clone(), false))
+        };
 
         let mut prev_centrality_map = BTreeMap::default();
         let mut deltas = Vec::new();
@@ -138,9 +199,9 @@ impl plugin::Plugin for CentralityPlugin {
             stdout().flush().unwrap();
 
             let mut mapper = Arc::new(CentralityMapper::new(
-                datastore.clone(),
-                prev_centrality_map.clone(),
+                prev_centrality_map,
                 t_filter.clone(),
+                edge_fetcher.clone(),
             ));
             plugin::util::map(mapper.clone(), datastore.clone())?;
 
@@ -151,12 +212,26 @@ impl plugin::Plugin for CentralityPlugin {
                 delta,
                 start_time.elapsed().as_secs()
             );
+
+            prev_centrality_map = Arc::get_mut(&mut mapper).unwrap().unpack();
+
             if delta < max_delta {
-                mapper.write(centrality_property_name)?;
+                // TODO: batch writes?
+                let properties: Vec<indradb::BulkInsertItem> = prev_centrality_map
+                    .iter()
+                    .map(|(id, centrality)| {
+                        indradb::BulkInsertItem::VertexProperty(
+                            *id,
+                            centrality_property_name.clone(),
+                            (*centrality).into(),
+                        )
+                    })
+                    .collect();
+                datastore.bulk_insert(properties)?;
+
                 return Ok(delta.into());
             }
 
-            prev_centrality_map = Arc::get_mut(&mut mapper).unwrap().unpack();
             deltas.push(delta);
         }
 
@@ -204,6 +279,16 @@ fn parse_max_delta(arg: &serde_json::Value) -> Result<f64, plugin::Error> {
         Some(value) if value.is_f64() => Ok(value.as_f64().unwrap()),
         Some(_) => Err(plugin::Error::InvalidArgument("'max_delta' is not an f64".to_string())),
         None => Ok(DEFAULT_MAX_DELTA),
+    }
+}
+
+fn parse_cache_edges(arg: &serde_json::Value) -> Result<bool, plugin::Error> {
+    match arg.get("cache_edges") {
+        Some(value) if value.is_boolean() => Ok(value.as_bool().unwrap()),
+        Some(_) => Err(plugin::Error::InvalidArgument(
+            "'cache_edges' is not a bool".to_string(),
+        )),
+        None => Ok(DEFAULT_CACHE_EDGES),
     }
 }
 

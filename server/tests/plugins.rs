@@ -75,6 +75,49 @@ fn create_edge_key(out_id: u128, in_id: u128) -> indradb::EdgeKey {
     )
 }
 
+async fn test_centrality(client: &mut indradb_proto::Client, cache_edges: bool) {
+    // initial weights
+    // 1: 1.0
+    // 2: 1.0
+    // 3: 1.0
+    // iteration #0 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 2.5
+    // total delta: 2.5
+    // iteration #1 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 3.0
+    // total delta: 0.5
+    // iteration #0 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 3.0
+    // total delta: 0.0
+    let delta = client
+        .execute_plugin("centrality", json!({ "cache_edges": cache_edges }))
+        .await
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    assert!(delta.abs() <= 0.00001);
+    let properties = client
+        .get_vertex_properties(
+            indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap()),
+        )
+        .await
+        .unwrap();
+    let mut properties_map = HashMap::new();
+    for prop in properties {
+        properties_map.insert(prop.id.as_u128(), prop.value.as_f64().unwrap());
+    }
+    assert_eq!(properties_map.len(), 3);
+    assert!((properties_map.get(&1).unwrap() - 1.0).abs() < 0.00001);
+    assert!((properties_map.get(&2).unwrap() - 1.5).abs() < 0.00001);
+    assert!((properties_map.get(&3).unwrap() - 3.0).abs() < 0.00001);
+}
+
 #[tokio::test]
 pub async fn plugins() {
     let _server = Server::start(&format!("../target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
@@ -116,44 +159,6 @@ pub async fn plugins() {
         json!(0)
     );
 
-    // initial weights
-    // 1: 1.0
-    // 2: 1.0
-    // 3: 1.0
-    // iteration #0 results
-    // 1: 1.0
-    // 2: 1.5
-    // 3: 2.5
-    // total delta: 2.5
-    // iteration #1 results
-    // 1: 1.0
-    // 2: 1.5
-    // 3: 3.0
-    // total delta: 0.5
-    // iteration #0 results
-    // 1: 1.0
-    // 2: 1.5
-    // 3: 3.0
-    // total delta: 0.0
-    let delta = client
-        .execute_plugin("centrality", json!({}))
-        .await
-        .unwrap()
-        .as_f64()
-        .unwrap();
-    assert!(delta.abs() <= 0.00001);
-    let properties = client
-        .get_vertex_properties(
-            indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap()),
-        )
-        .await
-        .unwrap();
-    let mut properties_map = HashMap::new();
-    for prop in properties {
-        properties_map.insert(prop.id.as_u128(), prop.value.as_f64().unwrap());
-    }
-    assert_eq!(properties_map.len(), 3);
-    assert!((properties_map.get(&1).unwrap() - 1.0).abs() < 0.00001);
-    assert!((properties_map.get(&2).unwrap() - 1.5).abs() < 0.00001);
-    assert!((properties_map.get(&3).unwrap() - 3.0).abs() < 0.00001);
+    test_centrality(&mut client, false).await;
+    test_centrality(&mut client, true).await;
 }
