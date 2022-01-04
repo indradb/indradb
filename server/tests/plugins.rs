@@ -73,7 +73,10 @@ pub async fn plugins() {
     let _server = Server::start(&format!("../target/debug/libindradb_plugin_*.{}", LIBRARY_EXTENSION)).unwrap();
     let mut client = get_client_retrying().await.unwrap();
 
-    // insert some sample data
+    // insert a sample graph that looks like this:
+    //    1
+    //  ↙   ↘
+    // 2  →  3
     client
         .bulk_insert(vec![
             indradb::BulkInsertItem::Vertex(create_vertex(1)),
@@ -106,9 +109,27 @@ pub async fn plugins() {
         json!(0)
     );
 
+    // initial weights
+    // 1: 1.0
+    // 2: 1.0
+    // 3: 1.0
+    // iteration #0 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 2.5
+    // total delta: 2.5
+    // iteration #1 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 3.0
+    // total delta: 0.5
+    // iteration #0 results
+    // 1: 1.0
+    // 2: 1.5
+    // 3: 3.0
+    // total delta: 0.0
     let delta = client.execute_plugin("centrality", json!({})).await.unwrap().as_f64().unwrap();
     assert!(delta.abs() <= 0.00001);
-
     let properties = client.get_vertex_properties(indradb::RangeVertexQuery::new().property(indradb::Identifier::new("centrality").unwrap())).await.unwrap();
     let mut properties_map = HashMap::new();
     for prop in properties {
