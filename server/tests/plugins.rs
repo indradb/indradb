@@ -115,7 +115,7 @@ pub async fn plugins() {
         properties_map.insert(prop.id.as_u128(), prop.value.as_f64().unwrap());
     }
     assert_eq!(properties_map.len(), 3);
-    assert!(properties_map.get(&1).unwrap().abs() < 0.00001);
-    assert!(properties_map.get(&2).unwrap().abs() < 0.00001);
-    assert!(properties_map.get(&3).unwrap().abs() < 0.00001);
+    assert!((properties_map.get(&1).unwrap() - 1.0).abs() < 0.00001);
+    assert!((properties_map.get(&2).unwrap() - 1.5).abs() < 0.00001);
+    assert!((properties_map.get(&3).unwrap() - 3.0).abs() < 0.00001);
 }
