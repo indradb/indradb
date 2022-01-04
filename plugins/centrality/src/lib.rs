@@ -18,7 +18,6 @@ const DEFAULT_CACHE_EDGES: bool = false;
 pub struct DidNotConvergeError {
     target_delta: f64,
     iterations: u16,
-    deltas: Vec<f64>,
 }
 
 impl StdError for DidNotConvergeError {
@@ -29,20 +28,7 @@ impl StdError for DidNotConvergeError {
 
 impl fmt::Display for DidNotConvergeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "did not converge to target delta {:.4} after {} iterations, deltas: ",
-            self.target_delta, self.iterations
-        )?;
-        let mut is_first = false;
-        for delta in &self.deltas {
-            if !is_first {
-                write!(f, ", ")?;
-            }
-            write!(f, "{:.4}", delta)?;
-            is_first = true;
-        }
-        Ok(())
+        write!(f, "did not converge to target delta {:.4} after {} iterations", self.target_delta, self.iterations)
     }
 }
 
@@ -191,7 +177,6 @@ impl plugin::Plugin for CentralityPlugin {
         };
 
         let mut prev_centrality_map = BTreeMap::default();
-        let mut deltas = Vec::new();
 
         for i in 0..max_iterations {
             let start_time = Instant::now();
@@ -207,10 +192,10 @@ impl plugin::Plugin for CentralityPlugin {
 
             let delta = mapper.total_delta() / (vertex_count as f64);
             println!(
-                "\rcentrality plugin: iteration {}: delta={}, runtime={}s",
+                "\rcentrality plugin: iteration {}: delta={}, runtime={:?}",
                 i,
                 delta,
-                start_time.elapsed().as_secs()
+                start_time.elapsed()
             );
 
             prev_centrality_map = Arc::get_mut(&mut mapper).unwrap().unpack();
@@ -231,14 +216,11 @@ impl plugin::Plugin for CentralityPlugin {
 
                 return Ok(delta.into());
             }
-
-            deltas.push(delta);
         }
 
         Err(plugin::Error::Other(Box::new(DidNotConvergeError {
             target_delta: max_delta,
             iterations: max_iterations,
-            deltas,
         })))
     }
 }
