@@ -232,14 +232,13 @@ impl plugin::Plugin for CentralityPlugin {
             prev_centrality_map = Arc::get_mut(&mut mapper).unwrap().unpack();
 
             if delta < max_delta {
-                // TODO: batch writes?
                 let properties: Vec<indradb::BulkInsertItem> = prev_centrality_map
-                    .iter()
+                    .into_iter()
                     .map(|(id, centrality)| {
                         indradb::BulkInsertItem::VertexProperty(
-                            *id,
+                            id,
                             centrality_property_name.clone(),
-                            (*centrality).into(),
+                            centrality.into(),
                         )
                     })
                     .collect();
