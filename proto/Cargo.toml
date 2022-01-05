@@ -1,6 +1,6 @@
 [package]
 name = "indradb-proto"
-version = "2.2.0"
+version = "3.0.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "Protobuf/gRPC interfaces for IndraDB"
 homepage = "https://indradb.github.io"
