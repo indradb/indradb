@@ -17,7 +17,7 @@ use crate::{
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
 
 const CF_NAMES: [&str; 9] = [
@@ -746,13 +746,7 @@ impl Datastore for RocksdbDatastore {
             }
         }
 
-        // NOTE: syncing and WAL are disabled for bulk inserts to maximize
-        // performance
-        let mut opts = WriteOptions::default();
-        opts.set_sync(false);
-        opts.disable_wal(true);
-        self.db.write_opt(batch, &opts)?;
-
+        self.db.write(batch)?;
         Ok(())
     }
 
