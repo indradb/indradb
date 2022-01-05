@@ -12,6 +12,9 @@ pub enum Error {
     Json(JsonError),
     /// IndraDB error.
     IndraDB(IndraDBError),
+    // When the input argument is valid JSON, but invalid for plugin-specific
+    // reasons.
+    InvalidArgument(String),
     /// Any other kind of error.
     Other(Box<dyn StdError + Send + Sync>),
 }
@@ -22,6 +25,7 @@ impl StdError for Error {
             Error::Json(ref err) => Some(&*err),
             Error::IndraDB(ref err) => Some(&*err),
             Error::Other(ref err) => Some(&**err),
+            _ => None,
         }
     }
 }
@@ -31,6 +35,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Json(ref err) => write!(f, "json error: {}", err),
             Error::IndraDB(ref err) => write!(f, "IndraDB error: {}", err),
+            Error::InvalidArgument(ref msg) => write!(f, "{}", msg),
             Error::Other(ref err) => write!(f, "{}", err),
         }
     }
