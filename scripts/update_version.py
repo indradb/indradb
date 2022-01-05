@@ -7,6 +7,7 @@ import time
 import subprocess
 
 VERSION_MATCHER = re.compile(r'^version = "([^"]+)\.([^"]+)\.([^"]+)"$')
+VERSIONED_CATEGORIES = {"[package]", "[dependencies.indradb-lib]", "[dependencies.indradb-proto]"}
 
 def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
@@ -16,13 +17,14 @@ def update_version(path, new_version):
     with open(path, "r") as f:
         contents = f.read().splitlines()
 
-    in_package = False
+    in_appropriate_category = False
 
     for i, line in enumerate(contents):
-        if line == "[package]":
-            in_package = True
-        elif in_package:
+        if line.startswith("["):
+            in_appropriate_category = line in VERSIONED_CATEGORIES
+        elif in_appropriate_category:
             match = VERSION_MATCHER.match(line)
+
             if match:
                 old_version = tuple([int(x) for x in match.groups()])
                 assert new_version > old_version, "New version should be greater than the old version"
@@ -57,6 +59,7 @@ def main():
     run(["cargo", "publish"], cwd="lib")
     time.sleep(15) # wait for lib to be accessible on crates.io
     run(["cargo", "publish"], cwd="proto")
+    run(["cargo", "publish"], cwd="plugins/host")
     time.sleep(15) # wait for proto to be accessible on crates.io
     run(["cargo", "publish"], cwd="server")
     run(["cargo", "publish"], cwd="client")

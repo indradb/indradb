@@ -19,8 +19,16 @@ path = "src/main.rs"
 clap = "2.33.3"
 tonic = "0.5.2"
 tokio = { version = "1.11.0", features = ["macros", "rt-multi-thread"] }
-indradb-lib = { path = "../lib", features = ["rocksdb-datastore"] }
-indradb-proto = { path = "../proto", features = ["server"] }
 
 [dev-dependencies]
 serde_json = "^1.0.57"
+
+[dependencies.indradb-lib]
+path = "../lib"
+version = "3.0.0"
+features = ["rocksdb-datastore"]
+
+[dependencies.indradb-proto]
+path = "../proto"
+version = "3.0.0"
+features = ["server"]
