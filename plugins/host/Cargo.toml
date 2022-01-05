@@ -1,16 +1,26 @@
 [package]
 name = "indradb-plugin-host"
 version = "0.1.0"
-edition = "2021"
 build = "build.rs"
+authors = ["Yusuf Simonson <simonson@gmail.com>"]
+description = "A graph database library"
+homepage = "https://indradb.github.io"
+repository = "https://github.com/indradb/indradb"
+keywords = ["graph", "database"]
+categories = ["database", "database-implementations"]
+license = "MPL-2.0"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indradb-lib = { path = "../../lib" }
 serde_json = "^1.0.57"
 threadpool = "1.8.1"
 uuid = "~0.8.2"
 
 [build-dependencies]
 rustc_version = "0.4.0"
+
+[dependencies.indradb-lib]
+path = "../../lib"
+version = "3.0.0"
