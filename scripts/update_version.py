@@ -68,7 +68,7 @@ def main():
 
     run(["cargo", "publish"], cwd="lib")
     run(["cargo", "publish"], cwd="plugins/host")
-    time.sleep(15) # wait for lib to be accessible on crates.io
+    time.sleep(15) # wait for lib and plugin host to be accessible on crates.io
     run(["cargo", "publish"], cwd="proto")
     time.sleep(15) # wait for proto to be accessible on crates.io
     run(["cargo", "publish"], cwd="server")
