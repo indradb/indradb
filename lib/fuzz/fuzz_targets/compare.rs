@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use arbitrary::{Arbitrary, Unstructured};
-use indradb::{Datastore, MemoryDatastore, RocksdbDatastore, Transaction};
+use indradb::{Datastore, MemoryDatastore, RocksdbDatastore};
 use libfuzzer_sys::fuzz_target;
 use tempfile::tempdir;
 
@@ -20,11 +20,11 @@ pub enum Op {
     GetEdgeCount(u64, Option<Identifier>, EdgeDirection),
     GetVertexProperties(VertexPropertyQuery),
     GetAllVertexProperties(VertexQuery),
-    SetVertexProperties(VertexPropertyQuery, JsonValue),
+    SetVertexProperties(VertexPropertyQuery, Json),
     DeleteVertexProperties(VertexPropertyQuery),
     GetEdgeProperties(EdgePropertyQuery),
     GetAllEdgeProperties(EdgeQuery),
-    SetEdgeProperties(EdgePropertyQuery, JsonValue),
+    SetEdgeProperties(EdgePropertyQuery, Json),
     DeleteEdgeProperties(EdgePropertyQuery),
     IndexProperty(Identifier),
 }
@@ -33,8 +33,8 @@ pub enum Op {
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(EdgeKey),
-    VertexProperty(u64, Identifier, JsonValue),
-    EdgeProperty(EdgeKey, Identifier, JsonValue),
+    VertexProperty(u64, Identifier, Json),
+    EdgeProperty(EdgeKey, Identifier, Json),
 }
 
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
@@ -191,7 +191,7 @@ impl Into<indradb::PropertyPresenceVertexQuery> for PropertyPresenceVertexQuery 
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueVertexQuery {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::PropertyValueVertexQuery> for PropertyValueVertexQuery {
@@ -224,7 +224,7 @@ impl Into<indradb::PipePropertyPresenceVertexQuery> for PipePropertyPresenceVert
 pub struct PipePropertyValueVertexQuery {
     pub inner: Box<VertexQuery>,
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
     pub equal: bool,
 }
 
@@ -329,7 +329,7 @@ impl Into<indradb::PropertyPresenceEdgeQuery> for PropertyPresenceEdgeQuery {
 #[derive(Arbitrary, PartialEq, Clone, Debug)]
 pub struct PropertyValueEdgeQuery {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::PropertyValueEdgeQuery> for PropertyValueEdgeQuery {
@@ -362,7 +362,7 @@ impl Into<indradb::PipePropertyPresenceEdgeQuery> for PipePropertyPresenceEdgeQu
 pub struct PipePropertyValueEdgeQuery {
     pub inner: Box<EdgeQuery>,
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
     pub equal: bool,
 }
 
@@ -395,7 +395,7 @@ impl Into<indradb::EdgePropertyQuery> for EdgePropertyQuery {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexProperty {
     pub id: u64,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::VertexProperty> for VertexProperty {
@@ -410,7 +410,7 @@ impl Into<indradb::VertexProperty> for VertexProperty {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct NamedProperty {
     pub name: Identifier,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::NamedProperty> for NamedProperty {
@@ -455,7 +455,7 @@ impl Into<indradb::EdgeProperties> for EdgeProperties {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
     pub key: EdgeKey,
-    pub value: JsonValue,
+    pub value: Json,
 }
 
 impl Into<indradb::EdgeProperty> for EdgeProperty {
@@ -519,24 +519,24 @@ impl<'a> Arbitrary<'a> for DateTime {
 }
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
-pub enum JsonValue {
+pub enum Json {
     Null,
     Bool(bool),
     Number(JsonNumber),
     String(String),
-    Array(Vec<JsonValue>),
-    Object(HashMap<String, JsonValue>),
+    Array(Vec<Json>),
+    Object(HashMap<String, Json>),
 }
 
-impl Into<serde_json::Value> for JsonValue {
+impl Into<serde_json::Value> for Json {
     fn into(self) -> serde_json::Value {
         match self {
-            JsonValue::Null => serde_json::Value::Null,
-            JsonValue::Bool(b) => serde_json::Value::Bool(b),
-            JsonValue::Number(n) => serde_json::Value::Number(n.into()),
-            JsonValue::String(s) => serde_json::Value::String(s),
-            JsonValue::Array(v) => serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect()),
-            JsonValue::Object(o) => {
+            Json::Null => serde_json::Value::Null,
+            Json::Bool(b) => serde_json::Value::Bool(b),
+            Json::Number(n) => serde_json::Value::Number(n.into()),
+            Json::String(s) => serde_json::Value::String(s),
+            Json::Array(v) => serde_json::Value::Array(v.into_iter().map(|i| i.into()).collect()),
+            Json::Object(o) => {
                 let mut m = serde_json::Map::new();
 
                 for (k, v) in o.into_iter() {
@@ -546,12 +546,6 @@ impl Into<serde_json::Value> for JsonValue {
                 serde_json::Value::Object(m)
             }
         }
-    }
-}
-
-impl Into<indradb::JsonValue> for JsonValue {
-    fn into(self) -> indradb::JsonValue {
-        indradb::JsonValue::new(self.into())
     }
 }
 
@@ -611,118 +605,115 @@ fuzz_target!(|ops: Vec<Op>| {
     let rocksdb_dir = tempdir().unwrap();
     let d2 = RocksdbDatastore::new(rocksdb_dir.path(), Some(1)).unwrap();
 
-    let t1 = d1.transaction().unwrap();
-    let t2 = d2.transaction().unwrap();
-
     for op in ops {
         match op {
             Op::BulkInsert(items) => {
                 let items: Vec<indradb::BulkInsertItem> = items.into_iter().map(|i| i.into()).collect();
-                let v1 = d1.bulk_insert(items.clone().into_iter());
-                let v2 = d2.bulk_insert(items.into_iter());
+                let v1 = d1.bulk_insert(items.clone());
+                let v2 = d2.bulk_insert(items);
                 cmp!(v1, v2);
             }
             Op::CreateVertex(vertex) => {
                 let vertex = vertex.into();
-                let v1 = t1.create_vertex(&vertex);
-                let v2 = t2.create_vertex(&vertex);
+                let v1 = d1.create_vertex(&vertex);
+                let v2 = d2.create_vertex(&vertex);
                 cmp!(v1, v2);
             }
             Op::GetVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let v1 = t1.get_vertices(q.clone());
-                let v2 = t2.get_vertices(q);
+                let v1 = d1.get_vertices(q.clone());
+                let v2 = d2.get_vertices(q);
                 cmp!(v1, v2);
             }
             Op::DeleteVertices(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let v1 = t1.delete_vertices(q.clone());
-                let v2 = t2.delete_vertices(q);
+                let v1 = d1.delete_vertices(q.clone());
+                let v2 = d2.delete_vertices(q);
                 cmp!(v1, v2);
             }
             Op::GetVertexCount => {
-                let v1 = t1.get_vertex_count();
-                let v2 = t2.get_vertex_count();
+                let v1 = d1.get_vertex_count();
+                let v2 = d2.get_vertex_count();
                 cmp!(v1, v2);
             }
             Op::CreateEdge(key) => {
                 let key: indradb::EdgeKey = key.into();
-                let v1 = t1.create_edge(&key);
-                let v2 = t2.create_edge(&key);
+                let v1 = d1.create_edge(&key);
+                let v2 = d2.create_edge(&key);
                 cmp!(v1, v2);
             }
             Op::GetEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let v1 = t1.get_edges(q.clone());
-                let v2 = t2.get_edges(q);
+                let v1 = d1.get_edges(q.clone());
+                let v2 = d2.get_edges(q);
                 cmp!(v1, v2);
             }
             Op::DeleteEdges(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let v1 = t1.delete_edges(q.clone());
-                let v2 = t2.delete_edges(q);
+                let v1 = d1.delete_edges(q.clone());
+                let v2 = d2.delete_edges(q);
                 cmp!(v1, v2);
             }
             Op::GetEdgeCount(id, t, direction) => {
                 let t: Option<indradb::Identifier> = t.map(|t| t.into());
                 let direction: indradb::EdgeDirection = direction.into();
-                let v1 = t1.get_edge_count(id, t.as_ref(), direction);
-                let v2 = t2.get_edge_count(id, t.as_ref(), direction);
+                let v1 = d1.get_edge_count(id, t.as_ref(), direction);
+                let v2 = d2.get_edge_count(id, t.as_ref(), direction);
                 cmp!(v1, v2);
             }
             Op::GetVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let v1 = t1.get_vertex_properties(q.clone());
-                let v2 = t2.get_vertex_properties(q);
+                let v1 = d1.get_vertex_properties(q.clone());
+                let v2 = d2.get_vertex_properties(q);
                 cmp!(v1, v2);
             }
             Op::GetAllVertexProperties(q) => {
                 let q: indradb::VertexQuery = q.into();
-                let v1 = t1.get_all_vertex_properties(q.clone());
-                let v2 = t2.get_all_vertex_properties(q);
+                let v1 = d1.get_all_vertex_properties(q.clone());
+                let v2 = d2.get_all_vertex_properties(q);
                 cmp!(v1, v2);
             }
             Op::SetVertexProperties(q, value) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_vertex_properties(q.clone(), &value);
-                let v2 = t2.set_vertex_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = d1.set_vertex_properties(q.clone(), value.clone());
+                let v2 = d2.set_vertex_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteVertexProperties(q) => {
                 let q: indradb::VertexPropertyQuery = q.into();
-                let v1 = t1.delete_vertex_properties(q.clone());
-                let v2 = t2.delete_vertex_properties(q);
+                let v1 = d1.delete_vertex_properties(q.clone());
+                let v2 = d2.delete_vertex_properties(q);
                 cmp!(v1, v2);
             }
             Op::GetEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let v1 = t1.get_edge_properties(q.clone());
-                let v2 = t2.get_edge_properties(q);
+                let v1 = d1.get_edge_properties(q.clone());
+                let v2 = d2.get_edge_properties(q);
                 cmp!(v1, v2);
             }
             Op::GetAllEdgeProperties(q) => {
                 let q: indradb::EdgeQuery = q.into();
-                let v1 = t1.get_all_edge_properties(q.clone());
-                let v2 = t2.get_all_edge_properties(q);
+                let v1 = d1.get_all_edge_properties(q.clone());
+                let v2 = d2.get_all_edge_properties(q);
                 cmp!(v1, v2);
             }
             Op::SetEdgeProperties(q, value) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let value: indradb::JsonValue = value.into();
-                let v1 = t1.set_edge_properties(q.clone(), &value);
-                let v2 = t2.set_edge_properties(q, &value);
+                let value: serde_json::Value = value.into();
+                let v1 = d1.set_edge_properties(q.clone(), value.clone());
+                let v2 = d2.set_edge_properties(q, value);
                 cmp!(v1, v2);
             }
             Op::DeleteEdgeProperties(q) => {
                 let q: indradb::EdgePropertyQuery = q.into();
-                let v1 = t1.delete_edge_properties(q.clone());
-                let v2 = t2.delete_edge_properties(q);
+                let v1 = d1.delete_edge_properties(q.clone());
+                let v2 = d2.delete_edge_properties(q);
                 cmp!(v1, v2);
             },
             Op::IndexProperty(t) => {
-                let v1 = d1.index_property(t.clone());
-                let v2 = d2.index_property(t);
+                let v1 = d1.index_property(t.clone().into());
+                let v2 = d2.index_property(t.into());
                 cmp!(v1, v2);
             }
         }

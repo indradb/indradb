@@ -1,4 +1,4 @@
-use crate::{EdgeKey, Identifier, JsonValue, Vertex};
+use crate::{EdgeKey, Identifier, Vertex};
 
 /// An item to insert, as part of a bulk insert request.
 #[derive(Clone, Debug, PartialEq)]
@@ -8,7 +8,7 @@ pub enum BulkInsertItem {
     /// An edge to insert.
     Edge(EdgeKey),
     /// A vertex property to insert.
-    VertexProperty(u64, Identifier, JsonValue),
+    VertexProperty(u64, Identifier, serde_json::Value),
     /// An edge property to insert.
-    EdgeProperty(EdgeKey, Identifier, JsonValue),
+    EdgeProperty(EdgeKey, Identifier, serde_json::Value),
 }

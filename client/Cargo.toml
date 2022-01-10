@@ -1,6 +1,6 @@
 [package]
 name = "indradb-client"
-version = "2.2.0"
+version = "3.0.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "CLI client for IndraDB"
 homepage = "https://indradb.github.io"
@@ -8,7 +8,8 @@ repository = "https://github.com/indradb/indradb"
 keywords = ["graph", "database"]
 categories = ["database", "database-implementations"]
 license = "MPL-2.0"
-edition = "2018"
+edition = "2021"
+readme = "../README.md"
 
 [[bin]]
 name = "indradb-client"
@@ -19,14 +20,13 @@ clap = "2.33.3"
 tonic = "0.5.2"
 tokio = { version = "1.11.0", features = ["macros", "rt-multi-thread"] }
 serde_json = "1.0.67"
-uuid = { version = "0.8.2", features = ["serde"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "2.2.0"
+version = "3.0.0"
 features = ["rocksdb-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"
-version = "2.2.0"
+version = "3.0.0"
 features = ["client"]

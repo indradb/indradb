@@ -154,7 +154,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "indradb-lib"
-version = "2.2.0"
+version = "3.0.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -176,7 +176,6 @@ dependencies = [
  "libfuzzer-sys",
  "serde_json",
  "tempfile",
- "uuid",
 ]
 
 [[package]]
@@ -503,12 +502,6 @@ name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
-
-[[package]]
-name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "version_check"

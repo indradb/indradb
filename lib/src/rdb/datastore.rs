@@ -9,14 +9,14 @@ use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::{
     BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, Identifier, JsonValue, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
-    PropertyValueEdgeQuery, PropertyValueVertexQuery, Transaction, Vertex, VertexProperties, VertexProperty,
-    VertexPropertyQuery, VertexQuery,
+    EdgeQuery, Identifier, Json, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
+    PropertyValueEdgeQuery, PropertyValueVertexQuery, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    VertexQuery,
 };
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 
 const CF_NAMES: [&str; 9] = [
     "vertices:v1",
@@ -249,7 +249,7 @@ fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexI
         VertexQuery::PropertyValue(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
-            let iter = vertex_property_value_manager.iterate_for_value(&q.name, &q.value);
+            let iter = vertex_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
             vertices_from_property_value_iterator(db_ref, iter)
         }
         VertexQuery::PipePropertyPresence(q) => {
@@ -347,7 +347,7 @@ fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeIt
         EdgeQuery::PropertyValue(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
-            let iter = edge_property_value_manager.iterate_for_value(&q.name, &q.value);
+            let iter = edge_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
             edges_from_property_value_iterator(db_ref, iter)
         }
         EdgeQuery::PipePropertyPresence(q) => {
@@ -417,8 +417,6 @@ impl RocksdbDatastore {
 }
 
 impl Datastore for RocksdbDatastore {
-    type Trans = RocksdbTransaction;
-
     fn sync(&self) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
@@ -436,108 +434,6 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 
-    // We override the default `bulk_insert` implementation because further
-    // optimization can be done by using `WriteBatch`s.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where
-        I: Iterator<Item = BulkInsertItem>,
-    {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let vertex_manager = VertexManager::new(db_ref);
-        let edge_manager = EdgeManager::new(db_ref);
-        let vertex_property_manager = VertexPropertyManager::new(db_ref);
-        let edge_property_manager = EdgePropertyManager::new(db_ref);
-        let mut batch = WriteBatch::default();
-
-        for item in items {
-            match item {
-                BulkInsertItem::Vertex(ref vertex) => {
-                    vertex_manager.create(&mut batch, vertex)?;
-                }
-                BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
-                }
-                BulkInsertItem::VertexProperty(id, ref name, ref value) => {
-                    vertex_property_manager.set(&mut batch, id, name, value)?;
-                }
-                BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
-                    edge_property_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, name, value)?;
-                }
-            }
-        }
-
-        // NOTE: syncing and WAL are disabled for bulk inserts to maximize
-        // performance
-        let mut opts = WriteOptions::default();
-        opts.set_sync(false);
-        opts.disable_wal(true);
-        self.db.write_opt(batch, &opts)?;
-
-        Ok(())
-    }
-
-    fn transaction(&self) -> Result<Self::Trans> {
-        Ok(RocksdbTransaction::new(
-            self.db.clone(),
-            self.indexed_properties.clone(),
-        ))
-    }
-
-    fn index_property<T: Into<Identifier>>(&self, name: T) -> Result<()> {
-        let name = name.into();
-
-        let mut indexed_properties = self.indexed_properties.write().unwrap();
-        if !indexed_properties.insert(name.clone()) {
-            return Ok(());
-        }
-
-        let db = self.db.clone();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let mut batch = WriteBatch::default();
-        let vertex_manager = VertexManager::new(db_ref);
-        let edge_range_manager = EdgeRangeManager::new(db_ref);
-        let vertex_property_manager = VertexPropertyManager::new(db_ref);
-        let edge_property_manager = EdgePropertyManager::new(db_ref);
-        let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
-        let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
-        let metadata_manager = MetadataManager::new(&db);
-        metadata_manager.set_indexed_properties(&mut batch, &indexed_properties)?;
-
-        for item in vertex_manager.iterate_for_range(0) {
-            let (vertex_id, _) = item?;
-            if let Some(property_value) = vertex_property_manager.get(vertex_id, &name)? {
-                vertex_property_value_manager.set(&mut batch, vertex_id, &name, &property_value);
-            }
-        }
-
-        for item in edge_range_manager.iterate_for_all() {
-            let (out_id, t, _, in_id) = item?;
-            if let Some(property_value) = edge_property_manager.get(out_id, &t, in_id, &name)? {
-                edge_property_value_manager.set(&mut batch, out_id, &t, in_id, &name, &property_value);
-            }
-        }
-
-        db.write(batch)?;
-        Ok(())
-    }
-}
-
-/// A transaction that is backed by rocksdb.
-#[derive(Debug)]
-pub struct RocksdbTransaction {
-    db: Arc<DB>,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
-}
-
-impl RocksdbTransaction {
-    fn new(db: Arc<DB>, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
-        RocksdbTransaction { db, indexed_properties }
-    }
-}
-
-impl Transaction for RocksdbTransaction {
     fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
@@ -554,11 +450,11 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<Vertex>> {
+    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
 
         let iter = iter.map(move |(id, t)| {
             let vertex = Vertex::with_id(id, t);
@@ -568,11 +464,11 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn delete_vertices<Q: Into<VertexQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
         let vertex_manager = VertexManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
@@ -610,11 +506,11 @@ impl Transaction for RocksdbTransaction {
         }
     }
 
-    fn get_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<Edge>> {
+    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q.into())?.into_iter();
+        let iter = execute_edge_query(db_ref, q)?.into_iter();
 
         let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
             let key = EdgeKey::new(out_id, t, in_id);
@@ -625,13 +521,13 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn delete_edges<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<()> {
+    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let edge_manager = EdgeManager::new(db_ref);
         let vertex_manager = VertexManager::new(db_ref);
-        let iter = execute_edge_query(db_ref, q.into())?;
+        let iter = execute_edge_query(db_ref, q)?;
         let mut batch = WriteBatch::default();
 
         for (out_id, t, update_datetime, in_id) in iter {
@@ -670,18 +566,18 @@ impl Transaction for RocksdbTransaction {
             let value = manager.get(id, &q.name)?;
 
             if let Some(value) = value {
-                properties.push(VertexProperty::new(id, value));
+                properties.push(VertexProperty::new(id, value.0));
             }
         }
 
         Ok(properties)
     }
 
-    fn get_all_vertex_properties<Q: Into<VertexQuery>>(&self, q: Q) -> Result<Vec<VertexProperties>> {
+    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q.into())?.into_iter();
+        let iter = execute_vertex_query(db_ref, q)?.into_iter();
         let manager = VertexPropertyManager::new(db_ref);
 
         let iter = iter.map(move |(id, t)| {
@@ -691,7 +587,7 @@ impl Transaction for RocksdbTransaction {
             let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
-                .map(|((_, name), value)| NamedProperty::new(name, value))
+                .map(|((_, name), value)| NamedProperty::new(name, value.0))
                 .collect();
 
             Ok(VertexProperties::new(vertex, props))
@@ -700,15 +596,16 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: serde_json::Value) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = VertexPropertyManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
+        let wrapped_value = Json::new(value);
         for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
-            manager.set(&mut batch, id, &q.name, value)?;
+            manager.set(&mut batch, id, &q.name, &wrapped_value)?;
         }
 
         db.write(batch)?;
@@ -742,18 +639,18 @@ impl Transaction for RocksdbTransaction {
 
             if let Some(value) = value {
                 let key = EdgeKey::new(out_id, t, in_id);
-                properties.push(EdgeProperty::new(key, value));
+                properties.push(EdgeProperty::new(key, value.0));
             }
         }
 
         Ok(properties)
     }
 
-    fn get_all_edge_properties<Q: Into<EdgeQuery>>(&self, q: Q) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q.into())?.into_iter();
+        let iter = execute_edge_query(db_ref, q)?.into_iter();
         let manager = EdgePropertyManager::new(db_ref);
 
         let iter = iter.map(move |(out_id, t, time, in_id)| {
@@ -762,7 +659,7 @@ impl Transaction for RocksdbTransaction {
             let props: Result<Vec<_>> = it.collect();
             let props_iter = props?.into_iter();
             let props = props_iter
-                .map(|((_, _, _, name), value)| NamedProperty::new(name, value))
+                .map(|((_, _, _, name), value)| NamedProperty::new(name, value.0))
                 .collect();
 
             Ok(EdgeProperties::new(edge, props))
@@ -771,15 +668,16 @@ impl Transaction for RocksdbTransaction {
         iter.collect()
     }
 
-    fn set_edge_properties(&self, q: EdgePropertyQuery, value: &JsonValue) -> Result<()> {
+    fn set_edge_properties(&self, q: EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = EdgePropertyManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
+        let wrapped_value = Json::new(value);
         for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
-            manager.set(&mut batch, out_id, &t, in_id, &q.name, value)?;
+            manager.set(&mut batch, out_id, &t, in_id, &q.name, &wrapped_value)?;
         }
 
         db.write(batch)?;
@@ -795,6 +693,82 @@ impl Transaction for RocksdbTransaction {
 
         for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
             manager.delete(&mut batch, out_id, &t, in_id, &q.name)?;
+        }
+
+        db.write(batch)?;
+        Ok(())
+    }
+
+    // We override the default `bulk_insert` implementation because further
+    // optimization can be done by using `WriteBatch`s.
+    fn bulk_insert(&self, items: Vec<BulkInsertItem>) -> Result<()> {
+        let db = self.db.clone();
+        let indexed_properties = self.indexed_properties.read().unwrap();
+        let db_ref = DBRef::new(&db, &indexed_properties);
+        let vertex_manager = VertexManager::new(db_ref);
+        let edge_manager = EdgeManager::new(db_ref);
+        let vertex_property_manager = VertexPropertyManager::new(db_ref);
+        let edge_property_manager = EdgePropertyManager::new(db_ref);
+        let mut batch = WriteBatch::default();
+
+        for item in items {
+            match item {
+                BulkInsertItem::Vertex(ref vertex) => {
+                    vertex_manager.create(&mut batch, vertex)?;
+                }
+                BulkInsertItem::Edge(ref key) => {
+                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                }
+                BulkInsertItem::VertexProperty(id, ref name, ref value) => {
+                    vertex_property_manager.set(&mut batch, id, name, &Json::new(value.clone()))?;
+                }
+                BulkInsertItem::EdgeProperty(ref key, ref name, ref value) => {
+                    edge_property_manager.set(
+                        &mut batch,
+                        key.outbound_id,
+                        &key.t,
+                        key.inbound_id,
+                        name,
+                        &Json::new(value.clone()),
+                    )?;
+                }
+            }
+        }
+
+        self.db.write(batch)?;
+        Ok(())
+    }
+
+    fn index_property(&self, name: Identifier) -> Result<()> {
+        let mut indexed_properties = self.indexed_properties.write().unwrap();
+        if !indexed_properties.insert(name.clone()) {
+            return Ok(());
+        }
+
+        let db = self.db.clone();
+        let db_ref = DBRef::new(&db, &indexed_properties);
+        let mut batch = WriteBatch::default();
+        let vertex_manager = VertexManager::new(db_ref);
+        let edge_range_manager = EdgeRangeManager::new(db_ref);
+        let vertex_property_manager = VertexPropertyManager::new(db_ref);
+        let edge_property_manager = EdgePropertyManager::new(db_ref);
+        let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
+        let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
+        let metadata_manager = MetadataManager::new(&db);
+        metadata_manager.set_indexed_properties(&mut batch, &indexed_properties)?;
+
+        for item in vertex_manager.iterate_for_range(0) {
+            let (vertex_id, _) = item?;
+            if let Some(property_value) = vertex_property_manager.get(vertex_id, &name)? {
+                vertex_property_value_manager.set(&mut batch, vertex_id, &name, &property_value);
+            }
+        }
+
+        for item in edge_range_manager.iterate_for_all() {
+            let (out_id, t, _, in_id) = item?;
+            if let Some(property_value) = edge_property_manager.get(out_id, &t, in_id, &name)? {
+                edge_property_value_manager.set(&mut batch, out_id, &t, in_id, &name, &property_value);
+            }
         }
 
         db.write(batch)?;

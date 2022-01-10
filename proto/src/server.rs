@@ -1,7 +1,12 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
+use std::error::Error as StdError;
+use std::fmt;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use libloading::Library;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
@@ -11,12 +16,24 @@ use tonic::{Request, Response, Status, Streaming};
 
 const CHANNEL_CAPACITY: usize = 100;
 
-macro_rules! send {
-    ($tx:expr, $res:expr) => {
-        if let Err(err) = $tx.send($res).await {
-            eprintln!("could not send message to client: {}", err);
+async fn send<IT, PT>(tx: mpsc::Sender<Result<PT, Status>>, result: Result<Vec<IT>, indradb::Error>)
+where
+    IT: Into<PT>,
+{
+    match map_indradb_result(result) {
+        Ok(values) => {
+            for value in values {
+                if let Err(err) = tx.send(Ok(value.into())).await {
+                    eprintln!("could not send message to client: {}", err);
+                }
+            }
         }
-    };
+        Err(err) => {
+            if let Err(err) = tx.send(Err(err)).await {
+                eprintln!("could not send message to client: {}", err);
+            }
+        }
+    }
 }
 
 fn map_indradb_result<T>(res: Result<T, indradb::Error>) -> Result<T, Status> {
@@ -27,25 +44,333 @@ fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T,
     res.map_err(|err| Status::invalid_argument(format!("{}", err)))
 }
 
+/// An error that occurred while initializing the server with plugins enabled.
+#[derive(Debug)]
+pub enum InitError {
+    /// Failure triggered when loading a plugin library.
+    LibLoading(libloading::Error),
+    /// Failure setting up the server.
+    Transport(TonicTransportError),
+    /// A bad glob pattern was passed in.
+    Pattern(glob::PatternError),
+    /// An error that occurred while iterating over files matching the input
+    /// glob pattern.
+    Glob(glob::GlobError),
+    /// A mismatch of versions between this server and an input plugin.
+    VersionMismatch {
+        library_path: PathBuf,
+        indradb_version_info: indradb_plugin_host::VersionInfo,
+        library_version_info: indradb_plugin_host::VersionInfo,
+    },
+}
+
+impl StdError for InitError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match *self {
+            InitError::LibLoading(ref err) => Some(err),
+            InitError::Transport(ref err) => Some(err),
+            InitError::Pattern(ref err) => Some(err),
+            InitError::Glob(ref err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for InitError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            InitError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
+            InitError::Transport(ref err) => write!(f, "transport error: {}", err),
+            InitError::Pattern(ref err) => write!(f, "pattern error: {}", err),
+            InitError::Glob(ref err) => write!(f, "glob error: {}", err),
+            InitError::VersionMismatch {
+                ref library_path,
+                ref indradb_version_info,
+                ref library_version_info,
+            } => {
+                write!(
+                    f,
+                    "version mismatch: library '{}'={}; IndraDB={}",
+                    library_path.to_string_lossy(),
+                    library_version_info,
+                    indradb_version_info
+                )
+            }
+        }
+    }
+}
+
+impl From<libloading::Error> for InitError {
+    fn from(err: libloading::Error) -> Self {
+        InitError::LibLoading(err)
+    }
+}
+
+impl From<TonicTransportError> for InitError {
+    fn from(err: TonicTransportError) -> Self {
+        InitError::Transport(err)
+    }
+}
+
+impl From<glob::PatternError> for InitError {
+    fn from(err: glob::PatternError) -> Self {
+        InitError::Pattern(err)
+    }
+}
+
+impl From<glob::GlobError> for InitError {
+    fn from(err: glob::GlobError) -> Self {
+        InitError::Glob(err)
+    }
+}
+
+#[derive(Default)]
+struct Plugins {
+    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin>>,
+    // Kept to ensure libraries aren't dropped
+    #[allow(dead_code)]
+    libraries: Vec<Library>,
+}
+
 /// The IndraDB server implementation.
 #[derive(Clone)]
-pub struct Server<
-    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
-    T: indradb::Transaction + Send + Sync + 'static,
-> {
+pub struct Server<D: indradb::Datastore + Send + Sync + 'static> {
     datastore: Arc<D>,
+    plugins: Arc<Plugins>,
+}
+
+impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
+    /// Creates a new server.
+    ///
+    /// # Arguments
+    /// * `datastore`: The underlying datastore to use.
+    pub fn new(datastore: Arc<D>) -> Self {
+        Self {
+            datastore,
+            plugins: Arc::new(Plugins::default()),
+        }
+    }
+
+    /// Creates a new server with plugins enabled.
+    ///
+    /// # Arguments
+    /// * `datastore`: The underlying datastore to use.
+    /// * `library_paths`: Paths to libraries to enable.
+    ///
+    /// # Errors
+    /// This will return an error if the plugin(s) failed to load.
+    ///
+    /// # Safety
+    /// Loading and executing plugins is inherently unsafe. Only run libraries
+    /// that you've vetted.
+    pub unsafe fn new_with_plugins(datastore: Arc<D>, library_paths: Vec<PathBuf>) -> Result<Self, InitError> {
+        let mut libraries = Vec::new();
+        let mut plugin_entries = HashMap::new();
+
+        let indradb_version_info = indradb_plugin_host::VersionInfo::default();
+
+        for library_path in library_paths {
+            let library = Library::new(&library_path)?;
+
+            let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
+                library.get(b"register")?;
+            let decl = func();
+
+            if decl.version_info != indradb_version_info {
+                return Err(InitError::VersionMismatch {
+                    library_path,
+                    library_version_info: decl.version_info,
+                    indradb_version_info,
+                });
+            }
+
+            plugin_entries.extend(decl.entries);
+            libraries.push(library);
+        }
+
+        Ok(Self {
+            datastore,
+            plugins: Arc::new(Plugins {
+                libraries,
+                entries: plugin_entries,
+            }),
+        })
+    }
 }
 
 #[tonic::async_trait]
-impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Transaction + Send + Sync + 'static>
-    crate::indra_db_server::IndraDb for Server<D, T>
-{
+impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::IndraDb for Server<D> {
     async fn ping(&self, _: Request<()>) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
 
     async fn sync(&self, _: Request<()>) -> Result<Response<()>, Status> {
         map_indradb_result(self.datastore.sync())?;
+        Ok(Response::new(()))
+    }
+
+    async fn create_vertex(&self, request: Request<crate::Vertex>) -> Result<Response<crate::CreateResponse>, Status> {
+        let vertex = map_conversion_result(request.into_inner().try_into())?;
+        let res = map_indradb_result(self.datastore.create_vertex(&vertex))?;
+        Ok(Response::new(crate::CreateResponse { created: res }))
+    }
+
+    async fn create_vertex_from_type(
+        &self,
+        request: Request<crate::Identifier>,
+    ) -> Result<Response<crate::CreateVertexFromTypeResponse>, Status> {
+        let t = map_conversion_result(request.into_inner().try_into())?;
+        let res = map_indradb_result(self.datastore.create_vertex_from_type(t))?;
+        Ok(Response::new(crate::CreateVertexFromTypeResponse { id: res }))
+    }
+
+    type GetVerticesStream = Pin<Box<dyn Stream<Item = Result<crate::Vertex, Status>> + Send + Sync + 'static>>;
+    async fn get_vertices(
+        &self,
+        request: Request<crate::VertexQuery>,
+    ) -> Result<Response<Self::GetVerticesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_vertices(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    async fn delete_vertices(&self, request: Request<crate::VertexQuery>) -> Result<Response<()>, Status> {
+        let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.delete_vertices(q))?;
+        Ok(Response::new(()))
+    }
+
+    async fn get_vertex_count(&self, _: Request<()>) -> Result<Response<crate::CountResponse>, Status> {
+        let res = map_indradb_result(self.datastore.get_vertex_count())?;
+        Ok(Response::new(crate::CountResponse { count: res }))
+    }
+
+    async fn create_edge(&self, request: Request<crate::EdgeKey>) -> Result<Response<crate::CreateResponse>, Status> {
+        let key = map_conversion_result(request.into_inner().try_into())?;
+        let res = map_indradb_result(self.datastore.create_edge(&key))?;
+        Ok(Response::new(crate::CreateResponse { created: res }))
+    }
+
+    type GetEdgesStream = Pin<Box<dyn Stream<Item = Result<crate::Edge, Status>> + Send + Sync + 'static>>;
+    async fn get_edges(&self, request: Request<crate::EdgeQuery>) -> Result<Response<Self::GetEdgesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_edges(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    async fn delete_edges(&self, request: Request<crate::EdgeQuery>) -> Result<Response<()>, Status> {
+        let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.delete_edges(q))?;
+        Ok(Response::new(()))
+    }
+
+    async fn get_edge_count(
+        &self,
+        request: Request<crate::GetEdgeCountRequest>,
+    ) -> Result<Response<crate::CountResponse>, Status> {
+        let (id, t, direction) = map_conversion_result(request.into_inner().try_into())?;
+        let res = map_indradb_result(self.datastore.get_edge_count(id, t.as_ref(), direction))?;
+        Ok(Response::new(crate::CountResponse { count: res }))
+    }
+
+    type GetVertexPropertiesStream =
+        Pin<Box<dyn Stream<Item = Result<crate::VertexProperty, Status>> + Send + Sync + 'static>>;
+    async fn get_vertex_properties(
+        &self,
+        request: Request<crate::VertexPropertyQuery>,
+    ) -> Result<Response<Self::GetVertexPropertiesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_vertex_properties(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    type GetAllVertexPropertiesStream =
+        Pin<Box<dyn Stream<Item = Result<crate::VertexProperties, Status>> + Send + Sync + 'static>>;
+    async fn get_all_vertex_properties(
+        &self,
+        request: Request<crate::VertexQuery>,
+    ) -> Result<Response<Self::GetAllVertexPropertiesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_all_vertex_properties(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    async fn set_vertex_properties(
+        &self,
+        request: Request<crate::SetVertexPropertiesRequest>,
+    ) -> Result<Response<()>, Status> {
+        let (q, value) = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.set_vertex_properties(q, value))?;
+        Ok(Response::new(()))
+    }
+
+    async fn delete_vertex_properties(
+        &self,
+        request: Request<crate::VertexPropertyQuery>,
+    ) -> Result<Response<()>, Status> {
+        let q = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.delete_vertex_properties(q))?;
+        Ok(Response::new(()))
+    }
+
+    type GetEdgePropertiesStream =
+        Pin<Box<dyn Stream<Item = Result<crate::EdgeProperty, Status>> + Send + Sync + 'static>>;
+    async fn get_edge_properties(
+        &self,
+        request: Request<crate::EdgePropertyQuery>,
+    ) -> Result<Response<Self::GetEdgePropertiesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q: indradb::EdgePropertyQuery = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_edge_properties(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    type GetAllEdgePropertiesStream =
+        Pin<Box<dyn Stream<Item = Result<crate::EdgeProperties, Status>> + Send + Sync + 'static>>;
+    async fn get_all_edge_properties(
+        &self,
+        request: Request<crate::EdgeQuery>,
+    ) -> Result<Response<Self::GetAllEdgePropertiesStream>, Status> {
+        let datastore = self.datastore.clone();
+        let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::spawn(async move {
+            send(tx, datastore.get_all_edge_properties(q)).await;
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    async fn set_edge_properties(
+        &self,
+        request: Request<crate::SetEdgePropertiesRequest>,
+    ) -> Result<Response<()>, Status> {
+        let (q, value) = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.set_edge_properties(q, value))?;
+        Ok(Response::new(()))
+    }
+
+    async fn delete_edge_properties(&self, request: Request<crate::EdgePropertyQuery>) -> Result<Response<()>, Status> {
+        let q = map_conversion_result(request.into_inner().try_into())?;
+        map_indradb_result(self.datastore.delete_edge_properties(q))?;
         Ok(Response::new(()))
     }
 
@@ -62,208 +387,40 @@ impl<D: indradb::Datastore<Trans = T> + Send + Sync + 'static, T: indradb::Trans
         };
 
         let datastore = self.datastore.clone();
-        map_indradb_result(datastore.bulk_insert(items.into_iter()))?;
+        map_indradb_result(datastore.bulk_insert(items))?;
         Ok(Response::new(()))
     }
 
-    type TransactionStream =
-        Pin<Box<dyn Stream<Item = Result<crate::TransactionResponse, Status>> + Send + Sync + 'static>>;
-    async fn transaction(
-        &self,
-        request: Request<Streaming<crate::TransactionRequest>>,
-    ) -> Result<Response<Self::TransactionStream>, Status> {
-        let mut input_stream = request.into_inner();
-        let trans = map_indradb_result(self.datastore.clone().transaction())?;
-        let (mut tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-
-        tokio::spawn(async move {
-            while let Some(Ok(request)) = input_stream.next().await {
-                let request_id = request.request_id;
-                if let Some(request) = request.request {
-                    if let Err(err) = route(&mut tx, &trans, request_id, request).await {
-                        send!(tx, Err(err));
-                    }
-                }
-            }
-        });
-
-        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
-    }
-
-    async fn index_property(&self, request: Request<crate::Identifier>) -> Result<Response<()>, Status> {
+    async fn index_property(&self, request: Request<crate::IndexPropertyRequest>) -> Result<Response<()>, Status> {
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
         map_indradb_result(self.datastore.clone().index_property(name))?;
         Ok(Response::new(()))
     }
-}
 
-async fn route<T>(
-    tx: &mut mpsc::Sender<Result<crate::TransactionResponse, Status>>,
-    trans: &T,
-    request_id: u32,
-    request: crate::TransactionRequestVariant,
-) -> Result<(), Status>
-where
-    T: indradb::Transaction,
-{
-    let create_response =
-        move |response: crate::TransactionResponseVariant| -> Result<crate::TransactionResponse, Status> {
-            Ok(crate::TransactionResponse {
-                request_id,
-                response: Some(response),
-            })
+    async fn execute_plugin(
+        &self,
+        request: Request<crate::ExecutePluginRequest>,
+    ) -> Result<Response<crate::ExecutePluginResponse>, Status> {
+        let request = request.into_inner();
+        let arg = if let Some(arg) = request.arg {
+            map_conversion_result(arg.try_into())?
+        } else {
+            serde_json::Value::Null
         };
 
-    let create_empty_response = move || -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Empty(()))
-    };
-
-    let create_ok_response = move |ok: bool| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Ok(ok))
-    };
-
-    let create_count_response = move |count: u64| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Count(count))
-    };
-
-    let create_id_response = move |id: u64| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Id(id))
-    };
-
-    let create_vertex_response = move |vertex: indradb::Vertex| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Vertex(vertex.into()))
-    };
-
-    let create_edge_response = move |edge: indradb::Edge| -> Result<crate::TransactionResponse, Status> {
-        create_response(crate::TransactionResponseVariant::Edge(edge.into()))
-    };
-
-    let create_vertex_property_response =
-        move |vertex_property: indradb::VertexProperty| -> Result<crate::TransactionResponse, Status> {
-            create_response(crate::TransactionResponseVariant::VertexProperty(
-                vertex_property.into(),
-            ))
-        };
-
-    let create_vertex_properties_response =
-        move |vertex_properties: indradb::VertexProperties| -> Result<crate::TransactionResponse, Status> {
-            create_response(crate::TransactionResponseVariant::VertexProperties(
-                vertex_properties.into(),
-            ))
-        };
-
-    let create_edge_property_response =
-        move |edge_property: indradb::EdgeProperty| -> Result<crate::TransactionResponse, Status> {
-            create_response(crate::TransactionResponseVariant::EdgeProperty(edge_property.into()))
-        };
-
-    let create_edge_properties_response =
-        move |edge_properties: indradb::EdgeProperties| -> Result<crate::TransactionResponse, Status> {
-            create_response(crate::TransactionResponseVariant::EdgeProperties(
-                edge_properties.into(),
-            ))
-        };
-
-    match request {
-        crate::TransactionRequestVariant::CreateVertex(request) => {
-            let vertex = map_conversion_result(request.try_into())?;
-            let res = map_indradb_result(trans.create_vertex(&vertex))?;
-            send!(tx, create_ok_response(res));
+        if let Some(plugin) = self.plugins.entries.get(&request.name) {
+            let response = {
+                plugin
+                    .call(self.datastore.clone(), arg)
+                    .map_err(|err| Status::internal(format!("{}", err)))?
+            };
+            Ok(Response::new(crate::ExecutePluginResponse {
+                value: Some(response.into()),
+            }))
+        } else {
+            Err(Status::not_found("unknown plugin"))
         }
-        crate::TransactionRequestVariant::CreateVertexFromType(request) => {
-            let t = map_conversion_result(request.try_into())?;
-            let res = map_indradb_result(trans.create_vertex_from_type(t))?;
-            send!(tx, create_id_response(res));
-        }
-        crate::TransactionRequestVariant::GetVertices(request) => {
-            let q: indradb::VertexQuery = map_conversion_result(request.try_into())?;
-            for vertex in map_indradb_result(trans.get_vertices(q))? {
-                send!(tx, create_vertex_response(vertex));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::DeleteVertices(request) => {
-            let q: indradb::VertexQuery = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.delete_vertices(q))?;
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::GetVertexCount(_) => {
-            let res = map_indradb_result(trans.get_vertex_count())?;
-            send!(tx, create_count_response(res));
-        }
-        crate::TransactionRequestVariant::CreateEdge(request) => {
-            let key = map_conversion_result(request.try_into())?;
-            let res = map_indradb_result(trans.create_edge(&key))?;
-            send!(tx, create_ok_response(res));
-        }
-        crate::TransactionRequestVariant::GetEdges(request) => {
-            let q: indradb::EdgeQuery = map_conversion_result(request.try_into())?;
-            for edge in map_indradb_result(trans.get_edges(q))? {
-                send!(tx, create_edge_response(edge));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::DeleteEdges(request) => {
-            let q: indradb::EdgeQuery = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.delete_edges(q))?;
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::GetEdgeCount(request) => {
-            let (id, t, direction) = map_conversion_result(request.try_into())?;
-            let res = map_indradb_result(trans.get_edge_count(id, t.as_ref(), direction))?;
-            send!(tx, create_count_response(res));
-        }
-        crate::TransactionRequestVariant::GetVertexProperties(request) => {
-            let q = map_conversion_result(request.try_into())?;
-            for vertex_property in map_indradb_result(trans.get_vertex_properties(q))? {
-                send!(tx, create_vertex_property_response(vertex_property));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::GetAllVertexProperties(request) => {
-            let q: indradb::VertexQuery = map_conversion_result(request.try_into())?;
-            for vertex_properties in map_indradb_result(trans.get_all_vertex_properties(q))? {
-                send!(tx, create_vertex_properties_response(vertex_properties));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::SetVertexProperties(request) => {
-            let (q, value) = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.set_vertex_properties(q, &value))?;
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::DeleteVertexProperties(request) => {
-            let q = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.delete_vertex_properties(q))?;
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::GetEdgeProperties(request) => {
-            let q = map_conversion_result(request.try_into())?;
-            for edge_property in map_indradb_result(trans.get_edge_properties(q))? {
-                send!(tx, create_edge_property_response(edge_property));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::GetAllEdgeProperties(request) => {
-            let q: indradb::EdgeQuery = map_conversion_result(request.try_into())?;
-            for edge_properties in map_indradb_result(trans.get_all_edge_properties(q))? {
-                send!(tx, create_edge_properties_response(edge_properties));
-            }
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::SetEdgeProperties(request) => {
-            let (q, value) = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.set_edge_properties(q, &value))?;
-            send!(tx, create_empty_response());
-        }
-        crate::TransactionRequestVariant::DeleteEdgeProperties(request) => {
-            let q = map_conversion_result(request.try_into())?;
-            map_indradb_result(trans.delete_edge_properties(q))?;
-            send!(tx, create_empty_response());
-        }
-    };
-
-    Ok(())
+    }
 }
 
 /// Runs the IndraDB server.
@@ -275,16 +432,55 @@ where
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D, T>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
+pub async fn run<D>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
 where
-    D: indradb::Datastore<Trans = T> + Send + Sync + 'static,
-    T: indradb::Transaction + Send + Sync + 'static,
+    D: indradb::Datastore + Send + Sync + 'static,
 {
-    let svc = crate::indra_db_server::IndraDbServer::new(Server { datastore });
+    let service = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
-        .add_service(svc)
+        .add_service(service)
         .serve_with_incoming(incoming)
         .await?;
+
+    Ok(())
+}
+
+/// Runs the IndraDB server with plugins enabled.
+///
+/// # Arguments
+/// * `datastore`: The underlying datastore to use.
+/// * `listener`: The TCP listener to run the gRPC server on.
+/// * `plugin_path_pattern`: A [glob](https://docs.rs/glob/0.3.0/glob/) to the
+///   plugin paths to be used.
+///
+/// # Errors
+/// This will return an error if the gRPC fails to start on the given
+/// listener.
+///
+/// # Safety
+/// Loading and executing plugins is inherently unsafe. Only run libraries that
+/// you've vetted.
+pub async unsafe fn run_with_plugins<D>(
+    datastore: Arc<D>,
+    listener: TcpListener,
+    plugin_path_pattern: &str,
+) -> Result<(), InitError>
+where
+    D: indradb::Datastore + Send + Sync + 'static,
+{
+    let mut plugin_paths = Vec::new();
+    for entry in glob::glob(plugin_path_pattern)? {
+        plugin_paths.push(entry?);
+    }
+
+    let server = Server::new_with_plugins(datastore, plugin_paths)?;
+    let service = crate::indra_db_server::IndraDbServer::new(server);
+    let incoming = TcpListenerStream::new(listener);
+    TonicServer::builder()
+        .add_service(service)
+        .serve_with_incoming(incoming)
+        .await?;
+
     Ok(())
 }

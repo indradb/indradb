@@ -1,34 +1,23 @@
 use std::convert::TryInto;
 use std::error::Error as StdError;
 use std::fmt;
+use std::sync::{Arc, Mutex};
 
 use crate::ConversionError;
 
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::codec::Streaming;
+use tokio_stream::StreamExt;
 use tonic::transport::{Channel, Endpoint, Error as TonicTransportError};
 use tonic::{Request, Status};
 
 const CHANNEL_CAPACITY: usize = 100;
-
-fn check_request_id(expected: u32, actual: u32) -> Result<(), ClientError> {
-    if expected != actual {
-        Err(ClientError::UnexpectedResponseId { expected, actual })
-    } else {
-        Ok(())
-    }
-}
 
 /// The error returned if a client operation failed.
 #[derive(Debug)]
 pub enum ClientError {
     /// Conversion between an IndraDB and its protobuf equivalent failed.
     Conversion { inner: ConversionError },
-    /// A gRPC stream response had an unexpected response ID, implying a bug.
-    UnexpectedResponseId { expected: u32, actual: u32 },
-    /// A gRPC stream response had an unexpected empty body, implying a bug.
-    UnexpectedEmptyResponse { request_id: u32 },
     /// A gRPC error.
     Grpc { inner: Status },
     /// A transport error.
@@ -52,12 +41,6 @@ impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ClientError::Conversion { ref inner } => inner.fmt(f),
-            ClientError::UnexpectedResponseId { expected, actual } => {
-                write!(f, "unexpected response ID; expected {}, got {}", expected, actual)
-            }
-            ClientError::UnexpectedEmptyResponse { request_id } => {
-                write!(f, "unexpected empty response for request ID {}", request_id)
-            }
             ClientError::Grpc { ref inner } => write!(f, "grpc error: {}", inner),
             ClientError::Transport { ref inner } => write!(f, "transport error: {}", inner),
             ClientError::ChannelClosed => write!(f, "failed to send request: channel closed"),
@@ -123,129 +106,6 @@ impl Client {
         Ok(())
     }
 
-    /// Bulk inserts many vertices, edges, and/or properties.
-    ///
-    /// Note that datastores have discretion on how to approach safeguard vs
-    /// performance tradeoffs. In particular:
-    /// * If the datastore is disk-backed, it may or may not flush before
-    ///   returning.
-    /// * The datastore might not verify for correctness; e.g., it might not
-    ///   ensure that the relevant vertices exist before inserting an edge.
-    /// If you want maximum protection, use the equivalent functions in
-    /// transactions, which will provide more safeguards.
-    ///
-    /// # Arguments
-    /// * `items`: The items to insert.
-    pub async fn bulk_insert<I>(&mut self, items: I) -> Result<(), ClientError>
-    where
-        I: Iterator<Item = indradb::BulkInsertItem>,
-    {
-        let items: Vec<indradb::BulkInsertItem> = items.collect();
-        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-        tokio::spawn(async move {
-            for item in items.into_iter() {
-                if tx.send(item.into()).await.is_err() {
-                    return;
-                }
-            }
-        });
-
-        self.0.bulk_insert(Request::new(ReceiverStream::new(rx))).await?;
-        Ok(())
-    }
-
-    /// Creates a new transaction.
-    pub async fn transaction(&mut self) -> Result<Transaction, ClientError> {
-        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-        let response = self.0.transaction(Request::new(ReceiverStream::new(rx))).await?;
-        Ok(Transaction::new(tx, response.into_inner()))
-    }
-
-    pub async fn index_property<T: Into<indradb::Identifier>>(&mut self, name: T) -> Result<(), ClientError> {
-        self.0.index_property(Request::new(name.into().into())).await?;
-        Ok(())
-    }
-}
-
-/// A transaction.
-pub struct Transaction {
-    sender: mpsc::Sender<crate::TransactionRequest>,
-    receiver: Streaming<crate::TransactionResponse>,
-    next_request_id: u32,
-}
-
-impl Transaction {
-    fn new(sender: mpsc::Sender<crate::TransactionRequest>, receiver: Streaming<crate::TransactionResponse>) -> Self {
-        Transaction {
-            sender,
-            receiver,
-            next_request_id: 0,
-        }
-    }
-
-    async fn request(&mut self, request: crate::TransactionRequestVariant) -> Result<u32, ClientError> {
-        let request_id = self.next_request_id;
-        self.next_request_id += 1;
-
-        self.sender
-            .send(crate::TransactionRequest {
-                request_id,
-                request: Some(request),
-            })
-            .await?;
-
-        Ok(request_id)
-    }
-
-    async fn request_single(
-        &mut self,
-        request: crate::TransactionRequestVariant,
-    ) -> Result<crate::TransactionResponseVariant, ClientError> {
-        let expected_request_id = self.request(request).await?;
-        match self.receiver.message().await? {
-            Some(crate::TransactionResponse {
-                request_id,
-                response: Some(response),
-            }) => {
-                check_request_id(expected_request_id, request_id)?;
-                Ok(response)
-            }
-            _ => Err(ClientError::UnexpectedEmptyResponse {
-                request_id: expected_request_id,
-            }),
-        }
-    }
-
-    async fn request_multi(
-        &mut self,
-        request: crate::TransactionRequestVariant,
-    ) -> Result<Vec<crate::TransactionResponseVariant>, ClientError> {
-        let expected_request_id = self.request(request).await?;
-        let mut values = Vec::default();
-        loop {
-            match self.receiver.message().await? {
-                Some(crate::TransactionResponse {
-                    request_id,
-                    response: Some(response),
-                }) => {
-                    check_request_id(expected_request_id, request_id)?;
-
-                    if let crate::TransactionResponseVariant::Empty(_) = response {
-                        break;
-                    } else {
-                        values.push(response);
-                    }
-                }
-                _ => {
-                    return Err(ClientError::UnexpectedEmptyResponse {
-                        request_id: expected_request_id,
-                    });
-                }
-            }
-        }
-        Ok(values)
-    }
-
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
@@ -253,8 +113,9 @@ impl Transaction {
     /// # Arguments
     /// * `vertex`: The vertex to create.
     pub async fn create_vertex(&mut self, vertex: &indradb::Vertex) -> Result<bool, ClientError> {
-        let request = crate::TransactionRequestVariant::CreateVertex(vertex.clone().into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let vertex: crate::Vertex = vertex.clone().into();
+        let res = self.0.create_vertex(vertex).await?;
+        Ok(res.into_inner().created)
     }
 
     /// Creates a new vertex with just a type specification. As opposed to
@@ -264,41 +125,41 @@ impl Transaction {
     /// # Arguments
     /// * `t`: The type of the vertex to create.
     pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<u64, ClientError> {
-        let request = crate::TransactionRequestVariant::CreateVertexFromType(t.into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let t: crate::Identifier = t.into();
+        let res = self.0.create_vertex_from_type(t).await?;
+        Ok(res.into_inner().id)
     }
 
     /// Gets a range of vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get_vertices<Q: Into<indradb::VertexQuery>>(
-        &mut self,
-        q: Q,
-    ) -> Result<Vec<indradb::Vertex>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetVertices(q.into().into());
-        let result: Result<Vec<indradb::Vertex>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+    pub async fn get_vertices(&mut self, q: indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, ClientError> {
+        let q: crate::VertexQuery = q.into();
+        let mut vertices = Vec::<indradb::Vertex>::new();
+        let mut res = self.0.get_vertices(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            vertices.push(res?.try_into()?);
+        }
+
+        Ok(vertices)
     }
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn delete_vertices<Q: Into<indradb::VertexQuery>>(&mut self, q: Q) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::DeleteVertices(q.into().into());
-        Ok(self.request_single(request).await?.try_into()?)
+    pub async fn delete_vertices(&mut self, q: indradb::VertexQuery) -> Result<(), ClientError> {
+        let q: crate::VertexQuery = q.into();
+        self.0.delete_vertices(q).await?;
+        Ok(())
     }
 
     /// Gets the number of vertices in the datastore.
     pub async fn get_vertex_count(&mut self) -> Result<u64, ClientError> {
-        let request = crate::TransactionRequestVariant::GetVertexCount(());
-        Ok(self.request_single(request).await?.try_into()?)
+        let res = self.0.get_vertex_count(()).await?;
+        Ok(res.into_inner().count)
     }
 
     /// Creates a new edge. If the edge already exists, this will update it
@@ -309,32 +170,35 @@ impl Transaction {
     /// # Arguments
     /// * `key`: The edge to create.
     pub async fn create_edge(&mut self, key: &indradb::EdgeKey) -> Result<bool, ClientError> {
-        let request = crate::TransactionRequestVariant::CreateEdge(key.clone().into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let key: crate::EdgeKey = key.clone().into();
+        let res = self.0.create_edge(key).await?;
+        Ok(res.into_inner().created)
     }
 
     /// Gets a range of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get_edges<Q: Into<indradb::EdgeQuery>>(&mut self, q: Q) -> Result<Vec<indradb::Edge>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetEdges(q.into().into());
-        let result: Result<Vec<indradb::Edge>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+    pub async fn get_edges(&mut self, q: indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, ClientError> {
+        let q: crate::EdgeQuery = q.into();
+        let mut edges = Vec::<indradb::Edge>::new();
+        let mut res = self.0.get_edges(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            edges.push(res?.try_into()?);
+        }
+
+        Ok(edges)
     }
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn delete_edges<Q: Into<indradb::EdgeQuery>>(&mut self, q: Q) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::DeleteEdges(q.into().into());
-        Ok(self.request_single(request).await?.try_into()?)
+    pub async fn delete_edges(&mut self, q: indradb::EdgeQuery) -> Result<(), ClientError> {
+        let q: crate::EdgeQuery = q.into();
+        self.0.delete_edges(q).await?;
+        Ok(())
     }
 
     /// Gets the number of edges associated with a vertex.
@@ -349,8 +213,9 @@ impl Transaction {
         t: Option<&indradb::Identifier>,
         direction: indradb::EdgeDirection,
     ) -> Result<u64, ClientError> {
-        let request = crate::TransactionRequestVariant::GetEdgeCount((id, t.cloned(), direction).into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let req: crate::GetEdgeCountRequest = (id, t.cloned(), direction).into();
+        let res = self.0.get_edge_count(req).await?;
+        Ok(res.into_inner().count)
     }
 
     /// Gets vertex properties.
@@ -361,32 +226,34 @@ impl Transaction {
         &mut self,
         q: indradb::VertexPropertyQuery,
     ) -> Result<Vec<indradb::VertexProperty>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetVertexProperties(q.into());
-        let result: Result<Vec<indradb::VertexProperty>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+        let q: crate::VertexPropertyQuery = q.into();
+        let mut vertex_properties = Vec::<indradb::VertexProperty>::new();
+        let mut res = self.0.get_vertex_properties(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            vertex_properties.push(res?.try_into()?);
+        }
+
+        Ok(vertex_properties)
     }
 
     /// Gets all vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get_all_vertex_properties<Q: Into<indradb::VertexQuery>>(
+    pub async fn get_all_vertex_properties(
         &mut self,
-        q: Q,
+        q: indradb::VertexQuery,
     ) -> Result<Vec<indradb::VertexProperties>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetAllVertexProperties(q.into().into());
-        let result: Result<Vec<indradb::VertexProperties>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+        let q: crate::VertexQuery = q.into();
+        let mut vertex_properties = Vec::<indradb::VertexProperties>::new();
+        let mut res = self.0.get_all_vertex_properties(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            vertex_properties.push(res?.try_into()?);
+        }
+
+        Ok(vertex_properties)
     }
 
     /// Sets a vertex properties.
@@ -397,10 +264,11 @@ impl Transaction {
     pub async fn set_vertex_properties(
         &mut self,
         q: indradb::VertexPropertyQuery,
-        value: &indradb::JsonValue,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::SetVertexProperties((q, value.clone()).into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let req: crate::SetVertexPropertiesRequest = (q, value).into();
+        self.0.set_vertex_properties(req).await?;
+        Ok(())
     }
 
     /// Deletes vertex properties.
@@ -408,8 +276,9 @@ impl Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     pub async fn delete_vertex_properties(&mut self, q: indradb::VertexPropertyQuery) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::DeleteVertexProperties(q.into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let q: crate::VertexPropertyQuery = q.into();
+        self.0.delete_vertex_properties(q).await?;
+        Ok(())
     }
 
     /// Gets edge properties.
@@ -420,32 +289,34 @@ impl Transaction {
         &mut self,
         q: indradb::EdgePropertyQuery,
     ) -> Result<Vec<indradb::EdgeProperty>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetEdgeProperties(q.into());
-        let result: Result<Vec<indradb::EdgeProperty>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+        let q: crate::EdgePropertyQuery = q.into();
+        let mut edge_properties = Vec::<indradb::EdgeProperty>::new();
+        let mut res = self.0.get_edge_properties(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            edge_properties.push(res?.try_into()?);
+        }
+
+        Ok(edge_properties)
     }
 
     /// Gets all edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get_all_edge_properties<Q: Into<indradb::EdgeQuery>>(
+    pub async fn get_all_edge_properties(
         &mut self,
-        q: Q,
+        q: indradb::EdgeQuery,
     ) -> Result<Vec<indradb::EdgeProperties>, ClientError> {
-        let request = crate::TransactionRequestVariant::GetAllEdgeProperties(q.into().into());
-        let result: Result<Vec<indradb::EdgeProperties>, ConversionError> = self
-            .request_multi(request)
-            .await?
-            .into_iter()
-            .map(|response| response.try_into())
-            .collect();
-        Ok(result?)
+        let q: crate::EdgeQuery = q.into();
+        let mut edge_properties = Vec::<indradb::EdgeProperties>::new();
+        let mut res = self.0.get_all_edge_properties(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            edge_properties.push(res?.try_into()?);
+        }
+
+        Ok(edge_properties)
     }
 
     /// Sets edge properties.
@@ -456,10 +327,11 @@ impl Transaction {
     pub async fn set_edge_properties(
         &mut self,
         q: indradb::EdgePropertyQuery,
-        value: &indradb::JsonValue,
+        value: serde_json::Value,
     ) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::SetEdgeProperties((q, value.clone()).into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let req: crate::SetEdgePropertiesRequest = (q, value).into();
+        self.0.set_edge_properties(req).await?;
+        Ok(())
     }
 
     /// Deletes edge properties.
@@ -467,7 +339,71 @@ impl Transaction {
     /// # Arguments
     /// * `q`: The query to run.
     pub async fn delete_edge_properties(&mut self, q: indradb::EdgePropertyQuery) -> Result<(), ClientError> {
-        let request = crate::TransactionRequestVariant::DeleteEdgeProperties(q.into());
-        Ok(self.request_single(request).await?.try_into()?)
+        let q: crate::EdgePropertyQuery = q.into();
+        self.0.delete_edge_properties(q).await?;
+        Ok(())
+    }
+
+    /// Bulk inserts many vertices, edges, and/or properties.
+    ///
+    /// Note that datastores have discretion on how to approach safeguard vs
+    /// performance tradeoffs. In particular:
+    /// * If the datastore is disk-backed, it may or may not flush before
+    ///   returning.
+    /// * The datastore might not verify for correctness; e.g., it might not
+    ///   ensure that the relevant vertices exist before inserting an edge.
+    /// If you want maximum protection, use the equivalent functions in
+    /// transactions, which will provide more safeguards.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
+    pub async fn bulk_insert(&mut self, items: Vec<indradb::BulkInsertItem>) -> Result<(), ClientError> {
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        let last_err: Arc<Mutex<Option<ClientError>>> = Arc::new(Mutex::new(None));
+
+        {
+            let last_err = last_err.clone();
+            tokio::spawn(async move {
+                for item in items.into_iter() {
+                    if let Err(err) = tx.send(item.into()).await {
+                        *last_err.lock().unwrap() = Some(err.into());
+                        return;
+                    }
+                }
+            });
+        }
+
+        self.0.bulk_insert(Request::new(ReceiverStream::new(rx))).await?;
+
+        let mut last_err = last_err.lock().unwrap();
+        if last_err.is_some() {
+            Err(last_err.take().unwrap())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn index_property(&mut self, name: indradb::Identifier) -> Result<(), ClientError> {
+        let request = Request::new(crate::IndexPropertyRequest {
+            name: Some(name.into()),
+        });
+        self.0.index_property(request).await?;
+        Ok(())
+    }
+
+    pub async fn execute_plugin(
+        &mut self,
+        name: &str,
+        arg: serde_json::Value,
+    ) -> Result<serde_json::Value, ClientError> {
+        let request = Request::new(crate::ExecutePluginRequest {
+            name: name.to_string(),
+            arg: Some(arg.into()),
+        });
+        let response = self.0.execute_plugin(request).await?;
+        match response.into_inner().value {
+            Some(value) => Ok(value.try_into()?),
+            None => Ok(serde_json::Value::Null),
+        }
     }
 }

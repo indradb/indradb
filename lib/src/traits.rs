@@ -5,75 +5,30 @@ use std::vec::Vec;
 
 /// Specifies a datastore implementation.
 ///
+/// Note that this trait and its members purposefully do not employ any
+/// generic arguments. While that would improve ergonomics, it would remove
+/// object safety, which we need for plugins.
+///
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub trait Datastore {
-    type Trans: Transaction;
-
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
-    fn sync(&self) -> Result<()>;
-
-    /// Creates a new transaction.
-    fn transaction(&self) -> Result<Self::Trans>;
-
-    /// Bulk inserts many vertices, edges, and/or properties.
-    ///
-    /// Note that datastores have discretion on how to approach safeguard vs
-    /// performance tradeoffs. In particular:
-    /// * If the datastore is disk-backed, it may or may not flush before
-    ///   returning.
-    /// * The datastore might not verify for correctness; e.g., it might not
-    ///   ensure that the relevant vertices exist before inserting an edge.
-    /// If you want maximum protection, use the equivalent functions in
-    /// transactions, which will provide more safeguards.
-    ///
-    /// # Arguments
-    /// * `items`: The items to insert.
-    fn bulk_insert<I>(&self, items: I) -> Result<()>
-    where
-        I: Iterator<Item = models::BulkInsertItem>,
-    {
-        let trans = self.transaction()?;
-
-        for item in items {
-            match item {
-                models::BulkInsertItem::Vertex(vertex) => {
-                    trans.create_vertex(&vertex)?;
-                }
-                models::BulkInsertItem::Edge(edge_key) => {
-                    trans.create_edge(&edge_key)?;
-                }
-                models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
-                    trans.set_vertex_properties(query, &value)?;
-                }
-                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    trans.set_edge_properties(query, &value)?;
-                }
-            }
-        }
-
-        Ok(())
+    fn sync(&self) -> Result<()> {
+        Err(Error::Unsupported)
     }
 
-    // Enables indexing on a specified property. When indexing is enabled on a
-    // property, it's possible to query on its presence and values.
-    //
-    // # Arguments
-    // * `name`: The name of the property to index.
-    fn index_property<T: Into<models::Identifier>>(&self, name: T) -> Result<()>;
-}
+    /// Creates a new transaction. Some datastore implementations do not
+    /// support transactional updates, in which case this will return an
+    /// error.
+    fn transaction(&self) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Err(Error::Unsupported)
+    }
 
-/// Specifies a transaction implementation, which are provided by datastores.
-///
-/// All datastore manipulations are done through transactions. Datastore
-/// implementations carry different guarantees. Depending on the
-/// implementation, it may not be possible to rollback the changes on error.
-/// See the documentation of individual implementations for details.
-pub trait Transaction {
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same id
     /// already exists.
@@ -102,13 +57,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::Vertex>>;
+    fn get_vertices(&self, q: models::VertexQuery) -> Result<Vec<models::Vertex>>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertices<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_vertices(&self, q: models::VertexQuery) -> Result<()>;
 
     /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
@@ -126,13 +81,13 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::Edge>>;
+    fn get_edges(&self, q: models::EdgeQuery) -> Result<Vec<models::Edge>>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edges<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<()>;
+    fn delete_edges(&self, q: models::EdgeQuery) -> Result<()>;
 
     /// Gets the number of edges associated with a vertex.
     ///
@@ -152,14 +107,14 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_vertex_properties<Q: Into<models::VertexQuery>>(&self, q: Q) -> Result<Vec<models::VertexProperties>>;
+    fn get_all_vertex_properties(&self, q: models::VertexQuery) -> Result<Vec<models::VertexProperties>>;
 
     /// Sets a vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
@@ -177,18 +132,52 @@ pub trait Transaction {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_edge_properties<Q: Into<models::EdgeQuery>>(&self, q: Q) -> Result<Vec<models::EdgeProperties>>;
+    fn get_all_edge_properties(&self, q: models::EdgeQuery) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: &models::JsonValue) -> Result<()>;
+    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
+
+    /// Bulk inserts many vertices, edges, and/or properties.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
+    fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
+        for item in items {
+            match item {
+                models::BulkInsertItem::Vertex(vertex) => {
+                    self.create_vertex(&vertex)?;
+                }
+                models::BulkInsertItem::Edge(edge_key) => {
+                    self.create_edge(&edge_key)?;
+                }
+                models::BulkInsertItem::VertexProperty(id, name, value) => {
+                    let query = models::SpecificVertexQuery::single(id).property(name);
+                    self.set_vertex_properties(query, value)?;
+                }
+                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
+                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
+                    self.set_edge_properties(query, value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // Enables indexing on a specified property. When indexing is enabled on a
+    // property, it's possible to query on its presence and values.
+    //
+    // # Arguments
+    // * `name`: The name of the property to index.
+    fn index_property(&self, name: models::Identifier) -> Result<()>;
 }

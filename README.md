@@ -22,7 +22,7 @@ For more details, see the [homepage](https://indradb.github.io). See also a [com
 * JSON-based properties tied to vertices and edges.
 * Queries with multiple hops, and queries on indexed properties.
 * Cross-language support via gRPC, or direct embedding as a library.
-* Pluggable underlying datastores, with several built-in datastores. [Postgresql is available separately](https://github.com/indradb/postgres).
+* Pluggable underlying datastores, with several built-in datastores. [Postgresql](https://github.com/indradb/postgres) and [sled](https://github.com/indradb/sled) are available separately.
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
 ## Installation
@@ -114,6 +114,14 @@ It's possible to develop other datastores implementations in separate crates, si
 
 * Postgres is available through [indradb-postgres.](https://github.com/indradb/postgres)
 * Sled is available through [indradb-sled.](https://github.com/indradb/sled)
+
+## Plugins
+
+The IndraDB server includes support for plugins to extend functionality available to clients. Plugins are loaded via dynamically linked libraries.
+
+See the [hello world plugin](https://github.com/indradb/indradb/tree/master/plugins/hello_world) and [naive vertex plugin](https://github.com/indradb/indradb/tree/master/plugins/naive_vertex_count) for demonstrations of how to author plugins.
+
+To include plugins, see the `--plugins` argument for `indradb-server`, e.g. `indradb-server --plugins=plugins/*.so`. They are then callable via the gRPC `ExecutePlugin` function.
 
 ## Testing
 

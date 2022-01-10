@@ -2,12 +2,18 @@
 
 ## 3.0.0 (not yet released)
 
-* Support for property indexing (PR #193)
+* Support for plugins (PR #210)
+* Rework the `Datastore` trait (PR #216, #218)
+* Cleanup of errors (PR #193, #211, #217, #198)
+* Support for property indexing (PR #193, #205)
 * Renamed `Type` to `Identifier` (PR #202)
 * Changed property names from strings to `Identifier` (PR #193)
 * Removed sled datastore from core (PR #196)
-* Removed deprecated error variants (PR #193)
-* Made `Error` type `Sync` (PR #198)
+* Fixed gRPC benchmarks (PR #204)
+* Fixed errors not being propagated from failed bulk insert (PR #220)
+* Hide identifier values so they can't be dangerously modified (PR #221)
+* Switched to rust 2021 edition (PR #213)
+* RocksDB: Removed dangerous bulk insert optimizations (PR #222)
 
 ## 2.2.0 (11/3/2021)
 

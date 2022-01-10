@@ -60,7 +60,7 @@ fn required_field<T>(field_name: &str, value: Option<T>) -> Result<T, Conversion
 
 impl From<indradb::Identifier> for crate::Identifier {
     fn from(t: indradb::Identifier) -> Self {
-        crate::Identifier { value: t.0 }
+        crate::Identifier { value: t.into_string() }
     }
 }
 
@@ -72,19 +72,19 @@ impl TryInto<indradb::Identifier> for crate::Identifier {
     }
 }
 
-impl From<indradb::JsonValue> for crate::Json {
-    fn from(value: indradb::JsonValue) -> Self {
+impl From<serde_json::Value> for crate::Json {
+    fn from(value: serde_json::Value) -> Self {
         crate::Json {
-            value: value.0.to_string(),
+            value: value.to_string(),
         }
     }
 }
 
-impl TryInto<indradb::JsonValue> for crate::Json {
+impl TryInto<serde_json::Value> for crate::Json {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<indradb::JsonValue, Self::Error> {
-        Ok(indradb::JsonValue::new(serde_json::from_str(&self.value)?))
+    fn try_into(self) -> Result<serde_json::Value, Self::Error> {
+        Ok(serde_json::from_str(&self.value)?)
     }
 }
 
@@ -595,6 +595,15 @@ impl TryInto<indradb::BulkInsertItem> for crate::BulkInsertItem {
     }
 }
 
+impl TryInto<indradb::Identifier> for crate::IndexPropertyRequest {
+    type Error = ConversionError;
+
+    fn try_into(self) -> Result<indradb::Identifier, Self::Error> {
+        let name = required_field("name", self.name)?.try_into()?;
+        Ok(name)
+    }
+}
+
 impl TryInto<(u64, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate::GetEdgeCountRequest {
     type Error = ConversionError;
 
@@ -617,18 +626,18 @@ impl From<(u64, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate:
     }
 }
 
-impl TryInto<(indradb::VertexPropertyQuery, indradb::JsonValue)> for crate::SetVertexPropertiesRequest {
+impl TryInto<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::VertexPropertyQuery, indradb::JsonValue), Self::Error> {
+    fn try_into(self) -> Result<(indradb::VertexPropertyQuery, serde_json::Value), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
         Ok((q, value))
     }
 }
 
-impl From<(indradb::VertexPropertyQuery, indradb::JsonValue)> for crate::SetVertexPropertiesRequest {
-    fn from(value: (indradb::VertexPropertyQuery, indradb::JsonValue)) -> Self {
+impl From<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
+    fn from(value: (indradb::VertexPropertyQuery, serde_json::Value)) -> Self {
         crate::SetVertexPropertiesRequest {
             q: Some(value.0.into()),
             value: Some(value.1.into()),
@@ -636,77 +645,24 @@ impl From<(indradb::VertexPropertyQuery, indradb::JsonValue)> for crate::SetVert
     }
 }
 
-impl TryInto<(indradb::EdgePropertyQuery, indradb::JsonValue)> for crate::SetEdgePropertiesRequest {
+impl TryInto<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::EdgePropertyQuery, indradb::JsonValue), Self::Error> {
+    fn try_into(self) -> Result<(indradb::EdgePropertyQuery, serde_json::Value), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
         Ok((q, value))
     }
 }
 
-impl From<(indradb::EdgePropertyQuery, indradb::JsonValue)> for crate::SetEdgePropertiesRequest {
-    fn from(value: (indradb::EdgePropertyQuery, indradb::JsonValue)) -> Self {
+impl From<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePropertiesRequest {
+    fn from(value: (indradb::EdgePropertyQuery, serde_json::Value)) -> Self {
         crate::SetEdgePropertiesRequest {
             q: Some(value.0.into()),
             value: Some(value.1.into()),
         }
     }
 }
-
-macro_rules! convert_transaction_response {
-    ($variant:ident, $ty:ty) => {
-        impl TryInto<$ty> for crate::TransactionResponseVariant {
-            type Error = ConversionError;
-
-            fn try_into(self) -> Result<$ty, Self::Error> {
-                if let crate::TransactionResponseVariant::$variant(value) = self {
-                    Ok(value)
-                } else {
-                    Err(Self::Error::UnexpectedResponseType)
-                }
-            }
-        }
-    };
-}
-
-macro_rules! convert_errorable_transaction_response {
-    ($variant:ident, $ty:ty) => {
-        impl TryInto<$ty> for crate::TransactionResponseVariant {
-            type Error = ConversionError;
-
-            fn try_into(self) -> Result<$ty, Self::Error> {
-                if let crate::TransactionResponseVariant::$variant(value) = self {
-                    value.try_into()
-                } else {
-                    Err(Self::Error::UnexpectedResponseType)
-                }
-            }
-        }
-    };
-}
-
-impl TryInto<u64> for crate::TransactionResponseVariant {
-    type Error = ConversionError;
-
-    fn try_into(self) -> Result<u64, Self::Error> {
-        match self {
-            crate::TransactionResponseVariant::Count(value) => Ok(value),
-            crate::TransactionResponseVariant::Id(value) => Ok(value),
-            _ => Err(Self::Error::UnexpectedResponseType),
-        }
-    }
-}
-
-convert_transaction_response!(Empty, ());
-convert_transaction_response!(Ok, bool);
-convert_errorable_transaction_response!(Vertex, indradb::Vertex);
-convert_errorable_transaction_response!(Edge, indradb::Edge);
-convert_errorable_transaction_response!(VertexProperty, indradb::VertexProperty);
-convert_errorable_transaction_response!(VertexProperties, indradb::VertexProperties);
-convert_errorable_transaction_response!(EdgeProperty, indradb::EdgeProperty);
-convert_errorable_transaction_response!(EdgeProperties, indradb::EdgeProperties);
 
 fn to_chrono_time(ts: prost_types::Timestamp) -> DateTime<Utc> {
     Utc.timestamp(ts.seconds, ts.nanos as u32)

@@ -1,5 +1,5 @@
 //! Utility functions. These are public because they may be useful for crates
-//! that implement Datastore/Transaction.
+//! that implement Datastore.
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -28,7 +28,7 @@ pub enum Component<'a> {
     FixedLengthString(&'a str),
     Identifier(&'a models::Identifier),
     DateTime(DateTime<Utc>),
-    JsonValue(&'a models::JsonValue),
+    Json(&'a models::Json),
 }
 
 impl<'a> Component<'a> {
@@ -43,7 +43,7 @@ impl<'a> Component<'a> {
             Component::FixedLengthString(s) => s.len(),
             Component::Identifier(t) => t.0.len() + 1,
             Component::DateTime(_) => 8,
-            Component::JsonValue(_) => 8,
+            Component::Json(_) => 8,
         }
     }
 
@@ -59,7 +59,7 @@ impl<'a> Component<'a> {
                 let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
                 cursor.write_u64::<BigEndian>(time_to_end)
             }
-            Component::JsonValue(json) => {
+            Component::Json(json) => {
                 let mut hasher = DefaultHasher::new();
                 json.hash(&mut hasher);
                 let hash = hasher.finish();
