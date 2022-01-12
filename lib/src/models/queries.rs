@@ -3,9 +3,6 @@ use std::u32;
 
 use crate::{errors, EdgeKey, Identifier};
 
-use chrono::offset::Utc;
-use chrono::DateTime;
-
 macro_rules! vertex_query_type {
     ($name:ident, $variant:ident) => {
         impl VertexQueryExt for $name {}
@@ -675,12 +672,6 @@ pub struct PipeEdgeQuery {
 
     /// Filters the type of edges returned.
     pub t: Option<Identifier>,
-
-    /// Specifies the newest update datetime for returned edges.
-    pub high: Option<DateTime<Utc>>,
-
-    /// Specifies the oldest update datetime for returned edges.
-    pub low: Option<DateTime<Utc>>,
 }
 
 edge_query_type!(PipeEdgeQuery, Pipe);
@@ -699,8 +690,6 @@ impl PipeEdgeQuery {
             direction,
             limit: u32::max_value(),
             t: None,
-            high: None,
-            low: None,
         }
     }
 
@@ -714,8 +703,6 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit,
             t: self.t,
-            high: self.high,
-            low: self.low,
         }
     }
 
@@ -729,38 +716,6 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
-            high: self.high,
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `high`: The newest update datetime for the edges returned.
-    pub fn high(self, high: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: Some(high),
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `low`: The oldest update datetime for the edges returned.
-    pub fn low(self, low: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: self.high,
-            low: Some(low),
         }
     }
 }

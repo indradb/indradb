@@ -151,7 +151,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "serde",
  "time",
  "winapi",
 ]
@@ -409,7 +408,6 @@ version = "3.0.0"
 dependencies = [
  "bincode",
  "byteorder",
- "chrono",
  "lazy_static",
  "rocksdb",
  "serde",
