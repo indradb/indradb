@@ -65,20 +65,19 @@ pub struct PluginDeclaration {
 #[macro_export]
 macro_rules! register_plugins {
     ( $indradb_interface_version:expr, $( $name:expr, $t:expr ),* ) => {
-        use indradb_plugin_host::PluginDeclaration;
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn register() -> indradb_plugin_host::PluginDeclaration {
+        pub unsafe extern "C" fn register() -> $crate::PluginDeclaration {
             use std::collections::HashMap;
             let mut entries = HashMap::new();
             $(
                 {
-                    let t: Box<dyn indradb_plugin_host::Plugin> = $t;
+                    let t: Box<dyn $crate::Plugin> = $t;
                     entries.insert($name.to_string(), t);
                 }
             )*
-            PluginDeclaration {
-                version_info: indradb_plugin_host::VersionInfo::default(),
+            $crate::PluginDeclaration {
+                version_info: $crate::VersionInfo::default(),
                 entries,
             }
         }

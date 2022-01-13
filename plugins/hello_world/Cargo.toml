@@ -1,7 +1,6 @@
 [package]
 name = "indradb-plugin-hello-world"
 version = "0.1.0"
-build = "build.rs"
 edition = "2021"
 
 [lib]
@@ -13,6 +12,3 @@ crate-type = ["cdylib"]
 indradb-plugin-host = { path = "../host" }
 indradb-lib = { path = "../../lib" }
 serde_json = "^1.0.57"
-
-[build-dependencies]
-rustc_version = "0.4.0"

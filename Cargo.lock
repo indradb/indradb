@@ -425,7 +425,6 @@ version = "0.1.0"
 dependencies = [
  "indradb-lib",
  "indradb-plugin-host",
- "rustc_version",
  "serde_json",
 ]
 
@@ -446,7 +445,6 @@ version = "0.1.0"
 dependencies = [
  "indradb-lib",
  "indradb-plugin-host",
- "rustc_version",
  "serde_json",
 ]
 
