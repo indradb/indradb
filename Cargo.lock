@@ -421,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-plugin-hello-world"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "indradb-lib",
  "indradb-plugin-host",
@@ -430,7 +430,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-plugin-host"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "indradb-lib",
  "rustc_version",
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-plugin-naive-vertex-count"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "indradb-lib",
  "indradb-plugin-host",
