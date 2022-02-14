@@ -44,8 +44,9 @@ fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T,
     res.map_err(|err| Status::invalid_argument(format!("{}", err)))
 }
 
-fn map_tokio_result<T>(res: Result<T, tokio::task::JoinError>) -> Result<T, Status> {
-    res.map_err(|err| Status::internal(format!("{}", err)))
+fn map_jh_indra_result<T>(res: Result<Result<T, indradb::Error>, tokio::task::JoinError>) -> Result<T, Status> {
+    let jh_res = res.map_err(|err| Status::internal(format!("{}", err)))?;
+    map_indradb_result(jh_res)
 }
 
 /// An error that occurred while initializing the server with plugins enabled.
@@ -211,9 +212,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     async fn sync(&self, _: Request<()>) -> Result<Response<()>, Status> {
         let datastore = self.datastore.clone();
 
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.sync()).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.sync()).await)?;
         Ok(Response::new(()))
     }
 
@@ -221,9 +220,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let vertex = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.create_vertex(&vertex)).await,
-        )?)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_vertex(&vertex)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
@@ -234,9 +231,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let t = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.create_vertex_from_type(t)).await,
-        )?)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_vertex_from_type(t)).await)?;
         Ok(Response::new(res.into()))
     }
 
@@ -260,18 +255,14 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let q: indradb::VertexQuery = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.delete_vertices(q)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.delete_vertices(q)).await)?;
         Ok(Response::new(()))
     }
 
     async fn get_vertex_count(&self, _: Request<()>) -> Result<Response<crate::CountResponse>, Status> {
         let datastore = self.datastore.clone();
 
-        let res = map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.get_vertex_count()).await,
-        )?)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.get_vertex_count()).await)?;
         Ok(Response::new(crate::CountResponse { count: res }))
     }
 
@@ -279,9 +270,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let key = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.create_edge(&key)).await,
-        )?)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_edge(&key)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
@@ -302,9 +291,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let q: indradb::EdgeQuery = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.delete_edges(q)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.delete_edges(q)).await)?;
         Ok(Response::new(()))
     }
 
@@ -315,9 +302,9 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let (id, t, direction) = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_indradb_result(map_tokio_result(
+        let res = map_jh_indra_result(
             tokio::task::spawn_blocking(move || datastore.get_edge_count(id, t.as_ref(), direction)).await,
-        )?)?;
+        )?;
         Ok(Response::new(crate::CountResponse { count: res }))
     }
 
@@ -363,9 +350,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let (q, value) = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.set_vertex_properties(q, value)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.set_vertex_properties(q, value)).await)?;
         Ok(Response::new(()))
     }
 
@@ -376,9 +361,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let q = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.delete_vertex_properties(q)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.delete_vertex_properties(q)).await)?;
         Ok(Response::new(()))
     }
 
@@ -423,9 +406,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let (q, value) = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.set_edge_properties(q, value)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.set_edge_properties(q, value)).await)?;
         Ok(Response::new(()))
     }
 
@@ -433,9 +414,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let q = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.delete_edge_properties(q)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.delete_edge_properties(q)).await)?;
         Ok(Response::new(()))
     }
 
@@ -453,9 +432,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
             items
         };
 
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.bulk_insert(items)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.bulk_insert(items)).await)?;
         Ok(Response::new(()))
     }
 
@@ -463,9 +440,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let datastore = self.datastore.clone();
 
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
-        map_indradb_result(map_tokio_result(
-            tokio::task::spawn_blocking(move || datastore.index_property(name)).await,
-        )?)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.index_property(name)).await)?;
         Ok(Response::new(()))
     }
 
