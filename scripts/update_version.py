@@ -56,7 +56,7 @@ def main():
     update_all_versions("proto/Cargo.toml", new_version)
     update_all_versions("server/Cargo.toml", new_version)
     update_all_versions("client/Cargo.toml", new_version)
-    update_dependency_versions("plugin/host/Cargo.toml", new_version)
+    update_dependency_versions("plugins/host/Cargo.toml", new_version)
 
     run(["make", "check", "test"])
 

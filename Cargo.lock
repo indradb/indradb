@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "indradb"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "clap",
  "indradb-lib",
@@ -393,7 +393,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-client"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "clap",
  "indradb-lib",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-lib"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "bincode",
  "byteorder",
@@ -450,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "indradb-proto"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "chrono",
  "glob",
