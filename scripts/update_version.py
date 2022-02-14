@@ -67,6 +67,7 @@ def main():
     run(["git", "push", "origin", new_version_str])
 
     run(["cargo", "publish"], cwd="lib")
+    time.sleep(15) # wait for lib to be available on crates.io
     run(["cargo", "publish"], cwd="plugins/host")
     time.sleep(15) # wait for lib and plugin host to be accessible on crates.io
     run(["cargo", "publish"], cwd="proto")
