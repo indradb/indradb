@@ -1,6 +1,12 @@
 # Changelog
 
-## 3.0.0 (not yet released)
+## 3.0.1 (2/14/2022)
+
+* Use tokio's `spawn_blocking` when calling into IndraDB (#235)
+* Removed the need for a `build.rs` in plugins (#230)
+* Added missing lock file (#226)
+
+## 3.0.0 (1/4/2022)
 
 * Support for plugins (PR #210)
 * Rework the `Datastore` trait (PR #216, #218)
