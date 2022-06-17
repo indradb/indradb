@@ -91,7 +91,7 @@ impl Client {
     /// * `endpoint`: The server endpoint.
     pub async fn new(endpoint: Endpoint) -> Result<Self, ClientError> {
         let client = crate::ProtoClient::connect(endpoint).await?;
-        Ok(Client { 0: client })
+        Ok(Client(client))
     }
 
     /// Pings the server.

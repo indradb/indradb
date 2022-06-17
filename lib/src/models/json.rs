@@ -140,13 +140,13 @@ pub struct Json(pub serde_json::Value);
 
 impl Json {
     pub fn new(value: serde_json::Value) -> Self {
-        Self { 0: value }
+        Self(value)
     }
 }
 
 impl From<serde_json::Value> for Json {
     fn from(value: serde_json::Value) -> Self {
-        Json { 0: value }
+        Json(value)
     }
 }
 
