@@ -300,7 +300,7 @@ impl<'a> EdgeRangeManager<'a> {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
-                let high = high.unwrap_or_else(|| *util::MAX_DATETIME);
+                let high = high.unwrap_or(*util::MAX_DATETIME);
                 let prefix = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
                 let low_key = util::build(&[
                     util::Component::Uuid(id),
