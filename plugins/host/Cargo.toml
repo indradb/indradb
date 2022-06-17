@@ -1,6 +1,6 @@
 [package]
 name = "indradb-plugin-host"
-version = "0.2.0"
+version = "0.2.1"
 build = "build.rs"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database library"
