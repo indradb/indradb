@@ -1,6 +1,6 @@
 [package]
 name = "indradb-client"
-version = "3.0.1"
+version = "3.0.2"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "CLI client for IndraDB"
 homepage = "https://indradb.github.io"
@@ -24,10 +24,10 @@ uuid = { version = "0.8.2", features = ["serde"] }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "3.0.1"
+version = "3.0.2"
 features = ["rocksdb-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"
-version = "3.0.1"
+version = "3.0.2"
 features = ["client"]
