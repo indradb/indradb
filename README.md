@@ -27,11 +27,11 @@ For more details, see the [homepage](https://indradb.github.io). See also a [com
 
 ## Usage
 
-IndraDB offers a variety ways to work with it: as a server with cross-language support, as a rust library, and via CLI. What follows are a few examples of each use case. These examples will require you to have a running server, e.g. to start an in-memory server, simply run `indradb-server`.
+IndraDB offers a variety ways to work with it: as a server with cross-language support, as a rust library, and via CLI. What follows are a few examples of each use case.
 
 ### Server
 
-The server uses [gRPC](https://grpc.io/) to facilitate cross-language support. gRPC supports many languages; see the [official list](https://grpc.io/docs/languages/), though many more are unofficially supported as well. We have official bindings available for python and rust.
+The server uses [gRPC](https://grpc.io/) to facilitate cross-language support. gRPC supports many languages; see the [official list](https://grpc.io/docs/languages/), though many more are unofficially supported as well. We have official bindings available for python and rust. These examples will require you to have a running server, e.g. to start an in-memory server, simply run `indradb-server`.
 
 #### Python
 
