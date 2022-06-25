@@ -27,7 +27,7 @@ For more details, see the [homepage](https://indradb.github.io). See also a [com
 
 ## Usage
 
-IndraDB offers a variety ways to work with it: as a server with cross-language support, as a rust library, and via CLI. What follows are a few examples of each use case.
+IndraDB offers a variety ways to work with it: as a server with cross-language support, as a rust library, and via CLI. What follows are a few examples of each use case. These examples will require you to have a running server, e.g. to start an in-memory server, simply run `indradb-server`.
 
 ### Server
 
@@ -35,11 +35,7 @@ The server uses [gRPC](https://grpc.io/) to facilitate cross-language support. g
 
 #### Python
 
-Python bindings are available [here](https://github.com/indradb/python-client) and published to pypi as `indradb`.
-
-To use it, first start a server; e.g. to start an in-memory server, simply run `indradb-server`.
-
-Then interact with it:
+Python bindings are available [here](https://github.com/indradb/python-client) and published to pypi as `indradb`. An example:
 
 ```python
 import indradb
@@ -69,11 +65,7 @@ For further reference, see the [docs](https://indradb.github.io/python-client/in
 
 #### Rust
 
-The gRPC bindings library is available as [`indradb-proto`](https://crates.io/crates/indradb-proto). 
-
-To use it, first start a server; e.g. to start an in-memory server, simply run `indradb-server`.
-
-Then interact with it:
+The gRPC bindings library is available as [`indradb-proto`](https://crates.io/crates/indradb-proto). An example:
 
 ```rust
 use indradb_proto as proto;
@@ -98,7 +90,7 @@ assert_eq!(e.len(), 1);
 assert_eq!(key, e[0].key);
 ```
 
-The gRPC bindings library is built to closely mirror the rust library. But if you're using 100% rust, and don't need a server, you can skip all the gRPC rigmarole and just use the rust library. For further reference, see the [docs](https://docs.rs/indradb-proto/latest/indradb_proto/) and the [wikipedia indexing example](https://github.com/indradb/wikipedia-example), which heavily relies on `indradb-proto`.
+The rust gRPC bindings library is built to closely mirror the rust library. But if you're using 100% rust, and don't need a server, you can skip all the gRPC rigmarole and just use the rust library directly. For further reference, see the [docs](https://docs.rs/indradb-proto/latest/indradb_proto/) and the [wikipedia indexing example](https://github.com/indradb/wikipedia-example), which heavily relies on `indradb-proto`.
 
 #### Other languages
 
