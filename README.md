@@ -25,6 +25,121 @@ For more details, see the [homepage](https://indradb.github.io). See also a [com
 * Pluggable underlying datastores, with several built-in datastores. [Postgresql](https://github.com/indradb/postgres) and [sled](https://github.com/indradb/sled) are available separately.
 * Written in rust! High performance, no GC pauses, and a higher degree of safety.
 
+## Usage
+
+IndraDB offers a variety ways to work with it: as a server with cross-language support, as a rust library, and via CLI. What follows are a few examples of each use case.
+
+### Server
+
+The server uses [gRPC](https://grpc.io/) to facilitate cross-language support. gRPC supports many languages; see the [official list](https://grpc.io/docs/languages/), though many more are unofficially supported as well. We have official bindings available for python and rust. These examples will require you to have a running server, e.g. to start an in-memory server, simply run `indradb-server`.
+
+#### Python
+
+Python bindings are available [here](https://github.com/indradb/python-client) and published to pypi as `indradb`. An example:
+
+```python
+import indradb
+import uuid
+
+# Connect to the server and make sure it's up
+client = indradb.Client("localhost:27615")
+client.ping()
+
+# Create a couple of vertices
+out_v = indradb.Vertex(uuid.uuid4(), "person")
+in_v = indradb.Vertex(uuid.uuid4(), "movie")
+client.create_vertex(out_v)
+client.create_vertex(in_v)
+
+# Add an edge between the vertices
+key = indradb.EdgeKey(out_v.id, "bar", in_v.id)
+client.create_edge(key)
+
+# Query for the edge
+results = list(client.get_edges(indradb.SpecificEdgeQuery(key))
+self.assertEqual(len(results), 1)
+self.assertEqual(results[0].key, key)
+```
+
+For further reference, see the [docs](https://indradb.github.io/python-client/indradb/) and [python bindings tests](https://github.com/indradb/python-client/tree/master/tests).
+
+#### Rust
+
+The gRPC bindings library is available as [`indradb-proto`](https://crates.io/crates/indradb-proto). An example:
+
+```rust
+use indradb_proto as proto;
+
+// Connect to the server and make sure it's up
+let mut client = proto::Client::new("grpc://127.0.0.1:27615".try_into()?).await?;
+client.ping().await?;
+
+// Create a couple of vertices
+let out_v = indradb::Vertex::new(indradb::Identifier::new("person")?);
+let in_v = indradb::Vertex::new(indradb::Identifier::new("movie")?);
+client.create_vertex(&out_v).await?;
+client.create_vertex(&in_v).await?;
+
+// Add an edge between the vertices
+let key = indradb::EdgeKey::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
+client.create_edge(&key).await?;
+
+// Query for the edge
+let e = client.get_edges(indradb::SpecificEdgeQuery::single(key.clone()).into()).await?;
+assert_eq!(e.len(), 1);
+assert_eq!(key, e[0].key);
+```
+
+The rust gRPC bindings library is built to closely mirror the rust library. But if you're using 100% rust, and don't need a server, you can skip all the gRPC rigmarole and just use the rust library directly. For further reference, see the [docs](https://docs.rs/indradb-proto/latest/indradb_proto/) and the [wikipedia indexing example](https://github.com/indradb/wikipedia-example), which heavily relies on `indradb-proto`.
+
+#### Other languages
+
+If you're looking to contribute, adding bindings for your favorite language is a great way to start! The gRPC/protobuf definitions are [here](https://github.com/indradb/indradb/blob/master/proto/indradb.proto).
+
+### Rust library
+
+Add IndraDB to your `Cargo.toml`:
+
+```toml
+indradb-lib = { version = "*", features = ["rocksdb-datastore"] }
+```
+
+(You might want to pin the version, or not include the RocksDB datastore and only support in-memory.)
+
+Here's a brief example:
+
+```rust
+use indradb::{EdgeKey, MemoryDatastore, Identifier, Vertex, SpecificEdgeQuery, SpecificVertexQuery};
+
+// Create an in-memory datastore
+let mut datastore = MemoryDatastore::default();
+
+// Create a couple of vertices
+let out_v = Vertex::new(Identifier::new("person")?);
+let in_v = Vertex::new(Identifier::new("movie")?);
+datastore.create_vertex(&out_v)?;
+datastore.create_vertex(&in_v)?;
+
+// Add an edge between the vertices
+let key = EdgeKey::new(out_v.id, Identifier::new("likes")?, in_v.id);
+datastore.create_edge(&key)?;
+
+// Query for the edge
+let e = datastore.get_edges(SpecificEdgeQuery::single(key.clone()).into())?;
+assert_eq!(e.len(), 1);
+assert_eq!(key, e[0].key);
+```
+
+For further reference, see the [docs](https://docs.rs/indradb-lib/latest/indradb/) and [library tests](https://github.com/indradb/indradb/tree/master/lib/src/tests).
+
+### CLI
+
+The CLI interacts with a running server.
+
+First start the server: `indradb-server`.
+
+Then, e.g. count the number of vertices: `indradb-client grpc://127.0.0.1:27615 count vertex`.
+
 ## Installation
 
 ### Releases
