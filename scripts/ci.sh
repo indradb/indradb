@@ -5,6 +5,7 @@ set -ex
 rust_variant=$1
 os=$2
 
+brew install protobuf
 make test
 
 if [ "$os" == "ubuntu-latest" ]; then
