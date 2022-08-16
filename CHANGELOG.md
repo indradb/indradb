@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.3 (8/16/2022)
+
+* Upgrade dependencies (#248)
+
 ## 3.0.2 (6/17/2022)
 
 * Upgrade rand_core to address poor random seeding (#242)
