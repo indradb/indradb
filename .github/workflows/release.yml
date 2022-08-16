@@ -35,9 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
