@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::io::Cursor;
 use std::ops::Deref;
+use std::result::Result as StdResult;
 use std::u8;
 
 use crate::errors::Result;
@@ -19,10 +20,16 @@ pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, (Uuid, models::Identifier, Uuid));
 
-fn take_with_prefix(iterator: DBIterator<'_>, prefix: Vec<u8>) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> + '_ {
+fn take_with_prefix(
+    iterator: DBIterator<'_>,
+    prefix: Vec<u8>,
+) -> impl Iterator<Item = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + '_ {
     iterator.take_while(move |item| -> bool {
-        let (ref k, _) = *item;
-        k.starts_with(&prefix)
+        if let Ok((ref k, _)) = *item {
+            k.starts_with(&prefix)
+        } else {
+            true
+        }
     })
 }
 
@@ -76,7 +83,7 @@ impl<'a> VertexManager<'a> {
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
         iter.map(|item| -> Result<VertexItem> {
-            let (k, v) = item;
+            let (k, v) = item?;
 
             let id = {
                 debug_assert_eq!(k.len(), 16);
@@ -279,10 +286,10 @@ impl<'a> EdgeRangeManager<'a> {
 
     fn iterate<I>(&'a self, iterator: I) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a
     where
-        I: Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a,
+        I: Iterator<Item = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a,
     {
         iterator.map(move |item| -> Result<EdgeRangeItem> {
-            let (k, _) = item;
+            let (k, _) = item?;
             let mut cursor = Cursor::new(k);
             let first_id = util::read_uuid(&mut cursor);
             let t = util::read_identifier(&mut cursor);
@@ -414,7 +421,7 @@ impl<'a> VertexPropertyManager<'a> {
         let filtered = take_with_prefix(iterator, prefix);
 
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
-            let (k, v) = item;
+            let (k, v) = item?;
             let mut cursor = Cursor::new(k);
             let owner_id = util::read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
@@ -515,7 +522,7 @@ impl<'a> EdgePropertyManager<'a> {
         let filtered = take_with_prefix(iterator, prefix);
 
         let mapped = filtered.map(move |item| -> Result<EdgePropertyItem> {
-            let (k, v) = item;
+            let (k, v) = item?;
             let mut cursor = Cursor::new(k);
 
             let edge_property_out_id = util::read_uuid(&mut cursor);
@@ -633,23 +640,23 @@ impl<'a> VertexPropertyValueManager<'a> {
         &'a self,
         iterator: DBIterator<'a>,
         prefix: Vec<u8>,
-    ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
+    ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
         let filtered = take_with_prefix(iterator, prefix);
 
-        filtered.map(move |item| -> VertexPropertyValueKey {
-            let (k, _) = item;
+        filtered.map(move |item| -> Result<VertexPropertyValueKey> {
+            let (k, _) = item?;
             let mut cursor = Cursor::new(k);
             let name = util::read_identifier(&mut cursor);
             let value_hash = util::read_u64(&mut cursor);
             let vertex_id = util::read_uuid(&mut cursor);
-            (name, value_hash, vertex_id)
+            Ok((name, value_hash, vertex_id))
         })
     }
 
     pub fn iterate_for_name(
         &'a self,
         property_name: &models::Identifier,
-    ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
+    ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
             .db_ref
@@ -662,7 +669,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         &'a self,
         property_name: &models::Identifier,
         property_value: &models::Json,
-    ) -> impl Iterator<Item = VertexPropertyValueKey> + 'a {
+    ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
@@ -733,25 +740,29 @@ impl<'a> EdgePropertyValueManager<'a> {
         ])
     }
 
-    fn iterate(&'a self, iterator: DBIterator<'a>, prefix: Vec<u8>) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
+    fn iterate(
+        &'a self,
+        iterator: DBIterator<'a>,
+        prefix: Vec<u8>,
+    ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
         let filtered = take_with_prefix(iterator, prefix);
 
-        filtered.map(move |item| -> EdgePropertyValueKey {
-            let (k, _) = item;
+        filtered.map(move |item| -> Result<EdgePropertyValueKey> {
+            let (k, _) = item?;
             let mut cursor = Cursor::new(k);
             let name = util::read_identifier(&mut cursor);
             let value_hash = util::read_u64(&mut cursor);
             let out_id = util::read_uuid(&mut cursor);
             let t = util::read_identifier(&mut cursor);
             let in_id = util::read_uuid(&mut cursor);
-            (name, value_hash, (out_id, t, in_id))
+            Ok((name, value_hash, (out_id, t, in_id)))
         })
     }
 
     pub fn iterate_for_name(
         &'a self,
         property_name: &models::Identifier,
-    ) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
+    ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
             .db_ref
@@ -764,7 +775,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         &'a self,
         property_name: &models::Identifier,
         property_value: &models::Json,
-    ) -> impl Iterator<Item = EdgePropertyValueKey> + 'a {
+    ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
         let prefix = util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
