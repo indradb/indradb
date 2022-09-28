@@ -76,6 +76,7 @@ impl Edge {
 
 #[cfg(test)]
 mod tests {
+    use std::time::SystemTime;
     use super::{Edge, EdgeKey};
     use crate::models::Identifier;
     use uuid::Uuid;

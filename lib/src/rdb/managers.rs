@@ -2,20 +2,19 @@ use std::collections::HashSet;
 use std::io::Cursor;
 use std::ops::Deref;
 use std::result::Result as StdResult;
+use std::time::SystemTime;
 use std::u8;
 
 use crate::errors::Result;
 use crate::models;
 use crate::util;
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
 pub type VertexItem = (Uuid, models::Identifier);
-pub type EdgeRangeItem = (Uuid, models::Identifier, DateTime<Utc>, Uuid);
+pub type EdgeRangeItem = (Uuid, models::Identifier, SystemTime, Uuid);
 pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, (Uuid, models::Identifier, Uuid));
@@ -180,7 +179,7 @@ impl<'a> EdgeManager<'a> {
         ])
     }
 
-    pub fn get(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
+    pub fn get(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<Option<SystemTime>> {
         match self.db_ref.db.get_cf(self.cf, &self.key(out_id, t, in_id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
@@ -196,7 +195,7 @@ impl<'a> EdgeManager<'a> {
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
-        new_update_datetime: DateTime<Utc>,
+        new_update_datetime: SystemTime,
     ) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db_ref);
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db_ref);
@@ -223,7 +222,7 @@ impl<'a> EdgeManager<'a> {
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
-        update_datetime: DateTime<Utc>,
+        update_datetime: SystemTime,
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
 
@@ -275,7 +274,7 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    fn key(&self, first_id: Uuid, t: &models::Identifier, update_datetime: DateTime<Utc>, second_id: Uuid) -> Vec<u8> {
+    fn key(&self, first_id: Uuid, t: &models::Identifier, update_datetime: SystemTime, second_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(first_id),
             util::Component::Identifier(t),
@@ -303,7 +302,7 @@ impl<'a> EdgeRangeManager<'a> {
         &'a self,
         id: Uuid,
         t: Option<&models::Identifier>,
-        high: Option<DateTime<Utc>>,
+        high: Option<SystemTime>,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
         match t {
             Some(t) => {
@@ -360,7 +359,7 @@ impl<'a> EdgeRangeManager<'a> {
         batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Identifier,
-        update_datetime: DateTime<Utc>,
+        update_datetime: SystemTime,
         second_id: Uuid,
     ) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
@@ -373,7 +372,7 @@ impl<'a> EdgeRangeManager<'a> {
         batch: &mut WriteBatch,
         first_id: Uuid,
         t: &models::Identifier,
-        update_datetime: DateTime<Utc>,
+        update_datetime: SystemTime,
         second_id: Uuid,
     ) -> Result<()> {
         batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id));

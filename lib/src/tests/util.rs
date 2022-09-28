@@ -1,10 +1,6 @@
 use crate::{models, Datastore};
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use uuid::Uuid;
-
-// TODO: remove &mut
 
 pub fn create_edge_from<D: Datastore>(datastore: &D, outbound_id: Uuid) -> Uuid {
     let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
@@ -33,7 +29,7 @@ pub fn create_edges<D: Datastore>(datastore: &D) -> (Uuid, [Uuid; 5]) {
 
 pub fn create_time_range_queryable_edges<D: Datastore>(
     datastore: &D,
-) -> (Uuid, DateTime<Utc>, DateTime<Utc>, [Uuid; 5]) {
+) -> (Uuid, SystemTime, SystemTime, [Uuid; 5]) {
     let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(outbound_vertex_t);
     datastore.create_vertex(&outbound_v).unwrap();
@@ -44,7 +40,7 @@ pub fn create_time_range_queryable_edges<D: Datastore>(
     create_edge_from(datastore, outbound_v.id);
     create_edge_from(datastore, outbound_v.id);
 
-    let start_time = Utc::now();
+    let start_time = SystemTime::now();
     let inbound_ids = [
         create_edge_from(datastore, outbound_v.id),
         create_edge_from(datastore, outbound_v.id),
@@ -52,7 +48,7 @@ pub fn create_time_range_queryable_edges<D: Datastore>(
         create_edge_from(datastore, outbound_v.id),
         create_edge_from(datastore, outbound_v.id),
     ];
-    let end_time = Utc::now();
+    let end_time = SystemTime::now();
 
     create_edge_from(datastore, outbound_v.id);
     create_edge_from(datastore, outbound_v.id);

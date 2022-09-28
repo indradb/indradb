@@ -5,8 +5,6 @@ use crate::{
     models, Datastore, EdgeDirection, EdgeKey, EdgeQueryExt, SpecificEdgeQuery, SpecificVertexQuery, VertexQueryExt,
 };
 
-use chrono::offset::Utc;
-use chrono::Timelike;
 use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: Datastore>(datastore: &D) {
@@ -21,9 +19,9 @@ pub fn should_get_a_valid_edge<D: Datastore>(datastore: &D) {
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
     // accuracy.
-    let start_time = Utc::now().with_nanosecond(0).unwrap();
+    let start_time = SystemTime::now().checked_sub(Duration::from_secs(1)).unwrap();
     datastore.create_edge(&key).unwrap();
-    let end_time = Utc::now();
+    let end_time = SystemTime::now();
 
     let e = datastore.get_edges(SpecificEdgeQuery::single(key).into()).unwrap();
     assert_eq!(e.len(), 1);

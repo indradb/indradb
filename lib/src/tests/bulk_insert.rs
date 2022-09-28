@@ -3,9 +3,6 @@ use crate::{
     VertexQueryExt,
 };
 
-use chrono::offset::Utc;
-use chrono::Timelike;
-
 pub fn should_bulk_insert<D: Datastore>(datastore: &D) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
@@ -21,7 +18,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &D) {
     // Record the start and end time. Round off the the nanoseconds off the
     // start time, since some implementations may not have that level of
     // accuracy.
-    let start_time = Utc::now().with_nanosecond(0).unwrap();
+    let start_time = SystemTime::now().checked_sub(Duration::from_secs(1)).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
     let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
@@ -41,7 +38,7 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &D) {
 
     datastore.bulk_insert(items).unwrap();
 
-    let end_time = Utc::now();
+    let end_time = SystemTime::now();
 
     let vertices = datastore
         .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into())

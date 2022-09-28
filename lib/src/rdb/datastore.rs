@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::i32;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
+use std::time::SystemTime;
 use std::u64;
 use std::usize;
 
@@ -15,8 +16,6 @@ use crate::{
     VertexQuery,
 };
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
 
@@ -135,7 +134,7 @@ fn edges_from_piped_property_query(
     property_query: EdgeQuery,
     intersection: bool,
 ) -> Result<Vec<EdgeRangeItem>> {
-    let mut piped_edges_mapping: HashMap<EdgeKey, DateTime<Utc>> = execute_edge_query(db_ref, inner_query)?
+    let mut piped_edges_mapping: HashMap<EdgeKey, SystemTime> = execute_edge_query(db_ref, inner_query)?
         .into_iter()
         .map(move |item| {
             let (out_id, t, dt, in_id) = item;
@@ -513,7 +512,7 @@ impl Datastore for RocksdbDatastore {
         } else {
             let edge_manager = EdgeManager::new(db_ref);
             let mut batch = WriteBatch::default();
-            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, SystemTime::now())?;
             db.write(batch)?;
             Ok(true)
         }
@@ -730,7 +729,7 @@ impl Datastore for RocksdbDatastore {
                     vertex_manager.create(&mut batch, vertex)?;
                 }
                 BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, SystemTime::now())?;
                 }
                 BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(&mut batch, id, name, &Json::new(value.clone()))?;
