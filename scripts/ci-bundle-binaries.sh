@@ -5,6 +5,12 @@ set -ex
 os=$1
 project_root=$(pwd)
 
+if [ "$os" == "ubuntu-latest" ]; then
+    echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
+fi
+
+brew install protobuf
+
 cargo build --release
 
 if [ "$os" == "ubuntu-latest" ]; then
