@@ -13,8 +13,6 @@ use crate::{
 };
 
 use bincode::Error as BincodeError;
-use chrono::offset::Utc;
-use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
@@ -44,8 +42,8 @@ enum IndexedPropertyMember {
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct InternalMemoryDatastore {
     vertices: BTreeMap<Uuid, Identifier>,
-    edges: BTreeMap<EdgeKey, DateTime<Utc>>,
-    reversed_edges: BTreeMap<EdgeKey, DateTime<Utc>>,
+    edges: BTreeMap<EdgeKey, SystemTime>,
+    reversed_edges: BTreeMap<EdgeKey, SystemTime>,
     vertex_properties: BTreeMap<(Uuid, Identifier), Json>,
     edge_properties: BTreeMap<(EdgeKey, Identifier), Json>,
     property_values: HashMap<Identifier, HashMap<Json, HashSet<IndexedPropertyMember>>>,
@@ -199,7 +197,7 @@ impl InternalMemoryDatastore {
         }
     }
 
-    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<QueryIter<'_, (EdgeKey, DateTime<Utc>)>> {
+    fn get_edge_values_by_query(&self, q: EdgeQuery) -> Result<QueryIter<'_, (EdgeKey, SystemTime)>> {
         match q {
             EdgeQuery::Specific(specific) => Ok(iter_edge_values!(self, specific.keys.into_iter())),
             EdgeQuery::Pipe(pipe) => {
@@ -208,7 +206,7 @@ impl InternalMemoryDatastore {
                 let t = pipe.t.clone();
                 let direction = pipe.direction;
 
-                let mut iter: QueryIter<(&EdgeKey, &DateTime<Utc>)> = Box::new(iter.flat_map(move |(id, _)| {
+                let mut iter: QueryIter<(&EdgeKey, &SystemTime)> = Box::new(iter.flat_map(move |(id, _)| {
                     let lower_bound = match &t {
                         Some(t) => EdgeKey::new(id, t.clone(), Uuid::default()),
                         None => EdgeKey::new(id, Identifier::default(), Uuid::default()),
@@ -237,7 +235,7 @@ impl InternalMemoryDatastore {
 
                 let iter = iter.take(pipe.limit as usize);
 
-                let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = if direction == EdgeDirection::Outbound {
+                let iter: QueryIter<(EdgeKey, SystemTime)> = if direction == EdgeDirection::Outbound {
                     Box::new(iter.map(move |(key, value)| (key.clone(), *value)))
                 } else {
                     Box::new(iter.map(move |(key, value)| (key.reversed(), *value)))
@@ -269,7 +267,7 @@ impl InternalMemoryDatastore {
                 let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
                 let edge_values = self.get_edge_values_by_query(*q.inner)?;
 
-                let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = if q.exists {
+                let iter: QueryIter<(EdgeKey, SystemTime)> = if q.exists {
                     Box::new(edge_values.filter(move |(key, _)| edges_with_property.contains(key)))
                 } else {
                     Box::new(edge_values.filter(move |(key, _)| !edges_with_property.contains(key)))
@@ -297,7 +295,7 @@ impl InternalMemoryDatastore {
                     HashSet::default()
                 };
 
-                let iter: QueryIter<(EdgeKey, DateTime<Utc>)> = if q.equal {
+                let iter: QueryIter<(EdgeKey, SystemTime)> = if q.equal {
                     Box::new(edge_values.filter(move |(key, _)| keys.contains(key)))
                 } else {
                     Box::new(edge_values.filter(move |(key, _)| !keys.contains(key)))
@@ -480,13 +478,13 @@ impl Datastore for MemoryDatastore {
             return Ok(false);
         }
 
-        datastore.edges.insert(key.clone(), Utc::now());
-        datastore.reversed_edges.insert(key.reversed(), Utc::now());
+        datastore.edges.insert(key.clone(), SystemTime::now());
+        datastore.reversed_edges.insert(key.reversed(), SystemTime::now());
         Ok(true)
     }
 
     fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
-        let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = {
+        let edge_values: Vec<(EdgeKey, SystemTime)> = {
             let datastore = self.datastore.read().unwrap();
             let iter = datastore.get_edge_values_by_query(q)?;
             iter.collect()
@@ -646,7 +644,7 @@ impl Datastore for MemoryDatastore {
 
     fn set_edge_properties(&self, q: EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
+        let edge_values: Vec<(EdgeKey, SystemTime)> = datastore.get_edge_values_by_query(q.inner)?.collect();
 
         let mut deletable_edge_properties = Vec::<(EdgeKey, Identifier)>::new();
         for (key, _) in &edge_values {
@@ -673,7 +671,7 @@ impl Datastore for MemoryDatastore {
 
     fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
         let mut datastore = self.datastore.write().unwrap();
-        let edge_values: Vec<(EdgeKey, DateTime<Utc>)> = datastore.get_edge_values_by_query(q.inner)?.collect();
+        let edge_values: Vec<(EdgeKey, SystemTime)> = datastore.get_edge_values_by_query(q.inner)?.collect();
         let mut deletable_edge_properties = Vec::<(EdgeKey, Identifier)>::new();
         for (key, _) in edge_values {
             deletable_edge_properties.push((key, q.name.clone()));

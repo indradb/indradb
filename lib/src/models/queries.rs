@@ -1,10 +1,9 @@
 use std::str::FromStr;
+use std::time::SystemTime;
 use std::u32;
 
 use crate::{errors, EdgeKey, Identifier};
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use uuid::Uuid;
 
 macro_rules! vertex_query_type {
@@ -678,10 +677,10 @@ pub struct PipeEdgeQuery {
     pub t: Option<Identifier>,
 
     /// Specifies the newest update datetime for returned edges.
-    pub high: Option<DateTime<Utc>>,
+    pub high: Option<SystemTime>,
 
     /// Specifies the oldest update datetime for returned edges.
-    pub low: Option<DateTime<Utc>>,
+    pub low: Option<SystemTime>,
 }
 
 edge_query_type!(PipeEdgeQuery, Pipe);

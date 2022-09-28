@@ -10,8 +10,6 @@ use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use chrono::offset::Utc;
-use chrono::{DateTime, Duration, NaiveDateTime, Timelike};
 use lazy_static::lazy_static;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;

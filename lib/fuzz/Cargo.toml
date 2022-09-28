@@ -10,7 +10,6 @@ cargo-fuzz = true
 
 [dependencies]
 arbitrary = { version = "^1.0.2", features = ["derive"] }
-chrono = "0.4.22"
 libfuzzer-sys = "0.4.3"
 serde_json = "^1.0.57"
 tempfile = "^3.2.0"

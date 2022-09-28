@@ -1,7 +1,7 @@
+use std::time::SystemTime;
+
 use super::Identifier;
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -52,16 +52,16 @@ pub struct Edge {
     pub key: EdgeKey,
 
     /// When the edge was created.
-    pub created_datetime: DateTime<Utc>,
+    pub created_datetime: SystemTime,
 }
 
 impl Edge {
-    /// Creates a new edge with the current datetime in UTC.
+    /// Creates a new edge with the current datetime.
     ///
     /// # Arguments
     /// * `key`: The key to the edge.
     pub fn new_with_current_datetime(key: EdgeKey) -> Edge {
-        Self::new(key, Utc::now())
+        Self::new(key, SystemTime::now())
     }
 
     /// Creates a new edge with a specified datetime.
@@ -69,7 +69,7 @@ impl Edge {
     /// # Arguments
     /// * `key`: The key to the edge.
     /// * `created_datetime`: When the edge was created.
-    pub fn new(key: EdgeKey, created_datetime: DateTime<Utc>) -> Edge {
+    pub fn new(key: EdgeKey, created_datetime: SystemTime) -> Edge {
         Edge { key, created_datetime }
     }
 }
@@ -78,17 +78,16 @@ impl Edge {
 mod tests {
     use super::{Edge, EdgeKey};
     use crate::models::Identifier;
-    use chrono::Utc;
     use uuid::Uuid;
 
     #[test]
     fn should_create_edge_with_current_datetime() {
-        let start_datetime = Utc::now();
+        let start_datetime = SystemTime::now();
 
         let edge =
             Edge::new_with_current_datetime(EdgeKey::new(Uuid::default(), Identifier::default(), Uuid::default()));
 
-        let end_datetime = Utc::now();
+        let end_datetime = SystemTime::now();
 
         assert!(edge.created_datetime >= start_datetime);
         assert!(edge.created_datetime <= end_datetime);
