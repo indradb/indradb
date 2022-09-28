@@ -5,10 +5,10 @@ set -ex
 os=$1
 project_root=$(pwd)
 
+# install protobuf
 if [ "$os" == "ubuntu-latest" ]; then
-    echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
-
 brew install protobuf
 
 cargo build --release
