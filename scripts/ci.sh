@@ -5,6 +5,10 @@ set -ex
 rust_variant=$1
 os=$2
 
+if [ "$os" == "ubuntu-latest" ]; then
+    echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
+fi
+
 brew install protobuf
 make test
 
