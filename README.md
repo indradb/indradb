@@ -157,7 +157,7 @@ This should start the default datastore.
 To build and install from source:
 
 * Install [rust](https://www.rust-lang.org/en-US/install.html). IndraDB should work with any of the rust variants (stable, nightly, beta.)
-* Make sure you have gcc 5+ installed.
+* Make sure you have gcc 5+ and the protobuf toolchain installed.
 * Clone the repo: `git clone git@github.com:indradb/indradb.git`.
 * Build/install it: `cargo install`.
 
@@ -239,6 +239,8 @@ See the [hello world plugin](https://github.com/indradb/indradb/tree/master/plug
 To include plugins, see the `--plugins` argument for `indradb-server`, e.g. `indradb-server --plugins=plugins/*.so`. They are then callable via the gRPC `ExecutePlugin` function.
 
 ## Testing
+
+First follow the [source building instructions above](https://github.com/indradb/indradb#from-source).
 
 ### Unit tests
 
