@@ -116,7 +116,7 @@ pub trait Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: &models::VertexPropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_vertex_properties(&self, q: &models::VertexPropertyQuery, value: models::Json) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
@@ -141,7 +141,7 @@ pub trait Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: &models::EdgePropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_edge_properties(&self, q: &models::EdgePropertyQuery, value: models::Json) -> Result<()>;
 
     /// Deletes edge properties.
     ///

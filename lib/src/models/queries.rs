@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, EdgeKey, Identifier};
+use crate::{errors, EdgeKey, Identifier, Json};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -132,7 +132,7 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     fn with_property_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> PipePropertyValueVertexQuery {
         PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, true)
     }
@@ -145,7 +145,7 @@ pub trait VertexQueryExt: Into<VertexQuery> {
     fn with_property_not_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> PipePropertyValueVertexQuery {
         PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, false)
     }
@@ -176,7 +176,7 @@ pub struct PropertyValueVertexQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
@@ -188,7 +188,7 @@ impl PropertyValueVertexQuery {
     /// Arguments
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+    pub fn new<T: Into<Identifier>>(name: T, value: Json) -> Self {
         Self {
             name: name.into(),
             value,
@@ -233,7 +233,7 @@ pub struct PipePropertyValueVertexQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
     /// Whether we should look for property equality or non-equality.
     pub equal: bool,
 }
@@ -249,7 +249,7 @@ impl PipePropertyValueVertexQuery {
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
     /// * `equal`: Whether we should look for property equality or non-equality.
-    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, value: serde_json::Value, equal: bool) -> Self {
+    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, value: Json, equal: bool) -> Self {
         Self {
             inner,
             name: name.into(),
@@ -504,7 +504,7 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     fn with_property_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> PipePropertyValueEdgeQuery {
         PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, true)
     }
@@ -517,7 +517,7 @@ pub trait EdgeQueryExt: Into<EdgeQuery> {
     fn with_property_not_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> PipePropertyValueEdgeQuery {
         PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, false)
     }
@@ -548,7 +548,7 @@ pub struct PropertyValueEdgeQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
@@ -560,7 +560,7 @@ impl PropertyValueEdgeQuery {
     /// Arguments
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+    pub fn new<T: Into<Identifier>>(name: T, value: Json) -> Self {
         Self {
             name: name.into(),
             value,
@@ -605,7 +605,7 @@ pub struct PipePropertyValueEdgeQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
     /// Whether we should look for property equality or non-equality.
     pub equal: bool,
 }
@@ -621,7 +621,7 @@ impl PipePropertyValueEdgeQuery {
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
     /// * `equal`: Whether we should look for property equality or non-equality.
-    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, value: serde_json::Value, equal: bool) -> Self {
+    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, value: Json, equal: bool) -> Self {
         Self {
             inner,
             name: name.into(),

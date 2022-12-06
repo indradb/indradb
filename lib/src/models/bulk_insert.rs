@@ -1,4 +1,4 @@
-use crate::{EdgeKey, Identifier, Vertex};
+use crate::{EdgeKey, Identifier, Json, Vertex};
 
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ pub enum BulkInsertItem {
     /// An edge to insert.
     Edge(EdgeKey),
     /// A vertex property to insert.
-    VertexProperty(Uuid, Identifier, serde_json::Value),
+    VertexProperty(Uuid, Identifier, Json),
     /// An edge property to insert.
-    EdgeProperty(EdgeKey, Identifier, serde_json::Value),
+    EdgeProperty(EdgeKey, Identifier, Json),
 }

@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 fn hash<H: Hasher>(value: &serde_json::Value, state: &mut H) {
     match value {
@@ -133,20 +134,19 @@ where
 
 /// A [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
 /// that extends `serde_json::Value` with extra traits useful for datastore
-/// storage and querying. Publicly facing APIs do not use these values, so
-/// it's generally only useful for datastore authors.
-#[derive(Clone, Eq, Debug, Serialize, Deserialize)]
-pub struct Json(pub serde_json::Value);
+/// storage and querying.
+#[derive(Clone, Eq, Debug)]
+pub struct Json(pub Arc<serde_json::Value>);
 
 impl Json {
-    pub fn new(value: serde_json::Value) -> Self {
+    pub fn new(value: Arc<serde_json::Value>) -> Self {
         Self(value)
     }
 }
 
 impl From<serde_json::Value> for Json {
     fn from(value: serde_json::Value) -> Self {
-        Json(value)
+        Json(Arc::new(value))
     }
 }
 
@@ -165,5 +165,18 @@ impl PartialEq for Json {
 impl PartialOrd for Json {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         partial_cmp(&self.0, &other.0)
+    }
+}
+
+impl Serialize for Json {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Json {
+    fn deserialize<D>(deserializer: D) -> Result<Json, D::Error> where D: Deserializer<'de> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        Ok(Json::new(Arc::new(value)))
     }
 }
