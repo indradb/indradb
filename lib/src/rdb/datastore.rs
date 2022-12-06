@@ -83,7 +83,7 @@ fn vertices_from_property_value_iterator<'a>(
 
 fn vertices_from_piped_property_query(
     db_ref: DBRef<'_>,
-    inner_query: VertexQuery,
+    inner_query: &VertexQuery,
     property_query: VertexQuery,
     intersection: bool,
 ) -> Result<Vec<VertexItem>> {
@@ -92,7 +92,7 @@ fn vertices_from_piped_property_query(
     let piped_vertices: HashSet<Uuid> = piped_vertices_mapping.keys().cloned().collect();
 
     let property_vertices: HashSet<Uuid> = {
-        execute_vertex_query(db_ref, property_query)?
+        execute_vertex_query(db_ref, &property_query)?
             .into_iter()
             .map(move |item| {
                 let (id, _) = item;
@@ -131,7 +131,7 @@ fn edges_from_property_value_iterator<'a>(
 
 fn edges_from_piped_property_query(
     db_ref: DBRef<'_>,
-    inner_query: EdgeQuery,
+    inner_query: &EdgeQuery,
     property_query: EdgeQuery,
     intersection: bool,
 ) -> Result<Vec<EdgeRangeItem>> {
@@ -145,7 +145,7 @@ fn edges_from_piped_property_query(
     let piped_edges: HashSet<EdgeKey> = piped_edges_mapping.keys().cloned().collect();
 
     let property_edges: HashSet<EdgeKey> = {
-        execute_edge_query(db_ref, property_query)?
+        execute_edge_query(db_ref, &property_query)?
             .into_iter()
             .map(move |item| {
                 let (out_id, t, _, in_id) = item;
@@ -168,7 +168,7 @@ fn edges_from_piped_property_query(
         .collect())
 }
 
-fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexItem>> {
+fn execute_vertex_query(db_ref: DBRef<'_>, q: &VertexQuery) -> Result<Vec<VertexItem>> {
     match q {
         VertexQuery::Range(q) => {
             let vertex_manager = VertexManager::new(db_ref);
@@ -220,7 +220,7 @@ fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexI
         }
         VertexQuery::Pipe(q) => {
             let vertex_manager = VertexManager::new(db_ref);
-            let iter = execute_edge_query(db_ref, *q.inner)?.into_iter();
+            let iter = execute_edge_query(db_ref, &q.inner)?.into_iter();
             let direction = q.direction;
 
             let iter = iter.map(move |(out_id, _, _, in_id)| {
@@ -268,17 +268,17 @@ fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexI
         VertexQuery::PipePropertyPresence(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let property_query = PropertyPresenceVertexQuery::new(q.name).into();
-            vertices_from_piped_property_query(db_ref, *q.inner, property_query, q.exists)
+            vertices_from_piped_property_query(db_ref, &q.inner, property_query, q.exists)
         }
         VertexQuery::PipePropertyValue(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let property_query = PropertyValueVertexQuery::new(q.name, q.value).into();
-            vertices_from_piped_property_query(db_ref, *q.inner, property_query, q.equal)
+            vertices_from_piped_property_query(db_ref, &q.inner, property_query, q.equal)
         }
     }
 }
 
-fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
+fn execute_edge_query(db_ref: DBRef<'_>, q: &EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
     match q {
         EdgeQuery::Specific(q) => {
             let edge_manager = EdgeManager::new(db_ref);
@@ -302,7 +302,7 @@ fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeIt
             edges
         }
         EdgeQuery::Pipe(q) => {
-            let vertices = execute_vertex_query(db_ref, *q.inner)?;
+            let vertices = execute_vertex_query(db_ref, &q.inner)?;
 
             let edge_range_manager = match q.direction {
                 EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
@@ -366,12 +366,12 @@ fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeIt
         EdgeQuery::PipePropertyPresence(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let property_query = PropertyPresenceEdgeQuery::new(q.name).into();
-            edges_from_piped_property_query(db_ref, *q.inner, property_query, q.exists)
+            edges_from_piped_property_query(db_ref, &q.inner, property_query, q.exists)
         }
         EdgeQuery::PipePropertyValue(q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let property_query = PropertyValueEdgeQuery::new(q.name, q.value).into();
-            edges_from_piped_property_query(db_ref, *q.inner, property_query, q.equal)
+            edges_from_piped_property_query(db_ref, &q.inner, property_query, q.equal)
         }
     }
 }
@@ -463,7 +463,7 @@ impl Datastore for RocksdbDatastore {
         }
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
+    fn get_vertices(&self, q: &VertexQuery) -> Result<Vec<Vertex>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -477,7 +477,7 @@ impl Datastore for RocksdbDatastore {
         iter.collect()
     }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
+    fn delete_vertices(&self, q: &VertexQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -519,7 +519,7 @@ impl Datastore for RocksdbDatastore {
         }
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
+    fn get_edges(&self, q: &EdgeQuery) -> Result<Vec<Edge>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -534,7 +534,7 @@ impl Datastore for RocksdbDatastore {
         iter.collect()
     }
 
-    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
+    fn delete_edges(&self, q: &EdgeQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -568,14 +568,14 @@ impl Datastore for RocksdbDatastore {
         Ok(count as u64)
     }
 
-    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
+    fn get_vertex_properties(&self, q: &VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = VertexPropertyManager::new(db_ref);
         let mut properties = Vec::new();
 
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(db_ref, &q.inner)?.into_iter() {
             let value = manager.get(id, &q.name)?;
 
             if let Some(value) = value {
@@ -586,7 +586,7 @@ impl Datastore for RocksdbDatastore {
         Ok(properties)
     }
 
-    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
+    fn get_all_vertex_properties(&self, q: &VertexQuery) -> Result<Vec<VertexProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -609,7 +609,7 @@ impl Datastore for RocksdbDatastore {
         iter.collect()
     }
 
-    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: serde_json::Value) -> Result<()> {
+    fn set_vertex_properties(&self, q: &VertexPropertyQuery, value: serde_json::Value) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -617,7 +617,7 @@ impl Datastore for RocksdbDatastore {
         let mut batch = WriteBatch::default();
 
         let wrapped_value = Json::new(value);
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(db_ref, &q.inner)?.into_iter() {
             manager.set(&mut batch, id, &q.name, &wrapped_value)?;
         }
 
@@ -625,14 +625,14 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 
-    fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
+    fn delete_vertex_properties(&self, q: &VertexPropertyQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = VertexPropertyManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+        for (id, _) in execute_vertex_query(db_ref, &q.inner)?.into_iter() {
             manager.delete(&mut batch, id, &q.name)?;
         }
 
@@ -640,14 +640,14 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 
-    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
+    fn get_edge_properties(&self, q: &EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = EdgePropertyManager::new(db_ref);
         let mut properties = Vec::new();
 
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(db_ref, &q.inner)?.into_iter() {
             let value = manager.get(out_id, &t, in_id, &q.name)?;
 
             if let Some(value) = value {
@@ -659,7 +659,7 @@ impl Datastore for RocksdbDatastore {
         Ok(properties)
     }
 
-    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
+    fn get_all_edge_properties(&self, q: &EdgeQuery) -> Result<Vec<EdgeProperties>> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -681,7 +681,7 @@ impl Datastore for RocksdbDatastore {
         iter.collect()
     }
 
-    fn set_edge_properties(&self, q: EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
+    fn set_edge_properties(&self, q: &EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
@@ -689,7 +689,7 @@ impl Datastore for RocksdbDatastore {
         let mut batch = WriteBatch::default();
 
         let wrapped_value = Json::new(value);
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(db_ref, &q.inner)?.into_iter() {
             manager.set(&mut batch, out_id, &t, in_id, &q.name, &wrapped_value)?;
         }
 
@@ -697,14 +697,14 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 
-    fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
+    fn delete_edge_properties(&self, q: &EdgePropertyQuery) -> Result<()> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
         let manager = EdgePropertyManager::new(db_ref);
         let mut batch = WriteBatch::default();
 
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+        for (out_id, t, _, in_id) in execute_edge_query(db_ref, &q.inner)?.into_iter() {
             manager.delete(&mut batch, out_id, &t, in_id, &q.name)?;
         }
 

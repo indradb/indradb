@@ -58,13 +58,13 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertices(&self, q: models::VertexQuery) -> Result<Vec<models::Vertex>>;
+    fn get_vertices(&self, q: &models::VertexQuery) -> Result<Vec<models::Vertex>>;
 
     /// Deletes existing vertices specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertices(&self, q: models::VertexQuery) -> Result<()>;
+    fn delete_vertices(&self, q: &models::VertexQuery) -> Result<()>;
 
     /// Gets the number of vertices in the datastore.
     fn get_vertex_count(&self) -> Result<u64>;
@@ -82,13 +82,13 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edges(&self, q: models::EdgeQuery) -> Result<Vec<models::Edge>>;
+    fn get_edges(&self, q: &models::EdgeQuery) -> Result<Vec<models::Edge>>;
 
     /// Deletes a set of edges specified by a query.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edges(&self, q: models::EdgeQuery) -> Result<()>;
+    fn delete_edges(&self, q: &models::EdgeQuery) -> Result<()>;
 
     /// Gets the number of edges associated with a vertex.
     ///
@@ -103,51 +103,51 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
+    fn get_vertex_properties(&self, q: &models::VertexPropertyQuery) -> Result<Vec<models::VertexProperty>>;
 
     /// Gets all vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_vertex_properties(&self, q: models::VertexQuery) -> Result<Vec<models::VertexProperties>>;
+    fn get_all_vertex_properties(&self, q: &models::VertexQuery) -> Result<Vec<models::VertexProperties>>;
 
     /// Sets a vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_vertex_properties(&self, q: models::VertexPropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_vertex_properties(&self, q: &models::VertexPropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes vertex properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_vertex_properties(&self, q: models::VertexPropertyQuery) -> Result<()>;
+    fn delete_vertex_properties(&self, q: &models::VertexPropertyQuery) -> Result<()>;
 
     /// Gets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
+    fn get_edge_properties(&self, q: &models::EdgePropertyQuery) -> Result<Vec<models::EdgeProperty>>;
 
     /// Gets all edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn get_all_edge_properties(&self, q: models::EdgeQuery) -> Result<Vec<models::EdgeProperties>>;
+    fn get_all_edge_properties(&self, q: &models::EdgeQuery) -> Result<Vec<models::EdgeProperties>>;
 
     /// Sets edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
     /// * `value`: The property value.
-    fn set_edge_properties(&self, q: models::EdgePropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_edge_properties(&self, q: &models::EdgePropertyQuery, value: serde_json::Value) -> Result<()>;
 
     /// Deletes edge properties.
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    fn delete_edge_properties(&self, q: models::EdgePropertyQuery) -> Result<()>;
+    fn delete_edge_properties(&self, q: &models::EdgePropertyQuery) -> Result<()>;
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
@@ -164,11 +164,11 @@ pub trait Datastore {
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id).property(name);
-                    self.set_vertex_properties(query, value)?;
+                    self.set_vertex_properties(&query, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
                     let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    self.set_edge_properties(query, value)?;
+                    self.set_edge_properties(&query, value)?;
                 }
             }
         }
