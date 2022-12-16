@@ -26,7 +26,7 @@ impl VertexProperty {
 /// A property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
-    /// The id of the vertex.
+    /// The name of the property.
     pub name: Identifier,
 
     /// The property value.
