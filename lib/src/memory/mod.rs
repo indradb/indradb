@@ -20,19 +20,17 @@ mod tests {
 
     full_test_impl!(MemoryDatastore::default());
 
-    fn create_vertex(datastore: &MemoryDatastore, with_property: bool) -> Uuid {
+    fn create_vertex_with_property(datastore: &MemoryDatastore) -> Uuid {
         let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
-        if with_property {
-            datastore
-                .set_vertex_properties(
-                    VertexPropertyQuery {
-                        inner: SpecificVertexQuery::single(id).into(),
-                        name: Identifier::default(),
-                    },
-                    serde_json::Value::Bool(true),
-                )
-                .unwrap();
-        }
+        datastore
+            .set_vertex_properties(
+                VertexPropertyQuery {
+                    inner: SpecificVertexQuery::single(id).into(),
+                    name: Identifier::default(),
+                },
+                serde_json::Value::Bool(true),
+            )
+            .unwrap();
         id
     }
 
@@ -51,7 +49,7 @@ mod tests {
     fn should_serialize_bincode() {
         let path = NamedTempFile::new().unwrap();
         let datastore = MemoryDatastore::create(path.path()).unwrap();
-        let id = create_vertex(&datastore, false);
+        let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
         datastore.sync().unwrap();
         let datastore = MemoryDatastore::read(path.path()).unwrap();
         expect_vertex(&datastore, id);
@@ -62,7 +60,7 @@ mod tests {
     fn should_not_serialize_bincode_properties() {
         let path = NamedTempFile::new().unwrap();
         let datastore = MemoryDatastore::create(path.path()).unwrap();
-        create_vertex(&datastore, true);
+        create_vertex_with_property(&datastore);
         let result = datastore.sync();
         match result {
             Err(Error::Unsupported) => (),
@@ -74,7 +72,7 @@ mod tests {
     fn should_serialize_msgpack() {
         let path = NamedTempFile::new().unwrap();
         let datastore = MemoryDatastore::create_msgpack(path.path()).unwrap();
-        let id = create_vertex(&datastore, true);
+        let id = create_vertex_with_property(&datastore);
         datastore.sync().unwrap();
         let datastore = MemoryDatastore::read_msgpack(path.path()).unwrap();
         expect_vertex(&datastore, id);
