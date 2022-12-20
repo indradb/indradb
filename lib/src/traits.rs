@@ -86,6 +86,7 @@ pub trait Datastore {
     ///
     /// # Arguments
     /// * `q`: The query to run.
+    /// * `name`: The property name.
     /// * `value`: The property value.
     fn set_properties(&self, q: models::Query, name: models::Identifier, value: serde_json::Value) -> Result<()>;
 

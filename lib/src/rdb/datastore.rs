@@ -9,9 +9,9 @@ use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::util::next_uuid;
 use crate::{
-    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperties, EdgeProperty, EdgePropertyQuery,
-    EdgeQuery, Identifier, Json, NamedProperty, PropertyPresenceEdgeQuery, PropertyPresenceVertexQuery,
-    PropertyValueEdgeQuery, PropertyValueVertexQuery, Vertex, VertexProperties, VertexProperty, VertexPropertyQuery,
+    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty,
+    EdgeQuery, Identifier, Json,
+    Vertex, VertexProperty,
     VertexQuery,
 };
 

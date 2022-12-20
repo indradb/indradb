@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use super::util::{create_edge_from, create_edges};
-use crate::{models, Datastore, EdgeQueryExt, RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
+use crate::{models, Datastore, RangeVertexQuery, SpecificVertexQuery, QueryExt};
 
 use uuid::Uuid;
 
