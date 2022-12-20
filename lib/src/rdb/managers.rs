@@ -63,11 +63,11 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
-        Ok(self.db_ref.db.get_cf(self.cf, &self.key(id))?.is_some())
+        Ok(self.db_ref.db.get_cf(self.cf, self.key(id))?.is_some())
     }
 
     pub fn get(&self, id: Uuid) -> Result<Option<models::Identifier>> {
-        match self.db_ref.db.get_cf(self.cf, &self.key(id))? {
+        match self.db_ref.db.get_cf(self.cf, self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
                 Ok(Some(util::read_identifier(&mut cursor)))
@@ -104,7 +104,7 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, id: Uuid) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(id));
+        batch.delete_cf(self.cf, self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db_ref);
         for item in vertex_property_manager.iterate_for_owner(id)? {
@@ -181,7 +181,7 @@ impl<'a> EdgeManager<'a> {
     }
 
     pub fn get(&self, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<Option<DateTime<Utc>>> {
-        match self.db_ref.db.get_cf(self.cf, &self.key(out_id, t, in_id))? {
+        match self.db_ref.db.get_cf(self.cf, self.key(out_id, t, in_id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
                 Ok(Some(util::read_datetime(&mut cursor)))
@@ -225,7 +225,7 @@ impl<'a> EdgeManager<'a> {
         in_id: Uuid,
         update_datetime: DateTime<Utc>,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id));
+        batch.delete_cf(self.cf, self.key(out_id, t, in_id));
 
         let edge_range_manager = EdgeRangeManager::new(self.db_ref);
         edge_range_manager.delete(batch, out_id, t, update_datetime, in_id)?;
@@ -364,7 +364,7 @@ impl<'a> EdgeRangeManager<'a> {
         second_id: Uuid,
     ) -> Result<()> {
         let key = self.key(first_id, t, update_datetime, second_id);
-        batch.put_cf(self.cf, &key, &[]);
+        batch.put_cf(self.cf, &key, []);
         Ok(())
     }
 
@@ -376,7 +376,7 @@ impl<'a> EdgeRangeManager<'a> {
         update_datetime: DateTime<Utc>,
         second_id: Uuid,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, &self.key(first_id, t, update_datetime, second_id));
+        batch.delete_cf(self.cf, self.key(first_id, t, update_datetime, second_id));
         Ok(())
     }
 
@@ -433,9 +433,7 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::Json>> {
-        let key = self.key(vertex_id, name);
-
-        match self.db_ref.db.get_cf(self.cf, &key)? {
+        match self.db_ref.db.get_cf(self.cf, self.key(vertex_id, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
         }
@@ -469,7 +467,7 @@ impl<'a> VertexPropertyManager<'a> {
                 vertex_property_value_manager.delete(batch, vertex_id, name, &value);
             }
         }
-        batch.delete_cf(self.cf, &self.key(vertex_id, name));
+        batch.delete_cf(self.cf, self.key(vertex_id, name));
         Ok(())
     }
 
@@ -559,9 +557,7 @@ impl<'a> EdgePropertyManager<'a> {
         in_id: Uuid,
         name: &models::Identifier,
     ) -> Result<Option<models::Json>> {
-        let key = self.key(out_id, t, in_id, name);
-
-        match self.db_ref.db.get_cf(self.cf, &key)? {
+        match self.db_ref.db.get_cf(self.cf, self.key(out_id, t, in_id, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
         }
@@ -604,7 +600,7 @@ impl<'a> EdgePropertyManager<'a> {
                 edge_property_value_manager.delete(batch, out_id, t, in_id, name, &value);
             }
         }
-        batch.delete_cf(self.cf, &self.key(out_id, t, in_id, name));
+        batch.delete_cf(self.cf, self.key(out_id, t, in_id, name));
         Ok(())
     }
 
@@ -689,7 +685,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
-        batch.put_cf(self.cf, key, &[]);
+        batch.put_cf(self.cf, key, []);
     }
 
     pub fn delete(
@@ -797,7 +793,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, out_id, t, in_id);
-        batch.put_cf(self.cf, key, &[]);
+        batch.put_cf(self.cf, key, []);
     }
 
     pub fn delete(

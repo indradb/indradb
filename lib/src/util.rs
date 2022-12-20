@@ -23,7 +23,7 @@ lazy_static! {
 
     /// The maximum possible datetime.
     pub static ref MAX_DATETIME: DateTime<Utc> =
-        DateTime::from_utc(NaiveDateTime::from_timestamp(i64::from(i32::MAX), 0), Utc)
+        DateTime::from_utc(NaiveDateTime::from_timestamp_opt(i64::from(i32::MAX), 0).unwrap(), Utc)
             .with_nanosecond(1_999_999_999u32)
             .unwrap();
 }

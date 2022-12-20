@@ -693,7 +693,7 @@ impl From<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePro
 }
 
 fn to_chrono_time(ts: prost_types::Timestamp) -> DateTime<Utc> {
-    Utc.timestamp(ts.seconds, ts.nanos as u32)
+    Utc.timestamp_opt(ts.seconds, ts.nanos as u32).unwrap()
 }
 
 fn to_proto_time(dt: &DateTime<Utc>) -> prost_types::Timestamp {
