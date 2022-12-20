@@ -409,7 +409,7 @@ impl MemoryDatastore {
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
-    #[deprecated(note = "use read_msgpack, as it supports properties")]
+    #[deprecated(note = "use `read_msgpack`, as it supports properties")]
     pub fn read<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         let path = path.into();
         let buf = BufReader::new(File::open(&path)?);
@@ -447,7 +447,7 @@ impl MemoryDatastore {
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
-    #[deprecated(note = "use create_msgpack, as it supports properties")]
+    #[deprecated(note = "use `create_msgpack`, as it supports properties")]
     pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
