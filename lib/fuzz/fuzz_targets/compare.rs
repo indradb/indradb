@@ -535,7 +535,7 @@ impl<'a> Arbitrary<'a> for DateTime {
     }
 }
 
-#[derive(Arbitrary, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum Json {
     Null,
     Bool(bool),
