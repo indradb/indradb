@@ -3,6 +3,7 @@ use std::fmt;
 use std::result::Result as StdResult;
 
 use bincode::Error as BincodeError;
+use rmp_serde::encode::Error as RmpEncodeError;
 #[cfg(feature = "rocksdb-datastore")]
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
@@ -51,6 +52,12 @@ impl From<JsonError> for Error {
 
 impl From<BincodeError> for Error {
     fn from(err: BincodeError) -> Self {
+        Error::Datastore(Box::new(err))
+    }
+}
+
+impl From<RmpEncodeError> for Error {
+    fn from(err: RmpEncodeError) -> Self {
         Error::Datastore(Box::new(err))
     }
 }

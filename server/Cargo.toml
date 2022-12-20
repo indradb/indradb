@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "3.0.0"
+version = "3.0.3"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -17,18 +17,18 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2.33.3"
-tonic = "0.5.2"
-tokio = { version = "1.11.0", features = ["macros", "rt-multi-thread"] }
+tonic = "0.8.0"
+tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 serde_json = "^1.0.57"
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "3.0.0"
+version = "3.0.3"
 features = ["rocksdb-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"
-version = "3.0.0"
+version = "3.0.3"
 features = ["server"]

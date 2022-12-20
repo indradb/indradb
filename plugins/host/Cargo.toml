@@ -1,6 +1,6 @@
 [package]
 name = "indradb-plugin-host"
-version = "0.1.0"
+version = "0.2.2"
 build = "build.rs"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database library"
@@ -22,4 +22,4 @@ rustc_version = "0.4.0"
 
 [dependencies.indradb-lib]
 path = "../../lib"
-version = "3.0.0"
+version = "3.0.3"
