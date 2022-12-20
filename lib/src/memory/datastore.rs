@@ -15,6 +15,7 @@ use crate::{
 use bincode::Error as BincodeError;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use rmp_serde::decode::Error as RmpDecodeError;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
@@ -387,6 +388,7 @@ impl InternalMemoryDatastore {
 pub struct MemoryDatastore {
     datastore: Arc<RwLock<InternalMemoryDatastore>>,
     path: Option<PathBuf>,
+    use_bincode: bool,
 }
 
 impl Default for MemoryDatastore {
@@ -394,16 +396,20 @@ impl Default for MemoryDatastore {
         Self {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
             path: None,
+            use_bincode: false,
         }
     }
 }
 
 impl MemoryDatastore {
     /// Reads a persisted image from disk. Calls to sync will overwrite the
-    /// file at the specified path.
+    /// file at the specified path. For historic reasons, this uses bincode,
+    /// however bincode cannot serialize properties. If your graph needs
+    /// persistent properties, use `read_msgpack`.
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
+    #[deprecated(note = "use read_msgpack, as it supports properties")]
     pub fn read<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         let path = path.into();
         let buf = BufReader::new(File::open(&path)?);
@@ -411,19 +417,56 @@ impl MemoryDatastore {
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(datastore)),
             path: Some(path),
+            use_bincode: true,
+        })
+    }
+
+    /// Reads a persisted image from disk. Calls to sync will overwrite the
+    /// file at the specified path. Uses msgpack, which unlike bincode
+    /// supports properties.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, RmpDecodeError> {
+        let path = path.into();
+        let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
+        let buf = BufReader::new(f);
+        let datastore: InternalMemoryDatastore = rmp_serde::from_read(buf)?;
+        Ok(MemoryDatastore {
+            datastore: Arc::new(RwLock::new(datastore)),
+            path: Some(path),
+            use_bincode: false,
         })
     }
 
     /// Creates a new datastore. Calls to sync will overwrite the file at the
     /// specified path, but as opposed to `read`, this will not read the file
-    /// first.
+    /// first. For historic reasons, this uses bincode, however bincode cannot
+    /// serialize properties. If your graph needs persistent properties, use
+    /// `create_msgpack`.
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
+    #[deprecated(note = "use create_msgpack, as it supports properties")]
     pub fn create<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
         Ok(MemoryDatastore {
             datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
             path: Some(path.into()),
+            use_bincode: true,
+        })
+    }
+
+    /// Creates a new datastore. Calls to sync will overwrite the file at the
+    /// specified path, but as opposed to `read`, this will not read the file
+    /// first. Uses msgpack, which unlike bincode supports properties.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, BincodeError> {
+        Ok(MemoryDatastore {
+            datastore: Arc::new(RwLock::new(InternalMemoryDatastore::default())),
+            path: Some(path.into()),
+            use_bincode: false,
         })
     }
 }
@@ -431,10 +474,24 @@ impl MemoryDatastore {
 impl Datastore for MemoryDatastore {
     fn sync(&self) -> Result<()> {
         if let Some(ref persist_path) = self.path {
-            let temp_path = NamedTempFile::new().map_err(|err| Error::Datastore(Box::new(err)))?;
-            let buf = BufWriter::new(temp_path.as_file());
             let datastore = self.datastore.read().unwrap();
-            bincode::serialize_into(buf, &*datastore)?;
+            let temp_path = NamedTempFile::new().map_err(|err| Error::Datastore(Box::new(err)))?;
+            {
+                let mut buf = BufWriter::new(temp_path.as_file());
+                if self.use_bincode {
+                    // Property serialization not supported via bincode
+                    if !datastore.vertex_properties.is_empty()
+                        || !datastore.edge_properties.is_empty()
+                        || !datastore.property_values.is_empty()
+                    {
+                        return Err(Error::Unsupported);
+                    }
+
+                    bincode::serialize_into(buf, &*datastore)?;
+                } else {
+                    rmp_serde::encode::write(&mut buf, &*datastore)?;
+                }
+            }
             temp_path
                 .persist(persist_path)
                 .map_err(|err| Error::Datastore(Box::new(err)))?;
