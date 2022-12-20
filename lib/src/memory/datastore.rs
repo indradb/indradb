@@ -608,9 +608,14 @@ impl Datastore for MemoryDatastore {
         let mut result = Vec::new();
         for (id, t) in vertex_values {
             let from = &(id, Identifier::default());
-            let to = &(id.checked_add(1).unwrap(), Identifier::default());
 
-            let properties = datastore.vertex_properties.range(from..to);
+            let properties = if let Some(to_id) = id.checked_add(1) {
+                let to = &(id.checked_add(1).unwrap(), Identifier::default());
+                datastore.vertex_properties.range(from..to)
+            } else {
+                datastore.vertex_properties.range(from..)
+            };
+
             result.push(VertexProperties::new(
                 Vertex::with_id(id, t),
                 properties

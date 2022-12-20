@@ -59,15 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b88d82667eca772c4aa12f0f1348b3ae643424c8876448f3f7bd5787032e234c"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -571,7 +562,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
- "uuid",
 ]
 
 [[package]]
@@ -587,7 +577,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "uuid",
 ]
 
 [[package]]
@@ -607,7 +596,6 @@ dependencies = [
  "rustc_version",
  "serde_json",
  "threadpool",
- "uuid",
 ]
 
 [[package]]
@@ -636,7 +624,6 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-build",
- "uuid",
 ]
 
 [[package]]
@@ -1499,16 +1486,6 @@ name = "unicode-width"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
-
-[[package]]
-name = "uuid"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"
-dependencies = [
- "atomic",
- "serde",
-]
 
 [[package]]
 name = "vcpkg"
