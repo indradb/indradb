@@ -162,7 +162,7 @@ pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
 pub fn generate_uuid_v1() -> Uuid {
     let now = Utc::now();
     let ts = Timestamp::from_unix(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos());
-    Uuid::new_v1(ts, &NODE_ID).expect("Expected to be able to generate a UUID")
+    Uuid::new_v1(ts, &NODE_ID)
 }
 
 /// Gets the next UUID that would occur after the given one.

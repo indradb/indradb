@@ -1,6 +1,6 @@
 [package]
 name = "indradb-plugin-host"
-version = "0.1.0"
+version = "0.2.2"
 build = "build.rs"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database library"
@@ -16,11 +16,11 @@ edition = "2021"
 [dependencies]
 serde_json = "^1.0.57"
 threadpool = "1.8.1"
-uuid = "~0.8.2"
+uuid = "^1.1.2"
 
 [build-dependencies]
 rustc_version = "0.4.0"
 
 [dependencies.indradb-lib]
 path = "../../lib"
-version = "3.0.0"
+version = "3.0.3"

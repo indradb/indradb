@@ -11,7 +11,7 @@ IndraDB stores graph data in datastores. Datastores are pluggable: there are a f
 To use the in-memory datastore, add this to your `Cargo.toml`'s dependencies section:
 
 ```toml
-indradb-lib = "1"
+indradb-lib = "*"
 ```
 
 ### RocksDB
@@ -19,7 +19,7 @@ indradb-lib = "1"
 To use the rocksdb datastore, add this to your `Cargo.toml`'s dependencies section:
 
 ```toml
-indradb-lib = { version = "1", features = ["rocksdb-datastore"] }
+indradb-lib = { version = "*", features = ["rocksdb-datastore"] }
 ```
 
 ### Custom datastores

@@ -57,7 +57,7 @@ impl Identifier {
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self { 0: "".to_string() }
+        Self("".to_string())
     }
 }
 
