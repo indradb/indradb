@@ -452,7 +452,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let arg = if let Some(arg) = request.arg {
             map_conversion_result(arg.try_into())?
         } else {
-            serde_json::Value::Null
+            indradb::Json::new(Arc::new(serde_json::Value::Null))
         };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {

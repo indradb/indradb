@@ -87,7 +87,7 @@ impl TryInto<Uuid> for crate::Uuid {
 
 impl From<indradb::Identifier> for crate::Identifier {
     fn from(t: indradb::Identifier) -> Self {
-        crate::Identifier { value: t.into_string() }
+        crate::Identifier { value: t.to_string() }
     }
 }
 
@@ -99,19 +99,19 @@ impl TryInto<indradb::Identifier> for crate::Identifier {
     }
 }
 
-impl From<serde_json::Value> for crate::Json {
-    fn from(value: serde_json::Value) -> Self {
+impl From<indradb::Json> for crate::Json {
+    fn from(value: indradb::Json) -> Self {
         crate::Json {
-            value: value.to_string(),
+            value: value.0.to_string(),
         }
     }
 }
 
-impl TryInto<serde_json::Value> for crate::Json {
+impl TryInto<indradb::Json> for crate::Json {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<serde_json::Value, Self::Error> {
-        Ok(serde_json::from_str(&self.value)?)
+    fn try_into(self) -> Result<indradb::Json, Self::Error> {
+        Ok(indradb::Json::new(Arc::new(serde_json::from_str(&self.value)?)))
     }
 }
 
@@ -654,18 +654,18 @@ impl From<(Uuid, Option<indradb::Identifier>, indradb::EdgeDirection)> for crate
     }
 }
 
-impl TryInto<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
+impl TryInto<(indradb::VertexPropertyQuery, indradb::Json)> for crate::SetVertexPropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::VertexPropertyQuery, serde_json::Value), Self::Error> {
+    fn try_into(self) -> Result<(indradb::VertexPropertyQuery, indradb::Json), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
         Ok((q, value))
     }
 }
 
-impl From<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
-    fn from(value: (indradb::VertexPropertyQuery, serde_json::Value)) -> Self {
+impl From<(indradb::VertexPropertyQuery, indradb::Json)> for crate::SetVertexPropertiesRequest {
+    fn from(value: (indradb::VertexPropertyQuery, indradb::Json)) -> Self {
         crate::SetVertexPropertiesRequest {
             q: Some(value.0.into()),
             value: Some(value.1.into()),
@@ -673,18 +673,18 @@ impl From<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVerte
     }
 }
 
-impl TryInto<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePropertiesRequest {
+impl TryInto<(indradb::EdgePropertyQuery, indradb::Json)> for crate::SetEdgePropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::EdgePropertyQuery, serde_json::Value), Self::Error> {
+    fn try_into(self) -> Result<(indradb::EdgePropertyQuery, indradb::Json), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
         Ok((q, value))
     }
 }
 
-impl From<(indradb::EdgePropertyQuery, serde_json::Value)> for crate::SetEdgePropertiesRequest {
-    fn from(value: (indradb::EdgePropertyQuery, serde_json::Value)) -> Self {
+impl From<(indradb::EdgePropertyQuery, indradb::Json)> for crate::SetEdgePropertiesRequest {
+    fn from(value: (indradb::EdgePropertyQuery, indradb::Json)) -> Self {
         crate::SetEdgePropertiesRequest {
             q: Some(value.0.into()),
             value: Some(value.1.into()),

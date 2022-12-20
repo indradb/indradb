@@ -52,7 +52,7 @@ pub fn map<M: VertexMapper>(
             start_id: last_id,
         };
 
-        let vertices = match datastore.get_vertices(q.into()) {
+        let vertices = match datastore.get_vertices(&q.into()) {
             Ok(value) => value,
             Err(err) => {
                 *last_err.lock().unwrap() = Some(err.into());

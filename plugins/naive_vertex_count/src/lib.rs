@@ -2,6 +2,7 @@
 //! count vertices. You wouldn't actually want to use this since IndraDB has
 //! much faster built-in functionality for counting vertices.
 
+use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -37,7 +38,7 @@ impl plugin::Plugin for NaiveVertexCountPlugin {
             count: AtomicU64::new(0),
             t_filter: arg
                 .get("t_filter")
-                .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap()),
+                .map(|t_filter| indradb::Identifier::from_str(t_filter.as_str().unwrap()).unwrap()),
         });
 
         plugin::util::map(mapper.clone(), datastore)?;
