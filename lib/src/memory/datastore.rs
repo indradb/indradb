@@ -429,7 +429,7 @@ impl MemoryDatastore {
     /// * `path`: The path to the persisted image.
     pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<MemoryDatastore, RmpDecodeError> {
         let path = path.into();
-        let f = File::open(&path).map_err(|err| RmpDecodeError::InvalidDataRead(err))?;
+        let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
         let buf = BufReader::new(f);
         let datastore: InternalMemoryDatastore = rmp_serde::from_read(buf)?;
         Ok(MemoryDatastore {
