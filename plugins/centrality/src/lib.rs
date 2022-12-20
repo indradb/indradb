@@ -235,11 +235,7 @@ impl plugin::Plugin for CentralityPlugin {
                 let properties: Vec<indradb::BulkInsertItem> = prev_centrality_map
                     .into_iter()
                     .map(|(id, centrality)| {
-                        indradb::BulkInsertItem::VertexProperty(
-                            id,
-                            centrality_property_name.clone(),
-                            centrality.into(),
-                        )
+                        indradb::BulkInsertItem::VertexProperty(id, centrality_property_name.clone(), centrality.into())
                     })
                     .collect();
                 datastore.bulk_insert(properties)?;
