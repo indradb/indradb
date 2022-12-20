@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
 #[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd, Serialize, Deserialize)]
-pub struct Identifier(pub String);
+pub struct Identifier(pub(crate) String);
 
 impl Identifier {
     /// Constructs a new identifier.
@@ -43,11 +43,21 @@ impl Identifier {
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
         Identifier(s.into())
     }
+
+    /// Gets a reference to the identifier value.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Converts the identifier into a string with the underlying value.
+    pub fn into_string(self) -> String {
+        self.0
+    }
 }
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self { 0: "".to_string() }
+        Self("".to_string())
     }
 }
 
@@ -64,6 +74,12 @@ impl TryFrom<String> for Identifier {
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
         Self::new(s)
+    }
+}
+
+impl ToString for Identifier {
+    fn to_string(&self) -> String {
+        self.0.clone()
     }
 }
 

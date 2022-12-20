@@ -5,6 +5,7 @@ export RUST_BACKTRACE=1
 test:
 	cd lib && cargo test --features=test-suite,rocksdb-datastore $(TEST_NAME)
 	cd proto && cargo test --features=test-suite $(TEST_NAME)
+	cargo build && cd server && cargo test
 
 bench:
 	cd lib && cargo +nightly bench --features=bench-suite,rocksdb-datastore $(TEST_NAME)

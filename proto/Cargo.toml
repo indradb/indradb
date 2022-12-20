@@ -1,6 +1,6 @@
 [package]
 name = "indradb-proto"
-version = "2.2.0"
+version = "3.0.3"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "Protobuf/gRPC interfaces for IndraDB"
 homepage = "https://indradb.github.io"
@@ -18,22 +18,32 @@ path = "src/lib.rs"
 
 [features]
 default = ["client"]
-server = ["tokio", "tokio-stream"]
+server = ["tokio", "tokio-stream", "libloading", "indradb-plugin-host", "glob"]
 client = ["tokio", "tokio-stream"]
 bench-suite = ["indradb-lib/bench-suite", "test-suite"]
 test-suite = ["indradb-lib/test-suite", "client", "server"]
 
 [dependencies]
 serde_json = "^1.0.57"
-uuid = "~0.8.2"
-chrono = "0.4.19"
-prost = "0.8.0"
-prost-derive = "0.8.0"
-prost-types = "0.8.0"
-tonic = "0.5.2"
+uuid = "^1.1.2"
+chrono = "0.4.22"
+prost = "0.11.0"
+prost-derive = "0.11.0"
+prost-types = "0.11.1"
+tonic = "0.8.0"
 tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
-tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
-indradb-lib = { path = "../lib" }
+tokio-stream = { version = "0.1.9", features = ["net"], optional = true }
+libloading = { version = "0.7", optional = true }
+glob = { version = "0.3.0", optional = true }
+
+[dependencies.indradb-lib]
+path = "../lib"
+version = "3.0.3"
+
+[dependencies.indradb-plugin-host]
+path = "../plugins/host"
+version = "0.2.0"
+optional = true
 
 [build-dependencies]
-tonic-build = "0.5.2"
+tonic-build = "0.8.0"

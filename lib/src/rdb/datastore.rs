@@ -17,7 +17,7 @@ use crate::{
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use rocksdb::{DBCompactionStyle, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
 
 const CF_NAMES: [&str; 9] = [
@@ -66,12 +66,13 @@ fn guard_indexed_property(db_ref: DBRef<'_>, property: &Identifier) -> Result<()
 
 fn vertices_from_property_value_iterator<'a>(
     db_ref: DBRef<'a>,
-    iter: impl Iterator<Item = VertexPropertyValueKey> + 'a,
+    iter: impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a,
 ) -> Result<Vec<VertexItem>> {
     let vertex_manager = VertexManager::new(db_ref);
 
     let mut vertices = Vec::new();
-    for (_, _, id) in iter {
+    for item in iter {
+        let (_, _, id) = item?;
         if let Some(t) = vertex_manager.get(id)? {
             vertices.push((id, t));
         }
@@ -113,12 +114,13 @@ fn vertices_from_piped_property_query(
 
 fn edges_from_property_value_iterator<'a>(
     db_ref: DBRef<'a>,
-    iter: impl Iterator<Item = EdgePropertyValueKey> + 'a,
+    iter: impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a,
 ) -> Result<Vec<EdgeRangeItem>> {
     let edge_manager = EdgeManager::new(db_ref);
 
     let mut edges = Vec::new();
-    for (_, _, (out_id, t, in_id)) in iter {
+    for item in iter {
+        let (_, _, (out_id, t, in_id)) = item?;
         if let Some(dt) = edge_manager.get(out_id, &t, in_id)? {
             edges.push((out_id, t, dt, in_id));
         }
@@ -746,13 +748,7 @@ impl Datastore for RocksdbDatastore {
             }
         }
 
-        // NOTE: syncing and WAL are disabled for bulk inserts to maximize
-        // performance
-        let mut opts = WriteOptions::default();
-        opts.set_sync(false);
-        opts.disable_wal(true);
-        self.db.write_opt(batch, &opts)?;
-
+        self.db.write(batch)?;
         Ok(())
     }
 
