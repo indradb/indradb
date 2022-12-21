@@ -1,6 +1,6 @@
 [package]
 name = "indradb-proto"
-version = "3.0.0"
+version = "3.0.3"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "Protobuf/gRPC interfaces for IndraDB"
 homepage = "https://indradb.github.io"
@@ -25,24 +25,24 @@ test-suite = ["indradb-lib/test-suite", "client", "server"]
 
 [dependencies]
 serde_json = "^1.0.57"
-chrono = "0.4.19"
-prost = "0.8.0"
-prost-derive = "0.8.0"
-prost-types = "0.8.0"
-tonic = "0.5.2"
-tokio = { version = "^1.11.0", features = ["rt-multi-thread"], optional = true }
-tokio-stream = { version = "0.1.7", features = ["net"], optional = true }
-libloading = { version = "0.7", optional = true }
+chrono = "0.4.23"
+prost = "0.11.3"
+prost-derive = "0.11.2"
+prost-types = "0.11.2"
+tonic = "0.8.3"
+tokio = { version = "^1.23.0", features = ["rt-multi-thread"], optional = true }
+tokio-stream = { version = "0.1.11", features = ["net"], optional = true }
+libloading = { version = "0.7.4", optional = true }
 glob = { version = "0.3.0", optional = true }
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "3.0.0"
+version = "3.0.3"
 
 [dependencies.indradb-plugin-host]
 path = "../plugins/host"
-version = "0.1.0"
+version = "0.2.0"
 optional = true
 
 [build-dependencies]
-tonic-build = "0.5.2"
+tonic-build = "0.8.0"
