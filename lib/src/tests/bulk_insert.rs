@@ -1,7 +1,4 @@
-use crate::{
-    BulkInsertItem, Datastore, EdgeKey, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
-    QueryExt,
-};
+use crate::{BulkInsertItem, Datastore, EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
 use chrono::offset::Utc;
 use chrono::Timelike;

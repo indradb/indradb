@@ -1,6 +1,4 @@
-use crate::{
-    Datastore, EdgeKey, Identifier, SpecificEdgeQuery, SpecificVertexQuery, Vertex, QueryExt,
-};
+use crate::{Datastore, EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
 use uuid::Uuid;
 

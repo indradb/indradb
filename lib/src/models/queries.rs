@@ -5,10 +5,8 @@ use crate::{errors, EdgeKey, Identifier};
 
 use uuid::Uuid;
 
-macro_rules! query_type {
+macro_rules! leaf_query_type {
     ($name:ident, $variant:ident) => {
-        impl QueryExt for $name {}
-
         // we don't want to impl From since the reverse operation isn't allowed
         #[allow(clippy::from_over_into)]
         impl Into<Query> for $name {
@@ -16,6 +14,13 @@ macro_rules! query_type {
                 Query::$variant(self)
             }
         }
+    };
+}
+
+macro_rules! query_type {
+    ($name:ident, $variant:ident) => {
+        impl QueryExt for $name {}
+        leaf_query_type!($name, $variant);
     };
 }
 
@@ -56,19 +61,24 @@ impl From<EdgeDirection> for String {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Query {
+    AllVertices(AllVerticesQuery),
     RangeVertex(RangeVertexQuery),
     SpecificVertex(SpecificVertexQuery),
 
+    AllEdges(AllEdgesQuery),
     SpecificEdge(SpecificEdgeQuery),
 
     Pipe(PipeQuery),
 
+    PipeProperty(PipePropertyQuery),
+    PipeProperties(PipePropertiesQuery),
     PropertyPresence(PropertyPresenceQuery),
     PropertyValue(PropertyValueQuery),
     PipePropertyPresence(PipePropertyPresenceQuery),
     PipePropertyValue(PipePropertyValueQuery),
 
     Include(IncludeQuery),
+    Count(CountQuery),
 }
 
 pub trait QueryExt: Into<Query> {
@@ -101,11 +111,7 @@ pub trait QueryExt: Into<Query> {
     /// # Arguments
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
-    fn with_property_equal_to<T: Into<Identifier>>(
-        self,
-        name: T,
-        value: serde_json::Value,
-    ) -> PipePropertyValueQuery {
+    fn with_property_equal_to<T: Into<Identifier>>(self, name: T, value: serde_json::Value) -> PipePropertyValueQuery {
         PipePropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
 
@@ -122,8 +128,20 @@ pub trait QueryExt: Into<Query> {
         PipePropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
 
+    fn property(self, name: Identifier) -> PipePropertyQuery {
+        PipePropertyQuery::new(name, Box::new(self.into()))
+    }
+
+    fn properties(self) -> PipePropertiesQuery {
+        PipePropertiesQuery::new(Box::new(self.into()))
+    }
+
     fn include(self) -> IncludeQuery {
         IncludeQuery::new(Box::new(self.into()))
+    }
+
+    fn count(self) -> CountQuery {
+        CountQuery::new(Box::new(self.into()))
     }
 }
 
@@ -215,6 +233,11 @@ impl PipePropertyValueQuery {
         }
     }
 }
+
+/// Gets all vertices.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct AllVerticesQuery;
+query_type!(AllVerticesQuery, AllVertices);
 
 /// Gets a range of vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -312,10 +335,11 @@ impl SpecificVertexQuery {
     }
 }
 
-/// Gets the vertices associated with edges.
+/// Gets the vertices associated with edges, or edges associated with
+/// vertices.
 ///
 /// Generally, you shouldn't need to construct this directly, but rather call
-/// `.outbound()` or `.inbound()` on an edge query.
+/// `.outbound()` or `.inbound()`.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeQuery {
     /// The edge query to build off of.
@@ -370,6 +394,11 @@ impl PipeQuery {
     }
 }
 
+/// Gets all edges.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct AllEdgesQuery;
+query_type!(AllEdgesQuery, AllEdges);
+
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
@@ -416,10 +445,72 @@ impl IncludeQuery {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct CountQuery {
+    /// The query to export.
+    pub inner: Box<Query>,
+}
+
+leaf_query_type!(CountQuery, Count);
+
+impl CountQuery {
+    /// Marks a query as exported.
+    ///
+    /// Arguments
+    /// * `inner`: The query to export.
+    pub fn new(inner: Box<Query>) -> Self {
+        Self { inner }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertyQuery {
+    /// The property name to get.
+    pub name: Identifier,
+    /// The inner query.
+    pub inner: Box<Query>,
+}
+
+leaf_query_type!(PipePropertyQuery, PipeProperty);
+
+impl PipePropertyQuery {
+    /// Marks a query as exported.
+    ///
+    /// Arguments
+    /// * `name`: The property name to get.
+    /// * `inner`: The query to export.
+    pub fn new(name: Identifier, inner: Box<Query>) -> Self {
+        Self { name, inner }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipePropertiesQuery {
+    /// The inner query.
+    pub inner: Box<Query>,
+}
+
+leaf_query_type!(PipePropertiesQuery, PipeProperties);
+
+impl PipePropertiesQuery {
+    /// Marks a query as exported.
+    ///
+    /// Arguments
+    /// * `inner`: The query to export.
+    pub fn new(inner: Box<Query>) -> Self {
+        Self { inner }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum QueryOutputValue {
     Vertices(Vec<crate::Vertex>),
     Edges(Vec<crate::Edge>),
+    Count(u64),
+    VerticesProperty(Vec<(crate::Vertex, serde_json::Value)>),
+    EdgesProperty(Vec<(crate::Edge, serde_json::Value)>),
+    VerticesProperties(Vec<(crate::Vertex, Vec<(crate::Identifier, serde_json::Value)>)>),
+    EdgesProperties(Vec<(crate::Edge, Vec<(crate::Identifier, serde_json::Value)>)>),
 }
 
 #[cfg(test)]

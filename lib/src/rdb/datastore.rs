@@ -9,10 +9,8 @@ use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::util::next_uuid;
 use crate::{
-    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty,
-    EdgeQuery, Identifier, Json,
-    Vertex, VertexProperty,
-    VertexQuery,
+    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty, EdgeQuery, Identifier, Json, Vertex,
+    VertexProperty, VertexQuery,
 };
 
 use chrono::offset::Utc;

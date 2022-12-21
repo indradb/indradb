@@ -1,9 +1,7 @@
 use std::collections::HashSet;
 
 use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
-use crate::{
-    models, Datastore, EdgeDirection, EdgeKey, SpecificEdgeQuery, SpecificVertexQuery, QueryExt,
-};
+use crate::{models, Datastore, EdgeDirection, EdgeKey, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 
 use chrono::offset::Utc;
 use chrono::Timelike;

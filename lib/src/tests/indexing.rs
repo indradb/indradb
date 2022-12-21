@@ -1,4 +1,4 @@
-use crate::{models, Datastore, Error, QueryExt};
+use crate::{models, Datastore, EdgeQueryExt, Error, VertexQueryExt};
 use uuid::Uuid;
 
 fn setup_vertex_with_indexed_property<D: Datastore>(datastore: &D, property_name: &models::Identifier) -> Uuid {
@@ -34,7 +34,7 @@ fn setup_edge_with_indexed_property<D: Datastore>(
 
 pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &D) {
     let result = datastore
-        .get_vertices(models::PropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()).into());
+        .get_vertices(models::PropertyPresenceVertexQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
