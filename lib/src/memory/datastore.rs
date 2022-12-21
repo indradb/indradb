@@ -198,22 +198,22 @@ impl InternalMemoryDatastore {
                     QueryOutputValue::Edges(ref piped_edges) => {
                         let iter = piped_edges.iter().filter_map(move |e| {
                             if let Some(value) = self.edge_properties.get(&(e.key.clone(), q.name.clone())) {
-                                Some((e.clone(), value.0.clone()))
+                                Some((e.clone(), q.name.clone(), value.0.clone()))
                             } else {
                                 None
                             }
                         });
-                        QueryOutputValue::EdgesProperty(iter.collect())
+                        QueryOutputValue::EdgeProperties(iter.collect())
                     }
                     QueryOutputValue::Vertices(ref piped_vertices) => {
                         let iter = piped_vertices.iter().filter_map(move |v| {
                             if let Some(value) = self.vertex_properties.get(&(v.id.clone(), q.name.clone())) {
-                                Some((v.clone(), value.0.clone()))
+                                Some((v.clone(), q.name.clone(), value.0.clone()))
                             } else {
                                 None
                             }
                         });
-                        QueryOutputValue::VerticesProperty(iter.collect())
+                        QueryOutputValue::VertexProperties(iter.collect())
                     }
                     _ => {
                         return Err(Error::Unsupported);
@@ -233,37 +233,30 @@ impl InternalMemoryDatastore {
 
                 let values = match piped_values {
                     QueryOutputValue::Edges(ref piped_edges) => {
-                        let mut edges_properties = Vec::with_capacity(piped_edges.len());
+                        let mut edge_properties = Vec::new();
                         for edge in piped_edges.into_iter() {
-                            let mut edge_properties = Vec::new();
                             let from = &(edge.key.clone(), Identifier::default());
                             for ((prop_edge_key, prop_name), prop_value) in self.edge_properties.range(from..) {
                                 if prop_edge_key != &edge.key {
                                     break;
                                 }
-                                edge_properties.push((prop_name.clone(), prop_value.0.clone()));
+                                edge_properties.push((edge.clone(), prop_name.clone(), prop_value.0.clone()));
                             }
-                            edges_properties.push((edge.clone(), edge_properties));
                         }
 
-                        QueryOutputValue::EdgesProperties(edges_properties)
+                        QueryOutputValue::EdgeProperties(edge_properties)
                     }
                     QueryOutputValue::Vertices(ref piped_vertices) => {
-                        let mut vertices_properties = Vec::with_capacity(piped_vertices.len());
+                        let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
                         for vertex in piped_vertices.into_iter() {
                             let from = &(vertex.id, Identifier::default());
                             let to = &(util::next_uuid(vertex.id).unwrap(), Identifier::default());
-                            let vertex_properties = self
-                                .vertex_properties
-                                .range(from..to)
-                                .map(|((_prop_vertex_id, prop_name), prop_value)| {
-                                    (prop_name.clone(), prop_value.0.clone())
-                                })
-                                .collect();
-                            vertices_properties.push((vertex.clone(), vertex_properties));
+                            for ((_prop_vertex_id, prop_name), prop_value) in self.vertex_properties.range(from..to) {
+                                vertex_properties.push((vertex.clone(), prop_name.clone(), prop_value.0.clone()));
+                            }
                         }
 
-                        QueryOutputValue::VerticesProperties(vertices_properties)
+                        QueryOutputValue::VertexProperties(vertex_properties)
                     }
                     _ => {
                         return Err(Error::Unsupported);
@@ -408,10 +401,8 @@ impl InternalMemoryDatastore {
                         match piped_values {
                             QueryOutputValue::Vertices(v) => v.len(),
                             QueryOutputValue::Edges(v) => v.len(),
-                            QueryOutputValue::VerticesProperty(v) => v.len(),
-                            QueryOutputValue::EdgesProperty(v) => v.len(),
-                            QueryOutputValue::VerticesProperties(v) => v.len(),
-                            QueryOutputValue::EdgesProperties(v) => v.len(),
+                            QueryOutputValue::VertexProperties(v) => v.len(),
+                            QueryOutputValue::EdgeProperties(v) => v.len(),
                             _ => return Err(Error::Unsupported),
                         }
                     }
@@ -593,35 +584,80 @@ impl Datastore for MemoryDatastore {
         let mut output = Vec::new();
         let mut datastore = self.datastore.write().unwrap();
         datastore.query(&q, &mut output)?;
-        for value in output {
-            match value {
-                QueryOutputValue::Vertices(vertices) => {
-                    datastore.delete_vertices(vertices.into_iter().map(|v| v.id).collect());
-                }
-                QueryOutputValue::Edges(edges) => {
-                    datastore.delete_edges(edges.into_iter().map(|e| e.key).collect());
-                }
-                QueryOutputValue::VerticesProperty(vertices_property) => {
-                    todo!();
-                }
-                QueryOutputValue::EdgesProperty(edges_property) => {
-                    todo!();
-                }
-                QueryOutputValue::VerticesProperties(vertices_properties) => {
-                    todo!();
-                }
-                QueryOutputValue::EdgesProperties(edges_properties) => {
-                    todo!();
-                }
-                QueryOutputValue::Count(_) => return Err(Error::Unsupported),
+        match output.pop().unwrap() {
+            QueryOutputValue::Vertices(vertices) => {
+                datastore.delete_vertices(vertices.into_iter().map(|v| v.id).collect());
             }
+            QueryOutputValue::Edges(edges) => {
+                datastore.delete_edges(edges.into_iter().map(|e| e.key).collect());
+            }
+            QueryOutputValue::VertexProperties(vertex_properties) => datastore.delete_vertex_properties(
+                vertex_properties
+                    .into_iter()
+                    .map(|(vertex, prop_name, _prop_value)| (vertex.id, prop_name.clone()))
+                    .collect(),
+            ),
+            QueryOutputValue::EdgeProperties(edge_properties) => datastore.delete_edge_properties(
+                edge_properties
+                    .into_iter()
+                    .map(|(edge, prop_name, _prop_value)| (edge.key, prop_name.clone()))
+                    .collect(),
+            ),
+            QueryOutputValue::Count(_) => return Err(Error::Unsupported),
         }
-
         Ok(())
     }
 
     fn set_properties(&self, q: PipePropertyQuery, value: serde_json::Value) -> Result<()> {
-        todo!();
+        let mut output = Vec::new();
+        let mut datastore = self.datastore.write().unwrap();
+        datastore.query(&q.inner, &mut output)?;
+        match output.pop().unwrap() {
+            QueryOutputValue::Vertices(vertices) => {
+                let mut deletable_vertex_properties = Vec::new();
+                for vertex in &vertices {
+                    deletable_vertex_properties.push((vertex.id, q.name.clone()));
+                }
+                datastore.delete_vertex_properties(deletable_vertex_properties);
+
+                let wrapped_value = Json::new(value);
+                for vertex in &vertices {
+                    datastore
+                        .vertex_properties
+                        .insert((vertex.id, q.name.clone()), wrapped_value.clone());
+                }
+
+                if let Some(property_container) = datastore.property_values.get_mut(&q.name) {
+                    let property_container = property_container.entry(wrapped_value).or_insert_with(HashSet::new);
+                    for vertex in vertices.into_iter() {
+                        property_container.insert(IndexedPropertyMember::Vertex(vertex.id));
+                    }
+                }
+            }
+            QueryOutputValue::Edges(edges) => {
+                let mut deletable_edge_properties = Vec::new();
+                for edge in &edges {
+                    deletable_edge_properties.push((edge.key.clone(), q.name.clone()));
+                }
+                datastore.delete_edge_properties(deletable_edge_properties);
+
+                let wrapped_value = Json::new(value);
+                for edge in &edges {
+                    datastore
+                        .edge_properties
+                        .insert((edge.key.clone(), q.name.clone()), wrapped_value.clone());
+                }
+
+                if let Some(property_container) = datastore.property_values.get_mut(&q.name) {
+                    let property_container = property_container.entry(wrapped_value).or_insert_with(HashSet::new);
+                    for edge in edges.into_iter() {
+                        property_container.insert(IndexedPropertyMember::Edge(edge.key));
+                    }
+                }
+            }
+            _ => return Err(Error::Unsupported),
+        }
+        Ok(())
     }
 
     fn index_property(&self, name: Identifier) -> Result<()> {

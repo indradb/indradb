@@ -507,10 +507,8 @@ pub enum QueryOutputValue {
     Vertices(Vec<crate::Vertex>),
     Edges(Vec<crate::Edge>),
     Count(u64),
-    VerticesProperty(Vec<(crate::Vertex, serde_json::Value)>),
-    EdgesProperty(Vec<(crate::Edge, serde_json::Value)>),
-    VerticesProperties(Vec<(crate::Vertex, Vec<(crate::Identifier, serde_json::Value)>)>),
-    EdgesProperties(Vec<(crate::Edge, Vec<(crate::Identifier, serde_json::Value)>)>),
+    VertexProperties(Vec<(crate::Vertex, crate::Identifier, serde_json::Value)>),
+    EdgeProperties(Vec<(crate::Edge, crate::Identifier, serde_json::Value)>),
 }
 
 #[cfg(test)]
