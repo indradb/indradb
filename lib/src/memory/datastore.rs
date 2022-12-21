@@ -8,8 +8,7 @@ use std::sync::{Arc, RwLock};
 use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
-    Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty, Identifier, IncludeQuery, Json, PipePropertyQuery, Query,
-    QueryOutputValue, Vertex, VertexProperty,
+    Datastore, Edge, EdgeDirection, EdgeKey, Identifier, Json, PipePropertyQuery, Query, QueryOutputValue, Vertex,
 };
 
 use bincode::Error as BincodeError;
