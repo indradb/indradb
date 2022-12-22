@@ -204,8 +204,8 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_vertex_properties(&self, q: models::Query) -> Result<Vec<VertexProperty>> {
-        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(q)?.pop() {
+    fn get_vertex_properties(&self, q: models::PipePropertyQuery) -> Result<Vec<VertexProperty>> {
+        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(q.into())?.pop() {
             let iter = props
                 .into_iter()
                 .map(|(vertex, _prop_name, prop_value)| VertexProperty::new(vertex.id, prop_value));
@@ -220,8 +220,9 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_vertex_properties(&self, q: impl models::QueryExt) -> Result<Vec<VertexProperties>> {
-        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(q.properties().into())?.pop() {
+    fn get_all_vertex_properties(&self, q: models::Query) -> Result<Vec<VertexProperties>> {
+        let props_query = models::PipePropertyQuery::new(Box::new(q));
+        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_vertex = HashMap::new();
             for (vertex, prop_name, prop_value) in props.into_iter() {
                 props_by_vertex
@@ -259,9 +260,8 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_vertex_properties(&self, q: models::Query) -> Result<()> {
-        // NOTE: this runs the risk of deleting non-vertex properties
-        self.delete(q)
+    fn delete_vertex_properties(&self, q: models::PipePropertyQuery) -> Result<()> {
+        self.delete(q.into())
     }
 
     /// Gets edge properties.
@@ -269,8 +269,8 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_edge_properties(&self, q: models::Query) -> Result<Vec<EdgeProperty>> {
-        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q)?.pop() {
+    fn get_edge_properties(&self, q: models::PipePropertyQuery) -> Result<Vec<EdgeProperty>> {
+        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q.into())?.pop() {
             let iter = props
                 .into_iter()
                 .map(|(edge, _prop_name, prop_value)| EdgeProperty::new(edge.key, prop_value));
@@ -285,8 +285,9 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_edge_properties(&self, q: impl models::QueryExt) -> Result<Vec<EdgeProperties>> {
-        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q.properties().into())?.pop() {
+    fn get_all_edge_properties(&self, q: models::Query) -> Result<Vec<EdgeProperties>> {
+        let props_query = models::PipePropertyQuery::new(Box::new(q));
+        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_edge = HashMap::new();
             let mut edges_by_key = HashMap::new();
             for (edge, prop_name, prop_value) in props.into_iter() {
@@ -326,8 +327,7 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_edge_properties(&self, q: models::Query) -> Result<()> {
-        // NOTE: this runs the risk of deleting non-edge properties
-        self.delete(q)
+    fn delete_edge_properties(&self, q: models::PipePropertyQuery) -> Result<()> {
+        self.delete(q.into())
     }
 }
