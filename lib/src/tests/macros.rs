@@ -48,13 +48,8 @@ macro_rules! full_test_impl {
         define_test!(should_get_an_edge_count_with_no_type, $code);
         define_test!(should_get_an_edge_count_for_an_invalid_edge, $code);
         define_test!(should_get_an_inbound_edge_count, $code);
-        define_test!(should_get_an_edge_range, $code);
         define_test!(should_get_edges_with_no_type, $code);
-        define_test!(should_get_no_edges_for_an_invalid_range, $code);
-        define_test!(should_get_edges_with_no_high, $code);
-        define_test!(should_get_edges_with_no_low, $code);
-        define_test!(should_get_edges_with_no_time, $code);
-        define_test!(should_get_no_edges_for_reversed_time, $code);
+        define_test!(should_get_edge_range, $code);
         define_test!(should_get_edges, $code);
         define_test!(should_get_edges_piped, $code);
 

@@ -1,4 +1,4 @@
-use crate::{models, Datastore, Error, QueryExt};
+use crate::{models, Error, QueryExt};
 use crate::compat::DatastoreV3CompatExt;
 use uuid::Uuid;
 

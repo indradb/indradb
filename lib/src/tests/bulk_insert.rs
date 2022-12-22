@@ -1,4 +1,4 @@
-use crate::{BulkInsertItem, Datastore, EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use crate::{BulkInsertItem, EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 use crate::compat::DatastoreV3CompatExt;
 
 use chrono::offset::Utc;

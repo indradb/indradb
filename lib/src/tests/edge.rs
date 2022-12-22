@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use super::util::{create_edge_from, create_edges, create_time_range_queryable_edges};
-use crate::{models, Datastore, EdgeDirection, EdgeKey, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
+use super::util::{create_edge_from, create_edges};
+use crate::{models, EdgeDirection, EdgeKey, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 use crate::compat::DatastoreV3CompatExt;
 
 use chrono::offset::Utc;
@@ -165,89 +165,21 @@ pub fn should_get_an_inbound_edge_count<D: DatastoreV3CompatExt>(datastore: &D) 
     assert_eq!(count, 1);
 }
 
-pub fn should_get_an_edge_range<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
-    let t = models::Identifier::new("test_edge_type").unwrap();
-    let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .t(t)
-                .low(start_time)
-                .high(end_time)
-                .into(),
-        )
-        .unwrap();
-    check_edge_range(&range, outbound_id, 5);
-}
-
 pub fn should_get_edges_with_no_type<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
+    let (outbound_id, _) = create_edges(datastore);
     let range = datastore
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
                 .outbound()
                 .limit(10)
-                .low(start_time)
-                .high(end_time)
                 .into(),
         )
         .unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
 
-pub fn should_get_no_edges_for_an_invalid_range<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
-    let t = models::Identifier::new("foo").unwrap();
-    let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .t(t)
-                .low(start_time)
-                .high(end_time)
-                .into(),
-        )
-        .unwrap();
-    check_edge_range(&range, outbound_id, 0);
-}
-
-pub fn should_get_edges_with_no_high<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, start_time, _, _) = create_time_range_queryable_edges(datastore);
-    let t = models::Identifier::new("test_edge_type").unwrap();
-    let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .t(t)
-                .low(start_time)
-                .into(),
-        )
-        .unwrap();
-    check_edge_range(&range, outbound_id, 10);
-}
-
-pub fn should_get_edges_with_no_low<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, _, end_time, _) = create_time_range_queryable_edges(datastore);
-    let t = models::Identifier::new("test_edge_type").unwrap();
-    let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .t(t)
-                .high(end_time)
-                .into(),
-        )
-        .unwrap();
-    check_edge_range(&range, outbound_id, 10);
-}
-
-pub fn should_get_edges_with_no_time<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, _, _, _) = create_time_range_queryable_edges(datastore);
+pub fn should_get_edge_range<D: DatastoreV3CompatExt>(datastore: &D) {
+    let (outbound_id, _) = create_edges(datastore);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let range = datastore
         .get_edges(
@@ -261,25 +193,8 @@ pub fn should_get_edges_with_no_time<D: DatastoreV3CompatExt>(datastore: &D) {
     check_edge_range(&range, outbound_id, 15);
 }
 
-pub fn should_get_no_edges_for_reversed_time<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, start_time, end_time, _) = create_time_range_queryable_edges(datastore);
-    let t = models::Identifier::new("test_edge_type").unwrap();
-    let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .t(t)
-                .low(end_time)
-                .high(start_time)
-                .into(),
-        )
-        .unwrap();
-    check_edge_range(&range, outbound_id, 0);
-}
-
 pub fn should_get_edges<D: DatastoreV3CompatExt>(datastore: &D) {
-    let (outbound_id, _, _, inbound_ids) = create_time_range_queryable_edges(datastore);
+    let (outbound_id, inbound_ids) = create_edges(datastore);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let q = SpecificEdgeQuery::new(vec![
         EdgeKey::new(outbound_id, t.clone(), inbound_ids[0]),
