@@ -191,9 +191,9 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
         };
 
         let q: models::Query = if let Some(t) = t {
-            q.t(t.clone()).into()
+            q.t(t.clone()).count().into()
         } else {
-            q.into()
+            q.count().into()
         };
 
         expect_count(self.get(q)?)
