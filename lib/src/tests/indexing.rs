@@ -147,7 +147,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &D) {
 
     // property foo should not be the old value
     let result = datastore
-        .get_vertices(models::PropertyValueVertexQuery::new(property_name.clone(), json_true.clone()).into())
+        .get_vertices(models::VertexWithPropertyValueQuery::new(property_name.clone(), json_true.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = datastore
@@ -170,7 +170,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(datastore: &D) {
 
     // property foo should be the new value
     let result = datastore
-        .get_vertices(models::PropertyValueVertexQuery::new(property_name.clone(), json_false.clone()).into())
+        .get_vertices(models::VertexWithPropertyValueQuery::new(property_name.clone(), json_false.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
@@ -205,7 +205,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &D) {
 
     // property foo should not be the old value
     let result = datastore
-        .get_edges(models::PropertyValueEdgeQuery::new(property_name.clone(), json_true.clone()).into())
+        .get_edges(models::EdgeWithPropertyValueQuery::new(property_name.clone(), json_true.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 0);
     let result = datastore
@@ -228,7 +228,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(datastore: &D) {
 
     // property foo should be the new value
     let result = datastore
-        .get_edges(models::PropertyValueEdgeQuery::new(property_name.clone(), json_false.clone()).into())
+        .get_edges(models::EdgeWithPropertyValueQuery::new(property_name.clone(), json_false.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
