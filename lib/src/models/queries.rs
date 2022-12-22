@@ -71,7 +71,6 @@ pub enum Query {
     Pipe(PipeQuery),
 
     PipeProperty(PipePropertyQuery),
-    PipeProperties(PipePropertiesQuery),
     VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
     VertexWithPropertyValue(VertexWithPropertyValueQuery),
     EdgeWithPropertyPresence(EdgeWithPropertyPresenceQuery),
@@ -134,12 +133,8 @@ pub trait QueryExt: Into<Query> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
 
-    fn property(self, name: Identifier) -> PipePropertyQuery {
-        PipePropertyQuery::new(name, Box::new(self.into()))
-    }
-
-    fn properties(self) -> PipePropertiesQuery {
-        PipePropertiesQuery::new(Box::new(self.into()))
+    fn properties(self) -> PipePropertyQuery {
+        PipePropertyQuery::new(Box::new(self.into()))
     }
 
     fn include(self) -> IncludeQuery {
@@ -505,40 +500,28 @@ impl CountQuery {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyQuery {
-    /// The property name to get.
-    pub name: Identifier,
     /// The inner query.
     pub inner: Box<Query>,
+    /// The property name to get. If `None`, all properties will be fetched.
+    pub name: Option<Identifier>,
 }
 
 leaf_query_type!(PipePropertyQuery, PipeProperty);
 
 impl PipePropertyQuery {
-    /// Marks a query as exported.
-    ///
-    /// Arguments
-    /// * `name`: The property name to get.
-    /// * `inner`: The query to export.
-    pub fn new(name: Identifier, inner: Box<Query>) -> Self {
-        Self { name, inner }
-    }
-}
-
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertiesQuery {
-    /// The inner query.
-    pub inner: Box<Query>,
-}
-
-leaf_query_type!(PipePropertiesQuery, PipeProperties);
-
-impl PipePropertiesQuery {
-    /// Marks a query as exported.
-    ///
-    /// Arguments
-    /// * `inner`: The query to export.
     pub fn new(inner: Box<Query>) -> Self {
-        Self { inner }
+        Self { inner, name: None }
+    }
+
+    /// Only include properties with a given name.
+    ///
+    /// # Arguments
+    /// * `name`: The name filter.
+    pub fn name(self, name: Identifier) -> Self {
+        Self {
+            inner: self.inner,
+            name: Some(name),
+        }
     }
 }
 

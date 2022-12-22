@@ -72,7 +72,7 @@ pub trait Datastore {
     /// * `q`: The query to run.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    fn set_properties(&self, q: models::PipePropertyQuery, value: serde_json::Value) -> Result<()>;
+    fn set_properties(&self, q: models::Query, name: models::Identifier, value: serde_json::Value) -> Result<()>;
 
     /// Bulk inserts many vertices, edges, and/or properties.
     ///
@@ -88,12 +88,12 @@ pub trait Datastore {
                     self.create_edge(&edge_key)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
-                    let query = models::SpecificVertexQuery::single(id).property(name);
-                    self.set_properties(query.into(), value)?;
+                    let query = models::SpecificVertexQuery::single(id);
+                    self.set_properties(query.into(), name, value)?;
                 }
                 models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key).property(name);
-                    self.set_properties(query.into(), value)?;
+                    let query = models::SpecificEdgeQuery::single(edge_key);
+                    self.set_properties(query.into(), name, value)?;
                 }
             }
         }
