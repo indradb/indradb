@@ -1,6 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::models;
 use crate::models::QueryExt;
+use std::collections::HashMap;
 use std::vec::Vec;
 use uuid::Uuid;
 
@@ -119,9 +120,10 @@ pub trait Datastore {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     fn get_vertices(&self, q: models::Query) -> Result<Vec<models::Vertex>> {
-        match self.get(q)?.pop() {
-            Some(models::QueryOutputValue::Vertices(vertices)) => Ok(vertices),
-            _ => Err(Error::Unsupported),
+        if let Some(models::QueryOutputValue::Vertices(vertices)) = self.get(q)?.pop() {
+            Ok(vertices)
+        } else {
+            Err(Error::Unsupported)
         }
     }
 
@@ -138,10 +140,7 @@ pub trait Datastore {
     /// Gets the number of vertices in the datastore.
     #[deprecated(since = "4.0.0", note = "use `get` with a count query")]
     fn get_vertex_count(&self) -> Result<u64> {
-        match self.get(models::AllVerticesQuery.count().into())?.pop() {
-            Some(models::QueryOutputValue::Count(count)) => Ok(count),
-            _ => unreachable!(),
-        }
+        expect_count(self.get(models::AllVerticesQuery.count().into())?)
     }
 
     /// Gets a range of edges specified by a query.
@@ -150,9 +149,10 @@ pub trait Datastore {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     fn get_edges(&self, q: models::Query) -> Result<Vec<models::Edge>> {
-        match self.get(q)?.pop() {
-            Some(models::QueryOutputValue::Edges(edges)) => Ok(edges),
-            _ => Err(Error::Unsupported),
+        if let Some(models::QueryOutputValue::Edges(edges)) = self.get(q)?.pop() {
+            Ok(edges)
+        } else {
+            Err(Error::Unsupported)
         }
     }
 
@@ -192,10 +192,7 @@ pub trait Datastore {
             q.into()
         };
 
-        match self.get(q)?.pop() {
-            Some(models::QueryOutputValue::Count(count)) => Ok(count),
-            _ => unreachable!(),
-        }
+        expect_count(self.get(q)?)
     }
 
     /// Gets vertex properties.
@@ -204,14 +201,13 @@ pub trait Datastore {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     fn get_vertex_properties(&self, q: models::Query) -> Result<Vec<models::VertexProperty>> {
-        match self.get(q)?.pop() {
-            Some(models::QueryOutputValue::VertexProperties(props)) => {
-                let iter = props
-                    .into_iter()
-                    .map(|(vertex, _prop_name, prop_value)| models::VertexProperty::new(vertex.id, prop_value));
-                Ok(iter.collect())
-            }
-            _ => Err(Error::Unsupported),
+        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(q)?.pop() {
+            let iter = props
+                .into_iter()
+                .map(|(vertex, _prop_name, prop_value)| models::VertexProperty::new(vertex.id, prop_value));
+            Ok(iter.collect())
+        } else {
+            Err(Error::Unsupported)
         }
     }
 
@@ -220,8 +216,23 @@ pub trait Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_vertex_properties(&self, q: models::Query) -> Result<Vec<models::VertexProperties>> {
-        todo!();
+    fn get_all_vertex_properties(&self, q: impl models::QueryExt) -> Result<Vec<models::VertexProperties>> {
+        if let Some(models::QueryOutputValue::VertexProperties(props)) = self.get(q.properties().into())?.pop() {
+            let mut props_by_vertex = HashMap::new();
+            for (vertex, prop_name, prop_value) in props.into_iter() {
+                props_by_vertex
+                    .entry(vertex)
+                    .or_insert_with(Vec::new)
+                    .push(models::NamedProperty::new(prop_name, prop_value));
+            }
+            let mut grouped_properties = Vec::with_capacity(props_by_vertex.len());
+            for (vertex, named_properties) in props_by_vertex.drain() {
+                grouped_properties.push(models::VertexProperties::new(vertex, named_properties));
+            }
+            Ok(grouped_properties)
+        } else {
+            Err(Error::Unsupported)
+        }
     }
 
     /// Sets a vertex properties.
@@ -230,8 +241,13 @@ pub trait Datastore {
     /// * `q`: The query to run.
     /// * `value`: The property value.
     #[deprecated(since = "4.0.0", note = "use `set_properties`")]
-    fn set_vertex_properties(&self, q: models::Query, value: serde_json::Value) -> Result<()> {
-        todo!();
+    fn set_vertex_properties(&self, q: models::PipePropertyQuery, value: serde_json::Value) -> Result<()> {
+        if let Some(name) = q.name {
+            self.set_properties(*q.inner, name, value)
+        } else {
+            // Name must be specified for this compat fn to work
+            Err(Error::Unsupported)
+        }
     }
 
     /// Deletes vertex properties.
@@ -250,14 +266,13 @@ pub trait Datastore {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     fn get_edge_properties(&self, q: models::Query) -> Result<Vec<models::EdgeProperty>> {
-        match self.get(q)?.pop() {
-            Some(models::QueryOutputValue::EdgeProperties(props)) => {
-                let iter = props
-                    .into_iter()
-                    .map(|(edge, _prop_name, prop_value)| models::EdgeProperty::new(edge.key, prop_value));
-                Ok(iter.collect())
-            }
-            _ => Err(Error::Unsupported),
+        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q)?.pop() {
+            let iter = props
+                .into_iter()
+                .map(|(edge, _prop_name, prop_value)| models::EdgeProperty::new(edge.key, prop_value));
+            Ok(iter.collect())
+        } else {
+            Err(Error::Unsupported)
         }
     }
 
@@ -266,8 +281,43 @@ pub trait Datastore {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_edge_properties(&self, q: models::Query) -> Result<Vec<models::EdgeProperties>> {
-        todo!();
+    fn get_all_edge_properties(&self, q: impl models::QueryExt) -> Result<Vec<models::EdgeProperties>> {
+        if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q.properties().into())?.pop() {
+            let mut props_by_edge = HashMap::new();
+            let mut edges_by_key = HashMap::new();
+            for (edge, prop_name, prop_value) in props.into_iter() {
+                props_by_edge
+                    .entry(edge.key.clone())
+                    .or_insert_with(Vec::new)
+                    .push(models::NamedProperty::new(prop_name, prop_value));
+                edges_by_key.entry(edge.key.clone()).or_insert(edge);
+            }
+            let mut grouped_properties = Vec::with_capacity(props_by_edge.len());
+            for (key, named_properties) in props_by_edge.drain() {
+                grouped_properties.push(models::EdgeProperties::new(
+                    edges_by_key[&key].clone(),
+                    named_properties,
+                ));
+            }
+            Ok(grouped_properties)
+        } else {
+            Err(Error::Unsupported)
+        }
+    }
+
+    /// Sets edge properties.
+    ///
+    /// # Arguments
+    /// * `q`: The query to run.
+    /// * `value`: The property value.
+    #[deprecated(since = "4.0.0", note = "use `set_properties`")]
+    fn set_edge_properties(&self, q: models::PipePropertyQuery, value: serde_json::Value) -> Result<()> {
+        if let Some(name) = q.name {
+            self.set_properties(*q.inner, name, value)
+        } else {
+            // Name must be specified for this compat fn to work
+            Err(Error::Unsupported)
+        }
     }
 
     /// Deletes edge properties.
@@ -278,5 +328,13 @@ pub trait Datastore {
     fn delete_edge_properties(&self, q: models::Query) -> Result<()> {
         // NOTE: this runs the risk of deleting non-edge properties
         self.delete(q)
+    }
+}
+
+fn expect_count(mut output: Vec<models::QueryOutputValue>) -> Result<u64> {
+    if let Some(models::QueryOutputValue::Count(count)) = output.pop() {
+        Ok(count)
+    } else {
+        unreachable!()
     }
 }
