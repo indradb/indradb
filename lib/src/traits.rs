@@ -179,7 +179,20 @@ pub trait Datastore {
         t: Option<&models::Identifier>,
         direction: models::EdgeDirection,
     ) -> Result<u64> {
-        match self.get(models::AllEdgesQuery.count().into())?.pop() {
+        let q = models::SpecificVertexQuery::single(id);
+
+        let q = match direction {
+            models::EdgeDirection::Outbound => q.outbound(),
+            models::EdgeDirection::Inbound => q.inbound(),
+        };
+
+        let q: models::Query = if let Some(t) = t {
+            q.t(t.clone()).into()
+        } else {
+            q.into()
+        };
+
+        match self.get(q)?.pop() {
             Some(models::QueryOutputValue::Count(count)) => Ok(count),
             _ => unreachable!(),
         }
