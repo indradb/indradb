@@ -72,10 +72,12 @@ pub enum Query {
 
     PipeProperty(PipePropertyQuery),
     PipeProperties(PipePropertiesQuery),
-    PropertyPresence(PropertyPresenceQuery),
-    PropertyValue(PropertyValueQuery),
-    PipePropertyPresence(PipePropertyPresenceQuery),
-    PipePropertyValue(PipePropertyValueQuery),
+    VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
+    VertexWithPropertyValue(VertexWithPropertyValueQuery),
+    EdgeWithPropertyPresence(EdgeWithPropertyPresenceQuery),
+    EdgeWithPropertyValue(EdgeWithPropertyValueQuery),
+    PipeWithPropertyPresence(PipeWithPropertyPresenceQuery),
+    PipeWithPropertyValue(PipeWithPropertyValueQuery),
 
     Include(IncludeQuery),
     Count(CountQuery),
@@ -94,16 +96,16 @@ pub trait QueryExt: Into<Query> {
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn with_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceQuery {
-        PipePropertyPresenceQuery::new(Box::new(self.into()), name, true)
+    fn with_property<T: Into<Identifier>>(self, name: T) -> PipeWithPropertyPresenceQuery {
+        PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, true)
     }
 
     /// Gets vertices without a property.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn without_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceQuery {
-        PipePropertyPresenceQuery::new(Box::new(self.into()), name, false)
+    fn without_property<T: Into<Identifier>>(self, name: T) -> PipeWithPropertyPresenceQuery {
+        PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, false)
     }
 
     /// Gets vertices with a property equal to a given value.
@@ -111,8 +113,12 @@ pub trait QueryExt: Into<Query> {
     /// # Arguments
     /// * `name`: The name of the property.
     /// * `value`: The value of the property.
-    fn with_property_equal_to<T: Into<Identifier>>(self, name: T, value: serde_json::Value) -> PipePropertyValueQuery {
-        PipePropertyValueQuery::new(Box::new(self.into()), name, value, true)
+    fn with_property_equal_to<T: Into<Identifier>>(
+        self,
+        name: T,
+        value: serde_json::Value,
+    ) -> PipeWithPropertyValueQuery {
+        PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
 
     /// Gets vertices with a property not equal to a given value.
@@ -124,8 +130,8 @@ pub trait QueryExt: Into<Query> {
         self,
         name: T,
         value: serde_json::Value,
-    ) -> PipePropertyValueQuery {
-        PipePropertyValueQuery::new(Box::new(self.into()), name, value, false)
+    ) -> PipeWithPropertyValueQuery {
+        PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
 
     fn property(self, name: Identifier) -> PipePropertyQuery {
@@ -146,14 +152,14 @@ pub trait QueryExt: Into<Query> {
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyPresenceQuery {
+pub struct VertexWithPropertyPresenceQuery {
     /// The name of the property.
     pub name: Identifier,
 }
 
-query_type!(PropertyPresenceQuery, PropertyPresence);
+query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
 
-impl PropertyPresenceQuery {
+impl VertexWithPropertyPresenceQuery {
     pub fn new<T: Into<Identifier>>(name: T) -> Self {
         Self { name: name.into() }
     }
@@ -161,16 +167,50 @@ impl PropertyPresenceQuery {
 
 /// Gets vertices with a property equal to a given value.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyValueQuery {
+pub struct VertexWithPropertyValueQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
     pub value: serde_json::Value,
 }
 
-query_type!(PropertyValueQuery, PropertyValue);
+query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
 
-impl PropertyValueQuery {
+impl VertexWithPropertyValueQuery {
+    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EdgeWithPropertyPresenceQuery {
+    /// The name of the property.
+    pub name: Identifier,
+}
+
+query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
+
+impl EdgeWithPropertyPresenceQuery {
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets vertices with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EdgeWithPropertyValueQuery {
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: serde_json::Value,
+}
+
+query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
+
+impl EdgeWithPropertyValueQuery {
     pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
         Self {
             name: name.into(),
@@ -181,7 +221,7 @@ impl PropertyValueQuery {
 
 /// Gets vertices with a property.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyPresenceQuery {
+pub struct PipeWithPropertyPresenceQuery {
     /// The query to filter.
     pub inner: Box<Query>,
     /// The name of the property.
@@ -190,9 +230,9 @@ pub struct PipePropertyPresenceQuery {
     pub exists: bool,
 }
 
-query_type!(PipePropertyPresenceQuery, PipePropertyPresence);
+query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
 
-impl PipePropertyPresenceQuery {
+impl PipeWithPropertyPresenceQuery {
     /// Gets vertices with a property.
     ///
     /// Arguments
@@ -210,7 +250,7 @@ impl PipePropertyPresenceQuery {
 
 /// Gets vertices with a property equal to a given value.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyValueQuery {
+pub struct PipeWithPropertyValueQuery {
     /// The query to filter.
     pub inner: Box<Query>,
     /// The name of the property.
@@ -221,9 +261,9 @@ pub struct PipePropertyValueQuery {
     pub equal: bool,
 }
 
-query_type!(PipePropertyValueQuery, PipePropertyValue);
+query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
 
-impl PipePropertyValueQuery {
+impl PipeWithPropertyValueQuery {
     pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, value: serde_json::Value, equal: bool) -> Self {
         Self {
             inner,

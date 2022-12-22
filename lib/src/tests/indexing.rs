@@ -1,4 +1,4 @@
-use crate::{models, Datastore, QueryExt, Error};
+use crate::{models, Datastore, Error, QueryExt};
 use uuid::Uuid;
 
 fn setup_vertex_with_indexed_property<D: Datastore>(datastore: &D, property_name: &models::Identifier) -> Uuid {
@@ -34,7 +34,7 @@ fn setup_edge_with_indexed_property<D: Datastore>(
 
 pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &D) {
     let result = datastore
-        .get_vertices(models::PropertyPresenceVertexQuery::new(models::Identifier::new("foo").unwrap()).into());
+        .get_vertices(models::VertexWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -43,7 +43,7 @@ pub fn should_not_query_unindexed_vertex_property<D: Datastore>(datastore: &D) {
 
 pub fn should_not_query_unindexed_edge_property<D: Datastore>(datastore: &D) {
     let result =
-        datastore.get_edges(models::PropertyPresenceEdgeQuery::new(models::Identifier::new("foo").unwrap()).into());
+        datastore.get_edges(models::EdgeWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
         Err(Error::NotIndexed) => (),
         _ => assert!(false, "unexpected result: {:?}", result),
@@ -65,7 +65,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(datastore: &D) {
 
     // Get the vertex
     let result = datastore
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name.clone()).into())
+        .get_vertices(models::VertexWithPropertyPresenceQuery::new(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
@@ -99,7 +99,7 @@ pub fn should_index_existing_edge_property<D: Datastore>(datastore: &D) {
 
     // Get the edge
     let result = datastore
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name.clone()).into())
+        .get_edges(models::EdgeWithPropertyPresenceQuery::new(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].key, key);
@@ -118,7 +118,7 @@ pub fn should_delete_indexed_vertex_property<D: Datastore>(datastore: &D) {
     let q = models::SpecificVertexQuery::single(id);
     datastore.delete_vertices(q.clone().into()).unwrap();
     let result = datastore
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name).into())
+        .get_vertices(models::VertexWithPropertyPresenceQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -129,7 +129,7 @@ pub fn should_delete_indexed_edge_property<D: Datastore>(datastore: &D) {
     let q = models::SpecificEdgeQuery::single(key);
     datastore.delete_edges(q.clone().into()).unwrap();
     let result = datastore
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name).into())
+        .get_edges(models::EdgeWithPropertyPresenceQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -251,7 +251,7 @@ pub fn should_query_indexed_vertex_property_empty<D: Datastore>(datastore: &D) {
     let property_name = models::Identifier::new("queryable-vertex-property").unwrap();
     datastore.index_property(property_name.clone()).unwrap();
     let result = datastore
-        .get_vertices(models::PropertyPresenceVertexQuery::new(property_name).into())
+        .get_vertices(models::VertexWithPropertyPresenceQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }
@@ -260,7 +260,7 @@ pub fn should_query_indexed_edge_property_empty<D: Datastore>(datastore: &D) {
     let property_name = models::Identifier::new("queryable-edge-property").unwrap();
     datastore.index_property(property_name.clone()).unwrap();
     let result = datastore
-        .get_edges(models::PropertyPresenceEdgeQuery::new(property_name).into())
+        .get_edges(models::EdgeWithPropertyPresenceQuery::new(property_name).into())
         .unwrap();
     assert_eq!(result.len(), 0);
 }

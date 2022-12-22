@@ -269,13 +269,13 @@ impl InternalMemoryDatastore {
 
                 values
             }
-            Query::PropertyPresence(ref q) => {
+            Query::VertexWithPropertyPresence(ref q) => {
                 let vertices = self.get_all_vertices_with_property(&q.name, true)?;
                 let iter = iter_vertex_values!(self, vertices.into_iter());
                 let iter = iter.map(|(id, t)| Vertex::with_id(id, t.clone()));
                 QueryOutputValue::Vertices(iter.collect())
             }
-            Query::PropertyValue(ref q) => {
+            Query::VertexWithPropertyValue(ref q) => {
                 if let Some(container) = self.property_values.get(&q.name) {
                     let wrapped_value = Json::new(q.value.clone());
                     if let Some(sub_container) = container.get(&wrapped_value) {
@@ -296,7 +296,32 @@ impl InternalMemoryDatastore {
                     return Err(Error::NotIndexed);
                 }
             }
-            Query::PipePropertyPresence(ref q) => {
+            Query::EdgeWithPropertyPresence(ref q) => {
+                let edges = self.get_all_edges_with_property(&q.name, true)?;
+                let iter = iter_edge_values!(self, edges.into_iter());
+                let iter = iter.map(|(key, dt)| Edge::new(key.clone(), dt.clone()));
+                QueryOutputValue::Edges(iter.collect())
+            }
+            Query::EdgeWithPropertyValue(ref q) => {
+                if let Some(container) = self.property_values.get(&q.name) {
+                    let wrapped_value = Json::new(q.value.clone());
+                    if let Some(sub_container) = container.get(&wrapped_value) {
+                        let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                            IndexedPropertyMember::Edge(key) => self.edges.get(key).map(|dt| (key.clone(), dt.clone())),
+                            _ => None,
+                        }));
+                        let iter = iter.map(|(key, dt)| Edge::new(key, dt));
+                        QueryOutputValue::Edges(iter.collect())
+                    } else {
+                        let iter = iter_edge_values!(self, Vec::default().into_iter());
+                        let iter = iter.map(|(key, dt)| Edge::new(key, dt));
+                        QueryOutputValue::Edges(iter.collect())
+                    }
+                } else {
+                    return Err(Error::NotIndexed);
+                }
+            }
+            Query::PipeWithPropertyPresence(ref q) => {
                 self.query(&*q.inner, output)?;
                 let piped_values = output.pop().unwrap();
 
@@ -329,7 +354,7 @@ impl InternalMemoryDatastore {
 
                 values
             }
-            Query::PipePropertyValue(ref q) => {
+            Query::PipeWithPropertyValue(ref q) => {
                 self.query(&*q.inner, output)?;
                 let piped_values = output.pop().unwrap();
 
