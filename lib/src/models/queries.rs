@@ -137,6 +137,11 @@ pub trait QueryExt: Into<Query> {
         PipePropertyQuery::new(Box::new(self.into()))
     }
 
+    #[deprecated(since="4.0.0", note="use `.properties().name(...)`")]
+    fn property(self, name: Identifier) -> PipePropertyQuery {
+        self.properties().name(name)
+    }
+
     fn include(self) -> IncludeQuery {
         IncludeQuery::new(Box::new(self.into()))
     }

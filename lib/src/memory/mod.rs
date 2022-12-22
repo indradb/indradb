@@ -18,6 +18,7 @@ full_test_impl!(MemoryDatastore::default());
 fn should_serialize() {
     use super::MemoryDatastore;
     use crate::{Datastore, Identifier, SpecificVertexQuery};
+    use crate::compat::DatastoreV3CompatExt;
     use tempfile::NamedTempFile;
 
     let path = NamedTempFile::new().unwrap();
