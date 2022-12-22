@@ -63,7 +63,10 @@ pub fn should_bulk_insert<D: Datastore>(datastore: &D) {
 
     let vertex_properties = datastore
         .get_vertex_properties(
-            SpecificVertexQuery::single(outbound_v.id).property(Identifier::new("vertex_property_name").unwrap()),
+            SpecificVertexQuery::single(outbound_v.id)
+                .properties()
+                .name(Identifier::new("vertex_property_name").unwrap())
+                .into(),
         )
         .unwrap();
 

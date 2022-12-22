@@ -4,6 +4,10 @@
 //! `indradb` crate can reuse them. Generally you can use the convenience macro
 //! `full_test_impl`.
 
+// We call compat fns in the `Datastore` trait, which triggers a lot of these
+// warnings, even though it's on purpose.
+#![allow(deprecated)]
+
 mod bulk_insert;
 mod edge;
 mod indexing;
