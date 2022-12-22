@@ -19,6 +19,7 @@ pub mod tests;
 #[macro_use]
 pub mod benches;
 
+mod compat;
 mod errors;
 mod memory;
 mod models;
