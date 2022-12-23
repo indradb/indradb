@@ -93,7 +93,7 @@ impl InternalMemoryDatastore {
 
     fn query(&self, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
         let value = match q {
-            Query::AllVertices(_) => {
+            Query::AllVertex(_) => {
                 let iter = self.vertices.iter().map(|(id, t)| Vertex::with_id(*id, t.clone()));
                 QueryOutputValue::Vertices(iter.collect())
             }
@@ -372,7 +372,7 @@ impl InternalMemoryDatastore {
 
                 values
             }
-            Query::AllEdges(_) => {
+            Query::AllEdge(_) => {
                 let iter = self
                     .edges
                     .iter()
@@ -391,8 +391,8 @@ impl InternalMemoryDatastore {
             Query::Count(ref q) => {
                 let count = match &*q.inner {
                     // These paths are optimized
-                    Query::AllVertices(_) => self.vertices.len(),
-                    Query::AllEdges(_) => self.edges.len(),
+                    Query::AllVertex(_) => self.vertices.len(),
+                    Query::AllEdge(_) => self.edges.len(),
                     q => {
                         self.query(q, output)?;
                         let piped_values = output.pop().unwrap();

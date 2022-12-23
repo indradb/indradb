@@ -144,7 +144,7 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
     /// Gets the number of vertices in the datastore.
     #[deprecated(since = "4.0.0", note = "use `get` with a count query")]
     fn get_vertex_count(&self) -> Result<u64> {
-        expect_count(self.get(models::AllVerticesQuery.count().into())?)
+        expect_count(self.get(models::AllVertexQuery.count().into())?)
     }
 
     /// Gets a range of edges specified by a query.

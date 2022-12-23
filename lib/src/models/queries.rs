@@ -61,11 +61,11 @@ impl From<EdgeDirection> for String {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Query {
-    AllVertices(AllVerticesQuery),
+    AllVertex(AllVertexQuery),
     RangeVertex(RangeVertexQuery),
     SpecificVertex(SpecificVertexQuery),
 
-    AllEdges(AllEdgesQuery),
+    AllEdge(AllEdgeQuery),
     SpecificEdge(SpecificEdgeQuery),
 
     Pipe(PipeQuery),
@@ -276,8 +276,8 @@ impl PipeWithPropertyValueQuery {
 
 /// Gets all vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct AllVerticesQuery;
-query_type!(AllVerticesQuery, AllVertices);
+pub struct AllVertexQuery;
+query_type!(AllVertexQuery, AllVertex);
 
 /// Gets a range of vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -436,8 +436,8 @@ impl PipeQuery {
 
 /// Gets all edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct AllEdgesQuery;
-query_type!(AllEdgesQuery, AllEdges);
+pub struct AllEdgeQuery;
+query_type!(AllEdgeQuery, AllEdge);
 
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
