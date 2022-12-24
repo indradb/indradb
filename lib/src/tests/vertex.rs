@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use super::util::{create_edge_from, create_edges};
-use crate::{models, QueryExt, RangeVertexQuery, SpecificVertexQuery};
 use crate::compat::DatastoreV3CompatExt;
+use crate::{models, QueryExt, RangeVertexQuery, SpecificVertexQuery};
 
 use uuid::Uuid;
 

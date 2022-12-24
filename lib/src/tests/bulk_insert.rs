@@ -1,8 +1,5 @@
-use crate::{BulkInsertItem, EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 use crate::compat::DatastoreV3CompatExt;
-
-use chrono::offset::Utc;
-use chrono::Timelike;
+use crate::{BulkInsertItem, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
 pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
@@ -16,30 +13,24 @@ pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
 
     datastore.bulk_insert(items).unwrap();
 
-    // Record the start and end time. Round off the the nanoseconds off the
-    // start time, since some implementations may not have that level of
-    // accuracy.
-    let start_time = Utc::now().with_nanosecond(0).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let edge = Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
     let items = vec![
-        BulkInsertItem::Edge(key.clone()),
+        BulkInsertItem::Edge(edge.clone()),
         BulkInsertItem::VertexProperty(
             outbound_v.id,
             Identifier::new("vertex_property_name").unwrap(),
             serde_json::Value::String("vertex_property_value".to_string()),
         ),
         BulkInsertItem::EdgeProperty(
-            key.clone(),
+            edge.clone(),
             Identifier::new("edge_property_name").unwrap(),
             serde_json::Value::String("edge_property_value".to_string()),
         ),
     ];
 
     datastore.bulk_insert(items).unwrap();
-
-    let end_time = Utc::now();
 
     let vertices = datastore
         .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into())
@@ -52,15 +43,13 @@ pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
     assert_eq!(vertices[1].t, inbound_v.t);
 
     let edges = datastore
-        .get_edges(SpecificEdgeQuery::single(key.clone()).into())
+        .get_edges(SpecificEdgeQuery::single(edge.clone()).into())
         .unwrap();
 
     assert_eq!(edges.len(), 1);
-    assert_eq!(edges[0].key.outbound_id, outbound_v.id);
-    assert_eq!(edges[0].key.t, edge_t);
-    assert_eq!(edges[0].key.inbound_id, inbound_v.id);
-    assert!(edges[0].created_datetime >= start_time);
-    assert!(edges[0].created_datetime <= end_time);
+    assert_eq!(edges[0].outbound_id, outbound_v.id);
+    assert_eq!(edges[0].t, edge_t);
+    assert_eq!(edges[0].inbound_id, inbound_v.id);
 
     let vertex_properties = datastore
         .get_vertex_properties(
@@ -80,12 +69,12 @@ pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
 
     let edge_properties = datastore
         .get_edge_properties(
-            SpecificEdgeQuery::single(key.clone()).property(Identifier::new("edge_property_name").unwrap()),
+            SpecificEdgeQuery::single(edge.clone()).property(Identifier::new("edge_property_name").unwrap()),
         )
         .unwrap();
 
     assert_eq!(edge_properties.len(), 1);
-    assert_eq!(edge_properties[0].key, key);
+    assert_eq!(edge_properties[0].edge, edge);
     assert_eq!(
         edge_properties[0].value,
         serde_json::Value::String("edge_property_value".to_string())
@@ -114,8 +103,8 @@ pub fn should_bulk_insert_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D
 
     let edge_t = Identifier::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v1.id, edge_t.clone(), v2.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v1.id, edge_t.clone(), v2.id))];
     assert!(datastore.bulk_insert(items).is_ok());
-    let items = vec![BulkInsertItem::Edge(EdgeKey::new(v2.id, edge_t, v1.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v2.id, edge_t, v1.id))];
     assert!(datastore.bulk_insert(items).is_ok());
 }

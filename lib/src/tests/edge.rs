@@ -1,11 +1,9 @@
 use std::collections::HashSet;
 
 use super::util::{create_edge_from, create_edges};
-use crate::{models, EdgeDirection, EdgeKey, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 use crate::compat::DatastoreV3CompatExt;
+use crate::{models, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 
-use chrono::offset::Utc;
-use chrono::Timelike;
 use uuid::Uuid;
 
 pub fn should_get_a_valid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -15,22 +13,15 @@ pub fn should_get_a_valid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let edge = models::Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
 
-    // Record the start and end time. Round off the the nanoseconds off the
-    // start time, since some implementations may not have that level of
-    // accuracy.
-    let start_time = Utc::now().with_nanosecond(0).unwrap();
-    datastore.create_edge(&key).unwrap();
-    let end_time = Utc::now();
+    datastore.create_edge(&edge).unwrap();
 
-    let e = datastore.get_edges(SpecificEdgeQuery::single(key).into()).unwrap();
+    let e = datastore.get_edges(SpecificEdgeQuery::single(edge).into()).unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].key.outbound_id, outbound_v.id);
-    assert_eq!(e[0].key.t, edge_t);
-    assert_eq!(e[0].key.inbound_id, inbound_v.id);
-    assert!(e[0].created_datetime >= start_time);
-    assert!(e[0].created_datetime <= end_time);
+    assert_eq!(e[0].outbound_id, outbound_v.id);
+    assert_eq!(e[0].t, edge_t);
+    assert_eq!(e[0].inbound_id, inbound_v.id);
 }
 
 pub fn should_not_get_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -42,11 +33,11 @@ pub fn should_not_get_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
 
     let e = datastore
-        .get_edges(SpecificEdgeQuery::single(EdgeKey::new(outbound_v.id, edge_t.clone(), Uuid::default())).into())
+        .get_edges(SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t.clone(), Uuid::default())).into())
         .unwrap();
     assert_eq!(e.len(), 0);
     let e = datastore
-        .get_edges(SpecificEdgeQuery::single(EdgeKey::new(Uuid::default(), edge_t, inbound_v.id)).into())
+        .get_edges(SpecificEdgeQuery::single(Edge::new(Uuid::default(), edge_t, inbound_v.id)).into())
         .unwrap();
     assert_eq!(e.len(), 0);
 }
@@ -60,24 +51,24 @@ pub fn should_create_a_valid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
 
     // Set the edge and check
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    datastore.create_edge(&key).unwrap();
+    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    datastore.create_edge(&edge).unwrap();
     let e = datastore
-        .get_edges(SpecificEdgeQuery::single(key.clone()).into())
+        .get_edges(SpecificEdgeQuery::single(edge.clone()).into())
         .unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(key, e[0].key);
+    assert_eq!(edge, e[0]);
 
     // `create_edge` should support the ability of updating an existing edge
     // - test for that
-    datastore.create_edge(&key).unwrap();
+    datastore.create_edge(&edge).unwrap();
 
     // First check that getting a single edge will still...get a single edge
     let e = datastore
-        .get_edges(SpecificEdgeQuery::single(key.clone()).into())
+        .get_edges(SpecificEdgeQuery::single(edge.clone()).into())
         .unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(key, e[0].key);
+    assert_eq!(edge, e[0]);
 
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
@@ -85,7 +76,7 @@ pub fn should_create_a_valid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
         .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound().limit(10).into())
         .unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(key, e[0].key);
+    assert_eq!(edge, e[0]);
 }
 
 pub fn should_not_create_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -93,8 +84,8 @@ pub fn should_not_create_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D)
     let outbound_v = models::Vertex::new(vertex_t);
     datastore.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, Uuid::default());
-    let result = datastore.create_edge(&key);
+    let edge = models::Edge::new(outbound_v.id, edge_t, Uuid::default());
+    let result = datastore.create_edge(&edge);
     assert_eq!(result.unwrap(), false);
 }
 
@@ -106,10 +97,10 @@ pub fn should_delete_a_valid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
     datastore.create_vertex(&inbound_v).unwrap();
 
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    datastore.create_edge(&key).unwrap();
+    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    datastore.create_edge(&edge).unwrap();
 
-    let q = SpecificEdgeQuery::single(key);
+    let q = SpecificEdgeQuery::single(edge);
     datastore
         .set_edge_properties(
             q.clone().property(models::Identifier::new("foo").unwrap()),
@@ -128,7 +119,7 @@ pub fn should_not_delete_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D)
     datastore.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     datastore
-        .delete_edges(SpecificEdgeQuery::single(EdgeKey::new(outbound_v.id, edge_t, Uuid::default())).into())
+        .delete_edges(SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t, Uuid::default())).into())
         .unwrap();
 }
 
@@ -168,12 +159,7 @@ pub fn should_get_an_inbound_edge_count<D: DatastoreV3CompatExt>(datastore: &D) 
 pub fn should_get_edges_with_no_type<D: DatastoreV3CompatExt>(datastore: &D) {
     let (outbound_id, _) = create_edges(datastore);
     let range = datastore
-        .get_edges(
-            SpecificVertexQuery::single(outbound_id)
-                .outbound()
-                .limit(10)
-                .into(),
-        )
+        .get_edges(SpecificVertexQuery::single(outbound_id).outbound().limit(10).into())
         .unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
@@ -197,11 +183,11 @@ pub fn should_get_edges<D: DatastoreV3CompatExt>(datastore: &D) {
     let (outbound_id, inbound_ids) = create_edges(datastore);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let q = SpecificEdgeQuery::new(vec![
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[0]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[1]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[2]),
-        EdgeKey::new(outbound_id, t.clone(), inbound_ids[3]),
-        EdgeKey::new(outbound_id, t, inbound_ids[4]),
+        Edge::new(outbound_id, t.clone(), inbound_ids[0]),
+        Edge::new(outbound_id, t.clone(), inbound_ids[1]),
+        Edge::new(outbound_id, t.clone(), inbound_ids[2]),
+        Edge::new(outbound_id, t.clone(), inbound_ids[3]),
+        Edge::new(outbound_id, t, inbound_ids[4]),
     ]);
     let range = datastore.get_edges(q.into()).unwrap();
     check_edge_range(&range, outbound_id, 5);
@@ -221,8 +207,8 @@ pub fn should_get_edges_piped<D: DatastoreV3CompatExt>(datastore: &D) {
     let range = datastore.get_edges(query_1.clone().into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(
-        range[0].key,
-        models::EdgeKey::new(
+        range[0],
+        models::Edge::new(
             outbound_v.id,
             models::Identifier::new("test_edge_type").unwrap(),
             inbound_id
@@ -238,8 +224,8 @@ pub fn should_get_edges_piped<D: DatastoreV3CompatExt>(datastore: &D) {
     let range = datastore.get_edges(query_2.into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(
-        range[0].key,
-        models::EdgeKey::new(
+        range[0],
+        models::Edge::new(
             outbound_v.id,
             models::Identifier::new("test_edge_type").unwrap(),
             inbound_id
@@ -253,9 +239,9 @@ fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected
     let t = models::Identifier::new("test_edge_type").unwrap();
 
     for edge in range {
-        assert_eq!(edge.key.outbound_id, expected_outbound_id);
-        assert_eq!(edge.key.t, t);
-        assert!(!covered_ids.contains(&edge.key.inbound_id));
-        covered_ids.insert(edge.key.inbound_id);
+        assert_eq!(edge.outbound_id, expected_outbound_id);
+        assert_eq!(edge.t, t);
+        assert!(!covered_ids.contains(&edge.inbound_id));
+        covered_ids.insert(edge.inbound_id);
     }
 }

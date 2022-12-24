@@ -7,8 +7,8 @@ pub fn create_edge_from<D: Datastore>(datastore: &D, outbound_id: Uuid) -> Uuid 
     let inbound_v = models::Vertex::new(inbound_vertex_t);
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_id, edge_t, inbound_v.id);
-    datastore.create_edge(&key).unwrap();
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_v.id);
+    datastore.create_edge(&edge).unwrap();
     inbound_v.id
 }
 

@@ -14,7 +14,7 @@ pub enum Op {
     GetVertices(VertexQuery),
     DeleteVertices(VertexQuery),
     GetVertexCount,
-    CreateEdge(EdgeKey),
+    CreateEdge(Edge),
     GetEdges(EdgeQuery),
     DeleteEdges(EdgeQuery),
     GetEdgeCount(Uuid, Option<Identifier>, EdgeDirection),
@@ -32,9 +32,9 @@ pub enum Op {
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum BulkInsertItem {
     Vertex(Vertex),
-    Edge(EdgeKey),
+    Edge(Edge),
     VertexProperty(Uuid, Identifier, Json),
-    EdgeProperty(EdgeKey, Identifier, Json),
+    EdgeProperty(Edge, Identifier, Json),
 }
 
 impl Into<indradb::BulkInsertItem> for BulkInsertItem {
@@ -279,7 +279,7 @@ impl Into<indradb::EdgeQuery> for EdgeQuery {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct SpecificEdgeQuery {
-    pub keys: Vec<EdgeKey>,
+    pub keys: Vec<Edge>,
 }
 
 impl Into<indradb::SpecificEdgeQuery> for SpecificEdgeQuery {
@@ -454,7 +454,7 @@ impl Into<indradb::EdgeProperties> for EdgeProperties {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
-    pub key: EdgeKey,
+    pub key: Edge,
     pub value: Json,
 }
 
@@ -468,33 +468,18 @@ impl Into<indradb::EdgeProperty> for EdgeProperty {
 }
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
-pub struct EdgeKey {
+pub struct Edge {
     pub outbound_id: Uuid,
     pub t: Identifier,
     pub inbound_id: Uuid,
 }
 
-impl Into<indradb::EdgeKey> for EdgeKey {
-    fn into(self) -> indradb::EdgeKey {
-        indradb::EdgeKey {
-            outbound_id: self.outbound_id.into(),
-            t: self.t.into(),
-            inbound_id: self.inbound_id.into(),
-        }
-    }
-}
-
-#[derive(Arbitrary, Clone, Debug, PartialEq)]
-pub struct Edge {
-    pub key: EdgeKey,
-    pub created_datetime: DateTime,
-}
-
 impl Into<indradb::Edge> for Edge {
     fn into(self) -> indradb::Edge {
         indradb::Edge {
-            key: self.key.into(),
-            created_datetime: self.created_datetime.into(),
+            outbound_id: self.outbound_id.into(),
+            t: self.t.into(),
+            inbound_id: self.inbound_id.into(),
         }
     }
 }
@@ -654,7 +639,7 @@ fuzz_target!(|ops: Vec<Op>| {
                 cmp!(v1, v2);
             }
             Op::CreateEdge(key) => {
-                let key: indradb::EdgeKey = key.into();
+                let key: indradb::Edge = key.into();
                 let v1 = d1.create_edge(&key);
                 let v2 = d2.create_edge(&key);
                 cmp!(v1, v2);

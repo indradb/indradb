@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, EdgeKey, Identifier};
+use crate::{errors, Edge, Identifier};
 
 use uuid::Uuid;
 
@@ -137,7 +137,7 @@ pub trait QueryExt: Into<Query> {
         PipePropertyQuery::new(Box::new(self.into()))
     }
 
-    #[deprecated(since="4.0.0", note="use `.properties().name(...)`")]
+    #[deprecated(since = "4.0.0", note = "use `.properties().name(...)`")]
     fn property(self, name: Identifier) -> PipePropertyQuery {
         self.properties().name(name)
     }
@@ -442,28 +442,27 @@ query_type!(AllEdgeQuery, AllEdge);
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
-    /// The keys of the edges to get.
-    pub keys: Vec<EdgeKey>,
+    /// The edges to get.
+    pub edges: Vec<Edge>,
 }
 
 query_type!(SpecificEdgeQuery, SpecificEdge);
 
 impl SpecificEdgeQuery {
-    /// Creates a new edge query for getting a list of edges by their
-    /// keys.
+    /// Creates a new edge query for getting a list of specific edges.
     ///
     /// Arguments
-    /// * `keys`: The keys of the edges to get.
-    pub fn new(keys: Vec<EdgeKey>) -> Self {
-        Self { keys }
+    /// * `edges`: The edges to get.
+    pub fn new(edges: Vec<Edge>) -> Self {
+        Self { edges }
     }
 
     /// Creates a new edge query for getting a single edge.
     ///
     /// Arguments
-    /// * `key`: The key of the edge to get.
-    pub fn single(key: EdgeKey) -> Self {
-        Self { keys: vec![key] }
+    /// * `edge`: The edge to get.
+    pub fn single(edge: Edge) -> Self {
+        Self { edges: vec![edge] }
     }
 }
 

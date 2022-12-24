@@ -1,5 +1,5 @@
-use crate::{EdgeKey, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 use crate::compat::DatastoreV3CompatExt;
+use crate::{Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
 use uuid::Uuid;
 
@@ -113,10 +113,10 @@ pub fn should_handle_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    let q = SpecificEdgeQuery::single(key.clone()).property(Identifier::new("edge-property").unwrap());
+    let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let q = SpecificEdgeQuery::single(edge.clone()).property(Identifier::new("edge-property").unwrap());
 
-    datastore.create_edge(&key).unwrap();
+    datastore.create_edge(&edge).unwrap();
 
     // Check to make sure there's no initial value
     let result = datastore.get_edge_properties(q.clone()).unwrap();
@@ -128,7 +128,7 @@ pub fn should_handle_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
         .unwrap();
     let result = datastore.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].edge, edge);
     assert_eq!(result[0].value, serde_json::Value::Bool(true));
 
     // Set and get the value as false
@@ -137,7 +137,7 @@ pub fn should_handle_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
         .unwrap();
     let result = datastore.get_edge_properties(q.clone()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0].edge, edge);
     assert_eq!(result[0].value, serde_json::Value::Bool(false));
 
     // Delete & check that it's deleted
@@ -153,12 +153,12 @@ pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let key = EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    let eq = SpecificEdgeQuery::single(key.clone());
+    let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let eq = SpecificEdgeQuery::single(edge.clone());
     let q1 = eq.clone().property(Identifier::new("edge-prop-1").unwrap());
     let q2 = eq.clone().property(Identifier::new("edge-prop-2").unwrap());
 
-    datastore.create_edge(&key).unwrap();
+    datastore.create_edge(&edge).unwrap();
 
     // Check to make sure there's no initial value
     let result = datastore.get_all_edge_properties(eq.clone().into()).unwrap();
@@ -191,8 +191,8 @@ pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
 }
 
 pub fn should_not_set_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
-    let key = EdgeKey::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
-    let q = SpecificEdgeQuery::single(key).property(Identifier::new("bar").unwrap());
+    let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
+    let q = SpecificEdgeQuery::single(edge).property(Identifier::new("bar").unwrap());
     datastore
         .set_edge_properties(q.clone(), serde_json::Value::Null)
         .unwrap();
@@ -201,9 +201,9 @@ pub fn should_not_set_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore
 }
 
 pub fn should_not_delete_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
-    let key = EdgeKey::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
+    let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     datastore
-        .delete_edge_properties(SpecificEdgeQuery::single(key).property(Identifier::new("bar").unwrap()))
+        .delete_edge_properties(SpecificEdgeQuery::single(edge).property(Identifier::new("bar").unwrap()))
         .unwrap();
 
     let outbound_v = Vertex::new(Identifier::new("foo").unwrap());
@@ -211,9 +211,9 @@ pub fn should_not_delete_invalid_edge_properties<D: DatastoreV3CompatExt>(datast
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
 
-    let key = EdgeKey::new(outbound_v.id, Identifier::new("baz").unwrap(), inbound_v.id);
-    datastore.create_edge(&key).unwrap();
+    let edge = Edge::new(outbound_v.id, Identifier::new("baz").unwrap(), inbound_v.id);
+    datastore.create_edge(&edge).unwrap();
     datastore
-        .delete_edge_properties(SpecificEdgeQuery::single(key).property(Identifier::new("bleh").unwrap()))
+        .delete_edge_properties(SpecificEdgeQuery::single(edge).property(Identifier::new("bleh").unwrap()))
         .unwrap();
 }

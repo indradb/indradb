@@ -6,7 +6,7 @@ mod queries;
 mod vertices;
 
 pub use self::bulk_insert::BulkInsertItem;
-pub use self::edges::{Edge, EdgeKey};
+pub use self::edges::Edge;
 pub use self::identifiers::Identifier;
 pub use self::json::Json;
 pub use self::queries::*;

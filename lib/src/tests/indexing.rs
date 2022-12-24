@@ -1,8 +1,11 @@
-use crate::{models, Error, QueryExt};
 use crate::compat::DatastoreV3CompatExt;
+use crate::{models, Error, QueryExt};
 use uuid::Uuid;
 
-fn setup_vertex_with_indexed_property<D: DatastoreV3CompatExt>(datastore: &D, property_name: &models::Identifier) -> Uuid {
+fn setup_vertex_with_indexed_property<D: DatastoreV3CompatExt>(
+    datastore: &D,
+    property_name: &models::Identifier,
+) -> Uuid {
     datastore.index_property(property_name.clone()).unwrap();
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
     datastore.create_vertex(&v).unwrap();
@@ -16,7 +19,7 @@ fn setup_vertex_with_indexed_property<D: DatastoreV3CompatExt>(datastore: &D, pr
 fn setup_edge_with_indexed_property<D: DatastoreV3CompatExt>(
     datastore: &D,
     property_name: &models::Identifier,
-) -> models::EdgeKey {
+) -> models::Edge {
     datastore.index_property(property_name.clone()).unwrap();
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
@@ -24,13 +27,13 @@ fn setup_edge_with_indexed_property<D: DatastoreV3CompatExt>(
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    let q = models::SpecificEdgeQuery::single(key.clone()).property(property_name.clone());
-    datastore.create_edge(&key).unwrap();
+    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let q = models::SpecificEdgeQuery::single(edge.clone()).property(property_name.clone());
+    datastore.create_edge(&edge).unwrap();
     datastore
         .set_edge_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
-    key
+    edge
 }
 
 pub fn should_not_query_unindexed_vertex_property<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -88,9 +91,9 @@ pub fn should_index_existing_edge_property<D: DatastoreV3CompatExt>(datastore: &
     datastore.create_vertex(&outbound_v).unwrap();
     datastore.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let key = models::EdgeKey::new(outbound_v.id, edge_t, inbound_v.id);
-    let q = models::SpecificEdgeQuery::single(key.clone());
-    datastore.create_edge(&key).unwrap();
+    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let q = models::SpecificEdgeQuery::single(edge.clone());
+    datastore.create_edge(&edge).unwrap();
     datastore
         .set_edge_properties(q.clone().property(property_name.clone()), serde_json::Value::Bool(true))
         .unwrap();
@@ -103,14 +106,14 @@ pub fn should_index_existing_edge_property<D: DatastoreV3CompatExt>(datastore: &
         .get_edges(models::EdgeWithPropertyPresenceQuery::new(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0], edge);
 
     // Get the edge with a piped query
     let result = datastore
         .get_edges(q.with_property(property_name.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0], edge);
 }
 
 pub fn should_delete_indexed_vertex_property<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -126,8 +129,8 @@ pub fn should_delete_indexed_vertex_property<D: DatastoreV3CompatExt>(datastore:
 
 pub fn should_delete_indexed_edge_property<D: DatastoreV3CompatExt>(datastore: &D) {
     let property_name = models::Identifier::new("deletable-edge-property").unwrap();
-    let key = setup_edge_with_indexed_property(datastore, &property_name);
-    let q = models::SpecificEdgeQuery::single(key);
+    let edge = setup_edge_with_indexed_property(datastore, &property_name);
+    let q = models::SpecificEdgeQuery::single(edge);
     datastore.delete_edges(q.clone().into()).unwrap();
     let result = datastore
         .get_edges(models::EdgeWithPropertyPresenceQuery::new(property_name).into())
@@ -198,8 +201,8 @@ pub fn should_update_indexed_edge_property<D: DatastoreV3CompatExt>(datastore: &
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-edge-property").unwrap();
 
-    let key = setup_edge_with_indexed_property(datastore, &property_name);
-    let q = models::SpecificEdgeQuery::single(key.clone());
+    let edge = setup_edge_with_indexed_property(datastore, &property_name);
+    let q = models::SpecificEdgeQuery::single(edge.clone());
     datastore
         .set_edge_properties(q.clone().property(property_name.clone()), json_false.clone())
         .unwrap();
@@ -225,14 +228,14 @@ pub fn should_update_indexed_edge_property<D: DatastoreV3CompatExt>(datastore: &
         )
         .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key.clone());
+    assert_eq!(result[0], edge.clone());
 
     // property foo should be the new value
     let result = datastore
         .get_edges(models::EdgeWithPropertyValueQuery::new(property_name.clone(), json_false.clone()).into())
         .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0], edge);
     let result = datastore
         .get_edges(
             q.clone()
@@ -241,7 +244,7 @@ pub fn should_update_indexed_edge_property<D: DatastoreV3CompatExt>(datastore: &
         )
         .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, key);
+    assert_eq!(result[0], edge);
     let result = datastore
         .get_edges(q.with_property_not_equal_to(property_name.clone(), json_false).into())
         .unwrap();

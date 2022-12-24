@@ -98,8 +98,8 @@ impl EdgeProperties {
 /// Represents an edge property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
-    /// The key to the edge.
-    pub key: models::EdgeKey,
+    /// The edge.
+    pub edge: models::Edge,
 
     /// The property value.
     pub value: serde_json::Value,
@@ -109,10 +109,10 @@ impl EdgeProperty {
     /// Creates a new edge property.
     ///
     /// # Arguments
-    /// * `key`: The key to the edge.
+    /// * `edge`: The edge.
     /// * `value`: The property value.
-    pub fn new(key: models::EdgeKey, value: serde_json::Value) -> Self {
-        Self { key, value }
+    pub fn new(edge: models::Edge, value: serde_json::Value) -> Self {
+        Self { edge, value }
     }
 }
 
@@ -273,7 +273,7 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
         if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(q.into())?.pop() {
             let iter = props
                 .into_iter()
-                .map(|(edge, _prop_name, prop_value)| EdgeProperty::new(edge.key, prop_value));
+                .map(|(edge, _prop_name, prop_value)| EdgeProperty::new(edge, prop_value));
             Ok(iter.collect())
         } else {
             Err(Error::Unsupported)
@@ -289,17 +289,15 @@ pub trait DatastoreV3CompatExt: crate::Datastore {
         let props_query = models::PipePropertyQuery::new(Box::new(q));
         if let Some(models::QueryOutputValue::EdgeProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_edge = HashMap::new();
-            let mut edges_by_key = HashMap::new();
             for (edge, prop_name, prop_value) in props.into_iter() {
                 props_by_edge
-                    .entry(edge.key.clone())
+                    .entry(edge.clone())
                     .or_insert_with(Vec::new)
                     .push(NamedProperty::new(prop_name, prop_value));
-                edges_by_key.entry(edge.key.clone()).or_insert(edge);
             }
             let mut grouped_properties = Vec::with_capacity(props_by_edge.len());
-            for (key, named_properties) in props_by_edge.drain() {
-                grouped_properties.push(EdgeProperties::new(edges_by_key[&key].clone(), named_properties));
+            for (edge, named_properties) in props_by_edge.drain() {
+                grouped_properties.push(EdgeProperties::new(edge, named_properties));
             }
             Ok(grouped_properties)
         } else {

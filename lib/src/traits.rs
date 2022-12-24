@@ -59,8 +59,8 @@ pub trait Datastore {
     /// is missing.
     ///
     /// # Arguments
-    /// * `key`: The edge to create.
-    fn create_edge(&self, key: &models::EdgeKey) -> Result<bool>;
+    /// * `edge`: The edge to create.
+    fn create_edge(&self, edge: &models::Edge) -> Result<bool>;
 
     fn get(&self, q: models::Query) -> Result<Vec<models::QueryOutputValue>>;
     fn delete(&self, q: models::Query) -> Result<()>;
@@ -83,15 +83,15 @@ pub trait Datastore {
                 models::BulkInsertItem::Vertex(vertex) => {
                     self.create_vertex(&vertex)?;
                 }
-                models::BulkInsertItem::Edge(edge_key) => {
-                    self.create_edge(&edge_key)?;
+                models::BulkInsertItem::Edge(edge) => {
+                    self.create_edge(&edge)?;
                 }
                 models::BulkInsertItem::VertexProperty(id, name, value) => {
                     let query = models::SpecificVertexQuery::single(id);
                     self.set_properties(query.into(), name, value)?;
                 }
-                models::BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    let query = models::SpecificEdgeQuery::single(edge_key);
+                models::BulkInsertItem::EdgeProperty(edge, name, value) => {
+                    let query = models::SpecificEdgeQuery::single(edge);
                     self.set_properties(query.into(), name, value)?;
                 }
             }
