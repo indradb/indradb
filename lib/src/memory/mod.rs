@@ -15,7 +15,7 @@ full_bench_impl!(MemoryDatastore::default());
 mod tests {
     use super::MemoryDatastore;
     use crate::compat::DatastoreV3CompatExt;
-    use crate::{Datastore, Identifier, SpecificVertexQuery};
+    use crate::{Datastore, Error, Identifier, SpecificVertexQuery};
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
@@ -24,11 +24,9 @@ mod tests {
     fn create_vertex_with_property(datastore: &MemoryDatastore) -> Uuid {
         let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
         datastore
-            .set_vertex_properties(
-                VertexPropertyQuery {
-                    inner: SpecificVertexQuery::single(id).into(),
-                    name: Identifier::default(),
-                },
+            .set_properties(
+                SpecificVertexQuery::single(id).into(),
+                Identifier::default(),
                 serde_json::Value::Bool(true),
             )
             .unwrap();
