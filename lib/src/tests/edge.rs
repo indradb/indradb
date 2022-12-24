@@ -176,7 +176,7 @@ pub fn should_get_edge_range<D: DatastoreV3CompatExt>(datastore: &D) {
                 .into(),
         )
         .unwrap();
-    check_edge_range(&range, outbound_id, 15);
+    check_edge_range(&range, outbound_id, 5);
 }
 
 pub fn should_get_edges<D: DatastoreV3CompatExt>(datastore: &D) {

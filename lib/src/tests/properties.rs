@@ -51,8 +51,7 @@ pub fn should_get_all_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) 
 
     // Check to make sure there are no initial properties
     let all_result = datastore.get_all_vertex_properties(q2.clone().into()).unwrap();
-    assert_eq!(all_result.len(), 1);
-    assert_eq!(all_result[0].props.len(), 0);
+    assert_eq!(all_result.len(), 0);
 
     // Set and get some properties for v2
     datastore
@@ -69,8 +68,7 @@ pub fn should_get_all_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) 
         .unwrap();
 
     let result_1 = datastore.get_all_vertex_properties(q1.into()).unwrap();
-    assert_eq!(result_1.len(), 1);
-    assert_eq!(result_1[0].props.len(), 0);
+    assert_eq!(result_1.len(), 0);
 
     let result_2 = datastore.get_all_vertex_properties(q2.into()).unwrap();
     assert_eq!(result_2.len(), 1);
@@ -81,8 +79,7 @@ pub fn should_get_all_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) 
     assert_eq!(result_2[0].props[1].value, serde_json::Value::Bool(true));
 
     let result_3 = datastore.get_all_vertex_properties(q3.into()).unwrap();
-    assert_eq!(result_3.len(), 1);
-    assert_eq!(result_3[0].props.len(), 0);
+    assert_eq!(result_3.len(), 0);
 }
 
 pub fn should_not_set_invalid_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
@@ -162,8 +159,7 @@ pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
 
     // Check to make sure there's no initial value
     let result = datastore.get_all_edge_properties(eq.clone().into()).unwrap();
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].props.len(), 0);
+    assert_eq!(result.len(), 0);
 
     // Set and get the value as true
     datastore
@@ -186,8 +182,7 @@ pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     datastore.delete_edge_properties(q2).unwrap();
 
     let result = datastore.get_all_edge_properties(eq.into()).unwrap();
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].props.len(), 0);
+    assert_eq!(result.len(), 0);
 }
 
 pub fn should_not_set_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
