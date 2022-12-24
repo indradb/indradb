@@ -22,8 +22,8 @@ pub enum Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
-            Error::Json(ref err) => Some(&*err),
-            Error::IndraDB(ref err) => Some(&*err),
+            Error::Json(ref err) => Some(err),
+            Error::IndraDB(ref err) => Some(err),
             Error::Other(ref err) => Some(&**err),
             _ => None,
         }

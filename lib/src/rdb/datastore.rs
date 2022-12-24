@@ -392,7 +392,7 @@ impl RocksdbDatastore {
         let opts = get_options(max_open_files);
         let path = path.as_ref();
 
-        let db = match DB::open_cf(&opts, path, &CF_NAMES) {
+        let db = match DB::open_cf(&opts, path, CF_NAMES) {
             Ok(db) => db,
             Err(_) => {
                 let mut db = DB::open(&opts, path)?;
