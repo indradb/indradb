@@ -50,38 +50,54 @@ struct InternalMemoryDatastore {
 type QueryIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 impl InternalMemoryDatastore {
+    fn get_property_values(&self, name: &Identifier) -> Result<&HashMap<Json, HashSet<IndexedPropertyMember>>> {
+        if let Some(container) = self.property_values.get(name) {
+            Ok(container)
+        } else {
+            Err(Error::NotIndexed)
+        }
+    }
+
     fn get_all_vertices_with_property(
         &self,
         property_name: &Identifier,
         error_if_missing: bool,
     ) -> Result<HashSet<Uuid>> {
         let mut vertices = HashSet::<Uuid>::default();
-        if let Some(container) = self.property_values.get(property_name) {
-            for sub_container in container.values() {
-                for member in sub_container {
-                    if let IndexedPropertyMember::Vertex(id) = member {
-                        vertices.insert(*id);
+        match self.get_property_values(property_name) {
+            Ok(container) => {
+                for sub_container in container.values() {
+                    for member in sub_container {
+                        if let IndexedPropertyMember::Vertex(id) = member {
+                            vertices.insert(*id);
+                        }
                     }
                 }
             }
-        } else if error_if_missing {
-            return Err(Error::NotIndexed);
+            Err(err) if error_if_missing => {
+                return Err(err);
+            }
+            _ => {}
         }
         Ok(vertices)
     }
 
     fn get_all_edges_with_property(&self, property_name: &Identifier, error_if_missing: bool) -> Result<HashSet<Edge>> {
         let mut edges = HashSet::<Edge>::default();
-        if let Some(container) = self.property_values.get(property_name) {
-            for sub_container in container.values() {
-                for member in sub_container {
-                    if let IndexedPropertyMember::Edge(edge) = member {
-                        edges.insert(edge.clone());
+        match self.get_property_values(property_name) {
+            Ok(container) => {
+                for sub_container in container.values() {
+                    for member in sub_container {
+                        if let IndexedPropertyMember::Edge(edge) = member {
+                            edges.insert(edge.clone());
+                        }
                     }
                 }
             }
-        } else if error_if_missing {
-            return Err(Error::NotIndexed);
+            Err(err) if error_if_missing => {
+                return Err(err);
+            }
+            _ => {}
         }
         Ok(edges)
     }
@@ -243,24 +259,19 @@ impl InternalMemoryDatastore {
                 QueryOutputValue::Vertices(iter.collect())
             }
             Query::VertexWithPropertyValue(ref q) => {
-                if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = Json::new(q.value.clone());
-                    if let Some(sub_container) = container.get(&wrapped_value) {
-                        let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                            IndexedPropertyMember::Vertex(id) => {
-                                self.vertices.get(id).map(|value| (*id, value.clone()))
-                            }
-                            _ => None,
-                        }));
-                        let iter = iter.map(|(id, t)| Vertex::with_id(id, t.clone()));
-                        QueryOutputValue::Vertices(iter.collect())
-                    } else {
-                        let iter = iter_vertex_values!(self, Vec::default().into_iter());
-                        let iter = iter.map(|(id, t)| Vertex::with_id(id, t.clone()));
-                        QueryOutputValue::Vertices(iter.collect())
-                    }
+                let container = self.get_property_values(&q.name)?;
+                let wrapped_value = Json::new(q.value.clone());
+                if let Some(sub_container) = container.get(&wrapped_value) {
+                    let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                        IndexedPropertyMember::Vertex(id) => self.vertices.get(id).map(|value| (*id, value.clone())),
+                        _ => None,
+                    }));
+                    let iter = iter.map(|(id, t)| Vertex::with_id(id, t.clone()));
+                    QueryOutputValue::Vertices(iter.collect())
                 } else {
-                    return Err(Error::NotIndexed);
+                    let iter = iter_vertex_values!(self, Vec::default().into_iter());
+                    let iter = iter.map(|(id, t)| Vertex::with_id(id, t.clone()));
+                    QueryOutputValue::Vertices(iter.collect())
                 }
             }
             Query::EdgeWithPropertyPresence(ref q) => {
@@ -269,20 +280,17 @@ impl InternalMemoryDatastore {
                 QueryOutputValue::Edges(iter.collect())
             }
             Query::EdgeWithPropertyValue(ref q) => {
-                if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = Json::new(q.value.clone());
-                    if let Some(sub_container) = container.get(&wrapped_value) {
-                        let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                            IndexedPropertyMember::Edge(edge) if self.edges.contains(edge) => Some(edge),
-                            _ => None,
-                        }));
-                        QueryOutputValue::Edges(iter.cloned().collect())
-                    } else {
-                        let iter = iter_edge_values!(self, Vec::default().into_iter());
-                        QueryOutputValue::Edges(iter.collect())
-                    }
+                let container = self.get_property_values(&q.name)?;
+                let wrapped_value = Json::new(q.value.clone());
+                if let Some(sub_container) = container.get(&wrapped_value) {
+                    let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                        IndexedPropertyMember::Edge(edge) if self.edges.contains(edge) => Some(edge),
+                        _ => None,
+                    }));
+                    QueryOutputValue::Edges(iter.cloned().collect())
                 } else {
-                    return Err(Error::NotIndexed);
+                    let iter = iter_edge_values!(self, Vec::default().into_iter());
+                    QueryOutputValue::Edges(iter.collect())
                 }
             }
             Query::PipeWithPropertyPresence(ref q) => {
@@ -611,6 +619,7 @@ impl Datastore for MemoryDatastore {
     }
 
     fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
+        // TODO: use `Vec::with_capacity`.
         let mut output = Vec::new();
         let datastore = self.datastore.read().unwrap();
         datastore.query(&q, &mut output)?;
