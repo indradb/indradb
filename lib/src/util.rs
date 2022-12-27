@@ -4,14 +4,12 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{Cursor, Error as IoError, Read, Write};
-use std::{i32, i64, str, u8};
+use std::{str, u8};
 
 use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use chrono::offset::Utc;
-use chrono::{DateTime, Duration, NaiveDateTime, Timelike};
 use lazy_static::lazy_static;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
@@ -20,12 +18,6 @@ const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
 lazy_static! {
     static ref CONTEXT: Context = Context::new(0);
-
-    /// The maximum possible datetime.
-    pub static ref MAX_DATETIME: DateTime<Utc> =
-        DateTime::from_utc(NaiveDateTime::from_timestamp_opt(i64::from(i32::MAX), 0).unwrap(), Utc)
-            .with_nanosecond(1_999_999_999u32)
-            .unwrap();
 }
 
 /// A byte-serializable value, frequently employed in the keys of key/value
@@ -34,7 +26,6 @@ pub enum Component<'a> {
     Uuid(Uuid),
     FixedLengthString(&'a str),
     Identifier(&'a models::Identifier),
-    DateTime(DateTime<Utc>),
     Json(&'a models::Json),
 }
 
@@ -49,7 +40,6 @@ impl<'a> Component<'a> {
             Component::Uuid(_) => 16,
             Component::FixedLengthString(s) => s.len(),
             Component::Identifier(t) => t.0.len() + 1,
-            Component::DateTime(_) => 8,
             Component::Json(_) => 8,
         }
     }
@@ -61,10 +51,6 @@ impl<'a> Component<'a> {
             Component::Identifier(i) => {
                 cursor.write_all(&[i.0.len() as u8])?;
                 cursor.write_all(i.0.as_bytes())
-            }
-            Component::DateTime(datetime) => {
-                let time_to_end = nanos_since_epoch(&MAX_DATETIME) - nanos_since_epoch(&datetime);
-                cursor.write_u64::<BigEndian>(time_to_end)
             }
             Component::Json(json) => {
                 let mut hasher = DefaultHasher::new();
@@ -91,16 +77,6 @@ pub fn build(components: &[Component]) -> Vec<u8> {
     }
 
     cursor.into_inner()
-}
-
-/// Gets the number of nanoseconds since unix epoch for a given datetime.
-///
-/// # Arguments
-/// * `datetime`: The datetime to convert.
-fn nanos_since_epoch(datetime: &DateTime<Utc>) -> u64 {
-    let timestamp = datetime.timestamp() as u64;
-    let nanoseconds = u64::from(datetime.timestamp_subsec_nanos());
-    timestamp * 1_000_000_000 + nanoseconds
 }
 
 /// Reads a UUID from bytes.
@@ -143,16 +119,6 @@ pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Strin
     buf
 }
 
-/// Reads a datetime from bytes.
-///
-/// # Arguments
-/// * `cursor`: The bytes to read from.
-pub fn read_datetime<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> DateTime<Utc> {
-    let time_to_end = cursor.read_u64::<BigEndian>().unwrap();
-    assert!(time_to_end <= i64::MAX as u64);
-    *MAX_DATETIME - Duration::nanoseconds(time_to_end as i64)
-}
-
 pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
     cursor.read_u64::<BigEndian>().unwrap()
 }
@@ -160,9 +126,7 @@ pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
 /// Generates a UUID v1. This utility method uses a shared context and node ID
 /// to help ensure generated UUIDs are unique.
 pub fn generate_uuid_v1() -> Uuid {
-    let now = Utc::now();
-    let ts = Timestamp::from_unix(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos());
-    Uuid::new_v1(ts, &NODE_ID)
+    Uuid::new_v1(Timestamp::now(&*CONTEXT), &NODE_ID)
 }
 
 /// Gets the next UUID that would occur after the given one.
@@ -191,16 +155,9 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_uuid_v1, nanos_since_epoch, next_uuid};
-    use chrono::{DateTime, NaiveDateTime, Utc};
+    use super::{generate_uuid_v1, next_uuid};
     use core::str::FromStr;
     use uuid::Uuid;
-
-    #[test]
-    fn should_generate_nanos_since_epoch() {
-        let datetime = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(61, 62), Utc);
-        assert_eq!(nanos_since_epoch(&datetime), 61000000062);
-    }
 
     #[test]
     fn should_generate_new_uuid_v1() {

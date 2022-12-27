@@ -8,13 +8,8 @@ use std::usize;
 use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::util::next_uuid;
-use crate::{
-    BulkInsertItem, Datastore, Edge, EdgeDirection, EdgeKey, EdgeProperty, EdgeQuery, Identifier, Json, Vertex,
-    VertexProperty, VertexQuery,
-};
+use crate::{BulkInsertItem, Datastore, Edge, EdgeDirection, Identifier, Json, Query, Vertex, QueryOutputValue};
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
 
@@ -62,41 +57,50 @@ fn guard_indexed_property(db_ref: DBRef<'_>, property: &Identifier) -> Result<()
     }
 }
 
+fn vertices_from_iter<'a>(iter: impl Iterator<Item = Result<VertexItem>> + 'a) -> Result<Vec<Vertex>> {
+    let mut vertices = Vec::new();
+    for item in iter {
+        let (id, t) = item?;
+        vertices.push(Vec::with_id(id, t))
+    }
+    Ok(vertices)
+}
+
 fn vertices_from_property_value_iterator<'a>(
     db_ref: DBRef<'a>,
     iter: impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a,
-) -> Result<Vec<VertexItem>> {
+) -> Result<Vec<Vertex>> {
     let vertex_manager = VertexManager::new(db_ref);
-
     let mut vertices = Vec::new();
     for item in iter {
         let (_, _, id) = item?;
         if let Some(t) = vertex_manager.get(id)? {
-            vertices.push((id, t));
+            vertices.push(Vec::with_id(id, t));
         }
     }
-
     Ok(vertices)
 }
 
 fn vertices_from_piped_property_query(
     db_ref: DBRef<'_>,
     inner_query: VertexQuery,
-    property_query: VertexQuery,
+    property_name: &Identifier,
     intersection: bool,
-) -> Result<Vec<VertexItem>> {
+) -> Result<Vec<Vertex>> {
     let mut piped_vertices_mapping: HashMap<Uuid, Identifier> =
         execute_vertex_query(db_ref, inner_query)?.into_iter().collect();
     let piped_vertices: HashSet<Uuid> = piped_vertices_mapping.keys().cloned().collect();
 
-    let property_vertices: HashSet<Uuid> = {
-        execute_vertex_query(db_ref, property_query)?
-            .into_iter()
-            .map(move |item| {
-                let (id, _) = item;
-                id
-            })
-            .collect()
+    let property_vertices = {
+        guard_indexed_property(db_ref, property_name)?;
+        let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
+        let iter = vertex_property_value_manager.iterate_for_name(property_name);
+        let mut property_vertices = HashSet::new();
+        for item in iter {
+            let (_, _, id) = item?;
+            property_vertices.insert(id);
+        }
+        property_vertices
     };
 
     let merged_vertices: Box<dyn Iterator<Item = &Uuid>> = if intersection {
@@ -106,7 +110,7 @@ fn vertices_from_piped_property_query(
     };
 
     Ok(merged_vertices
-        .map(move |id| (*id, piped_vertices_mapping.remove(id).unwrap()))
+        .map(move |id| Vertex::with_id(*id, piped_vertices_mapping.remove(id).unwrap()))
         .collect())
 }
 
@@ -166,9 +170,15 @@ fn edges_from_piped_property_query(
         .collect())
 }
 
-fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexItem>> {
-    match q {
-        VertexQuery::Range(q) => {
+fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
+    let value = match q {
+        Query::AllVertex(_) => {
+            let vertex_manager = VertexManager::new(db_ref);
+            let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
+                Box::new(vertex_manager.iterate_for_range(None));
+            QueryOutputValue::Vertices(vertices_from_iter(iter))
+        }
+        Query::RangeVertex(ref q) => {
             let vertex_manager = VertexManager::new(db_ref);
 
             let next_uuid = match q.start_id {
@@ -196,10 +206,10 @@ fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexI
                 }));
             }
 
-            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
-            vertices
+            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize);
+            QueryOutputValue::Vertices(vertices_from_iter(iter))
         }
-        VertexQuery::Specific(q) => {
+        Query::SpecificVertex(ref q) => {
             let vertex_manager = VertexManager::new(db_ref);
 
             let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
@@ -213,165 +223,258 @@ fn execute_vertex_query(db_ref: DBRef<'_>, q: VertexQuery) -> Result<Vec<VertexI
                 _ => None,
             });
 
-            let vertices: Result<Vec<VertexItem>> = iter.collect();
-            vertices
+            QueryOutputValue::Vertices(vertices_from_iter(iter))
         }
-        VertexQuery::Pipe(q) => {
-            let vertex_manager = VertexManager::new(db_ref);
-            let iter = execute_edge_query(db_ref, *q.inner)?.into_iter();
-            let direction = q.direction;
+        Query::Pipe(ref q) => {
+            self.query(&*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
 
-            let iter = iter.map(move |(out_id, _, _, in_id)| {
-                let id = match direction {
-                    EdgeDirection::Outbound => out_id,
-                    EdgeDirection::Inbound => in_id,
-                };
-
-                match vertex_manager.get(id)? {
-                    Some(value) => Ok(Some((id, value))),
-                    None => Ok(None),
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    todo!();
                 }
-            });
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let vertex_manager = VertexManager::new(db_ref);
+                    let iter = execute_edge_query(db_ref, *q.inner)?.into_iter();
+                    let direction = q.direction;
 
-            let iter = iter.filter_map(|item| match item {
-                Err(err) => Some(Err(err)),
-                Ok(Some(value)) => Some(Ok(value)),
-                _ => None,
-            });
+                    let iter = iter.map(move |(out_id, _, _, in_id)| {
+                        let id = match direction {
+                            EdgeDirection::Outbound => out_id,
+                            EdgeDirection::Inbound => in_id,
+                        };
 
-            let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(iter);
+                        match vertex_manager.get(id)? {
+                            Some(value) => Ok(Some((id, value))),
+                            None => Ok(None),
+                        }
+                    });
 
-            if let Some(ref t) = q.t {
-                iter = Box::new(iter.filter(move |item| match item {
-                    Ok((_, v)) => v == t,
-                    Err(_) => true,
-                }));
+                    let iter = iter.filter_map(|item| match item {
+                        Err(err) => Some(Err(err)),
+                        Ok(Some(value)) => Some(Ok(value)),
+                        _ => None,
+                    });
+
+                    let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(iter);
+
+                    if let Some(ref t) = q.t {
+                        iter = Box::new(iter.filter(move |item| match item {
+                            Ok((_, v)) => v == t,
+                            Err(_) => true,
+                        }));
+                    }
+
+                    let iter = iter.take(q.limit as usize);
+                    QueryOutputValue::Vertices(vertices_from_iter(iter))
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
             }
 
-            let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize).collect();
-            vertices
+            values
         }
-        VertexQuery::PropertyPresence(q) => {
+        Query::PipeProperty(ref q) => {
+            self.query(&*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    // let mut edge_properties = Vec::new();
+                    // for edge in piped_edges.into_iter() {
+                    //     if let Some(name) = &q.name {
+                    //         if let Some(value) = self.edge_properties.get(&(edge.clone(), name.clone())) {
+                    //             edge_properties.push((edge.clone(), name.clone(), value.0.clone()));
+                    //         }
+                    //     } else {
+                    //         let from = &(edge.clone(), Identifier::default());
+                    //         for ((prop_edge, prop_name), prop_value) in self.edge_properties.range(from..) {
+                    //             if &prop_edge != &edge {
+                    //                 break;
+                    //             }
+                    //             edge_properties.push((edge.clone(), prop_name.clone(), prop_value.0.clone()));
+                    //         }
+                    //     }
+                    // }
+
+                    // QueryOutputValue::EdgeProperties(edge_properties)
+                    todo!();
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    // let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
+                    // for vertex in piped_vertices.into_iter() {
+                    //     if let Some(name) = &q.name {
+                    //         if let Some(value) = self.vertex_properties.get(&(vertex.id, name.clone())) {
+                    //             vertex_properties.push((vertex.clone(), name.clone(), value.0.clone()));
+                    //         }
+                    //     } else {
+                    //         let from = &(vertex.id, Identifier::default());
+                    //         let to = &(util::next_uuid(vertex.id).unwrap(), Identifier::default());
+                    //         for ((_prop_vertex_id, prop_name), prop_value) in self.vertex_properties.range(from..to)
+                    //         {
+                    //             vertex_properties.push((vertex.clone(), prop_name.clone(), prop_value.0.clone()));
+                    //         }
+                    //     }
+                    // }
+
+                    // QueryOutputValue::VertexProperties(vertex_properties)
+                    todo!();
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
+        }
+        Query::VertexWithPropertyPresence(ref q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
             let iter = vertex_property_value_manager.iterate_for_name(&q.name);
-            vertices_from_property_value_iterator(db_ref, iter)
+            let vertices = vertices_from_property_value_iterator(db_ref, iter);
+            QueryOutputValue::Vertices(vertices)
         }
-        VertexQuery::PropertyValue(q) => {
+        Query::VertexWithPropertyValue(ref q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
             let iter = vertex_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
-            vertices_from_property_value_iterator(db_ref, iter)
+            let vertices = vertices_from_property_value_iterator(db_ref, iter);
+            QueryOutputValue::Vertices(vertices)
         }
-        VertexQuery::PipePropertyPresence(q) => {
-            guard_indexed_property(db_ref, &q.name)?;
-            let property_query = PropertyPresenceVertexQuery::new(q.name).into();
-            vertices_from_piped_property_query(db_ref, *q.inner, property_query, q.exists)
-        }
-        VertexQuery::PipePropertyValue(q) => {
-            guard_indexed_property(db_ref, &q.name)?;
-            let property_query = PropertyValueVertexQuery::new(q.name, q.value).into();
-            vertices_from_piped_property_query(db_ref, *q.inner, property_query, q.equal)
-        }
-    }
-}
-
-fn execute_edge_query(db_ref: DBRef<'_>, q: EdgeQuery) -> Result<Vec<EdgeRangeItem>> {
-    match q {
-        EdgeQuery::Specific(q) => {
-            let edge_manager = EdgeManager::new(db_ref);
-
-            let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
-                match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
-                    Some(update_datetime) => {
-                        Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
-                    }
-                    None => Ok(None),
-                }
-            });
-
-            let iter = iter.filter_map(|item| match item {
-                Err(err) => Some(Err(err)),
-                Ok(Some(value)) => Some(Ok(value)),
-                _ => None,
-            });
-
-            let edges: Result<Vec<EdgeRangeItem>> = iter.collect();
-            edges
-        }
-        EdgeQuery::Pipe(q) => {
-            let vertices = execute_vertex_query(db_ref, *q.inner)?;
-
-            let edge_range_manager = match q.direction {
-                EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
-                EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db_ref),
-            };
-
-            // Ideally we'd use iterators all the way down, but things
-            // start breaking apart due to conditional expressions not
-            // returning the same type signature, issues with `Result`s
-            // and some of the iterators, etc. So at this point, we'll
-            // just resort to building a vector.
-            let mut edges: Vec<EdgeRangeItem> = Vec::new();
-
-            for (id, _) in vertices.into_iter() {
-                let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref(), q.high)?;
-
-                for item in edge_iterator {
-                    let (edge_range_first_id, edge_range_t, edge_range_update_datetime, edge_range_second_id) = item?;
-
-                    if let Some(low) = q.low {
-                        if edge_range_update_datetime < low {
-                            break;
-                        }
-                    }
-
-                    edges.push(match q.direction {
-                        EdgeDirection::Outbound => (
-                            edge_range_first_id,
-                            edge_range_t,
-                            edge_range_update_datetime,
-                            edge_range_second_id,
-                        ),
-                        EdgeDirection::Inbound => (
-                            edge_range_second_id,
-                            edge_range_t,
-                            edge_range_update_datetime,
-                            edge_range_first_id,
-                        ),
-                    });
-
-                    if edges.len() == q.limit as usize {
-                        break;
-                    }
-                }
-            }
-
-            Ok(edges)
-        }
-        EdgeQuery::PropertyPresence(q) => {
+        Query::EdgeWithPropertyPresence(ref q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
             let iter = edge_property_value_manager.iterate_for_name(&q.name);
-            edges_from_property_value_iterator(db_ref, iter)
+            let edges = edges_from_property_value_iterator(db_ref, iter);
+            QueryOutputValue::Edges(edges)
         }
-        EdgeQuery::PropertyValue(q) => {
+        Query::EdgeWithPropertyValue(ref q) => {
             guard_indexed_property(db_ref, &q.name)?;
             let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
             let iter = edge_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
-            edges_from_property_value_iterator(db_ref, iter)
+            let edges = edges_from_property_value_iterator(db_ref, iter);
+            QueryOutputValue::Edges(edges)
         }
-        EdgeQuery::PipePropertyPresence(q) => {
-            guard_indexed_property(db_ref, &q.name)?;
-            let property_query = PropertyPresenceEdgeQuery::new(q.name).into();
-            edges_from_piped_property_query(db_ref, *q.inner, property_query, q.exists)
+        Query::PipeWithPropertyPresence(ref q) => {
+            self.query(&*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
+                    let iter = piped_edges.iter().filter(move |e| {
+                        let contains = edges_with_property.contains(&e);
+                        (q.exists && contains) || (!q.exists && !contains)
+                    });
+                    QueryOutputValue::Edges(iter.cloned().collect())
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
+                    let iter = piped_vertices.iter().filter(move |v| {
+                        let contains = vertices_with_property.contains(&v.id);
+                        (q.exists && contains) || (!q.exists && !contains)
+                    });
+                    QueryOutputValue::Vertices(iter.cloned().collect())
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
         }
-        EdgeQuery::PipePropertyValue(q) => {
-            guard_indexed_property(db_ref, &q.name)?;
-            let property_query = PropertyValueEdgeQuery::new(q.name, q.value).into();
-            edges_from_piped_property_query(db_ref, *q.inner, property_query, q.equal)
+        Query::PipeWithPropertyValue(ref q) => {
+            self.query(&*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let empty_hashset = HashSet::default();
+            let indexed_members: &HashSet<IndexedPropertyMember> =
+                if let Some(container) = self.property_values.get(&q.name) {
+                    let wrapped_value = Json::new(q.value.clone());
+                    if let Some(ref members) = container.get(&wrapped_value) {
+                        members
+                    } else {
+                        &empty_hashset
+                    }
+                } else {
+                    &empty_hashset
+                };
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    let iter = piped_edges.iter().filter(move |e| {
+                        let contains = indexed_members.contains(&IndexedPropertyMember::Edge((**e).clone()));
+                        (q.equal && contains) || (!q.equal && !contains)
+                    });
+                    QueryOutputValue::Edges(iter.cloned().collect())
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let iter = piped_vertices.iter().filter(move |v| {
+                        let contains = indexed_members.contains(&IndexedPropertyMember::Vertex(v.id));
+                        (q.equal && contains) || (!q.equal && !contains)
+                    });
+                    QueryOutputValue::Vertices(iter.cloned().collect())
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
         }
-    }
+        Query::AllEdge(_) => QueryOutputValue::Edges(self.edges.iter().cloned().collect()),
+        Query::SpecificEdge(ref q) => {
+            let iter = iter_edge_values!(self, q.edges.clone().into_iter());
+            QueryOutputValue::Edges(iter.collect())
+        }
+        Query::Include(ref q) => {
+            self.query(&*q.inner, output)?;
+            output.pop().unwrap()
+        }
+        Query::Count(ref q) => {
+            let count = match &*q.inner {
+                // These paths are optimized
+                Query::AllVertex(_) => self.vertices.len(),
+                Query::AllEdge(_) => self.edges.len(),
+                q => {
+                    self.query(q, output)?;
+                    let piped_values = output.pop().unwrap();
+                    match piped_values {
+                        QueryOutputValue::Vertices(v) => v.len(),
+                        QueryOutputValue::Edges(v) => v.len(),
+                        QueryOutputValue::VertexProperties(v) => v.len(),
+                        QueryOutputValue::EdgeProperties(v) => v.len(),
+                        _ => return Err(Error::Unsupported),
+                    }
+                }
+            };
+            QueryOutputValue::Count(count as u64)
+        }
+    };
+
+    output.push(value);
+    Ok(())
 }
 
 /// A datastore that is backed by rocksdb.
@@ -461,44 +564,44 @@ impl Datastore for RocksdbDatastore {
         }
     }
 
-    fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q)?.into_iter();
+    // fn get_vertices(&self, q: VertexQuery) -> Result<Vec<Vertex>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let iter = execute_vertex_query(db_ref, q)?.into_iter();
 
-        let iter = iter.map(move |(id, t)| {
-            let vertex = Vertex::with_id(id, t);
-            Ok(vertex)
-        });
+    //     let iter = iter.map(move |(id, t)| {
+    //         let vertex = Vertex::with_id(id, t);
+    //         Ok(vertex)
+    //     });
 
-        iter.collect()
-    }
+    //     iter.collect()
+    // }
 
-    fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q)?.into_iter();
-        let vertex_manager = VertexManager::new(db_ref);
-        let mut batch = WriteBatch::default();
+    // fn delete_vertices(&self, q: VertexQuery) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let iter = execute_vertex_query(db_ref, q)?.into_iter();
+    //     let vertex_manager = VertexManager::new(db_ref);
+    //     let mut batch = WriteBatch::default();
 
-        for (id, _) in iter {
-            vertex_manager.delete(&mut batch, id)?;
-        }
+    //     for (id, _) in iter {
+    //         vertex_manager.delete(&mut batch, id)?;
+    //     }
 
-        db.write(batch)?;
-        Ok(())
-    }
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
 
-    fn get_vertex_count(&self) -> Result<u64> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let vertex_manager = VertexManager::new(db_ref);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default());
-        Ok(iterator.count() as u64)
-    }
+    // fn get_vertex_count(&self) -> Result<u64> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let vertex_manager = VertexManager::new(db_ref);
+    //     let iterator = vertex_manager.iterate_for_range(Uuid::default());
+    //     Ok(iterator.count() as u64)
+    // }
 
     fn create_edge(&self, key: &EdgeKey) -> Result<bool> {
         let db = self.db.clone();
@@ -511,204 +614,224 @@ impl Datastore for RocksdbDatastore {
         } else {
             let edge_manager = EdgeManager::new(db_ref);
             let mut batch = WriteBatch::default();
-            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+            edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id)?;
             db.write(batch)?;
             Ok(true)
         }
     }
 
-    fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q)?.into_iter();
+    fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
+        // TODO: use `Vec::with_capacity`.
+        let mut output = Vec::new();
 
-        let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
-            let key = EdgeKey::new(out_id, t, in_id);
-            let edge = Edge::new(key, update_datetime);
-            Ok(edge)
-        });
-
-        iter.collect()
-    }
-
-    fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let edge_manager = EdgeManager::new(db_ref);
-        let vertex_manager = VertexManager::new(db_ref);
-        let iter = execute_edge_query(db_ref, q)?;
-        let mut batch = WriteBatch::default();
-
-        for (out_id, t, update_datetime, in_id) in iter {
-            if vertex_manager.get(out_id)?.is_some() {
-                edge_manager.delete(&mut batch, out_id, &t, in_id, update_datetime)?;
-            };
-        }
-
-        db.write(batch)?;
-        Ok(())
-    }
-
-    fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
         let db = self.db.clone();
         let indexed_properties = self.indexed_properties.read().unwrap();
         let db_ref = DBRef::new(&db, &indexed_properties);
 
-        let edge_range_manager = match direction {
-            EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
-            EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db_ref),
-        };
-
-        let count = edge_range_manager.iterate_for_range(id, t, None)?.count();
-
-        Ok(count as u64)
+        execute_query(db_ref, &q, &mut output)?;
+        Ok(output)
     }
 
-    fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = VertexPropertyManager::new(db_ref);
-        let mut properties = Vec::new();
-
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
-            let value = manager.get(id, &q.name)?;
-
-            if let Some(value) = value {
-                properties.push(VertexProperty::new(id, value.0));
-            }
-        }
-
-        Ok(properties)
+    fn delete(&self, q: Query) -> Result<()> {
+        todo!();
     }
 
-    fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_vertex_query(db_ref, q)?.into_iter();
-        let manager = VertexPropertyManager::new(db_ref);
-
-        let iter = iter.map(move |(id, t)| {
-            let vertex = Vertex::with_id(id, t);
-
-            let it = manager.iterate_for_owner(id)?;
-            let props: Result<Vec<_>> = it.collect();
-            let props_iter = props?.into_iter();
-            let props = props_iter
-                .map(|((_, name), value)| NamedProperty::new(name, value.0))
-                .collect();
-
-            Ok(VertexProperties::new(vertex, props))
-        });
-
-        iter.collect()
+    fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
+        todo!();
     }
 
-    fn set_vertex_properties(&self, q: VertexPropertyQuery, value: serde_json::Value) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = VertexPropertyManager::new(db_ref);
-        let mut batch = WriteBatch::default();
+    // fn get_edges(&self, q: EdgeQuery) -> Result<Vec<Edge>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let iter = execute_edge_query(db_ref, q)?.into_iter();
 
-        let wrapped_value = Json::new(value);
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
-            manager.set(&mut batch, id, &q.name, &wrapped_value)?;
-        }
+    //     let iter = iter.map(move |(out_id, t, update_datetime, in_id)| {
+    //         let key = EdgeKey::new(out_id, t, in_id);
+    //         let edge = Edge::new(key, update_datetime);
+    //         Ok(edge)
+    //     });
 
-        db.write(batch)?;
-        Ok(())
-    }
+    //     iter.collect()
+    // }
 
-    fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = VertexPropertyManager::new(db_ref);
-        let mut batch = WriteBatch::default();
+    // fn delete_edges(&self, q: EdgeQuery) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let edge_manager = EdgeManager::new(db_ref);
+    //     let vertex_manager = VertexManager::new(db_ref);
+    //     let iter = execute_edge_query(db_ref, q)?;
+    //     let mut batch = WriteBatch::default();
 
-        for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
-            manager.delete(&mut batch, id, &q.name)?;
-        }
+    //     for (out_id, t, update_datetime, in_id) in iter {
+    //         if vertex_manager.get(out_id)?.is_some() {
+    //             edge_manager.delete(&mut batch, out_id, &t, in_id, update_datetime)?;
+    //         };
+    //     }
 
-        db.write(batch)?;
-        Ok(())
-    }
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
 
-    fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = EdgePropertyManager::new(db_ref);
-        let mut properties = Vec::new();
+    // fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
 
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
-            let value = manager.get(out_id, &t, in_id, &q.name)?;
+    //     let edge_range_manager = match direction {
+    //         EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
+    //         EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db_ref),
+    //     };
 
-            if let Some(value) = value {
-                let key = EdgeKey::new(out_id, t, in_id);
-                properties.push(EdgeProperty::new(key, value.0));
-            }
-        }
+    //     let count = edge_range_manager.iterate_for_range(id, t, None)?.count();
 
-        Ok(properties)
-    }
+    //     Ok(count as u64)
+    // }
 
-    fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let iter = execute_edge_query(db_ref, q)?.into_iter();
-        let manager = EdgePropertyManager::new(db_ref);
+    // fn get_vertex_properties(&self, q: VertexPropertyQuery) -> Result<Vec<VertexProperty>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = VertexPropertyManager::new(db_ref);
+    //     let mut properties = Vec::new();
 
-        let iter = iter.map(move |(out_id, t, time, in_id)| {
-            let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
-            let it = manager.iterate_for_owner(out_id, &t, in_id)?;
-            let props: Result<Vec<_>> = it.collect();
-            let props_iter = props?.into_iter();
-            let props = props_iter
-                .map(|((_, _, _, name), value)| NamedProperty::new(name, value.0))
-                .collect();
+    //     for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+    //         let value = manager.get(id, &q.name)?;
 
-            Ok(EdgeProperties::new(edge, props))
-        });
+    //         if let Some(value) = value {
+    //             properties.push(VertexProperty::new(id, value.0));
+    //         }
+    //     }
 
-        iter.collect()
-    }
+    //     Ok(properties)
+    // }
 
-    fn set_edge_properties(&self, q: EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = EdgePropertyManager::new(db_ref);
-        let mut batch = WriteBatch::default();
+    // fn get_all_vertex_properties(&self, q: VertexQuery) -> Result<Vec<VertexProperties>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let iter = execute_vertex_query(db_ref, q)?.into_iter();
+    //     let manager = VertexPropertyManager::new(db_ref);
 
-        let wrapped_value = Json::new(value);
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
-            manager.set(&mut batch, out_id, &t, in_id, &q.name, &wrapped_value)?;
-        }
+    //     let iter = iter.map(move |(id, t)| {
+    //         let vertex = Vertex::with_id(id, t);
 
-        db.write(batch)?;
-        Ok(())
-    }
+    //         let it = manager.iterate_for_owner(id)?;
+    //         let props: Result<Vec<_>> = it.collect();
+    //         let props_iter = props?.into_iter();
+    //         let props = props_iter
+    //             .map(|((_, name), value)| NamedProperty::new(name, value.0))
+    //             .collect();
 
-    fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
-        let db = self.db.clone();
-        let indexed_properties = self.indexed_properties.read().unwrap();
-        let db_ref = DBRef::new(&db, &indexed_properties);
-        let manager = EdgePropertyManager::new(db_ref);
-        let mut batch = WriteBatch::default();
+    //         Ok(VertexProperties::new(vertex, props))
+    //     });
 
-        for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
-            manager.delete(&mut batch, out_id, &t, in_id, &q.name)?;
-        }
+    //     iter.collect()
+    // }
 
-        db.write(batch)?;
-        Ok(())
-    }
+    // fn set_vertex_properties(&self, q: VertexPropertyQuery, value: serde_json::Value) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = VertexPropertyManager::new(db_ref);
+    //     let mut batch = WriteBatch::default();
+
+    //     let wrapped_value = Json::new(value);
+    //     for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+    //         manager.set(&mut batch, id, &q.name, &wrapped_value)?;
+    //     }
+
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
+
+    // fn delete_vertex_properties(&self, q: VertexPropertyQuery) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = VertexPropertyManager::new(db_ref);
+    //     let mut batch = WriteBatch::default();
+
+    //     for (id, _) in execute_vertex_query(db_ref, q.inner)?.into_iter() {
+    //         manager.delete(&mut batch, id, &q.name)?;
+    //     }
+
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
+
+    // fn get_edge_properties(&self, q: EdgePropertyQuery) -> Result<Vec<EdgeProperty>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = EdgePropertyManager::new(db_ref);
+    //     let mut properties = Vec::new();
+
+    //     for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+    //         let value = manager.get(out_id, &t, in_id, &q.name)?;
+
+    //         if let Some(value) = value {
+    //             let key = EdgeKey::new(out_id, t, in_id);
+    //             properties.push(EdgeProperty::new(key, value.0));
+    //         }
+    //     }
+
+    //     Ok(properties)
+    // }
+
+    // fn get_all_edge_properties(&self, q: EdgeQuery) -> Result<Vec<EdgeProperties>> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let iter = execute_edge_query(db_ref, q)?.into_iter();
+    //     let manager = EdgePropertyManager::new(db_ref);
+
+    //     let iter = iter.map(move |(out_id, t, time, in_id)| {
+    //         let edge = Edge::new(EdgeKey::new(out_id, t.clone(), in_id), time);
+    //         let it = manager.iterate_for_owner(out_id, &t, in_id)?;
+    //         let props: Result<Vec<_>> = it.collect();
+    //         let props_iter = props?.into_iter();
+    //         let props = props_iter
+    //             .map(|((_, _, _, name), value)| NamedProperty::new(name, value.0))
+    //             .collect();
+
+    //         Ok(EdgeProperties::new(edge, props))
+    //     });
+
+    //     iter.collect()
+    // }
+
+    // fn set_edge_properties(&self, q: EdgePropertyQuery, value: serde_json::Value) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = EdgePropertyManager::new(db_ref);
+    //     let mut batch = WriteBatch::default();
+
+    //     let wrapped_value = Json::new(value);
+    //     for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+    //         manager.set(&mut batch, out_id, &t, in_id, &q.name, &wrapped_value)?;
+    //     }
+
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
+
+    // fn delete_edge_properties(&self, q: EdgePropertyQuery) -> Result<()> {
+    //     let db = self.db.clone();
+    //     let indexed_properties = self.indexed_properties.read().unwrap();
+    //     let db_ref = DBRef::new(&db, &indexed_properties);
+    //     let manager = EdgePropertyManager::new(db_ref);
+    //     let mut batch = WriteBatch::default();
+
+    //     for (out_id, t, _, in_id) in execute_edge_query(db_ref, q.inner)?.into_iter() {
+    //         manager.delete(&mut batch, out_id, &t, in_id, &q.name)?;
+    //     }
+
+    //     db.write(batch)?;
+    //     Ok(())
+    // }
 
     // We override the default `bulk_insert` implementation because further
     // optimization can be done by using `WriteBatch`s.
@@ -728,7 +851,7 @@ impl Datastore for RocksdbDatastore {
                     vertex_manager.create(&mut batch, vertex)?;
                 }
                 BulkInsertItem::Edge(ref key) => {
-                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id, Utc::now())?;
+                    edge_manager.set(&mut batch, key.outbound_id, &key.t, key.inbound_id)?;
                 }
                 BulkInsertItem::VertexProperty(id, ref name, ref value) => {
                     vertex_property_manager.set(&mut batch, id, name, &Json::new(value.clone()))?;
@@ -786,3 +909,5 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 }
+
+impl crate::compat::DatastoreV3CompatExt for MemoryDatastore {}

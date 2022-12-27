@@ -233,7 +233,6 @@ dependencies = [
  "js-sys",
  "num-integer",
  "num-traits",
- "serde",
  "time",
  "wasm-bindgen",
  "winapi",
@@ -580,7 +579,6 @@ version = "3.0.3"
 dependencies = [
  "bincode",
  "byteorder",
- "chrono",
  "lazy_static",
  "rmp-serde",
  "rocksdb",
