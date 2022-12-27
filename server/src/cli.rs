@@ -9,7 +9,8 @@ pub struct CliArgs {
 
 pub enum CliDatastoreArgs {
     Memory {
-        path: Option<OsString>,
+        bincode_path: Option<OsString>,
+        msgpack_path: Option<OsString>,
     },
     Rocksdb {
         path: OsString,
@@ -24,6 +25,7 @@ const DATABASE_PATH: &str = "DATABASE_PATH";
 const ROCKSDB_MAX_OPEN_FILES: &str = "ROCKSDB_MAX_OPEN_FILES";
 const ROCKSDB_REPAIR: &str = "ROCKSDB_REPAIR";
 const MEMORY_PERSIST_PATH: &str = "MEMORY_PERSIST_PATH";
+const MEMORY_MSGPACK_PERSIST_PATH: &str = "MEMORY_MSGPACK_PERSIST_PATH";
 
 pub fn parse_cli_args() -> CliArgs {
     let database_path_argument = Arg::with_name(DATABASE_PATH)
@@ -52,7 +54,14 @@ pub fn parse_cli_args() -> CliArgs {
             Arg::with_name(MEMORY_PERSIST_PATH)
                 .long("persist-path")
                 .value_name(MEMORY_PERSIST_PATH)
-                .help("Sets the path to persist images. If unspecified, the datastore will not be persisted.")
+                .help("Sets the path to persist images with bincode serialization. If no persist path arguments are set, the datastore will not be persisted. DEPRECATED: Use `--msgpack-persist-path` instead.")
+                .takes_value(true)
+        )
+        .arg(
+            Arg::with_name(MEMORY_MSGPACK_PERSIST_PATH)
+                .long("msgpack-persist-path")
+                .value_name(MEMORY_MSGPACK_PERSIST_PATH)
+                .help("Sets the path to persist images with msgpack serialization. If no persist path arguments are set, the datastore will not be persisted.")
                 .takes_value(true)
         );
 
@@ -85,12 +94,21 @@ pub fn parse_cli_args() -> CliArgs {
     CliArgs {
         addr: matches.value_of(ADDRESS).unwrap().to_string(),
         datastore_args: if let Some(matches) = matches.subcommand_matches("memory") {
-            if let Some(path) = matches.value_of_os(MEMORY_PERSIST_PATH) {
+            if let Some(path) = matches.value_of_os(MEMORY_MSGPACK_PERSIST_PATH) {
                 CliDatastoreArgs::Memory {
-                    path: Some(path.to_os_string()),
+                    bincode_path: None,
+                    msgpack_path: Some(path.to_os_string()),
+                }
+            } else if let Some(path) = matches.value_of_os(MEMORY_PERSIST_PATH) {
+                CliDatastoreArgs::Memory {
+                    bincode_path: Some(path.to_os_string()),
+                    msgpack_path: None,
                 }
             } else {
-                CliDatastoreArgs::Memory { path: None }
+                CliDatastoreArgs::Memory {
+                    bincode_path: None,
+                    msgpack_path: None,
+                }
             }
         } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
             CliDatastoreArgs::Rocksdb {
@@ -99,7 +117,10 @@ pub fn parse_cli_args() -> CliArgs {
                 repair: matches.is_present(ROCKSDB_REPAIR),
             }
         } else {
-            CliDatastoreArgs::Memory { path: None }
+            CliDatastoreArgs::Memory {
+                bincode_path: None,
+                msgpack_path: None,
+            }
         },
         plugin_path: matches.value_of(PLUGIN_PATH).map(|s| s.to_string()),
     }

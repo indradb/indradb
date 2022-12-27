@@ -54,11 +54,26 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 .expect("Expected to be able to create the RocksDB datastore");
             run_server(datastore, listener, &args.plugin_path).await
         }
-        CliDatastoreArgs::Memory { path } => {
-            let datastore = match path {
-                None => indradb::MemoryDatastore::default(),
-                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read(path)?,
-                Some(path) => indradb::MemoryDatastore::create(path)?,
+        CliDatastoreArgs::Memory {
+            bincode_path,
+            msgpack_path,
+        } => {
+            let datastore = if let Some(path) = msgpack_path {
+                if Path::new(path.as_os_str()).exists() {
+                    indradb::MemoryDatastore::read_msgpack(path)?
+                } else {
+                    indradb::MemoryDatastore::create_msgpack(path)?
+                }
+            } else if let Some(path) = bincode_path {
+                if Path::new(path.as_os_str()).exists() {
+                    #[allow(deprecated)]
+                    indradb::MemoryDatastore::read(path)?
+                } else {
+                    #[allow(deprecated)]
+                    indradb::MemoryDatastore::create(path)?
+                }
+            } else {
+                indradb::MemoryDatastore::default()
             };
             run_server(datastore, listener, &args.plugin_path).await
         }
