@@ -83,12 +83,11 @@ fn vertices_from_property_value_iterator<'a>(
 
 fn vertices_from_piped_property_query(
     db_ref: DBRef<'_>,
-    inner_query: VertexQuery,
+    vertices: Vec<Vertex>,
     property_name: &Identifier,
     intersection: bool,
 ) -> Result<Vec<Vertex>> {
-    let mut piped_vertices_mapping: HashMap<Uuid, Identifier> =
-        execute_vertex_query(db_ref, inner_query)?.into_iter().collect();
+    let mut piped_vertices_mapping: HashMap<Uuid, Identifier> = vertices.into_iter().collect();
     let piped_vertices: HashSet<Uuid> = piped_vertices_mapping.keys().cloned().collect();
 
     let property_vertices = {
@@ -112,6 +111,15 @@ fn vertices_from_piped_property_query(
     Ok(merged_vertices
         .map(move |id| Vertex::with_id(*id, piped_vertices_mapping.remove(id).unwrap()))
         .collect())
+}
+
+fn edges_from_iter<'a>(iter: impl Iterator<Item = Result<EdgeRangeItem>> + 'a) -> Result<Vec<Edge>> {
+    let mut edges = Vec::new();
+    for item in iter {
+        let (out_id, t, in_id) = item?;
+        edges.push(Edge::new(out_id, t, in_id))
+    }
+    Ok(edges)
 }
 
 fn edges_from_property_value_iterator<'a>(
@@ -231,14 +239,10 @@ fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Re
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    todo!();
-                }
-                QueryOutputValue::Vertices(ref piped_vertices) => {
                     let vertex_manager = VertexManager::new(db_ref);
-                    let iter = execute_edge_query(db_ref, *q.inner)?.into_iter();
                     let direction = q.direction;
 
-                    let iter = iter.map(move |(out_id, _, _, in_id)| {
+                    let iter = piped_edges.iter().map(move |(out_id, _, _, in_id)| {
                         let id = match direction {
                             EdgeDirection::Outbound => out_id,
                             EdgeDirection::Inbound => in_id,
@@ -267,6 +271,46 @@ fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Re
 
                     let iter = iter.take(q.limit as usize);
                     QueryOutputValue::Vertices(vertices_from_iter(iter))
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let edge_range_manager = match q.direction {
+                        EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
+                        EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db_ref),
+                    };
+
+                    // Ideally we'd use iterators all the way down, but things
+                    // start breaking apart due to conditional expressions not
+                    // returning the same type signature, issues with `Result`s
+                    // and some of the iterators, etc. So at this point, we'll
+                    // just resort to building a vector.
+                    let mut edges: Vec<EdgeRangeItem> = Vec::new();
+
+                    for (id, _) in piped_vertices {
+                        let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref())?;
+
+                        for item in edge_iterator {
+                            let (edge_range_first_id, edge_range_t, edge_range_second_id) = item?;
+
+                            edges.push(match q.direction {
+                                EdgeDirection::Outbound => (
+                                    edge_range_first_id,
+                                    edge_range_t,
+                                    edge_range_second_id,
+                                ),
+                                EdgeDirection::Inbound => (
+                                    edge_range_second_id,
+                                    edge_range_t,
+                                    edge_range_first_id,
+                                ),
+                            });
+
+                            if edges.len() == q.limit as usize {
+                                break;
+                            }
+                        }
+                    }
+
+                    QueryOutputValue::Edges(edges_from_iter(iter))
                 }
                 _ => {
                     return Err(Error::Unsupported);
@@ -367,109 +411,132 @@ fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Re
             QueryOutputValue::Edges(edges)
         }
         Query::PipeWithPropertyPresence(ref q) => {
-            self.query(&*q.inner, output)?;
-            let piped_values = output.pop().unwrap();
+            // self.query(&*q.inner, output)?;
+            // let piped_values = output.pop().unwrap();
 
-            let values = match piped_values {
-                QueryOutputValue::Edges(ref piped_edges) => {
-                    let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
-                    let iter = piped_edges.iter().filter(move |e| {
-                        let contains = edges_with_property.contains(&e);
-                        (q.exists && contains) || (!q.exists && !contains)
-                    });
-                    QueryOutputValue::Edges(iter.cloned().collect())
-                }
-                QueryOutputValue::Vertices(ref piped_vertices) => {
-                    let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
-                    let iter = piped_vertices.iter().filter(move |v| {
-                        let contains = vertices_with_property.contains(&v.id);
-                        (q.exists && contains) || (!q.exists && !contains)
-                    });
-                    QueryOutputValue::Vertices(iter.cloned().collect())
-                }
-                _ => {
-                    return Err(Error::Unsupported);
-                }
-            };
+            // let values = match piped_values {
+            //     QueryOutputValue::Edges(ref piped_edges) => {
+            //         let edges_with_property = self.get_all_edges_with_property(&q.name, false)?;
+            //         let iter = piped_edges.iter().filter(move |e| {
+            //             let contains = edges_with_property.contains(&e);
+            //             (q.exists && contains) || (!q.exists && !contains)
+            //         });
+            //         QueryOutputValue::Edges(iter.cloned().collect())
+            //     }
+            //     QueryOutputValue::Vertices(ref piped_vertices) => {
+            //         let vertices_with_property = self.get_all_vertices_with_property(&q.name, false)?;
+            //         let iter = piped_vertices.iter().filter(move |v| {
+            //             let contains = vertices_with_property.contains(&v.id);
+            //             (q.exists && contains) || (!q.exists && !contains)
+            //         });
+            //         QueryOutputValue::Vertices(iter.cloned().collect())
+            //     }
+            //     _ => {
+            //         return Err(Error::Unsupported);
+            //     }
+            // };
 
-            if let Query::Include(_) = *q.inner {
-                // keep the value exported
-                output.push(piped_values);
-            }
+            // if let Query::Include(_) = *q.inner {
+            //     // keep the value exported
+            //     output.push(piped_values);
+            // }
 
-            values
+            // values
+            todo!();
         }
         Query::PipeWithPropertyValue(ref q) => {
-            self.query(&*q.inner, output)?;
-            let piped_values = output.pop().unwrap();
+            // self.query(&*q.inner, output)?;
+            // let piped_values = output.pop().unwrap();
 
-            let empty_hashset = HashSet::default();
-            let indexed_members: &HashSet<IndexedPropertyMember> =
-                if let Some(container) = self.property_values.get(&q.name) {
-                    let wrapped_value = Json::new(q.value.clone());
-                    if let Some(ref members) = container.get(&wrapped_value) {
-                        members
-                    } else {
-                        &empty_hashset
-                    }
-                } else {
-                    &empty_hashset
-                };
+            // let empty_hashset = HashSet::default();
+            // let indexed_members: &HashSet<IndexedPropertyMember> =
+            //     if let Some(container) = self.property_values.get(&q.name) {
+            //         let wrapped_value = Json::new(q.value.clone());
+            //         if let Some(ref members) = container.get(&wrapped_value) {
+            //             members
+            //         } else {
+            //             &empty_hashset
+            //         }
+            //     } else {
+            //         &empty_hashset
+            //     };
 
-            let values = match piped_values {
-                QueryOutputValue::Edges(ref piped_edges) => {
-                    let iter = piped_edges.iter().filter(move |e| {
-                        let contains = indexed_members.contains(&IndexedPropertyMember::Edge((**e).clone()));
-                        (q.equal && contains) || (!q.equal && !contains)
-                    });
-                    QueryOutputValue::Edges(iter.cloned().collect())
-                }
-                QueryOutputValue::Vertices(ref piped_vertices) => {
-                    let iter = piped_vertices.iter().filter(move |v| {
-                        let contains = indexed_members.contains(&IndexedPropertyMember::Vertex(v.id));
-                        (q.equal && contains) || (!q.equal && !contains)
-                    });
-                    QueryOutputValue::Vertices(iter.cloned().collect())
-                }
-                _ => {
-                    return Err(Error::Unsupported);
-                }
-            };
+            // let values = match piped_values {
+            //     QueryOutputValue::Edges(ref piped_edges) => {
+            //         let iter = piped_edges.iter().filter(move |e| {
+            //             let contains = indexed_members.contains(&IndexedPropertyMember::Edge((**e).clone()));
+            //             (q.equal && contains) || (!q.equal && !contains)
+            //         });
+            //         QueryOutputValue::Edges(iter.cloned().collect())
+            //     }
+            //     QueryOutputValue::Vertices(ref piped_vertices) => {
+            //         let iter = piped_vertices.iter().filter(move |v| {
+            //             let contains = indexed_members.contains(&IndexedPropertyMember::Vertex(v.id));
+            //             (q.equal && contains) || (!q.equal && !contains)
+            //         });
+            //         QueryOutputValue::Vertices(iter.cloned().collect())
+            //     }
+            //     _ => {
+            //         return Err(Error::Unsupported);
+            //     }
+            // };
 
-            if let Query::Include(_) = *q.inner {
-                // keep the value exported
-                output.push(piped_values);
-            }
+            // if let Query::Include(_) = *q.inner {
+            //     // keep the value exported
+            //     output.push(piped_values);
+            // }
 
-            values
+            // values
+            todo!();
         }
-        Query::AllEdge(_) => QueryOutputValue::Edges(self.edges.iter().cloned().collect()),
+        Query::AllEdge(_) => {
+            // QueryOutputValue::Edges(self.edges.iter().cloned().collect())
+            todo!();
+        },
         Query::SpecificEdge(ref q) => {
-            let iter = iter_edge_values!(self, q.edges.clone().into_iter());
-            QueryOutputValue::Edges(iter.collect())
+            let edge_manager = EdgeManager::new(db_ref);
+
+            let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
+                match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+                    Some(update_datetime) => {
+                        Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+                    }
+                    None => Ok(None),
+                }
+            });
+
+            let iter = iter.filter_map(|item| match item {
+                Err(err) => Some(Err(err)),
+                Ok(Some(value)) => Some(Ok(value)),
+                _ => None,
+            });
+
+            let edges = edges_from_iter(iter)?;
+            QueryOutputValue::Edges(edges)
         }
         Query::Include(ref q) => {
             self.query(&*q.inner, output)?;
             output.pop().unwrap()
         }
         Query::Count(ref q) => {
-            let count = match &*q.inner {
-                // These paths are optimized
-                Query::AllVertex(_) => self.vertices.len(),
-                Query::AllEdge(_) => self.edges.len(),
-                q => {
-                    self.query(q, output)?;
-                    let piped_values = output.pop().unwrap();
-                    match piped_values {
-                        QueryOutputValue::Vertices(v) => v.len(),
-                        QueryOutputValue::Edges(v) => v.len(),
-                        QueryOutputValue::VertexProperties(v) => v.len(),
-                        QueryOutputValue::EdgeProperties(v) => v.len(),
-                        _ => return Err(Error::Unsupported),
-                    }
-                }
-            };
-            QueryOutputValue::Count(count as u64)
+            // let count = match &*q.inner {
+            //     // These paths are optimized
+            //     Query::AllVertex(_) => self.vertices.len(),
+            //     Query::AllEdge(_) => self.edges.len(),
+            //     q => {
+            //         self.query(q, output)?;
+            //         let piped_values = output.pop().unwrap();
+            //         match piped_values {
+            //             QueryOutputValue::Vertices(v) => v.len(),
+            //             QueryOutputValue::Edges(v) => v.len(),
+            //             QueryOutputValue::VertexProperties(v) => v.len(),
+            //             QueryOutputValue::EdgeProperties(v) => v.len(),
+            //             _ => return Err(Error::Unsupported),
+            //         }
+            //     }
+            // };
+            // QueryOutputValue::Count(count as u64)
+            todo!();
         }
     };
 
