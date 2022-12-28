@@ -19,17 +19,16 @@ pub mod tests;
 #[macro_use]
 pub mod benches;
 
-pub mod compat;
+mod datastore;
 mod errors;
 mod memory;
 mod models;
-mod traits;
 pub mod util;
 
+pub use crate::datastore::*;
 pub use crate::errors::*;
 pub use crate::memory::MemoryDatastore;
 pub use crate::models::*;
-pub use crate::traits::*;
 
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;
