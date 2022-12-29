@@ -27,7 +27,7 @@ pub mod util;
 
 pub use crate::datastore::*;
 pub use crate::errors::*;
-pub use crate::memory::MemoryDatastore;
+pub use crate::memory::*;
 pub use crate::models::*;
 
 #[cfg(feature = "rocksdb-datastore")]

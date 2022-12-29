@@ -136,7 +136,7 @@ impl<B: DatastoreBackend> Datastore<B> {
                             EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
                         };
 
-                        let iter: DynIter<Vertex> = self.backend.specific_vertices(&iter.collect())?;
+                        let mut iter: DynIter<Vertex> = self.backend.specific_vertices(&iter.collect())?;
 
                         if let Some(ref t) = q.t {
                             iter = Box::new(iter.filter(move |v| &v.t == t));
@@ -147,34 +147,42 @@ impl<B: DatastoreBackend> Datastore<B> {
                         QueryOutputValue::Vertices(iter.collect())
                     }
                     QueryOutputValue::Vertices(ref piped_vertices) => {
-                        let mut iter: DynIter<&Edge> = Box::new(piped_vertices.iter().flat_map(move |v| {
+                        let mut edges = Vec::new();
+
+                        for vertex in piped_vertices {
                             let lower_bound = match &q.t {
-                                Some(t) => Edge::new(v.id, t.clone(), Uuid::default()),
-                                None => Edge::new(v.id, Identifier::default(), Uuid::default()),
+                                Some(t) => Edge::new(vertex.id, t.clone(), Uuid::default()),
+                                None => Edge::new(vertex.id, Identifier::default(), Uuid::default()),
                             };
 
-                            let iter = if q.direction == EdgeDirection::Outbound {
+                            let mut iter = if q.direction == EdgeDirection::Outbound {
                                 self.backend.range_edges(lower_bound)?
                             } else {
                                 self.backend.range_reversed_edges(lower_bound)?
                             };
 
-                            iter.take_while(move |edge| edge.outbound_id == v.id)
-                        }));
+                            iter = Box::new(iter.take_while(move |edge| edge.outbound_id == vertex.id));
 
-                        if let Some(ref t) = q.t {
-                            iter = Box::new(iter.filter(move |edge| &edge.t == t));
+                            if let Some(ref t) = q.t {
+                                iter = Box::new(iter.filter(move |edge| &edge.t == t));
+                            }
+
+                            if q.direction == EdgeDirection::Inbound {
+                                iter = Box::new(iter.map(move |edge| edge.reversed()));
+                            }
+
+                            iter = Box::new(iter.take((q.limit as usize) - edges.len()));
+
+                            for edge in iter {
+                                edges.push(edge);
+                            }
+
+                            if edges.len() >= (q.limit as usize) {
+                                break;
+                            }
                         }
 
-                        let iter = iter.take(q.limit as usize);
-
-                        let iter: DynIter<Edge> = if q.direction == EdgeDirection::Outbound {
-                            Box::new(iter.cloned())
-                        } else {
-                            Box::new(iter.map(move |edge| edge.reversed()))
-                        };
-
-                        QueryOutputValue::Edges(iter.collect())
+                        QueryOutputValue::Edges(edges)
                     }
                     _ => {
                         return Err(Error::Unsupported);
