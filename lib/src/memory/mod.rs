@@ -5,8 +5,6 @@
 
 mod datastore;
 
-pub use self::datastore::MemoryDatastore;
-
 #[cfg(feature = "bench-suite")]
 full_bench_impl!(MemoryDatastore::default());
 

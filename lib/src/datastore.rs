@@ -1,13 +1,14 @@
 use crate::errors::{Error, Result};
 use crate::models::{
-    AllVertexQuery, BulkInsertItem, Edge, EdgeDirection, EdgeProperties, EdgeProperty, Identifier, Json, NamedProperty,
-    PipePropertyQuery, Query, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties, VertexProperty,
+    AllVertexQuery, BulkInsertItem, Edge, EdgeDirection, EdgeProperties, EdgeProperty, Identifier, NamedProperty,
+    PipePropertyQuery, Query, QueryExt, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
+    VertexProperty,
 };
 use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 use uuid::Uuid;
 
-type DynIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
+pub type DynIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 pub trait DatastoreBackend {
     fn vertex_count(&self) -> u64;
@@ -46,11 +47,38 @@ pub trait DatastoreBackend {
     fn delete_vertex_properties(&self, props: Vec<(Vertex, Identifier, serde_json::Value)>) -> Result<()>;
     fn delete_edge_properties(&self, props: Vec<(Edge, Identifier, serde_json::Value)>) -> Result<()>;
 
-    fn sync(&self) -> Result<()>;
+    fn sync(&self) -> Result<()> {
+        Err(Error::Unsupported)
+    }
+
     fn create_vertex(&self, vertex: &Vertex) -> Result<bool>;
     fn create_edge(&self, edge: &Edge) -> Result<bool>;
-    fn bulk_insert(&self, items: Vec<BulkInsertItem>) -> Result<()>;
+
+    fn bulk_insert(&self, items: Vec<BulkInsertItem>) -> Result<()> {
+        for item in items {
+            match item {
+                BulkInsertItem::Vertex(vertex) => {
+                    self.create_vertex(&vertex)?;
+                }
+                BulkInsertItem::Edge(edge_key) => {
+                    self.create_edge(&edge_key)?;
+                }
+                BulkInsertItem::VertexProperty(id, name, value) => {
+                    self.set_vertex_properties(vec![id], name, value)?;
+                }
+                BulkInsertItem::EdgeProperty(edge_key, name, value) => {
+                    self.set_edge_properties(vec![edge_key], name, value)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn index_property(&self, name: Identifier) -> Result<()>;
+
+    fn set_vertex_properties(&self, vertices: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()>;
+    fn set_edge_properties(&self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()>;
 }
 
 /// Specifies a datastore implementation.
@@ -66,7 +94,11 @@ pub struct Datastore<B: DatastoreBackend> {
     backend: B,
 }
 
-impl Datastore {
+impl<B: DatastoreBackend> Datastore<B> {
+    pub fn new(backend: B) -> Datastore<B> {
+        Self { backend }
+    }
+
     fn query(&self, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
         // TODO: validate query
 
@@ -76,21 +108,21 @@ impl Datastore {
                 QueryOutputValue::Vertices(iter.collect())
             }
             Query::RangeVertex(ref q) => {
-                let mut iter: DynIter<(&Uuid, &Identifier)> = if let Some(start_id) = q.start_id {
-                    Box::new(self.backend.range_vertices(start_id))
+                let mut iter: DynIter<Vertex> = if let Some(start_id) = q.start_id {
+                    self.backend.range_vertices(start_id)?
                 } else {
-                    Box::new(self.backend.all_vertices())
+                    self.backend.all_vertices()?
                 };
 
                 if let Some(ref t) = q.t {
-                    iter = Box::new(iter.filter(move |v| v.t == &t));
+                    iter = Box::new(iter.filter(move |v| &v.t == t));
                 }
 
                 iter = Box::new(iter.take(q.limit as usize));
                 QueryOutputValue::Vertices(iter.collect())
             }
             Query::SpecificVertex(ref q) => {
-                let iter = self.backend.specific_vertices(q.ids);
+                let iter = self.backend.specific_vertices(&q.ids)?;
                 QueryOutputValue::Vertices(iter.collect())
             }
             Query::Pipe(ref q) => {
@@ -104,11 +136,10 @@ impl Datastore {
                             EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
                         };
 
-                        let iter: DynIter<Vertex> =
-                            Box::new(self.backend.specific_vertices(&iter.collect()).into_iter());
+                        let iter: DynIter<Vertex> = self.backend.specific_vertices(&iter.collect())?;
 
                         if let Some(ref t) = q.t {
-                            iter = Box::new(iter.filter(move |v| v.t == &t));
+                            iter = Box::new(iter.filter(move |v| &v.t == t));
                         }
 
                         iter = Box::new(iter.take(q.limit as usize));
@@ -123,9 +154,9 @@ impl Datastore {
                             };
 
                             let iter = if q.direction == EdgeDirection::Outbound {
-                                self.backend.range_edges(lower_bound)
+                                self.backend.range_edges(lower_bound)?
                             } else {
-                                self.backend.range_reversed_edges(lower_bound)
+                                self.backend.range_reversed_edges(lower_bound)?
                             };
 
                             iter.take_while(move |edge| edge.outbound_id == v.id)
@@ -167,10 +198,10 @@ impl Datastore {
                         for edge in piped_edges.into_iter() {
                             if let Some(name) = &q.name {
                                 if let Some(value) = self.backend.edge_property(&edge, &name)? {
-                                    edge_properties.push((edge.clone(), name.clone(), value.0.clone()));
+                                    edge_properties.push((edge.clone(), name.clone(), value.clone()));
                                 }
                             } else {
-                                for (prop_name, prop_value) in self.backend.all_edge_properties_for_edge(&edge) {
+                                for (prop_name, prop_value) in self.backend.all_edge_properties_for_edge(&edge)? {
                                     edge_properties.push((edge.clone(), prop_name, prop_value));
                                 }
                             }
@@ -183,10 +214,10 @@ impl Datastore {
                         for vertex in piped_vertices.into_iter() {
                             if let Some(name) = &q.name {
                                 if let Some(value) = self.backend.vertex_property(&vertex, &name)? {
-                                    vertex_properties.push((vertex.clone(), name.clone(), value.0.clone()));
+                                    vertex_properties.push((vertex.clone(), name.clone(), value.clone()));
                                 }
                             } else {
-                                for (prop_name, prop_value) in self.backend.all_vertex_properties_for_vertex(&vertex) {
+                                for (prop_name, prop_value) in self.backend.all_vertex_properties_for_vertex(&vertex)? {
                                     vertex_properties.push((vertex.clone(), prop_name, prop_value));
                                 }
                             }
@@ -255,7 +286,7 @@ impl Datastore {
                     }
                     QueryOutputValue::Vertices(ref piped_vertices) => {
                         // TODO: should `None` trigger `Error::NotIndexed`?
-                        let vertices_with_property = match self.backend.vertices_with_property(&q.name)? {
+                        let vertices_with_property = match self.backend.vertex_ids_with_property(&q.name)? {
                             Some(iter) => iter.collect::<HashSet<Uuid>>(),
                             None => HashSet::<Uuid>::default(),
                         };
@@ -329,18 +360,19 @@ impl Datastore {
             Query::Count(ref q) => {
                 let count = match &*q.inner {
                     // These paths are optimized
-                    Query::AllVertex(_) => self.backend.vertex_count()?,
-                    Query::AllEdge(_) => self.edges.edge_count()?,
+                    Query::AllVertex(_) => self.backend.vertex_count(),
+                    Query::AllEdge(_) => self.backend.edge_count(),
                     q => {
                         self.query(q, output)?;
                         let piped_values = output.pop().unwrap();
-                        match piped_values {
+                        let len = match piped_values {
                             QueryOutputValue::Vertices(v) => v.len(),
                             QueryOutputValue::Edges(e) => e.len(),
                             QueryOutputValue::VertexProperties(p) => p.len(),
                             QueryOutputValue::EdgeProperties(p) => p.len(),
                             _ => return Err(Error::Unsupported),
-                        }
+                        };
+                        len as u64
                     }
                 };
                 QueryOutputValue::Count(count as u64)
@@ -391,14 +423,13 @@ impl Datastore {
     /// # Arguments
     /// * `edge`: The edge to create.
     pub fn create_edge(&self, edge: &Edge) -> Result<bool> {
-        self.backend.create_edge()
+        self.backend.create_edge(edge)
     }
 
     pub fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
         // TODO: use `Vec::with_capacity`.
         let mut output = Vec::new();
-        let datastore = self.datastore.read().unwrap();
-        datastore.query(&q, &mut output)?;
+        self.query(&q, &mut output)?;
         Ok(output)
     }
 
@@ -433,14 +464,13 @@ impl Datastore {
         let mut output = Vec::new();
         self.query(&q, &mut output)?;
 
-        let wrapped_value = Json::new(value);
-
         match output.pop().unwrap() {
             QueryOutputValue::Vertices(vertices) => {
-                self.backend.set_vertex_properties(vertices, name, wrapped_value)?;
+                self.backend
+                    .set_vertex_properties(vertices.into_iter().map(|v| v.id).collect(), name, value)?;
             }
             QueryOutputValue::Edges(edges) => {
-                self.backend.set_edge_properties(edges, name, wrapped_value)?;
+                self.backend.set_edge_properties(edges, name, value)?;
             }
             _ => return Err(Error::Unsupported),
         }
@@ -461,7 +491,7 @@ impl Datastore {
     // # Arguments
     // * `name`: The name of the property to index.
     pub fn index_property(&self, name: Identifier) -> Result<()> {
-        self.backend.index_property(name);
+        self.backend.index_property(name)
     }
 
     /// Gets a range of vertices specified by a query.
