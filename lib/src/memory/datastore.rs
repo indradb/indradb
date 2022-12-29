@@ -494,7 +494,9 @@ impl DatastoreBackend for MemoryDatastoreBackend {
     }
 
     fn all_vertices<'a>(&self) -> Result<DynIter<'a, Vertex>> {
-        todo!();
+        let internal = self.internal.read().unwrap();
+        let iter = internal.vertices.iter().map(|(id, t)| Vertex::with_id(*id, t.clone()));
+        Ok(Box::new(iter))
     }
 
     fn range_vertices<'a>(&self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
