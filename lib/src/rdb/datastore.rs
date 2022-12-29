@@ -8,7 +8,7 @@ use std::usize;
 use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::util::next_uuid;
-use crate::{BulkInsertItem, Datastore, Edge, EdgeDirection, Identifier, Json, Query, Vertex, QueryOutputValue};
+use crate::{BulkInsertItem, Datastore, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Vertex};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
@@ -292,16 +292,8 @@ fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Re
                             let (edge_range_first_id, edge_range_t, edge_range_second_id) = item?;
 
                             edges.push(match q.direction {
-                                EdgeDirection::Outbound => (
-                                    edge_range_first_id,
-                                    edge_range_t,
-                                    edge_range_second_id,
-                                ),
-                                EdgeDirection::Inbound => (
-                                    edge_range_second_id,
-                                    edge_range_t,
-                                    edge_range_first_id,
-                                ),
+                                EdgeDirection::Outbound => (edge_range_first_id, edge_range_t, edge_range_second_id),
+                                EdgeDirection::Inbound => (edge_range_second_id, edge_range_t, edge_range_first_id),
                             });
 
                             if edges.len() == q.limit as usize {
@@ -492,7 +484,7 @@ fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Re
         Query::AllEdge(_) => {
             // QueryOutputValue::Edges(self.edges.iter().cloned().collect())
             todo!();
-        },
+        }
         Query::SpecificEdge(ref q) => {
             let edge_manager = EdgeManager::new(db_ref);
 
