@@ -534,6 +534,10 @@ impl DatastoreBackend for MemoryDatastoreBackend {
         todo!();
     }
 
+    fn specific_edges<'a>(&self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+        todo!();
+    }
+
     fn edges_with_property<'a>(&self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
         todo!();
     }

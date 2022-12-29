@@ -26,6 +26,7 @@ pub trait DatastoreBackend {
     fn all_edges<'a>(&self) -> Result<DynIter<'a, Edge>>;
     fn range_edges<'a>(&self, offset: Edge) -> Result<DynIter<'a, Edge>>;
     fn range_reversed_edges<'a>(&self, offset: Edge) -> Result<DynIter<'a, Edge>>;
+    fn specific_edges<'a>(&self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>>;
     fn edges_with_property<'a>(&self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>>;
     fn edges_with_property_value<'a>(
         &self,
@@ -359,6 +360,10 @@ impl<B: DatastoreBackend> Datastore<B> {
             }
             Query::AllEdge(_) => {
                 let iter = self.backend.all_edges()?;
+                QueryOutputValue::Edges(iter.collect())
+            }
+            Query::SpecificEdge(ref q) => {
+                let iter = self.backend.specific_edges(&q.edges)?;
                 QueryOutputValue::Edges(iter.collect())
             }
             Query::Include(ref q) => {
