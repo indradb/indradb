@@ -3,12 +3,12 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::result::Result as StdResult;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
-    Datastore, DatastoreBackend, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Vertex,
+    Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Transaction, TransactionBuilder, Vertex,
 };
 
 use bincode::Error as BincodeError;
@@ -36,7 +36,7 @@ enum IndexedPropertyMember {
 }
 
 // All of the data is actually stored in this struct, which is stored
-// internally to the datastore itself. This way, we can wrap an rwlock around
+// internally to the datastore itself. This way, we can wrap a mutex around
 // the entire datastore, rather than on a per-data structure basis, as the
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -480,38 +480,34 @@ impl InternalMemory {
     }
 }
 
-/// An in-memory datastore.
-#[derive(Debug, Clone)]
-pub struct MemoryDatastoreBackend {
-    internal: Arc<RwLock<InternalMemory>>,
+pub struct MemoryTransaction<'a> {
+    internal: MutexGuard<'a, InternalMemory>,
     path: Option<PathBuf>,
 }
 
-impl DatastoreBackend for MemoryDatastoreBackend {
+impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     fn vertex_count(&self) -> u64 {
-        let internal = self.internal.read().unwrap();
-        internal.vertices.len() as u64
+        self.internal.vertices.len() as u64
     }
 
-    fn all_vertices<'a>(&self) -> Result<DynIter<'a, Vertex>> {
-        let internal = self.internal.read().unwrap();
-        let iter = internal.vertices.iter().map(|(id, t)| Vertex::with_id(*id, t.clone()));
+    fn all_vertices(&self) -> Result<DynIter<'a, Vertex>> {
+        let iter = self.internal.vertices.iter().map(|(id, t)| Vertex::with_id(*id, t.clone()));
         Ok(Box::new(iter))
     }
 
-    fn range_vertices<'a>(&self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+    fn range_vertices(&self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
         todo!();
     }
 
-    fn specific_vertices<'a>(&self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+    fn specific_vertices(&self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
         todo!();
     }
 
-    fn vertex_ids_with_property<'a>(&self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+    fn vertex_ids_with_property(&self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
         todo!();
     }
 
-    fn vertex_ids_with_property_value<'a>(
+    fn vertex_ids_with_property_value(
         &self,
         name: &Identifier,
         value: &serde_json::Value,
@@ -520,31 +516,30 @@ impl DatastoreBackend for MemoryDatastoreBackend {
     }
 
     fn edge_count(&self) -> u64 {
-        let internal = self.internal.read().unwrap();
-        internal.edges.len() as u64
+        self.internal.edges.len() as u64
     }
 
-    fn all_edges<'a>(&self) -> Result<DynIter<'a, Edge>> {
+    fn all_edges(&self) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn range_edges<'a>(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+    fn range_edges(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn range_reversed_edges<'a>(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+    fn range_reversed_edges(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn specific_edges<'a>(&self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+    fn specific_edges(&self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn edges_with_property<'a>(&self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
+    fn edges_with_property(&self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
         todo!();
     }
 
-    fn edges_with_property_value<'a>(
+    fn edges_with_property_value(
         &self,
         name: &Identifier,
         value: &serde_json::Value,
@@ -556,7 +551,7 @@ impl DatastoreBackend for MemoryDatastoreBackend {
         todo!();
     }
 
-    fn all_vertex_properties_for_vertex<'a>(
+    fn all_vertex_properties_for_vertex(
         &self,
         vertex: &Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
@@ -567,7 +562,7 @@ impl DatastoreBackend for MemoryDatastoreBackend {
         todo!();
     }
 
-    fn all_edge_properties_for_edge<'a>(&self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+    fn all_edge_properties_for_edge(&self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         todo!();
     }
 
@@ -589,11 +584,10 @@ impl DatastoreBackend for MemoryDatastoreBackend {
 
     fn sync(&self) -> Result<()> {
         if let Some(ref persist_path) = self.path {
-            let internal = self.internal.read().unwrap();
             let temp_path = NamedTempFile::new().map_err(|err| Error::Datastore(Box::new(err)))?;
             {
                 let mut buf = BufWriter::new(temp_path.as_file());
-                rmp_serde::encode::write(&mut buf, &*internal)?;
+                rmp_serde::encode::write(&mut buf, &*self.internal)?;
             }
             temp_path
                 .persist(persist_path)
@@ -603,10 +597,9 @@ impl DatastoreBackend for MemoryDatastoreBackend {
     }
 
     fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
-        let mut internal = self.internal.write().unwrap();
         let mut inserted = false;
 
-        internal.vertices.entry(vertex.id).or_insert_with(|| {
+        self.internal.vertices.entry(vertex.id).or_insert_with(|| {
             inserted = true;
             vertex.t.clone()
         });
@@ -615,31 +608,27 @@ impl DatastoreBackend for MemoryDatastoreBackend {
     }
 
     fn create_edge(&self, edge: &Edge) -> Result<bool> {
-        let mut internal = self.internal.write().unwrap();
-
-        if !internal.vertices.contains_key(&edge.outbound_id) || !internal.vertices.contains_key(&edge.inbound_id) {
+        if !self.internal.vertices.contains_key(&edge.outbound_id) || !self.internal.vertices.contains_key(&edge.inbound_id) {
             return Ok(false);
         }
 
-        internal.edges.insert(edge.clone());
-        internal.reversed_edges.insert(edge.reversed());
+        self.internal.edges.insert(edge.clone());
+        self.internal.reversed_edges.insert(edge.reversed());
         Ok(true)
     }
 
     fn index_property(&self, name: Identifier) -> Result<()> {
-        let mut internal = self.internal.write().unwrap();
-
         let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
-        for id in internal.vertices.keys() {
-            if let Some(value) = internal.vertex_properties.get(&(*id, name.clone())) {
+        for id in self.internal.vertices.keys() {
+            if let Some(value) = self.internal.vertex_properties.get(&(*id, name.clone())) {
                 property_container
                     .entry(value.clone())
                     .or_insert_with(HashSet::new)
                     .insert(IndexedPropertyMember::Vertex(*id));
             }
         }
-        for edge in internal.edges.iter() {
-            if let Some(value) = internal.edge_properties.get(&(edge.clone(), name.clone())) {
+        for edge in self.internal.edges.iter() {
+            if let Some(value) = self.internal.edge_properties.get(&(edge.clone(), name.clone())) {
                 property_container
                     .entry(value.clone())
                     .or_insert_with(HashSet::new)
@@ -647,7 +636,7 @@ impl DatastoreBackend for MemoryDatastoreBackend {
             }
         }
 
-        let existing_property_container = internal.property_values.entry(name).or_insert_with(HashMap::new);
+        let existing_property_container = self.internal.property_values.entry(name).or_insert_with(HashMap::new);
         for (value, members) in property_container.into_iter() {
             let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
             for member in members {
@@ -663,17 +652,16 @@ impl DatastoreBackend for MemoryDatastoreBackend {
         for vertex_id in &vertex_ids {
             deletable_vertex_properties.push((*vertex_id, name.clone()));
         }
-        let mut internal = self.internal.write().unwrap();
-        internal.delete_vertex_properties(deletable_vertex_properties);
+        self.internal.delete_vertex_properties(deletable_vertex_properties);
 
         let wrapped_value = Json::new(value);
         for vertex_id in &vertex_ids {
-            internal
+            self.internal
                 .vertex_properties
                 .insert((*vertex_id, name.clone()), wrapped_value.clone());
         }
 
-        if let Some(property_container) = internal.property_values.get_mut(&name) {
+        if let Some(property_container) = self.internal.property_values.get_mut(&name) {
             let property_container = property_container.entry(wrapped_value).or_insert_with(HashSet::new);
             for vertex_id in vertex_ids.into_iter() {
                 property_container.insert(IndexedPropertyMember::Vertex(vertex_id));
@@ -688,17 +676,16 @@ impl DatastoreBackend for MemoryDatastoreBackend {
         for edge in &edges {
             deletable_edge_properties.push((edge.clone(), name.clone()));
         }
-        let mut internal = self.internal.write().unwrap();
-        internal.delete_edge_properties(deletable_edge_properties);
+        self.internal.delete_edge_properties(deletable_edge_properties);
 
         let wrapped_value = Json::new(value);
         for edge in &edges {
-            internal
+            self.internal
                 .edge_properties
                 .insert((edge.clone(), name.clone()), wrapped_value.clone());
         }
 
-        if let Some(property_container) = internal.property_values.get_mut(&name) {
+        if let Some(property_container) = self.internal.property_values.get_mut(&name) {
             let property_container = property_container.entry(wrapped_value).or_insert_with(HashSet::new);
             for edge in edges.into_iter() {
                 property_container.insert(IndexedPropertyMember::Edge(edge));
@@ -709,9 +696,26 @@ impl DatastoreBackend for MemoryDatastoreBackend {
     }
 }
 
-pub fn default() -> Datastore<MemoryDatastoreBackend> {
-    Datastore::new(MemoryDatastoreBackend {
-        internal: Arc::new(RwLock::new(InternalMemory::default())),
+/// An in-memory datastore.
+#[derive(Debug, Clone)]
+pub struct MemoryTransactionBuilder {
+    internal: Arc<Mutex<InternalMemory>>,
+    path: Option<PathBuf>,
+}
+
+impl TransactionBuilder for MemoryTransactionBuilder {
+    type Transaction<'a> = MemoryTransaction<'a>;
+    fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
+        MemoryTransaction {
+            internal: self.internal.lock().unwrap(),
+            path: self.path.clone(),
+        }
+    }
+}
+
+pub fn default() -> Datastore<MemoryTransactionBuilder> {
+    Datastore::new(MemoryTransactionBuilder {
+        internal: Arc::new(Mutex::new(InternalMemory::default())),
         path: None,
     })
 }
@@ -722,13 +726,13 @@ pub fn default() -> Datastore<MemoryDatastoreBackend> {
 ///
 /// # Arguments
 /// * `path`: The path to the persisted image.
-pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryDatastoreBackend>, RmpDecodeError> {
+pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryTransactionBuilder>, RmpDecodeError> {
     let path = path.into();
     let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
     let buf = BufReader::new(f);
     let internal: InternalMemory = rmp_serde::from_read(buf)?;
-    Ok(Datastore::new(MemoryDatastoreBackend {
-        internal: Arc::new(RwLock::new(internal)),
+    Ok(Datastore::new(MemoryTransactionBuilder {
+        internal: Arc::new(Mutex::new(internal)),
         path: Some(path),
     }))
 }
@@ -739,9 +743,9 @@ pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryData
 ///
 /// # Arguments
 /// * `path`: The path to the persisted image.
-pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryDatastoreBackend>, BincodeError> {
-    Ok(Datastore::new(MemoryDatastoreBackend {
-        internal: Arc::new(RwLock::new(InternalMemory::default())),
+pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryTransactionBuilder>, BincodeError> {
+    Ok(Datastore::new(MemoryTransactionBuilder {
+        internal: Arc::new(Mutex::new(InternalMemory::default())),
         path: Some(path.into()),
     }))
 }
