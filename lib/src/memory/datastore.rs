@@ -491,7 +491,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         self.internal.vertices.len() as u64
     }
 
-    fn all_vertices(&self) -> Result<DynIter<'a, Vertex>> {
+    fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>> {
         let iter = self
             .internal
             .vertices
@@ -500,20 +500,20 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn range_vertices(&self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
         todo!();
     }
 
-    fn specific_vertices(&self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+    fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
         todo!();
     }
 
-    fn vertex_ids_with_property(&self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
         todo!();
     }
 
     fn vertex_ids_with_property_value(
-        &self,
+        &'a self,
         name: &Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Uuid>>> {
@@ -524,28 +524,28 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         self.internal.edges.len() as u64
     }
 
-    fn all_edges(&self) -> Result<DynIter<'a, Edge>> {
+    fn all_edges(&'a self) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn range_edges(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+    fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn range_reversed_edges(&self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+    fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn specific_edges(&self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+    fn specific_edges(&'a self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 
-    fn edges_with_property(&self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
+    fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
         todo!();
     }
 
     fn edges_with_property_value(
-        &self,
+        &'a self,
         name: &Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Edge>>> {
@@ -557,7 +557,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn all_vertex_properties_for_vertex(
-        &self,
+        &'a self,
         vertex: &Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         todo!();
@@ -567,23 +567,23 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         todo!();
     }
 
-    fn all_edge_properties_for_edge(&self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         todo!();
     }
 
-    fn delete_vertices(&self, vertices: Vec<Vertex>) -> Result<()> {
+    fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()> {
         todo!();
     }
 
-    fn delete_edges(&self, edges: Vec<Edge>) -> Result<()> {
+    fn delete_edges(&mut self, edges: Vec<Edge>) -> Result<()> {
         todo!();
     }
 
-    fn delete_vertex_properties(&self, props: Vec<(Vertex, Identifier, serde_json::Value)>) -> Result<()> {
+    fn delete_vertex_properties(&mut self, props: Vec<(Vertex, Identifier, serde_json::Value)>) -> Result<()> {
         todo!();
     }
 
-    fn delete_edge_properties(&self, props: Vec<(Edge, Identifier, serde_json::Value)>) -> Result<()> {
+    fn delete_edge_properties(&mut self, props: Vec<(Edge, Identifier, serde_json::Value)>) -> Result<()> {
         todo!();
     }
 
@@ -601,7 +601,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(())
     }
 
-    fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
+    fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
         let mut inserted = false;
 
         self.internal.vertices.entry(vertex.id).or_insert_with(|| {
@@ -612,7 +612,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(inserted)
     }
 
-    fn create_edge(&self, edge: &Edge) -> Result<bool> {
+    fn create_edge(&mut self, edge: &Edge) -> Result<bool> {
         if !self.internal.vertices.contains_key(&edge.outbound_id)
             || !self.internal.vertices.contains_key(&edge.inbound_id)
         {
@@ -624,7 +624,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(true)
     }
 
-    fn index_property(&self, name: Identifier) -> Result<()> {
+    fn index_property(&mut self, name: Identifier) -> Result<()> {
         let mut property_container: HashMap<Json, HashSet<IndexedPropertyMember>> = HashMap::new();
         for id in self.internal.vertices.keys() {
             if let Some(value) = self.internal.vertex_properties.get(&(*id, name.clone())) {
@@ -654,7 +654,12 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(())
     }
 
-    fn set_vertex_properties(&self, vertex_ids: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()> {
+    fn set_vertex_properties(
+        &mut self,
+        vertex_ids: Vec<Uuid>,
+        name: Identifier,
+        value: serde_json::Value,
+    ) -> Result<()> {
         let mut deletable_vertex_properties = Vec::new();
         for vertex_id in &vertex_ids {
             deletable_vertex_properties.push((*vertex_id, name.clone()));
@@ -678,7 +683,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(())
     }
 
-    fn set_edge_properties(&self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()> {
+    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()> {
         let mut deletable_edge_properties = Vec::new();
         for edge in &edges {
             deletable_edge_properties.push((edge.clone(), name.clone()));
