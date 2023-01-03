@@ -108,301 +108,6 @@ impl<B: TransactionBuilder> Datastore<B> {
         Self { builder }
     }
 
-    fn query<'a>(&self, txn: &'a B::Transaction<'a>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
-        // TODO: validate query
-        let value = match q {
-            Query::AllVertex(_) => {
-                let iter = txn.all_vertices()?;
-                QueryOutputValue::Vertices(iter.collect())
-            }
-            Query::RangeVertex(ref q) => {
-                let mut iter: DynIter<Vertex> = if let Some(start_id) = q.start_id {
-                    txn.range_vertices(start_id)?
-                } else {
-                    txn.all_vertices()?
-                };
-
-                if let Some(ref t) = q.t {
-                    iter = Box::new(iter.filter(move |v| &v.t == t));
-                }
-
-                iter = Box::new(iter.take(q.limit as usize));
-                QueryOutputValue::Vertices(iter.collect())
-            }
-            Query::SpecificVertex(ref q) => {
-                let iter = txn.specific_vertices(&q.ids)?;
-                QueryOutputValue::Vertices(iter.collect())
-            }
-            Query::Pipe(ref q) => {
-                self.query(txn, &*q.inner, output)?;
-                let piped_values = output.pop().unwrap();
-
-                let values = match piped_values {
-                    QueryOutputValue::Edges(ref piped_edges) => {
-                        let iter: DynIter<Uuid> = match q.direction {
-                            EdgeDirection::Outbound => Box::new(piped_edges.iter().map(|e| e.outbound_id)),
-                            EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
-                        };
-
-                        let mut iter: DynIter<Vertex> = txn.specific_vertices(&iter.collect())?;
-
-                        if let Some(ref t) = q.t {
-                            iter = Box::new(iter.filter(move |v| &v.t == t));
-                        }
-
-                        iter = Box::new(iter.take(q.limit as usize));
-
-                        QueryOutputValue::Vertices(iter.collect())
-                    }
-                    QueryOutputValue::Vertices(ref piped_vertices) => {
-                        let mut edges = Vec::new();
-
-                        for vertex in piped_vertices {
-                            let lower_bound = match &q.t {
-                                Some(t) => Edge::new(vertex.id, t.clone(), Uuid::default()),
-                                None => Edge::new(vertex.id, Identifier::default(), Uuid::default()),
-                            };
-
-                            let mut iter = if q.direction == EdgeDirection::Outbound {
-                                txn.range_edges(lower_bound)?
-                            } else {
-                                txn.range_reversed_edges(lower_bound)?
-                            };
-
-                            iter = Box::new(iter.take_while(move |edge| edge.outbound_id == vertex.id));
-
-                            if let Some(ref t) = q.t {
-                                iter = Box::new(iter.filter(move |edge| &edge.t == t));
-                            }
-
-                            if q.direction == EdgeDirection::Inbound {
-                                iter = Box::new(iter.map(move |edge| edge.reversed()));
-                            }
-
-                            iter = Box::new(iter.take((q.limit as usize) - edges.len()));
-
-                            for edge in iter {
-                                edges.push(edge);
-                            }
-
-                            if edges.len() >= (q.limit as usize) {
-                                break;
-                            }
-                        }
-
-                        QueryOutputValue::Edges(edges)
-                    }
-                    _ => {
-                        return Err(Error::Unsupported);
-                    }
-                };
-
-                if let Query::Include(_) = *q.inner {
-                    // keep the value exported
-                    output.push(piped_values);
-                }
-
-                values
-            }
-            Query::PipeProperty(ref q) => {
-                self.query(txn, &*q.inner, output)?;
-                let piped_values = output.pop().unwrap();
-
-                let values = match piped_values {
-                    QueryOutputValue::Edges(ref piped_edges) => {
-                        let mut edge_properties = Vec::new();
-                        for edge in piped_edges.into_iter() {
-                            if let Some(name) = &q.name {
-                                if let Some(value) = txn.edge_property(&edge, &name)? {
-                                    edge_properties.push((edge.clone(), name.clone(), value.clone()));
-                                }
-                            } else {
-                                for (prop_name, prop_value) in txn.all_edge_properties_for_edge(&edge)? {
-                                    edge_properties.push((edge.clone(), prop_name, prop_value));
-                                }
-                            }
-                        }
-
-                        QueryOutputValue::EdgeProperties(edge_properties)
-                    }
-                    QueryOutputValue::Vertices(ref piped_vertices) => {
-                        let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
-                        for vertex in piped_vertices.into_iter() {
-                            if let Some(name) = &q.name {
-                                if let Some(value) = txn.vertex_property(&vertex, &name)? {
-                                    vertex_properties.push((vertex.clone(), name.clone(), value.clone()));
-                                }
-                            } else {
-                                for (prop_name, prop_value) in txn.all_vertex_properties_for_vertex(&vertex)? {
-                                    vertex_properties.push((vertex.clone(), prop_name, prop_value));
-                                }
-                            }
-                        }
-
-                        QueryOutputValue::VertexProperties(vertex_properties)
-                    }
-                    _ => {
-                        return Err(Error::Unsupported);
-                    }
-                };
-
-                if let Query::Include(_) = *q.inner {
-                    // keep the value exported
-                    output.push(piped_values);
-                }
-
-                values
-            }
-            Query::VertexWithPropertyPresence(ref q) => {
-                if let Some(iter) = txn.vertex_ids_with_property(&q.name)? {
-                    let iter = txn.specific_vertices(&iter.collect())?;
-                    QueryOutputValue::Vertices(iter.collect())
-                } else {
-                    return Err(Error::NotIndexed);
-                }
-            }
-            Query::VertexWithPropertyValue(ref q) => {
-                if let Some(iter) = txn.vertex_ids_with_property_value(&q.name, &q.value)? {
-                    let iter = txn.specific_vertices(&iter.collect())?;
-                    QueryOutputValue::Vertices(iter.collect())
-                } else {
-                    return Err(Error::NotIndexed);
-                }
-            }
-            Query::EdgeWithPropertyPresence(ref q) => {
-                if let Some(iter) = txn.edges_with_property(&q.name)? {
-                    QueryOutputValue::Edges(iter.collect())
-                } else {
-                    return Err(Error::NotIndexed);
-                }
-            }
-            Query::EdgeWithPropertyValue(ref q) => {
-                if let Some(iter) = txn.edges_with_property_value(&q.name, &q.value)? {
-                    QueryOutputValue::Edges(iter.collect())
-                } else {
-                    return Err(Error::NotIndexed);
-                }
-            }
-            Query::PipeWithPropertyPresence(ref q) => {
-                self.query(txn, &*q.inner, output)?;
-                let piped_values = output.pop().unwrap();
-
-                let values = match piped_values {
-                    QueryOutputValue::Edges(ref piped_edges) => {
-                        // TODO: should `None` trigger `Error::NotIndexed`?
-                        let edges_with_property = match txn.edges_with_property(&q.name)? {
-                            Some(iter) => iter.collect::<HashSet<Edge>>(),
-                            None => HashSet::<Edge>::default(),
-                        };
-                        let iter = piped_edges.iter().filter(move |e| {
-                            let contains = edges_with_property.contains(&e);
-                            (q.exists && contains) || (!q.exists && !contains)
-                        });
-                        QueryOutputValue::Edges(iter.cloned().collect())
-                    }
-                    QueryOutputValue::Vertices(ref piped_vertices) => {
-                        // TODO: should `None` trigger `Error::NotIndexed`?
-                        let vertices_with_property = match txn.vertex_ids_with_property(&q.name)? {
-                            Some(iter) => iter.collect::<HashSet<Uuid>>(),
-                            None => HashSet::<Uuid>::default(),
-                        };
-                        let iter = piped_vertices.iter().filter(move |v| {
-                            let contains = vertices_with_property.contains(&v.id);
-                            (q.exists && contains) || (!q.exists && !contains)
-                        });
-                        QueryOutputValue::Vertices(iter.cloned().collect())
-                    }
-                    _ => {
-                        return Err(Error::Unsupported);
-                    }
-                };
-
-                if let Query::Include(_) = *q.inner {
-                    // keep the value exported
-                    output.push(piped_values);
-                }
-
-                values
-            }
-            Query::PipeWithPropertyValue(ref q) => {
-                self.query(txn, &*q.inner, output)?;
-                let piped_values = output.pop().unwrap();
-
-                let values = match piped_values {
-                    QueryOutputValue::Edges(ref piped_edges) => {
-                        // TODO: should `None` trigger `Error::NotIndexed`?
-                        let edges = match txn.edges_with_property_value(&q.name, &q.value)? {
-                            Some(iter) => iter.collect::<HashSet<Edge>>(),
-                            None => HashSet::<Edge>::default(),
-                        };
-                        let iter = piped_edges.iter().filter(move |e| {
-                            let contains = edges.contains(&e);
-                            (q.equal && contains) || (!q.equal && !contains)
-                        });
-                        QueryOutputValue::Edges(iter.cloned().collect())
-                    }
-                    QueryOutputValue::Vertices(ref piped_vertices) => {
-                        // TODO: should `None` trigger `Error::NotIndexed`?
-                        let vertex_ids = match txn.vertex_ids_with_property_value(&q.name, &q.value)? {
-                            Some(iter) => iter.collect::<HashSet<Uuid>>(),
-                            None => HashSet::<Uuid>::default(),
-                        };
-                        let iter = piped_vertices.iter().filter(move |v| {
-                            let contains = vertex_ids.contains(&v.id);
-                            (q.equal && contains) || (!q.equal && !contains)
-                        });
-                        QueryOutputValue::Vertices(iter.cloned().collect())
-                    }
-                    _ => {
-                        return Err(Error::Unsupported);
-                    }
-                };
-
-                if let Query::Include(_) = *q.inner {
-                    // keep the value exported
-                    output.push(piped_values);
-                }
-
-                values
-            }
-            Query::AllEdge(_) => {
-                let iter = txn.all_edges()?;
-                QueryOutputValue::Edges(iter.collect())
-            }
-            Query::SpecificEdge(ref q) => {
-                let iter = txn.specific_edges(&q.edges)?;
-                QueryOutputValue::Edges(iter.collect())
-            }
-            Query::Include(ref q) => {
-                self.query(txn, &*q.inner, output)?;
-                output.pop().unwrap()
-            }
-            Query::Count(ref q) => {
-                let count = match &*q.inner {
-                    // These paths are optimized
-                    Query::AllVertex(_) => txn.vertex_count(),
-                    Query::AllEdge(_) => txn.edge_count(),
-                    q => {
-                        self.query(txn, q, output)?;
-                        let piped_values = output.pop().unwrap();
-                        let len = match piped_values {
-                            QueryOutputValue::Vertices(v) => v.len(),
-                            QueryOutputValue::Edges(e) => e.len(),
-                            QueryOutputValue::VertexProperties(p) => p.len(),
-                            QueryOutputValue::EdgeProperties(p) => p.len(),
-                            _ => return Err(Error::Unsupported),
-                        };
-                        len as u64
-                    }
-                };
-                QueryOutputValue::Count(count as u64)
-            }
-        };
-
-        output.push(value);
-        Ok(())
-    }
-
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
     pub fn sync(&self) -> Result<()> {
@@ -453,14 +158,18 @@ impl<B: TransactionBuilder> Datastore<B> {
         let txn = self.builder.transaction();
         // TODO: use `Vec::with_capacity`.
         let mut output = Vec::new();
-        self.query(&txn, &q, &mut output)?;
+        unsafe {
+            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+        }
         Ok(output)
     }
 
     pub fn delete(&self, q: Query) -> Result<()> {
         let txn = self.builder.transaction();
         let mut output = Vec::new();
-        self.query(&txn, &q, &mut output)?;
+        unsafe {
+            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+        }
         match output.pop().unwrap() {
             QueryOutputValue::Vertices(vertices) => {
                 txn.delete_vertices(vertices)?;
@@ -488,7 +197,9 @@ impl<B: TransactionBuilder> Datastore<B> {
     pub fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
         let txn = self.builder.transaction();
         let mut output = Vec::new();
-        self.query(&txn, &q, &mut output)?;
+        unsafe {
+            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+        }
 
         match output.pop().unwrap() {
             QueryOutputValue::Vertices(vertices) => {
@@ -734,4 +445,300 @@ fn expect_count(mut output: Vec<QueryOutputValue>) -> Result<u64> {
     } else {
         unreachable!()
     }
+}
+
+
+unsafe fn query<'a, T: Transaction<'a> + 'a>(txn: *const T, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
+    // TODO: validate query
+    let value = match q {
+        Query::AllVertex(_) => {
+            let iter = (*txn).all_vertices()?;
+            QueryOutputValue::Vertices(iter.collect())
+        }
+        Query::RangeVertex(ref q) => {
+            let mut iter: DynIter<Vertex> = if let Some(start_id) = q.start_id {
+                (*txn).range_vertices(start_id)?
+            } else {
+                (*txn).all_vertices()?
+            };
+
+            if let Some(ref t) = q.t {
+                iter = Box::new(iter.filter(move |v| &v.t == t));
+            }
+
+            iter = Box::new(iter.take(q.limit as usize));
+            QueryOutputValue::Vertices(iter.collect())
+        }
+        Query::SpecificVertex(ref q) => {
+            let iter = (*txn).specific_vertices(&q.ids)?;
+            QueryOutputValue::Vertices(iter.collect())
+        }
+        Query::Pipe(ref q) => {
+            query(txn, &*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    let iter: DynIter<Uuid> = match q.direction {
+                        EdgeDirection::Outbound => Box::new(piped_edges.iter().map(|e| e.outbound_id)),
+                        EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
+                    };
+
+                    let mut iter: DynIter<Vertex> = (*txn).specific_vertices(&iter.collect())?;
+
+                    if let Some(ref t) = q.t {
+                        iter = Box::new(iter.filter(move |v| &v.t == t));
+                    }
+
+                    iter = Box::new(iter.take(q.limit as usize));
+
+                    QueryOutputValue::Vertices(iter.collect())
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let mut edges = Vec::new();
+
+                    for vertex in piped_vertices {
+                        let lower_bound = match &q.t {
+                            Some(t) => Edge::new(vertex.id, t.clone(), Uuid::default()),
+                            None => Edge::new(vertex.id, Identifier::default(), Uuid::default()),
+                        };
+
+                        let mut iter = if q.direction == EdgeDirection::Outbound {
+                            (*txn).range_edges(lower_bound)?
+                        } else {
+                            (*txn).range_reversed_edges(lower_bound)?
+                        };
+
+                        iter = Box::new(iter.take_while(move |edge| edge.outbound_id == vertex.id));
+
+                        if let Some(ref t) = q.t {
+                            iter = Box::new(iter.filter(move |edge| &edge.t == t));
+                        }
+
+                        if q.direction == EdgeDirection::Inbound {
+                            iter = Box::new(iter.map(move |edge| edge.reversed()));
+                        }
+
+                        iter = Box::new(iter.take((q.limit as usize) - edges.len()));
+
+                        for edge in iter {
+                            edges.push(edge);
+                        }
+
+                        if edges.len() >= (q.limit as usize) {
+                            break;
+                        }
+                    }
+
+                    QueryOutputValue::Edges(edges)
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
+        }
+        Query::PipeProperty(ref q) => {
+            query(txn, &*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    let mut edge_properties = Vec::new();
+                    for edge in piped_edges.into_iter() {
+                        if let Some(name) = &q.name {
+                            if let Some(value) = (*txn).edge_property(&edge, &name)? {
+                                edge_properties.push((edge.clone(), name.clone(), value.clone()));
+                            }
+                        } else {
+                            for (prop_name, prop_value) in (*txn).all_edge_properties_for_edge(&edge)? {
+                                edge_properties.push((edge.clone(), prop_name, prop_value));
+                            }
+                        }
+                    }
+
+                    QueryOutputValue::EdgeProperties(edge_properties)
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
+                    for vertex in piped_vertices.into_iter() {
+                        if let Some(name) = &q.name {
+                            if let Some(value) = (*txn).vertex_property(&vertex, &name)? {
+                                vertex_properties.push((vertex.clone(), name.clone(), value.clone()));
+                            }
+                        } else {
+                            for (prop_name, prop_value) in (*txn).all_vertex_properties_for_vertex(&vertex)? {
+                                vertex_properties.push((vertex.clone(), prop_name, prop_value));
+                            }
+                        }
+                    }
+
+                    QueryOutputValue::VertexProperties(vertex_properties)
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
+        }
+        Query::VertexWithPropertyPresence(ref q) => {
+            if let Some(iter) = (*txn).vertex_ids_with_property(&q.name)? {
+                let iter = (*txn).specific_vertices(&iter.collect())?;
+                QueryOutputValue::Vertices(iter.collect())
+            } else {
+                return Err(Error::NotIndexed);
+            }
+        }
+        Query::VertexWithPropertyValue(ref q) => {
+            if let Some(iter) = (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
+                let iter = (*txn).specific_vertices(&iter.collect())?;
+                QueryOutputValue::Vertices(iter.collect())
+            } else {
+                return Err(Error::NotIndexed);
+            }
+        }
+        Query::EdgeWithPropertyPresence(ref q) => {
+            if let Some(iter) = (*txn).edges_with_property(&q.name)? {
+                QueryOutputValue::Edges(iter.collect())
+            } else {
+                return Err(Error::NotIndexed);
+            }
+        }
+        Query::EdgeWithPropertyValue(ref q) => {
+            if let Some(iter) = (*txn).edges_with_property_value(&q.name, &q.value)? {
+                QueryOutputValue::Edges(iter.collect())
+            } else {
+                return Err(Error::NotIndexed);
+            }
+        }
+        Query::PipeWithPropertyPresence(ref q) => {
+            query(txn, &*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    // TODO: should `None` trigger `Error::NotIndexed`?
+                    let edges_with_property = match (*txn).edges_with_property(&q.name)? {
+                        Some(iter) => iter.collect::<HashSet<Edge>>(),
+                        None => HashSet::<Edge>::default(),
+                    };
+                    let iter = piped_edges.iter().filter(move |e| {
+                        let contains = edges_with_property.contains(&e);
+                        (q.exists && contains) || (!q.exists && !contains)
+                    });
+                    QueryOutputValue::Edges(iter.cloned().collect())
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    // TODO: should `None` trigger `Error::NotIndexed`?
+                    let vertices_with_property = match (*txn).vertex_ids_with_property(&q.name)? {
+                        Some(iter) => iter.collect::<HashSet<Uuid>>(),
+                        None => HashSet::<Uuid>::default(),
+                    };
+                    let iter = piped_vertices.iter().filter(move |v| {
+                        let contains = vertices_with_property.contains(&v.id);
+                        (q.exists && contains) || (!q.exists && !contains)
+                    });
+                    QueryOutputValue::Vertices(iter.cloned().collect())
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
+        }
+        Query::PipeWithPropertyValue(ref q) => {
+            query(txn, &*q.inner, output)?;
+            let piped_values = output.pop().unwrap();
+
+            let values = match piped_values {
+                QueryOutputValue::Edges(ref piped_edges) => {
+                    // TODO: should `None` trigger `Error::NotIndexed`?
+                    let edges = match (*txn).edges_with_property_value(&q.name, &q.value)? {
+                        Some(iter) => iter.collect::<HashSet<Edge>>(),
+                        None => HashSet::<Edge>::default(),
+                    };
+                    let iter = piped_edges.iter().filter(move |e| {
+                        let contains = edges.contains(&e);
+                        (q.equal && contains) || (!q.equal && !contains)
+                    });
+                    QueryOutputValue::Edges(iter.cloned().collect())
+                }
+                QueryOutputValue::Vertices(ref piped_vertices) => {
+                    // TODO: should `None` trigger `Error::NotIndexed`?
+                    let vertex_ids = match (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
+                        Some(iter) => iter.collect::<HashSet<Uuid>>(),
+                        None => HashSet::<Uuid>::default(),
+                    };
+                    let iter = piped_vertices.iter().filter(move |v| {
+                        let contains = vertex_ids.contains(&v.id);
+                        (q.equal && contains) || (!q.equal && !contains)
+                    });
+                    QueryOutputValue::Vertices(iter.cloned().collect())
+                }
+                _ => {
+                    return Err(Error::Unsupported);
+                }
+            };
+
+            if let Query::Include(_) = *q.inner {
+                // keep the value exported
+                output.push(piped_values);
+            }
+
+            values
+        }
+        Query::AllEdge(_) => {
+            let iter = (*txn).all_edges()?;
+            QueryOutputValue::Edges(iter.collect())
+        }
+        Query::SpecificEdge(ref q) => {
+            let iter = (*txn).specific_edges(&q.edges)?;
+            QueryOutputValue::Edges(iter.collect())
+        }
+        Query::Include(ref q) => {
+            query(txn, &*q.inner, output)?;
+            output.pop().unwrap()
+        }
+        Query::Count(ref q) => {
+            let count = match &*q.inner {
+                // These paths are optimized
+                Query::AllVertex(_) => (*txn).vertex_count(),
+                Query::AllEdge(_) => (*txn).edge_count(),
+                q => {
+                    query(txn, q, output)?;
+                    let piped_values = output.pop().unwrap();
+                    let len = match piped_values {
+                        QueryOutputValue::Vertices(v) => v.len(),
+                        QueryOutputValue::Edges(e) => e.len(),
+                        QueryOutputValue::VertexProperties(p) => p.len(),
+                        QueryOutputValue::EdgeProperties(p) => p.len(),
+                        _ => return Err(Error::Unsupported),
+                    };
+                    len as u64
+                }
+            };
+            QueryOutputValue::Count(count as u64)
+        }
+    };
+
+    output.push(value);
+    Ok(())
 }
