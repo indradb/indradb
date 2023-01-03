@@ -8,7 +8,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
-    Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Transaction, TransactionBuilder, Vertex,
+    Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Transaction,
+    TransactionBuilder, Vertex,
 };
 
 use bincode::Error as BincodeError;
@@ -491,7 +492,11 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn all_vertices(&self) -> Result<DynIter<'a, Vertex>> {
-        let iter = self.internal.vertices.iter().map(|(id, t)| Vertex::with_id(*id, t.clone()));
+        let iter = self
+            .internal
+            .vertices
+            .iter()
+            .map(|(id, t)| Vertex::with_id(*id, t.clone()));
         Ok(Box::new(iter))
     }
 
@@ -608,7 +613,9 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn create_edge(&self, edge: &Edge) -> Result<bool> {
-        if !self.internal.vertices.contains_key(&edge.outbound_id) || !self.internal.vertices.contains_key(&edge.inbound_id) {
+        if !self.internal.vertices.contains_key(&edge.outbound_id)
+            || !self.internal.vertices.contains_key(&edge.inbound_id)
+        {
             return Ok(false);
         }
 

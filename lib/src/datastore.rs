@@ -86,7 +86,9 @@ pub trait Transaction<'a> {
 }
 
 pub trait TransactionBuilder {
-    type Transaction<'a>: Transaction<'a> where Self: 'a;
+    type Transaction<'a>: Transaction<'a>
+    where
+        Self: 'a;
     fn transaction<'a>(&'a self) -> Self::Transaction<'a>;
 }
 
@@ -100,7 +102,7 @@ pub trait TransactionBuilder {
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
 pub struct Datastore<B: TransactionBuilder> {
-    builder: B
+    builder: B,
 }
 
 impl<B: TransactionBuilder> Datastore<B> {
@@ -447,8 +449,11 @@ fn expect_count(mut output: Vec<QueryOutputValue>) -> Result<u64> {
     }
 }
 
-
-unsafe fn query<'a, T: Transaction<'a> + 'a>(txn: *const T, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
+unsafe fn query<'a, T: Transaction<'a> + 'a>(
+    txn: *const T,
+    q: &Query,
+    output: &mut Vec<QueryOutputValue>,
+) -> Result<()> {
     // TODO: validate query
     let value = match q {
         Query::AllVertex(_) => {
