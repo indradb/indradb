@@ -1,6 +1,6 @@
-use crate::{Datastore, TransactionBuilder};
+use crate::{Database, Datastore};
 
-pub fn should_sync<T: TransactionBuilder>(datastore: &Datastore<T>) {
+pub fn should_sync<D: Datastore>(db: &Database<D>) {
     // just make sure that it runs fine
-    datastore.sync().unwrap();
+    db.sync().unwrap();
 }

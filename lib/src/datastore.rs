@@ -85,7 +85,7 @@ pub trait Transaction<'a> {
     fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()>;
 }
 
-pub trait TransactionBuilder {
+pub trait Datastore {
     type Transaction<'a>: Transaction<'a>
     where
         Self: 'a;
@@ -101,19 +101,19 @@ pub trait TransactionBuilder {
 /// # Errors
 /// All methods may return an error if something unexpected happens - e.g.
 /// if there was a problem connecting to the underlying database.
-pub struct Datastore<B: TransactionBuilder> {
-    builder: B,
+pub struct Database<D: Datastore> {
+    datastore: D,
 }
 
-impl<B: TransactionBuilder> Datastore<B> {
-    pub fn new(builder: B) -> Datastore<B> {
-        Self { builder }
+impl<D: Datastore> Database<D> {
+    pub fn new(datastore: D) -> Database<D> {
+        Self { datastore }
     }
 
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
     pub fn sync(&self) -> Result<()> {
-        let txn = self.builder.transaction();
+        let txn = self.datastore.transaction();
         txn.sync()
     }
 
@@ -124,7 +124,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `vertex`: The vertex to create.
     pub fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         txn.create_vertex(vertex)
     }
 
@@ -152,25 +152,25 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `edge`: The edge to create.
     pub fn create_edge(&self, edge: &Edge) -> Result<bool> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         txn.create_edge(edge)
     }
 
     pub fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
-        let txn = self.builder.transaction();
+        let txn = self.datastore.transaction();
         // TODO: use `Vec::with_capacity`.
         let mut output = Vec::new();
         unsafe {
-            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+            query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }
         Ok(output)
     }
 
     pub fn delete(&self, q: Query) -> Result<()> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         let mut output = Vec::new();
         unsafe {
-            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+            query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }
         match output.pop().unwrap() {
             QueryOutputValue::Vertices(vertices) => {
@@ -207,10 +207,10 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// * `name`: The property name.
     /// * `value`: The property value.
     pub fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         let mut output = Vec::new();
         unsafe {
-            query(&txn as *const B::Transaction<'_>, &q, &mut output)?;
+            query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }
 
         match output.pop().unwrap() {
@@ -230,7 +230,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `items`: The items to insert.
     pub fn bulk_insert(&self, items: Vec<BulkInsertItem>) -> Result<()> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         txn.bulk_insert(items)
     }
 
@@ -240,7 +240,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     // # Arguments
     // * `name`: The name of the property to index.
     pub fn index_property(&self, name: Identifier) -> Result<()> {
-        let mut txn = self.builder.transaction();
+        let mut txn = self.datastore.transaction();
         txn.index_property(name)
     }
 

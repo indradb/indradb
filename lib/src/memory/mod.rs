@@ -5,7 +5,7 @@
 
 mod datastore;
 
-pub use datastore::{create_msgpack, default, read_msgpack, MemoryTransactionBuilder};
+pub use datastore::MemoryDatastore;
 
 #[cfg(feature = "bench-suite")]
 full_bench_impl!(MemoryDatastore::default());
@@ -13,32 +13,29 @@ full_bench_impl!(MemoryDatastore::default());
 #[cfg(feature = "test-suite")]
 #[cfg(test)]
 mod tests {
-    use super::{create_msgpack, default, read_msgpack, MemoryTransactionBuilder};
-    use crate::{Datastore, Identifier, SpecificVertexQuery};
+    use super::MemoryDatastore;
+    use crate::{Database, Identifier, SpecificVertexQuery};
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
-    full_test_impl!(default());
+    full_test_impl!(MemoryDatastore::default());
 
     #[allow(deprecated)]
-    fn create_vertex_with_property(datastore: &Datastore<MemoryTransactionBuilder>) -> Uuid {
-        let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
-        datastore
-            .set_properties(
-                SpecificVertexQuery::single(id).into(),
-                Identifier::default(),
-                serde_json::Value::Bool(true),
-            )
-            .unwrap();
+    fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
+        let id = db.create_vertex_from_type(Identifier::default()).unwrap();
+        db.set_properties(
+            SpecificVertexQuery::single(id).into(),
+            Identifier::default(),
+            serde_json::Value::Bool(true),
+        )
+        .unwrap();
         id
     }
 
     #[allow(deprecated)]
-    fn expect_vertex(datastore: &Datastore<MemoryTransactionBuilder>, id: Uuid) {
-        assert_eq!(datastore.get_vertex_count().unwrap(), 1);
-        let vertices = datastore
-            .get_vertices(SpecificVertexQuery::new(vec![id]).into())
-            .unwrap();
+    fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
+        assert_eq!(db.get_vertex_count().unwrap(), 1);
+        let vertices = db.get_vertices(SpecificVertexQuery::new(vec![id]).into()).unwrap();
         assert_eq!(vertices.len(), 1);
         assert_eq!(vertices[0].id, id);
         assert_eq!(vertices[0].t, Identifier::default());
@@ -47,10 +44,10 @@ mod tests {
     #[test]
     fn should_serialize_msgpack() {
         let path = NamedTempFile::new().unwrap();
-        let datastore = create_msgpack(path.path()).unwrap();
-        let id = create_vertex_with_property(&datastore);
-        datastore.sync().unwrap();
-        let datastore = read_msgpack(path.path()).unwrap();
-        expect_vertex(&datastore, id);
+        let db = MemoryDatastore::create_msgpack(path.path()).unwrap();
+        let id = create_vertex_with_property(&db);
+        db.sync().unwrap();
+        let db = MemoryDatastore::read_msgpack(path.path()).unwrap();
+        expect_vertex(&db, id);
     }
 }

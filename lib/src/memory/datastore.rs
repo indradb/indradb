@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::errors::{Error, Result};
 use crate::util;
-use crate::{Datastore, DynIter, Edge, Identifier, Json, Transaction, TransactionBuilder, Vertex};
+use crate::{Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
 use bincode::Error as BincodeError;
 use rmp_serde::decode::Error as RmpDecodeError;
@@ -431,12 +431,51 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
 
 /// An in-memory datastore.
 #[derive(Debug, Clone)]
-pub struct MemoryTransactionBuilder {
+pub struct MemoryDatastore {
     internal: Arc<Mutex<InternalMemory>>,
     path: Option<PathBuf>,
 }
 
-impl TransactionBuilder for MemoryTransactionBuilder {
+impl MemoryDatastore {
+    pub fn default() -> Database<MemoryDatastore> {
+        Database::new(MemoryDatastore {
+            internal: Arc::new(Mutex::new(InternalMemory::default())),
+            path: None,
+        })
+    }
+
+    /// Reads a persisted image from disk. Calls to sync will overwrite the
+    /// file at the specified path. Uses msgpack, which unlike bincode
+    /// supports properties.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, RmpDecodeError> {
+        let path = path.into();
+        let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
+        let buf = BufReader::new(f);
+        let internal: InternalMemory = rmp_serde::from_read(buf)?;
+        Ok(Database::new(MemoryDatastore {
+            internal: Arc::new(Mutex::new(internal)),
+            path: Some(path),
+        }))
+    }
+
+    /// Creates a new datastore. Calls to sync will overwrite the file at the
+    /// specified path, but as opposed to `read`, this will not read the file
+    /// first. Uses msgpack, which unlike bincode supports properties.
+    ///
+    /// # Arguments
+    /// * `path`: The path to the persisted image.
+    pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, BincodeError> {
+        Ok(Database::new(MemoryDatastore {
+            internal: Arc::new(Mutex::new(InternalMemory::default())),
+            path: Some(path.into()),
+        }))
+    }
+}
+
+impl Datastore for MemoryDatastore {
     type Transaction<'a> = MemoryTransaction<'a>;
     fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
         MemoryTransaction {
@@ -444,41 +483,4 @@ impl TransactionBuilder for MemoryTransactionBuilder {
             path: self.path.clone(),
         }
     }
-}
-
-pub fn default() -> Datastore<MemoryTransactionBuilder> {
-    Datastore::new(MemoryTransactionBuilder {
-        internal: Arc::new(Mutex::new(InternalMemory::default())),
-        path: None,
-    })
-}
-
-/// Reads a persisted image from disk. Calls to sync will overwrite the
-/// file at the specified path. Uses msgpack, which unlike bincode
-/// supports properties.
-///
-/// # Arguments
-/// * `path`: The path to the persisted image.
-pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryTransactionBuilder>, RmpDecodeError> {
-    let path = path.into();
-    let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
-    let buf = BufReader::new(f);
-    let internal: InternalMemory = rmp_serde::from_read(buf)?;
-    Ok(Datastore::new(MemoryTransactionBuilder {
-        internal: Arc::new(Mutex::new(internal)),
-        path: Some(path),
-    }))
-}
-
-/// Creates a new datastore. Calls to sync will overwrite the file at the
-/// specified path, but as opposed to `read`, this will not read the file
-/// first. Uses msgpack, which unlike bincode supports properties.
-///
-/// # Arguments
-/// * `path`: The path to the persisted image.
-pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Datastore<MemoryTransactionBuilder>, BincodeError> {
-    Ok(Datastore::new(MemoryTransactionBuilder {
-        internal: Arc::new(Mutex::new(InternalMemory::default())),
-        path: Some(path.into()),
-    }))
 }
