@@ -5,7 +5,7 @@
 
 mod datastore;
 
-pub use datastore::{default, create_msgpack, read_msgpack, MemoryTransactionBuilder};
+pub use datastore::{create_msgpack, default, read_msgpack, MemoryTransactionBuilder};
 
 #[cfg(feature = "bench-suite")]
 full_bench_impl!(MemoryDatastore::default());
@@ -13,7 +13,7 @@ full_bench_impl!(MemoryDatastore::default());
 #[cfg(feature = "test-suite")]
 #[cfg(test)]
 mod tests {
-    use super::{read_msgpack, create_msgpack, default, MemoryTransactionBuilder};
+    use super::{create_msgpack, default, read_msgpack, MemoryTransactionBuilder};
     use crate::{Datastore, Identifier, SpecificVertexQuery};
     use tempfile::NamedTempFile;
     use uuid::Uuid;
