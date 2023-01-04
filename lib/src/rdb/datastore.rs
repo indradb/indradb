@@ -968,5 +968,3 @@ impl Datastore for RocksdbDatastore {
         Ok(())
     }
 }
-
-impl crate::compat::DatastoreV3CompatExt for MemoryDatastore {}

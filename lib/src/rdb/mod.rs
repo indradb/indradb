@@ -8,7 +8,6 @@ pub use self::datastore::RocksdbDatastore;
 #[cfg(feature = "bench-suite")]
 full_bench_impl!({
     use super::RocksdbDatastore;
-    use crate::compat::DatastoreV3CompatExt;
     use tempfile::tempdir;
     let path = tempdir().unwrap().into_path();
     RocksdbDatastore::new(path, Some(1)).unwrap()
@@ -17,7 +16,6 @@ full_bench_impl!({
 #[cfg(feature = "test-suite")]
 full_test_impl!({
     use super::RocksdbDatastore;
-    use crate::compat::DatastoreV3CompatExt;
     use tempfile::tempdir;
     let path = tempdir().unwrap().into_path();
     RocksdbDatastore::new(path, Some(1)).unwrap()
@@ -27,7 +25,6 @@ full_test_impl!({
 #[test]
 fn should_repair() {
     use super::RocksdbDatastore;
-    use crate::compat::DatastoreV3CompatExt;
     use tempfile::tempdir;
 
     let dir = tempdir().unwrap();
