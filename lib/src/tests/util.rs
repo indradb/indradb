@@ -1,8 +1,8 @@
-use crate::{models, Datastore};
+use crate::{models, Datastore, TransactionBuilder};
 
 use uuid::Uuid;
 
-pub fn create_edge_from<D: Datastore>(datastore: &D, outbound_id: Uuid) -> Uuid {
+pub fn create_edge_from<T: TransactionBuilder>(datastore: &Datastore<T>, outbound_id: Uuid) -> Uuid {
     let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
     let inbound_v = models::Vertex::new(inbound_vertex_t);
     datastore.create_vertex(&inbound_v).unwrap();
@@ -12,7 +12,7 @@ pub fn create_edge_from<D: Datastore>(datastore: &D, outbound_id: Uuid) -> Uuid 
     inbound_v.id
 }
 
-pub fn create_edges<D: Datastore>(datastore: &D) -> (Uuid, [Uuid; 5]) {
+pub fn create_edges<T: TransactionBuilder>(datastore: &Datastore<T>) -> (Uuid, [Uuid; 5]) {
     let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(outbound_vertex_t);
     datastore.create_vertex(&outbound_v).unwrap();

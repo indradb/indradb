@@ -7,10 +7,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::errors::{Error, Result};
 use crate::util;
-use crate::{
-    Datastore, DynIter, Edge, Identifier, Json, Transaction,
-    TransactionBuilder, Vertex,
-};
+use crate::{Datastore, DynIter, Edge, Identifier, Json, Transaction, TransactionBuilder, Vertex};
 
 use bincode::Error as BincodeError;
 use rmp_serde::decode::Error as RmpDecodeError;

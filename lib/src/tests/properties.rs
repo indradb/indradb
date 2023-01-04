@@ -1,9 +1,10 @@
-use crate::compat::DatastoreV3CompatExt;
-use crate::{Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use crate::{
+    Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, TransactionBuilder, Vertex,
+};
 
 use uuid::Uuid;
 
-pub fn should_handle_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_handle_vertex_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let t = Identifier::new("test_vertex_type").unwrap();
     let v = Vertex::new(t);
     datastore.create_vertex(&v).unwrap();
@@ -37,7 +38,7 @@ pub fn should_handle_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_get_all_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_get_all_vertex_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let t = Identifier::new("a_vertex").unwrap();
     let v1 = &Vertex::new(t.clone());
     let v2 = &Vertex::new(t.clone());
@@ -82,7 +83,7 @@ pub fn should_get_all_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) 
     assert_eq!(result_3.len(), 0);
 }
 
-pub fn should_not_set_invalid_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_not_set_invalid_vertex_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let q = SpecificVertexQuery::single(Uuid::default()).property(Identifier::new("foo").unwrap());
     datastore
         .set_vertex_properties(q.clone(), serde_json::Value::Null)
@@ -91,7 +92,7 @@ pub fn should_not_set_invalid_vertex_properties<D: DatastoreV3CompatExt>(datasto
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_vertex_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_not_delete_invalid_vertex_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let q = SpecificVertexQuery::single(Uuid::default()).property(Identifier::new("foo").unwrap());
 
     datastore.delete_vertex_properties(q).unwrap();
@@ -103,7 +104,7 @@ pub fn should_not_delete_invalid_vertex_properties<D: DatastoreV3CompatExt>(data
     datastore.delete_vertex_properties(q).unwrap();
 }
 
-pub fn should_handle_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_handle_edge_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -143,7 +144,7 @@ pub fn should_handle_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_get_all_edge_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -185,7 +186,7 @@ pub fn should_get_all_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_not_set_invalid_edge_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     let q = SpecificEdgeQuery::single(edge).property(Identifier::new("bar").unwrap());
     datastore
@@ -195,7 +196,7 @@ pub fn should_not_set_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_edge_properties<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_not_delete_invalid_edge_properties<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     datastore
         .delete_edge_properties(SpecificEdgeQuery::single(edge).property(Identifier::new("bar").unwrap()))

@@ -1,7 +1,9 @@
-use crate::compat::DatastoreV3CompatExt;
-use crate::{BulkInsertItem, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use crate::{
+    BulkInsertItem, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, TransactionBuilder,
+    Vertex,
+};
 
-pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_bulk_insert<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -82,7 +84,7 @@ pub fn should_bulk_insert<D: DatastoreV3CompatExt>(datastore: &D) {
 }
 
 // Bulk insert allows for redundant vertex insertion
-pub fn should_bulk_insert_a_redundant_vertex<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_bulk_insert_a_redundant_vertex<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let vertex = Vertex::new(vertex_t);
 
@@ -94,7 +96,7 @@ pub fn should_bulk_insert_a_redundant_vertex<D: DatastoreV3CompatExt>(datastore:
 
 // As an optimization, bulk insert does not verify that the vertices
 // associated with an inserted edge exist; this verifies that
-pub fn should_bulk_insert_an_invalid_edge<D: DatastoreV3CompatExt>(datastore: &D) {
+pub fn should_bulk_insert_an_invalid_edge<T: TransactionBuilder>(datastore: &Datastore<T>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let v1 = Vertex::new(vertex_t.clone());
     let v2 = Vertex::new(vertex_t);
