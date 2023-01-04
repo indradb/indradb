@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use crate::errors::{Error, Result};
 use crate::util;
 use crate::{
-    Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Transaction,
+    Datastore, DynIter, Edge, Identifier, Json, Transaction,
     TransactionBuilder, Vertex,
 };
 
@@ -89,9 +89,10 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
-        let iter = iter_vertex_values!(self, ids.iter());
-        let iter = iter.map(|(id, t)| Vertex::with_id(*id, t.clone()));
-        Ok(Box::new(iter))
+        let vertices: Vec<Vertex> = iter_vertex_values!(self, ids.iter())
+            .map(|(id, t)| Vertex::with_id(*id, t.clone()))
+            .collect();
+        Ok(Box::new(vertices.into_iter()))
     }
 
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
@@ -243,7 +244,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
 
                 deletable_vertex_properties.push(property_key.clone());
             }
-            self.delete_vertex_properties(deletable_vertex_properties);
+            self.delete_vertex_properties(deletable_vertex_properties)?;
 
             let mut deletable_edges: Vec<Edge> = Vec::new();
             for edge in self.internal.edges.iter() {
@@ -251,7 +252,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     deletable_edges.push(edge.clone());
                 }
             }
-            self.delete_edges(deletable_edges);
+            self.delete_edges(deletable_edges)?;
         }
         Ok(())
     }
@@ -387,7 +388,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for vertex_id in &vertex_ids {
             deletable_vertex_properties.push((*vertex_id, name.clone()));
         }
-        self.delete_vertex_properties(deletable_vertex_properties);
+        self.delete_vertex_properties(deletable_vertex_properties)?;
 
         let wrapped_value = Json::new(value);
         for vertex_id in &vertex_ids {
@@ -411,7 +412,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for edge in &edges {
             deletable_edge_properties.push((edge.clone(), name.clone()));
         }
-        self.delete_edge_properties(deletable_edge_properties);
+        self.delete_edge_properties(deletable_edge_properties)?;
 
         let wrapped_value = Json::new(value);
         for edge in &edges {

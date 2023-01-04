@@ -249,7 +249,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_vertices(&self, q: Query) -> Result<Vec<Vertex>> {
+    pub fn get_vertices(&self, q: Query) -> Result<Vec<Vertex>> {
         if let Some(QueryOutputValue::Vertices(vertices)) = self.get(q)?.pop() {
             Ok(vertices)
         } else {
@@ -262,14 +262,14 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_vertices(&self, q: Query) -> Result<()> {
+    pub fn delete_vertices(&self, q: Query) -> Result<()> {
         // NOTE: this runs the risk of deleting non-vertices
         self.delete(q)
     }
 
     /// Gets the number of vertices in the datastore.
     #[deprecated(since = "4.0.0", note = "use `get` with a count query")]
-    fn get_vertex_count(&self) -> Result<u64> {
+    pub fn get_vertex_count(&self) -> Result<u64> {
         expect_count(self.get(AllVertexQuery.count().into())?)
     }
 
@@ -278,7 +278,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_edges(&self, q: Query) -> Result<Vec<Edge>> {
+    pub fn get_edges(&self, q: Query) -> Result<Vec<Edge>> {
         if let Some(QueryOutputValue::Edges(edges)) = self.get(q)?.pop() {
             Ok(edges)
         } else {
@@ -291,7 +291,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_edges(&self, q: Query) -> Result<()> {
+    pub fn delete_edges(&self, q: Query) -> Result<()> {
         // NOTE: this runs the risk of deleting non-edges
         self.delete(q)
     }
@@ -303,7 +303,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// * `t`: Only get the count for a specified edge type.
     /// * `direction`: The direction of edges to get.
     #[deprecated(since = "4.0.0", note = "use `get` with a count query")]
-    fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
+    pub fn get_edge_count(&self, id: Uuid, t: Option<&Identifier>, direction: EdgeDirection) -> Result<u64> {
         let q = SpecificVertexQuery::single(id);
 
         let q = match direction {
@@ -325,7 +325,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_vertex_properties(&self, q: PipePropertyQuery) -> Result<Vec<VertexProperty>> {
+    pub fn get_vertex_properties(&self, q: PipePropertyQuery) -> Result<Vec<VertexProperty>> {
         if let Some(QueryOutputValue::VertexProperties(props)) = self.get(q.into())?.pop() {
             let iter = props
                 .into_iter()
@@ -341,7 +341,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_vertex_properties(&self, q: Query) -> Result<Vec<VertexProperties>> {
+    pub fn get_all_vertex_properties(&self, q: Query) -> Result<Vec<VertexProperties>> {
         let props_query = PipePropertyQuery::new(Box::new(q));
         if let Some(QueryOutputValue::VertexProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_vertex = HashMap::new();
@@ -367,7 +367,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// * `q`: The query to run.
     /// * `value`: The property value.
     #[deprecated(since = "4.0.0", note = "use `set_properties`")]
-    fn set_vertex_properties(&self, q: PipePropertyQuery, value: serde_json::Value) -> Result<()> {
+    pub fn set_vertex_properties(&self, q: PipePropertyQuery, value: serde_json::Value) -> Result<()> {
         if let Some(name) = q.name {
             self.set_properties(*q.inner, name, value)
         } else {
@@ -381,7 +381,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_vertex_properties(&self, q: PipePropertyQuery) -> Result<()> {
+    pub fn delete_vertex_properties(&self, q: PipePropertyQuery) -> Result<()> {
         self.delete(q.into())
     }
 
@@ -390,7 +390,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_edge_properties(&self, q: PipePropertyQuery) -> Result<Vec<EdgeProperty>> {
+    pub fn get_edge_properties(&self, q: PipePropertyQuery) -> Result<Vec<EdgeProperty>> {
         if let Some(QueryOutputValue::EdgeProperties(props)) = self.get(q.into())?.pop() {
             let iter = props
                 .into_iter()
@@ -406,7 +406,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
-    fn get_all_edge_properties(&self, q: Query) -> Result<Vec<EdgeProperties>> {
+    pub fn get_all_edge_properties(&self, q: Query) -> Result<Vec<EdgeProperties>> {
         let props_query = PipePropertyQuery::new(Box::new(q));
         if let Some(QueryOutputValue::EdgeProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_edge = HashMap::new();
@@ -432,7 +432,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// * `q`: The query to run.
     /// * `value`: The property value.
     #[deprecated(since = "4.0.0", note = "use `set_properties`")]
-    fn set_edge_properties(&self, q: PipePropertyQuery, value: serde_json::Value) -> Result<()> {
+    pub fn set_edge_properties(&self, q: PipePropertyQuery, value: serde_json::Value) -> Result<()> {
         if let Some(name) = q.name {
             self.set_properties(*q.inner, name, value)
         } else {
@@ -446,7 +446,7 @@ impl<B: TransactionBuilder> Datastore<B> {
     /// # Arguments
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `delete`")]
-    fn delete_edge_properties(&self, q: PipePropertyQuery) -> Result<()> {
+    pub fn delete_edge_properties(&self, q: PipePropertyQuery) -> Result<()> {
         self.delete(q.into())
     }
 }
