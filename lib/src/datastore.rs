@@ -48,8 +48,8 @@ pub trait Transaction<'a> {
 
     fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()>;
     fn delete_edges(&mut self, edges: Vec<Edge>) -> Result<()>;
-    fn delete_vertex_properties(&mut self, props: Vec<(Vertex, Identifier, serde_json::Value)>) -> Result<()>;
-    fn delete_edge_properties(&mut self, props: Vec<(Edge, Identifier, serde_json::Value)>) -> Result<()>;
+    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()>;
+    fn delete_edge_properties(&mut self, props: Vec<(Edge, Identifier)>) -> Result<()>;
 
     fn sync(&self) -> Result<()> {
         Err(Error::Unsupported)
@@ -180,10 +180,20 @@ impl<B: TransactionBuilder> Datastore<B> {
                 txn.delete_edges(edges)?;
             }
             QueryOutputValue::VertexProperties(vertex_properties) => {
-                txn.delete_vertex_properties(vertex_properties)?;
+                txn.delete_vertex_properties(
+                    vertex_properties
+                        .into_iter()
+                        .map(|(vertex, prop_name, _prop_value)| (vertex.id, prop_name))
+                        .collect(),
+                )?;
             }
             QueryOutputValue::EdgeProperties(edge_properties) => {
-                txn.delete_edge_properties(edge_properties)?;
+                txn.delete_edge_properties(
+                    edge_properties
+                        .into_iter()
+                        .map(|(edge, prop_name, _prop_value)| (edge, prop_name))
+                        .collect(),
+                )?;
             }
             QueryOutputValue::Count(_) => return Err(Error::Unsupported),
         }
