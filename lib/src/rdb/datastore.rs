@@ -8,7 +8,9 @@ use std::usize;
 use super::managers::*;
 use crate::errors::{Error, Result};
 use crate::util::next_uuid;
-use crate::{BulkInsertItem, Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Vertex};
+use crate::{
+    BulkInsertItem, Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Vertex,
+};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
@@ -129,9 +131,9 @@ impl<'a> RocksdbTransaction<'a> {
             .collect())
     }
 
-    fn edges_from_property_value_iterator<'a>(
+    fn edges_from_property_value_iterator<'b>(
         &self,
-        iter: impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a,
+        iter: impl Iterator<Item = Result<EdgePropertyValueKey>> + 'b,
     ) -> Result<Vec<EdgeRangeItem>> {
         let edge_manager = EdgeManager::new(self.db);
 
@@ -192,7 +194,9 @@ impl<'a> Transaction<'a> for RocksdbDatastore<'a> {
     }
 
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>> {
-        todo!();
+        let vertex_manager = VertexManager::new(self.db);
+        let iter = vertex_manager.iterate_for_range(None);
+        Ok(Box::new(iter))
     }
 
     fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
@@ -738,4 +742,201 @@ impl Datastore for RocksdbDatastore {
 //     db.write(batch)?;
 //     Ok(())
 // }
+// }
+
+// fn query(db_ref: DBRef<'_>, q: &Query, output: &mut Vec<QueryOutputValue>) -> Result<()> {
+//     let value = match q {
+//         Query::AllVertex(_) => {
+//             let vertex_manager = VertexManager::new(db_ref);
+//             let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
+//                 Box::new(vertex_manager.iterate_for_range(None));
+//             QueryOutputValue::Vertices(vertices_from_iter(iter))
+//         }
+//         Query::RangeVertex(ref q) => {
+//             let vertex_manager = VertexManager::new(db_ref);
+
+//             let next_uuid = match q.start_id {
+//                 Some(start_id) => {
+//                     match next_uuid(start_id) {
+//                         Ok(next_uuid) => next_uuid,
+//                         // If we get an error back, it's because
+//                         // `start_id` is the maximum possible value. We
+//                         // know that no vertices exist whose ID is greater
+//                         // than the maximum possible value, so just return
+//                         // an empty list.
+//                         Err(_) => return Ok(vec![]),
+//                     }
+//                 }
+//                 None => Uuid::default(),
+//             };
+
+//             let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> =
+//                 Box::new(vertex_manager.iterate_for_range(next_uuid));
+
+//             if let Some(ref t) = q.t {
+//                 iter = Box::new(iter.filter(move |item| match item {
+//                     Ok((_, v)) => v == t,
+//                     Err(_) => true,
+//                 }));
+//             }
+
+//             let vertices: Result<Vec<VertexItem>> = iter.take(q.limit as usize);
+//             QueryOutputValue::Vertices(vertices_from_iter(iter))
+//         }
+//         Query::SpecificVertex(ref q) => {
+//             let vertex_manager = VertexManager::new(db_ref);
+
+//             let iter = q.ids.into_iter().map(move |id| match vertex_manager.get(id)? {
+//                 Some(value) => Ok(Some((id, value))),
+//                 None => Ok(None),
+//             });
+
+//             let iter = iter.filter_map(|item| match item {
+//                 Err(err) => Some(Err(err)),
+//                 Ok(Some(value)) => Some(Ok(value)),
+//                 _ => None,
+//             });
+
+//             QueryOutputValue::Vertices(vertices_from_iter(iter))
+//         }
+//         Query::Pipe(ref q) => {
+//             self.query(&*q.inner, output)?;
+//             let piped_values = output.pop().unwrap();
+
+//             let values = match piped_values {
+//                 QueryOutputValue::Edges(ref piped_edges) => {
+//                     let vertex_manager = VertexManager::new(db_ref);
+//                     let direction = q.direction;
+
+//                     let iter = piped_edges.iter().map(move |(out_id, _, _, in_id)| {
+//                         let id = match direction {
+//                             EdgeDirection::Outbound => out_id,
+//                             EdgeDirection::Inbound => in_id,
+//                         };
+
+//                         match vertex_manager.get(id)? {
+//                             Some(value) => Ok(Some((id, value))),
+//                             None => Ok(None),
+//                         }
+//                     });
+
+//                     let iter = iter.filter_map(|item| match item {
+//                         Err(err) => Some(Err(err)),
+//                         Ok(Some(value)) => Some(Ok(value)),
+//                         _ => None,
+//                     });
+
+//                     let mut iter: Box<dyn Iterator<Item = Result<VertexItem>>> = Box::new(iter);
+
+//                     if let Some(ref t) = q.t {
+//                         iter = Box::new(iter.filter(move |item| match item {
+//                             Ok((_, v)) => v == t,
+//                             Err(_) => true,
+//                         }));
+//                     }
+
+//                     let iter = iter.take(q.limit as usize);
+//                     QueryOutputValue::Vertices(vertices_from_iter(iter))
+//                 }
+//                 QueryOutputValue::Vertices(ref piped_vertices) => {
+//                     let edge_range_manager = match q.direction {
+//                         EdgeDirection::Outbound => EdgeRangeManager::new(db_ref),
+//                         EdgeDirection::Inbound => EdgeRangeManager::new_reversed(db_ref),
+//                     };
+
+//                     // Ideally we'd use iterators all the way down, but things
+//                     // start breaking apart due to conditional expressions not
+//                     // returning the same type signature, issues with `Result`s
+//                     // and some of the iterators, etc. So at this point, we'll
+//                     // just resort to building a vector.
+//                     let mut edges: Vec<EdgeRangeItem> = Vec::new();
+
+//                     for (id, _) in piped_vertices {
+//                         let edge_iterator = edge_range_manager.iterate_for_range(id, q.t.as_ref())?;
+
+//                         for item in edge_iterator {
+//                             let (edge_range_first_id, edge_range_t, edge_range_second_id) = item?;
+
+//                             edges.push(match q.direction {
+//                                 EdgeDirection::Outbound => (edge_range_first_id, edge_range_t, edge_range_second_id),
+//                                 EdgeDirection::Inbound => (edge_range_second_id, edge_range_t, edge_range_first_id),
+//                             });
+
+//                             if edges.len() == q.limit as usize {
+//                                 break;
+//                             }
+//                         }
+//                     }
+
+//                     QueryOutputValue::Edges(edges_from_iter(iter))
+//                 }
+//                 _ => {
+//                     return Err(Error::Unsupported);
+//                 }
+//             };
+
+//             if let Query::Include(_) = *q.inner {
+//                 // keep the value exported
+//                 output.push(piped_values);
+//             }
+
+//             values
+//         }
+//         Query::VertexWithPropertyPresence(ref q) => {
+//             guard_indexed_property(db_ref, &q.name)?;
+//             let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
+//             let iter = vertex_property_value_manager.iterate_for_name(&q.name);
+//             let vertices = vertices_from_property_value_iterator(db_ref, iter);
+//             QueryOutputValue::Vertices(vertices)
+//         }
+//         Query::VertexWithPropertyValue(ref q) => {
+//             guard_indexed_property(db_ref, &q.name)?;
+//             let vertex_property_value_manager = VertexPropertyValueManager::new(db_ref);
+//             let iter = vertex_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
+//             let vertices = vertices_from_property_value_iterator(db_ref, iter);
+//             QueryOutputValue::Vertices(vertices)
+//         }
+//         Query::EdgeWithPropertyPresence(ref q) => {
+//             guard_indexed_property(db_ref, &q.name)?;
+//             let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
+//             let iter = edge_property_value_manager.iterate_for_name(&q.name);
+//             let edges = edges_from_property_value_iterator(db_ref, iter);
+//             QueryOutputValue::Edges(edges)
+//         }
+//         Query::EdgeWithPropertyValue(ref q) => {
+//             guard_indexed_property(db_ref, &q.name)?;
+//             let edge_property_value_manager = EdgePropertyValueManager::new(db_ref);
+//             let iter = edge_property_value_manager.iterate_for_value(&q.name, &Json::new(q.value));
+//             let edges = edges_from_property_value_iterator(db_ref, iter);
+//             QueryOutputValue::Edges(edges)
+//         }
+//         Query::SpecificEdge(ref q) => {
+//             let edge_manager = EdgeManager::new(db_ref);
+
+//             let iter = q.keys.into_iter().map(move |key| -> Result<Option<EdgeRangeItem>> {
+//                 match edge_manager.get(key.outbound_id, &key.t, key.inbound_id)? {
+//                     Some(update_datetime) => {
+//                         Ok(Some((key.outbound_id, key.t.clone(), update_datetime, key.inbound_id)))
+//                     }
+//                     None => Ok(None),
+//                 }
+//             });
+
+//             let iter = iter.filter_map(|item| match item {
+//                 Err(err) => Some(Err(err)),
+//                 Ok(Some(value)) => Some(Ok(value)),
+//                 _ => None,
+//             });
+
+//             let edges = edges_from_iter(iter)?;
+//             QueryOutputValue::Edges(edges)
+//         }
+//         Query::Include(ref q) => {
+//             self.query(&*q.inner, output)?;
+//             output.pop().unwrap()
+//         }
+//     };
+
+//     output.push(value);
+//     Ok(())
 // }

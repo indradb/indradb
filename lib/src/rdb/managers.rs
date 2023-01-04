@@ -33,15 +33,13 @@ fn take_with_prefix(
 
 pub(crate) struct VertexManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>
     cf: &'a ColumnFamily,
 }
 
 impl<'a> VertexManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         VertexManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("vertices:v1").unwrap(),
         }
     }
@@ -90,19 +88,24 @@ impl<'a> VertexManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, id: Uuid) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, indexed_properties: &HashSet<Identifier>, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, self.key(id));
 
-        let vertex_property_manager = VertexPropertyManager::new(self.db, self.indexed_properties);
+        let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
             let ((vertex_property_owner_id, vertex_property_name), _) = item?;
-            vertex_property_manager.delete(batch, vertex_property_owner_id, &vertex_property_name)?;
+            vertex_property_manager.delete(
+                batch,
+                indexed_properties,
+                vertex_property_owner_id,
+                &vertex_property_name,
+            )?;
         }
 
-        let edge_manager = EdgeManager::new(self.db, self.indexed_properties);
+        let edge_manager = EdgeManager::new(self.db);
 
         {
-            let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
+            let edge_range_manager = EdgeRangeManager::new(self.db);
             for item in edge_range_manager.iterate_for_range(id, None, None)? {
                 let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
@@ -111,7 +114,7 @@ impl<'a> VertexManager<'a> {
         }
 
         {
-            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
+            let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
             for item in reversed_edge_range_manager.iterate_for_range(id, None)? {
                 let (reversed_edge_range_in_id, reversed_edge_range_t, reversed_edge_range_out_id) = item?;
                 debug_assert_eq!(reversed_edge_range_in_id, id);
@@ -135,15 +138,13 @@ impl<'a> VertexManager<'a> {
 
 pub(crate) struct EdgeManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> EdgeManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         EdgeManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("edges:v1").unwrap(),
         }
     }
@@ -161,8 +162,8 @@ impl<'a> EdgeManager<'a> {
     }
 
     pub fn set(&self, batch: &mut WriteBatch, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<()> {
-        let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
+        let edge_range_manager = EdgeRangeManager::new(self.db);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
 
         if self.get(out_id, t, in_id)? {
             edge_range_manager.delete(batch, out_id, t, in_id)?;
@@ -176,20 +177,28 @@ impl<'a> EdgeManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, out_id: Uuid, t: &models::Identifier, in_id: Uuid) -> Result<()> {
+    pub fn delete(
+        &self,
+        batch: &mut WriteBatch,
+        indexed_properties: &HashSet<Identifier>,
+        out_id: Uuid,
+        t: &models::Identifier,
+        in_id: Uuid,
+    ) -> Result<()> {
         batch.delete_cf(self.cf, self.key(out_id, t, in_id));
 
-        let edge_range_manager = EdgeRangeManager::new(self.db, self.indexed_properties);
+        let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(batch, out_id, t, in_id)?;
 
-        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db, self.indexed_properties);
+        let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
         reversed_edge_range_manager.delete(batch, in_id, t, out_id)?;
 
-        let edge_property_manager = EdgePropertyManager::new(self.db, self.indexed_properties);
+        let edge_property_manager = EdgePropertyManager::new(self.db);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
             let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
             edge_property_manager.delete(
                 batch,
+                indexed_properties,
                 edge_property_out_id,
                 &edge_property_t,
                 edge_property_in_id,
@@ -208,23 +217,20 @@ impl<'a> EdgeManager<'a> {
 
 pub(crate) struct EdgeRangeManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> EdgeRangeManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         EdgeRangeManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("edge_ranges:v1").unwrap(),
         }
     }
 
-    pub fn new_reversed(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new_reversed(db: &'a DB) -> Self {
         EdgeRangeManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("reversed_edge_ranges:v1").unwrap(),
         }
     }
@@ -308,15 +314,13 @@ impl<'a> EdgeRangeManager<'a> {
 
 pub(crate) struct VertexPropertyManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> VertexPropertyManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         VertexPropertyManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("vertex_properties:v1").unwrap(),
         }
     }
@@ -362,11 +366,12 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
+        indexed_properties: &HashSet<Identifier>,
         vertex_id: Uuid,
         name: &models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
-        let is_indexed = self.indexed_properties.contains(name);
+        let is_indexed = indexed_properties.contains(name);
         let key = self.key(vertex_id, name);
         if is_indexed {
             self.delete(batch, vertex_id, name)?;
@@ -374,16 +379,22 @@ impl<'a> VertexPropertyManager<'a> {
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
         if is_indexed {
-            let vertex_property_value_manager = VertexPropertyValueManager::new(self.db, self.indexed_properties);
+            let vertex_property_value_manager = VertexPropertyValueManager::new(self.db);
             vertex_property_value_manager.set(batch, vertex_id, name, value);
         }
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, vertex_id: Uuid, name: &models::Identifier) -> Result<()> {
-        if self.indexed_properties.contains(name) {
+    pub fn delete(
+        &self,
+        batch: &mut WriteBatch,
+        indexed_properties: &HashSet<Identifier>,
+        vertex_id: Uuid,
+        name: &models::Identifier,
+    ) -> Result<()> {
+        if indexed_properties.contains(name) {
             if let Some(value) = self.get(vertex_id, name)? {
-                let vertex_property_value_manager = VertexPropertyValueManager::new(self.db, self.indexed_properties);
+                let vertex_property_value_manager = VertexPropertyValueManager::new(self.db);
                 vertex_property_value_manager.delete(batch, vertex_id, name, &value);
             }
         }
@@ -399,15 +410,13 @@ impl<'a> VertexPropertyManager<'a> {
 
 pub(crate) struct EdgePropertyManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> EdgePropertyManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         EdgePropertyManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("edge_properties:v1").unwrap(),
         }
     }
@@ -486,13 +495,14 @@ impl<'a> EdgePropertyManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
+        indexed_properties: &HashSet<Identifier>,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
-        let is_indexed = self.indexed_properties.contains(name);
+        let is_indexed = indexed_properties.contains(name);
         let key = self.key(out_id, t, in_id, name);
         if is_indexed {
             self.delete(batch, out_id, t, in_id, name)?;
@@ -500,7 +510,7 @@ impl<'a> EdgePropertyManager<'a> {
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
         if is_indexed {
-            let edge_property_value_manager = EdgePropertyValueManager::new(self.db, self.indexed_properties);
+            let edge_property_value_manager = EdgePropertyValueManager::new(self.db);
             edge_property_value_manager.set(batch, out_id, t, in_id, name, value);
         }
         Ok(())
@@ -509,14 +519,15 @@ impl<'a> EdgePropertyManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
+        indexed_properties: &HashSet<Identifier>,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
         name: &models::Identifier,
     ) -> Result<()> {
-        if self.indexed_properties.contains(name) {
+        if indexed_properties.contains(name) {
             if let Some(value) = self.get(out_id, t, in_id, name)? {
-                let edge_property_value_manager = EdgePropertyValueManager::new(self.db, self.indexed_properties);
+                let edge_property_value_manager = EdgePropertyValueManager::new(self.db);
                 edge_property_value_manager.delete(batch, out_id, t, in_id, name, &value);
             }
         }
@@ -532,15 +543,13 @@ impl<'a> EdgePropertyManager<'a> {
 
 pub(crate) struct VertexPropertyValueManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> VertexPropertyValueManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         VertexPropertyValueManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("vertex_property_values:v1").unwrap(),
         }
     }
@@ -626,15 +635,13 @@ impl<'a> VertexPropertyValueManager<'a> {
 
 pub(crate) struct EdgePropertyValueManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> EdgePropertyValueManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         EdgePropertyValueManager {
             db,
-            indexed_properties,
             cf: db.cf_handle("edge_property_values:v1").unwrap(),
         }
     }
@@ -735,12 +742,11 @@ impl<'a> EdgePropertyValueManager<'a> {
 
 pub(crate) struct MetadataManager<'a> {
     db: &'a DB,
-    indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     cf: &'a ColumnFamily,
 }
 
 impl<'a> MetadataManager<'a> {
-    pub fn new(db: &'a DB, indexed_properties: Arc<RwLock<HashSet<Identifier>>>) -> Self {
+    pub fn new(db: &'a DB) -> Self {
         MetadataManager {
             db,
             cf: db.cf_handle("metadata:v1").unwrap(),
