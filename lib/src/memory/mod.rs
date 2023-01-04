@@ -5,21 +5,23 @@
 
 mod datastore;
 
+pub use datastore::{default, create_msgpack, read_msgpack, MemoryTransactionBuilder};
+
 #[cfg(feature = "bench-suite")]
 full_bench_impl!(MemoryDatastore::default());
 
 #[cfg(feature = "test-suite")]
 #[cfg(test)]
 mod tests {
-    use super::MemoryDatastore;
-    use crate::compat::DatastoreV3CompatExt;
-    use crate::{Datastore, Error, Identifier, SpecificVertexQuery};
+    use super::{read_msgpack, create_msgpack, default, MemoryTransactionBuilder};
+    use crate::{Datastore, Identifier, SpecificVertexQuery};
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
-    full_test_impl!(MemoryDatastore::default());
+    full_test_impl!(default());
 
-    fn create_vertex_with_property(datastore: &MemoryDatastore) -> Uuid {
+    #[allow(deprecated)]
+    fn create_vertex_with_property(datastore: &Datastore<MemoryTransactionBuilder>) -> Uuid {
         let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
         datastore
             .set_properties(
@@ -31,7 +33,8 @@ mod tests {
         id
     }
 
-    fn expect_vertex(datastore: &MemoryDatastore, id: Uuid) {
+    #[allow(deprecated)]
+    fn expect_vertex(datastore: &Datastore<MemoryTransactionBuilder>, id: Uuid) {
         assert_eq!(datastore.get_vertex_count().unwrap(), 1);
         let vertices = datastore
             .get_vertices(SpecificVertexQuery::new(vec![id]).into())
@@ -42,36 +45,12 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn should_serialize_bincode() {
-        let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create(path.path()).unwrap();
-        let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
-        datastore.sync().unwrap();
-        let datastore = MemoryDatastore::read(path.path()).unwrap();
-        expect_vertex(&datastore, id);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn should_not_serialize_bincode_properties() {
-        let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create(path.path()).unwrap();
-        create_vertex_with_property(&datastore);
-        let result = datastore.sync();
-        match result {
-            Err(Error::Unsupported) => (),
-            _ => assert!(false, "unexpected result: {:?}", result),
-        }
-    }
-
-    #[test]
     fn should_serialize_msgpack() {
         let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create_msgpack(path.path()).unwrap();
+        let datastore = create_msgpack(path.path()).unwrap();
         let id = create_vertex_with_property(&datastore);
         datastore.sync().unwrap();
-        let datastore = MemoryDatastore::read_msgpack(path.path()).unwrap();
+        let datastore = read_msgpack(path.path()).unwrap();
         expect_vertex(&datastore, id);
     }
 }
