@@ -88,7 +88,7 @@ impl<'a> VertexManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, indexed_properties: &HashSet<Identifier>, id: Uuid) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, indexed_properties: &HashSet<models::Identifier>, id: Uuid) -> Result<()> {
         batch.delete_cf(self.cf, self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
@@ -180,7 +180,7 @@ impl<'a> EdgeManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        indexed_properties: &HashSet<Identifier>,
+        indexed_properties: &HashSet<models::Identifier>,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -366,7 +366,7 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
-        indexed_properties: &HashSet<Identifier>,
+        indexed_properties: &HashSet<models::Identifier>,
         vertex_id: Uuid,
         name: &models::Identifier,
         value: &models::Json,
@@ -388,7 +388,7 @@ impl<'a> VertexPropertyManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        indexed_properties: &HashSet<Identifier>,
+        indexed_properties: &HashSet<models::Identifier>,
         vertex_id: Uuid,
         name: &models::Identifier,
     ) -> Result<()> {
@@ -495,7 +495,7 @@ impl<'a> EdgePropertyManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
-        indexed_properties: &HashSet<Identifier>,
+        indexed_properties: &HashSet<models::Identifier>,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
@@ -519,7 +519,7 @@ impl<'a> EdgePropertyManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        indexed_properties: &HashSet<Identifier>,
+        indexed_properties: &HashSet<models::Identifier>,
         out_id: Uuid,
         t: &models::Identifier,
         in_id: Uuid,
