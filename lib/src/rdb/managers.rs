@@ -12,7 +12,6 @@ use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB}
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
-pub type VertexItem = (Uuid, models::Identifier);
 pub type EdgeRangeItem = (Uuid, models::Identifier, Uuid);
 pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
@@ -62,12 +61,12 @@ impl<'a> VertexManager<'a> {
         }
     }
 
-    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<VertexItem>> + 'a {
+    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<models::Vertex>> + 'a {
         let low_key = util::build(&[util::Component::Uuid(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
-        iter.map(|item| -> Result<VertexItem> {
+        iter.map(|item| -> Result<models::Vertex> {
             let (k, v) = item?;
 
             let id = {
@@ -78,7 +77,7 @@ impl<'a> VertexManager<'a> {
 
             let mut cursor = Cursor::new(v);
             let t = util::read_identifier(&mut cursor);
-            Ok((id, t))
+            Ok(models::Vertex::with_id(id, t))
         })
     }
 

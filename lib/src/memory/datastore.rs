@@ -15,18 +15,6 @@ use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
-macro_rules! iter_vertex_values {
-    ($self:expr, $iter:expr) => {
-        Box::new($iter.filter_map(move |id| $self.internal.vertices.get(&id).map(|value| (id, value.clone()))))
-    };
-}
-
-macro_rules! iter_edge_values {
-    ($self:expr, $iter:expr) => {
-        Box::new($iter.filter(move |edge| $self.internal.edges.contains(&edge)))
-    };
-}
-
 #[derive(Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 enum IndexedPropertyMember {
     Vertex(Uuid),
@@ -72,7 +60,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             .internal
             .vertices
             .iter()
-            .map(|(id, t)| Vertex::with_id(*id, t.clone()));
+            .map(|(id, t)| Ok(Vertex::with_id(*id, t.clone())));
         Ok(Box::new(iter))
     }
 
@@ -81,15 +69,18 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             .internal
             .vertices
             .range(offset..)
-            .map(|(id, t)| Vertex::with_id(*id, t.clone()));
+            .map(|(id, t)| Ok(Vertex::with_id(*id, t.clone())));
         Ok(Box::new(iter))
     }
 
     fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
-        let vertices: Vec<Vertex> = iter_vertex_values!(self, ids.iter())
-            .map(|(id, t)| Vertex::with_id(*id, t.clone()))
-            .collect();
-        Ok(Box::new(vertices.into_iter()))
+        let iter = ids.clone().into_iter().filter_map(move |id| {
+            self.internal
+                .vertices
+                .get(&id)
+                .map(|value| Ok(Vertex::with_id(id, value.clone())))
+        });
+        Ok(Box::new(iter))
     }
 
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
@@ -102,7 +93,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     }
                 }
             }
-            Ok(Some(Box::new(vertex_ids.into_iter())))
+            Ok(Some(Box::new(vertex_ids.into_iter().map(|e| Ok(e)))))
         } else {
             Ok(None)
         }
@@ -117,7 +108,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         let wrapped_value = Json::new(value.clone());
         if let Some(sub_container) = container.get(&wrapped_value) {
             let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                IndexedPropertyMember::Vertex(id) => Some(*id),
+                IndexedPropertyMember::Vertex(id) => Some(Ok(*id)),
                 _ => None,
             }));
             Ok(Some(Box::new(iter)))
@@ -131,20 +122,26 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn all_edges(&'a self) -> Result<DynIter<'a, Edge>> {
-        Ok(Box::new(self.internal.edges.iter().cloned()))
+        let iter = self.internal.edges.iter().map(|e| Ok(e.clone()));
+        Ok(Box::new(iter))
     }
 
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
-        Ok(Box::new(self.internal.edges.range(offset..).cloned()))
+        let iter = self.internal.edges.range(offset..).map(|e| Ok(e.clone()));
+        Ok(Box::new(iter))
     }
 
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
-        Ok(Box::new(self.internal.reversed_edges.range(offset..).cloned()))
+        let iter = self.internal.reversed_edges.range(offset..).map(|e| Ok(e.clone()));
+        Ok(Box::new(iter))
     }
 
     fn specific_edges(&'a self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
-        // TODO: remove cloning
-        let iter = iter_edge_values!(self, edges.clone().into_iter());
+        let iter = edges
+            .clone()
+            .into_iter()
+            .filter(move |edge| self.internal.edges.contains(edge))
+            .map(|e| Ok(e.clone()));
         Ok(Box::new(iter))
     }
 
@@ -158,7 +155,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     }
                 }
             }
-            Ok(Some(Box::new(edges.into_iter())))
+            Ok(Some(Box::new(edges.into_iter().map(|e| Ok(e)))))
         } else {
             Ok(None)
         }
@@ -176,7 +173,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 IndexedPropertyMember::Edge(edge) if self.internal.edges.contains(edge) => Some(edge),
                 _ => None,
             }));
-            Ok(Some(Box::new(iter.cloned())))
+            Ok(Some(Box::new(iter.map(|e| Ok(e.clone())))))
         } else {
             Ok(None)
         }
@@ -200,7 +197,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for ((_prop_vertex_id, prop_name), prop_value) in self.internal.vertex_properties.range(from..to) {
             vertex_properties.push((prop_name.clone(), prop_value.0.clone()));
         }
-        Ok(Box::new(vertex_properties.into_iter()))
+        Ok(Box::new(vertex_properties.into_iter().map(|p| Ok(p))))
     }
 
     fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>> {
@@ -220,7 +217,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             }
             edge_properties.push((prop_name.clone(), prop_value.0.clone()));
         }
-        Ok(Box::new(edge_properties.into_iter()))
+        Ok(Box::new(edge_properties.into_iter().map(|p| Ok(p))))
     }
 
     fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()> {
