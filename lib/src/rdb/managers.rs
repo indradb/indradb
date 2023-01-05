@@ -88,7 +88,12 @@ impl<'a> VertexManager<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, indexed_properties: &HashSet<models::Identifier>, id: Uuid) -> Result<()> {
+    pub fn delete(
+        &self,
+        batch: &mut WriteBatch,
+        indexed_properties: &HashSet<models::Identifier>,
+        id: Uuid,
+    ) -> Result<()> {
         batch.delete_cf(self.cf, self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
@@ -109,7 +114,13 @@ impl<'a> VertexManager<'a> {
             for item in edge_range_manager.iterate_for_range(id, None, None)? {
                 let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
-                edge_manager.delete(batch, edge_range_out_id, &edge_range_t, edge_range_in_id)?;
+                edge_manager.delete(
+                    batch,
+                    indexed_properties,
+                    edge_range_out_id,
+                    &edge_range_t,
+                    edge_range_in_id,
+                )?;
             }
         }
 
@@ -120,6 +131,7 @@ impl<'a> VertexManager<'a> {
                 debug_assert_eq!(reversed_edge_range_in_id, id);
                 edge_manager.delete(
                     batch,
+                    indexed_properties,
                     reversed_edge_range_out_id,
                     &reversed_edge_range_t,
                     reversed_edge_range_in_id,
@@ -374,7 +386,7 @@ impl<'a> VertexPropertyManager<'a> {
         let is_indexed = indexed_properties.contains(name);
         let key = self.key(vertex_id, name);
         if is_indexed {
-            self.delete(batch, vertex_id, name)?;
+            self.delete(batch, indexed_properties, vertex_id, name)?;
         }
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
@@ -505,7 +517,7 @@ impl<'a> EdgePropertyManager<'a> {
         let is_indexed = indexed_properties.contains(name);
         let key = self.key(out_id, t, in_id, name);
         if is_indexed {
-            self.delete(batch, out_id, t, in_id, name)?;
+            self.delete(batch, indexed_properties, out_id, t, in_id, name)?;
         }
         let value_json = serde_json::to_vec(value)?;
         batch.put_cf(self.cf, &key, &value_json);
