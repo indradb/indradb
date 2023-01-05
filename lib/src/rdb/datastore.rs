@@ -53,6 +53,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 }
 
 pub struct RocksdbTransaction<'a> {
+    db: &'a DB,
     indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
     vertex_manager: VertexManager<'a>,
     edge_manager: EdgeManager<'a>,
@@ -63,7 +64,6 @@ pub struct RocksdbTransaction<'a> {
     vertex_property_value_manager: VertexPropertyValueManager<'a>,
     edge_property_value_manager: EdgePropertyValueManager<'a>,
     metadata_manager: MetadataManager<'a>,
-    db: Arc<DB>,
 }
 
 impl<'a> RocksdbTransaction<'a> {
@@ -305,19 +305,18 @@ impl RocksdbDatastore {
 impl Datastore for RocksdbDatastore {
     type Transaction<'a> = RocksdbTransaction<'a> where Self: 'a;
     fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
-        let db = self.db.clone();
         RocksdbTransaction {
+            db: &self.db,
             indexed_properties: self.indexed_properties.clone(),
-            vertex_manager: VertexManager::new(&db),
-            edge_manager: EdgeManager::new(&db),
-            edge_range_manager: EdgeRangeManager::new(&db),
-            reversed_edge_range_manager: EdgeRangeManager::new(&db),
-            vertex_property_manager: VertexPropertyManager::new(&db),
-            edge_property_manager: EdgePropertyManager::new(&db),
-            vertex_property_value_manager: VertexPropertyValueManager::new(&db),
-            edge_property_value_manager: EdgePropertyValueManager::new(&db),
-            metadata_manager: MetadataManager::new(&db),
-            db,
+            vertex_manager: VertexManager::new(&self.db),
+            edge_manager: EdgeManager::new(&self.db),
+            edge_range_manager: EdgeRangeManager::new(&self.db),
+            reversed_edge_range_manager: EdgeRangeManager::new(&self.db),
+            vertex_property_manager: VertexPropertyManager::new(&self.db),
+            edge_property_manager: EdgePropertyManager::new(&self.db),
+            vertex_property_value_manager: VertexPropertyValueManager::new(&self.db),
+            edge_property_value_manager: EdgePropertyValueManager::new(&self.db),
+            metadata_manager: MetadataManager::new(&self.db),
         }
     }
 }
