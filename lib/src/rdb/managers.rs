@@ -110,7 +110,7 @@ impl<'a> VertexManager<'a> {
 
         {
             let edge_range_manager = EdgeRangeManager::new(self.db);
-            for item in edge_range_manager.iterate_for_range(id, None, None)? {
+            for item in edge_range_manager.iterate_for_range(id, None)? {
                 let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
                 debug_assert_eq!(edge_range_out_id, id);
                 edge_manager.delete(

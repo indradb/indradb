@@ -52,28 +52,18 @@ fn get_options(max_open_files: Option<i32>) -> Options {
     opts
 }
 
-fn vertices_from_iter<'a>(iter: impl Iterator<Item = Result<VertexItem>> + 'a) -> Result<Vec<Vertex>> {
-    let mut vertices = Vec::new();
-    for item in iter {
-        let (id, t) = item?;
-        vertices.push(Vertex::with_id(id, t))
-    }
-    Ok(vertices)
-}
-
-fn edges_from_iter<'a>(iter: impl Iterator<Item = Result<EdgeRangeItem>> + 'a) -> Result<Vec<Edge>> {
-    let mut edges = Vec::new();
-    for item in iter {
-        let (out_id, t, in_id) = item?;
-        edges.push(Edge::new(out_id, t, in_id))
-    }
-    Ok(edges)
-}
-
-#[derive(Debug)]
 pub struct RocksdbTransaction<'a> {
-    db: &'a DB,
     indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
+    vertex_manager: VertexManager<'a>,
+    edge_manager: EdgeManager<'a>,
+    edge_range_manager: EdgeRangeManager<'a>,
+    reversed_edge_range_manager: EdgeRangeManager<'a>,
+    vertex_property_manager: VertexPropertyManager<'a>,
+    edge_property_manager: EdgePropertyManager<'a>,
+    vertex_property_value_manager: VertexPropertyValueManager<'a>,
+    edge_property_value_manager: EdgePropertyValueManager<'a>,
+    metadata_manager: MetadataManager<'a>,
+    db: Arc<DB>,
 }
 
 impl<'a> RocksdbTransaction<'a> {
@@ -89,11 +79,10 @@ impl<'a> RocksdbTransaction<'a> {
         &self,
         iter: impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a,
     ) -> Result<Vec<Vertex>> {
-        let vertex_manager = VertexManager::new(self.db);
         let mut vertices = Vec::new();
         for item in iter {
             let (_, _, id) = item?;
-            if let Some(t) = vertex_manager.get(id)? {
+            if let Some(t) = self.vertex_manager.get(id)? {
                 vertices.push(Vertex::with_id(id, t));
             }
         }
@@ -104,12 +93,10 @@ impl<'a> RocksdbTransaction<'a> {
         &self,
         iter: impl Iterator<Item = Result<EdgePropertyValueKey>> + 'b,
     ) -> Result<Vec<EdgeRangeItem>> {
-        let edge_manager = EdgeManager::new(self.db);
-
         let mut edges = Vec::new();
         for item in iter {
             let (_, _, (out_id, t, in_id)) = item?;
-            if edge_manager.get(out_id, &t, in_id)? {
+            if self.edge_manager.get(out_id, &t, in_id)? {
                 edges.push((out_id, t, in_id));
             }
         }
@@ -120,14 +107,12 @@ impl<'a> RocksdbTransaction<'a> {
 
 impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     fn vertex_count(&self) -> u64 {
-        let vertex_manager = VertexManager::new(self.db);
-        let iterator = vertex_manager.iterate_for_range(Uuid::default());
+        let iterator = self.vertex_manager.iterate_for_range(Uuid::default());
         iterator.count() as u64
     }
 
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>> {
-        let vertex_manager = VertexManager::new(self.db);
-        let iter = vertex_manager.iterate_for_range(Uuid::default());
+        let iter = self.vertex_manager.iterate_for_range(Uuid::default());
         Ok(Box::new(iter))
     }
 
@@ -219,27 +204,25 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     }
 
     fn sync(&self) -> Result<()> {
-        VertexManager::new(self.db).compact();
-        EdgeManager::new(self.db).compact();
-        EdgeRangeManager::new(self.db).compact();
-        EdgeRangeManager::new_reversed(self.db).compact();
-        VertexPropertyManager::new(self.db).compact();
-        EdgePropertyManager::new(self.db).compact();
-        VertexPropertyValueManager::new(self.db).compact();
-        EdgePropertyValueManager::new(self.db).compact();
-        MetadataManager::new(&self.db).compact();
+        self.vertex_manager.compact();
+        self.edge_manager.compact();
+        self.edge_range_manager.compact();
+        self.edge_range_manager.compact();
+        self.vertex_property_manager.compact();
+        self.edge_property_manager.compact();
+        self.vertex_property_value_manager.compact();
+        self.edge_property_value_manager.compact();
+        self.metadata_manager.compact();
         self.db.flush()?;
         Ok(())
     }
 
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
-        let vertex_manager = VertexManager::new(self.db);
-
-        if vertex_manager.exists(vertex.id)? {
+        if self.vertex_manager.exists(vertex.id)? {
             Ok(false)
         } else {
             let mut batch = WriteBatch::default();
-            vertex_manager.create(&mut batch, vertex)?;
+            self.vertex_manager.create(&mut batch, vertex)?;
             self.db.write(batch)?;
             Ok(true)
         }
@@ -322,9 +305,19 @@ impl RocksdbDatastore {
 impl Datastore for RocksdbDatastore {
     type Transaction<'a> = RocksdbTransaction<'a> where Self: 'a;
     fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
+        let db = self.db.clone();
         RocksdbTransaction {
-            db: &self.db.clone(),
             indexed_properties: self.indexed_properties.clone(),
+            vertex_manager: VertexManager::new(&db),
+            edge_manager: EdgeManager::new(&db),
+            edge_range_manager: EdgeRangeManager::new(&db),
+            reversed_edge_range_manager: EdgeRangeManager::new(&db),
+            vertex_property_manager: VertexPropertyManager::new(&db),
+            edge_property_manager: EdgePropertyManager::new(&db),
+            vertex_property_value_manager: VertexPropertyValueManager::new(&db),
+            edge_property_value_manager: EdgePropertyValueManager::new(&db),
+            metadata_manager: MetadataManager::new(&db),
+            db,
         }
     }
 }
