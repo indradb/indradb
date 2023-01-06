@@ -655,10 +655,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    // TODO: should `None` trigger `Error::NotIndexed`?
                     let edges_with_property = match (*txn).edges_with_property(&q.name)? {
                         Some(iter) => iter.collect::<Result<HashSet<Edge>>>()?,
-                        None => HashSet::<Edge>::default(),
+                        None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_edges.iter().filter(move |e| {
                         let contains = edges_with_property.contains(&e);
@@ -667,10 +666,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Edges(iter.cloned().collect())
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
-                    // TODO: should `None` trigger `Error::NotIndexed`?
                     let vertices_with_property = match (*txn).vertex_ids_with_property(&q.name)? {
                         Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
-                        None => HashSet::<Uuid>::default(),
+                        None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_vertices.iter().filter(move |v| {
                         let contains = vertices_with_property.contains(&v.id);
@@ -696,10 +694,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    // TODO: should `None` trigger `Error::NotIndexed`?
                     let edges = match (*txn).edges_with_property_value(&q.name, &q.value)? {
                         Some(iter) => iter.collect::<Result<HashSet<Edge>>>()?,
-                        None => HashSet::<Edge>::default(),
+                        None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_edges.iter().filter(move |e| {
                         let contains = edges.contains(&e);
@@ -708,10 +705,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Edges(iter.cloned().collect())
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
-                    // TODO: should `None` trigger `Error::NotIndexed`?
                     let vertex_ids = match (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
                         Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
-                        None => HashSet::<Uuid>::default(),
+                        None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_vertices.iter().filter(move |v| {
                         let contains = vertex_ids.contains(&v.id);
