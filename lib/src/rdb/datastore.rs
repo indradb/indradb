@@ -1,17 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::i32;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::u64;
-use std::usize;
 
 use super::managers::*;
 use crate::errors::{Error, Result};
-use crate::util::next_uuid;
-use crate::{
-    BulkInsertItem, Datastore, DynIter, Edge, EdgeDirection, Identifier, Json, Query, QueryOutputValue, Transaction,
-    Vertex,
-};
+use crate::{BulkInsertItem, Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
 use uuid::Uuid;
@@ -66,14 +61,6 @@ pub struct RocksdbTransaction<'a> {
 }
 
 impl<'a> RocksdbTransaction<'a> {
-    fn guard_indexed_property(&self, property: &Identifier) -> Result<()> {
-        if !self.indexed_properties.read().unwrap().contains(property) {
-            Err(Error::NotIndexed)
-        } else {
-            Ok(())
-        }
-    }
-
     // TODO: return iterators w/ these
     fn vertices_from_property_value_iterator(
         &self,
@@ -339,8 +326,6 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     }
 
     fn create_edge(&mut self, edge: &Edge) -> Result<bool> {
-        let indexed_properties = self.indexed_properties.read().unwrap();
-
         if !self.vertex_manager.exists(edge.outbound_id)? || !self.vertex_manager.exists(edge.inbound_id)? {
             Ok(false)
         } else {
@@ -483,7 +468,7 @@ impl RocksdbDatastore {
     /// * `path`: The file path to the rocksdb database.
     /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<RocksdbDatastore> {
+    pub fn new<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<Database<RocksdbDatastore>> {
         let opts = get_options(max_open_files);
         let path = path.as_ref();
 
@@ -502,11 +487,10 @@ impl RocksdbDatastore {
 
         let metadata_manager = MetadataManager::new(&db);
         let indexed_properties = metadata_manager.get_indexed_properties()?;
-
-        Ok(RocksdbDatastore {
+        Ok(Database::new(RocksdbDatastore {
             db: Arc::new(db),
             indexed_properties: Arc::new(RwLock::new(indexed_properties)),
-        })
+        }))
     }
 
     /// Runs a repair operation on the rocksdb database.
