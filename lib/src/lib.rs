@@ -19,13 +19,13 @@ pub mod tests;
 #[macro_use]
 pub mod benches;
 
-mod datastore;
+mod database;
 mod errors;
 mod memory;
 mod models;
 pub mod util;
 
-pub use crate::datastore::*;
+pub use crate::database::*;
 pub use crate::errors::*;
 pub use crate::memory::*;
 pub use crate::models::*;

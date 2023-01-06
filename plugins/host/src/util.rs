@@ -30,10 +30,10 @@ pub trait VertexMapper: Send + Sync + 'static {
 ///
 /// # Arguments
 /// * `mapper`: Specified options and the map operation to run.
-/// * `datastore`: The datastore.
-pub fn map<M: VertexMapper>(
+/// * `database`: The database.
+pub fn map<M: VertexMapper, D: indradb::Datastore + Send + Sync + 'static>(
     mapper: Arc<M>,
-    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+    db: indradb::Database<D>,
 ) -> Result<(), Error> {
     let pool = ThreadPool::new(max(mapper.num_threads(), 1));
     let query_limit = max(mapper.query_limit(), 1);
@@ -52,7 +52,7 @@ pub fn map<M: VertexMapper>(
             start_id: last_id,
         };
 
-        let vertices = match datastore.get_vertices(q.into()) {
+        let vertices = match db.get_vertices(q.into()) {
             Ok(value) => value,
             Err(err) => {
                 *last_err.lock().unwrap() = Some(err.into());
