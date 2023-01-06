@@ -12,10 +12,9 @@ use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB}
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
-pub type EdgeRangeItem = (Uuid, models::Identifier, Uuid);
 pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
-pub type EdgePropertyValueKey = (models::Identifier, u64, (Uuid, models::Identifier, Uuid));
+pub type EdgePropertyValueKey = (models::Identifier, u64, models::Edge);
 
 fn take_with_prefix(
     iterator: DBIterator<'_>,
@@ -111,30 +110,18 @@ impl<'a> VertexManager<'a> {
         {
             let edge_range_manager = EdgeRangeManager::new(self.db);
             for item in edge_range_manager.iterate_for_range(id, None)? {
-                let (edge_range_out_id, edge_range_t, edge_range_in_id) = item?;
-                debug_assert_eq!(edge_range_out_id, id);
-                edge_manager.delete(
-                    batch,
-                    indexed_properties,
-                    edge_range_out_id,
-                    &edge_range_t,
-                    edge_range_in_id,
-                )?;
+                let edge = item?;
+                debug_assert_eq!(edge.outbound_id, id);
+                edge_manager.delete(batch, indexed_properties, edge.outbound_id, &edge.t, edge.inbound_id)?;
             }
         }
 
         {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
             for item in reversed_edge_range_manager.iterate_for_range(id, None)? {
-                let (reversed_edge_range_in_id, reversed_edge_range_t, reversed_edge_range_out_id) = item?;
-                debug_assert_eq!(reversed_edge_range_in_id, id);
-                edge_manager.delete(
-                    batch,
-                    indexed_properties,
-                    reversed_edge_range_out_id,
-                    &reversed_edge_range_t,
-                    reversed_edge_range_in_id,
-                )?;
+                let edge = item?;
+                debug_assert_eq!(edge.inbound_id, id);
+                edge_manager.delete(batch, indexed_properties, edge.outbound_id, &edge.t, edge.inbound_id)?;
             }
         }
 
@@ -254,17 +241,17 @@ impl<'a> EdgeRangeManager<'a> {
         ])
     }
 
-    fn iterate<I>(&'a self, iterator: I) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a
+    fn iterate<I>(&'a self, iterator: I) -> impl Iterator<Item = Result<models::Edge>> + 'a
     where
         I: Iterator<Item = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a,
     {
-        iterator.map(move |item| -> Result<EdgeRangeItem> {
+        iterator.map(move |item| -> Result<models::Edge> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
             let first_id = util::read_uuid(&mut cursor);
             let t = util::read_identifier(&mut cursor);
             let second_id = util::read_uuid(&mut cursor);
-            Ok((first_id, t, second_id))
+            Ok(models::Edge::new(first_id, t, second_id))
         })
     }
 
@@ -272,7 +259,7 @@ impl<'a> EdgeRangeManager<'a> {
         &'a self,
         id: Uuid,
         t: Option<&models::Identifier>,
-    ) -> Result<Box<dyn Iterator<Item = Result<EdgeRangeItem>> + 'a>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         match t {
             Some(t) => {
                 let prefix = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
@@ -295,7 +282,7 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    pub fn iterate_for_all(&'a self) -> impl Iterator<Item = Result<EdgeRangeItem>> + 'a {
+    pub fn iterate_for_all(&'a self) -> impl Iterator<Item = Result<models::Edge>> + 'a {
         let iterator = self.db.iterator_cf(self.cf, IteratorMode::Start);
         self.iterate(iterator)
     }
@@ -689,7 +676,7 @@ impl<'a> EdgePropertyValueManager<'a> {
             let out_id = util::read_uuid(&mut cursor);
             let t = util::read_identifier(&mut cursor);
             let in_id = util::read_uuid(&mut cursor);
-            Ok((name, value_hash, (out_id, t, in_id)))
+            Ok((name, value_hash, models::Edge::new(out_id, t, in_id)))
         })
     }
 
