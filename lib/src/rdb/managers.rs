@@ -120,7 +120,7 @@ impl<'a> VertexManager<'a> {
             let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
             for item in reversed_edge_range_manager.iterate_for_root(id, None)? {
                 let edge = item?;
-                debug_assert_eq!(edge.inbound_id, id);
+                debug_assert_eq!(edge.outbound_id, id);
                 edge_manager.delete(batch, indexed_properties, edge.outbound_id, &edge.t, edge.inbound_id)?;
             }
         }

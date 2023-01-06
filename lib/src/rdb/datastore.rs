@@ -515,7 +515,7 @@ impl Datastore for RocksdbDatastore {
             vertex_manager: VertexManager::new(&self.db),
             edge_manager: EdgeManager::new(&self.db),
             edge_range_manager: EdgeRangeManager::new(&self.db),
-            reversed_edge_range_manager: EdgeRangeManager::new(&self.db),
+            reversed_edge_range_manager: EdgeRangeManager::new_reversed(&self.db),
             vertex_property_manager: VertexPropertyManager::new(&self.db),
             edge_property_manager: EdgePropertyManager::new(&self.db),
             vertex_property_value_manager: VertexPropertyValueManager::new(&self.db),
