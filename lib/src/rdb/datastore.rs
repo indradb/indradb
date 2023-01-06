@@ -214,7 +214,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         let iter = self.vertex_property_manager.iterate_for_owner(vertex.id)?;
         let props: Result<Vec<_>> = iter.collect();
-        let iter = props?.into_iter().map(|((_, name), value)| Ok((name, value.0)));
+        let iter = props?.into_iter().map(|(_, name, value)| Ok((name, value.0)));
         Ok(Box::new(iter))
     }
 
@@ -233,7 +233,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
             .edge_property_manager
             .iterate_for_owner(edge.outbound_id, &edge.t, edge.inbound_id)?;
         let props: Result<Vec<_>> = iter.collect();
-        let iter = props?.into_iter().map(|((_, _, _, name), value)| Ok((name, value.0)));
+        let iter = props?.into_iter().map(|(_, name, value)| Ok((name, value.0)));
         Ok(Box::new(iter))
     }
 

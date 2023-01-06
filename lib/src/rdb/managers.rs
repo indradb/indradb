@@ -11,8 +11,8 @@ use crate::util;
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
-pub type OwnedPropertyItem = ((Uuid, models::Identifier), models::Json);
-pub type EdgePropertyItem = ((Uuid, models::Identifier, Uuid, models::Identifier), models::Json);
+pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
+pub type EdgePropertyItem = (models::Edge, models::Identifier, models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, models::Edge);
 
@@ -96,7 +96,7 @@ impl<'a> VertexManager<'a> {
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
-            let ((vertex_property_owner_id, vertex_property_name), _) = item?;
+            let (vertex_property_owner_id, vertex_property_name, _) = item?;
             vertex_property_manager.delete(
                 batch,
                 indexed_properties,
@@ -173,13 +173,13 @@ impl<'a> EdgeManager<'a> {
 
         let edge_property_manager = EdgePropertyManager::new(self.db);
         for item in edge_property_manager.iterate_for_owner(out_id, t, in_id)? {
-            let ((edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name), _) = item?;
+            let (edge_property_edge, edge_property_name, _) = item?;
             edge_property_manager.delete(
                 batch,
                 indexed_properties,
-                edge_property_out_id,
-                &edge_property_t,
-                edge_property_in_id,
+                edge_property_edge.outbound_id,
+                &edge_property_edge.t,
+                edge_property_edge.inbound_id,
                 &edge_property_name,
             )?;
         }
@@ -346,7 +346,7 @@ impl<'a> VertexPropertyManager<'a> {
             let name_str = util::read_fixed_length_string(&mut cursor);
             let name = unsafe { models::Identifier::new_unchecked(name_str) };
             let value = serde_json::from_slice(&v)?;
-            Ok(((owner_id, name), value))
+            Ok((owner_id, name, value))
         }))
     }
 
@@ -459,15 +459,8 @@ impl<'a> EdgePropertyManager<'a> {
             let edge_property_name = unsafe { models::Identifier::new_unchecked(edge_property_name_str) };
 
             let value = serde_json::from_slice(&v)?;
-            Ok((
-                (
-                    edge_property_out_id,
-                    edge_property_t,
-                    edge_property_in_id,
-                    edge_property_name,
-                ),
-                value,
-            ))
+            let edge_property_edge = models::Edge::new(edge_property_out_id, edge_property_t, edge_property_in_id);
+            Ok((edge_property_edge, edge_property_name, value))
         });
 
         Ok(Box::new(mapped))
