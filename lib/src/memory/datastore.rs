@@ -73,8 +73,8 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
-        let iter = ids.clone().into_iter().filter_map(move |id| {
+    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+        let iter = ids.into_iter().filter_map(move |id| {
             self.internal
                 .vertices
                 .get(&id)
@@ -136,9 +136,8 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn specific_edges(&'a self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+    fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>> {
         let iter = edges
-            .clone()
             .into_iter()
             .filter(move |edge| self.internal.edges.contains(edge))
             .map(|e| Ok(e.clone()));

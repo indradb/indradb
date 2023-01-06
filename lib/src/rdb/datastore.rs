@@ -121,16 +121,11 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
-        let iter = ids.into_iter().map(move |id| match self.vertex_manager.get(id)? {
-            Some(t) => Ok(Some(Vertex::with_id(id, t))),
-            None => Ok(None),
-        });
-
-        let iter = iter.filter_map(|item| match item {
+    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+        let iter = ids.into_iter().filter_map(move |id| match self.vertex_manager.get(id) {
+            Ok(Some(t)) => Some(Ok(Vertex::with_id(id, t))),
+            Ok(None) => None,
             Err(err) => Some(Err(err)),
-            Ok(Some(vertex)) => Some(Ok(vertex)),
-            _ => None,
         });
 
         Ok(Box::new(iter))
@@ -165,7 +160,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         todo!();
     }
 
-    fn specific_edges(&'a self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+    fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>> {
         todo!();
     }
 

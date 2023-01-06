@@ -17,7 +17,7 @@ pub trait Transaction<'a> {
     fn vertex_count(&self) -> u64;
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>>;
     fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>>;
-    fn specific_vertices(&'a self, ids: &Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
+    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
     fn vertex_ids_with_property_value(
         &'a self,
@@ -29,7 +29,7 @@ pub trait Transaction<'a> {
     fn all_edges(&'a self) -> Result<DynIter<'a, Edge>>;
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
-    fn specific_edges(&'a self, edges: &Vec<Edge>) -> Result<DynIter<'a, Edge>>;
+    fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>>;
     fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>>;
     fn edges_with_property_value(
         &'a self,
@@ -488,7 +488,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
         }
         Query::SpecificVertex(ref q) => {
-            let iter = (*txn).specific_vertices(&q.ids)?;
+            let iter = (*txn).specific_vertices(q.ids.clone())?;
             QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
         }
         Query::Pipe(ref q) => {
@@ -502,7 +502,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                         EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
                     };
 
-                    let mut iter: DynIter<Vertex> = (*txn).specific_vertices(&iter.collect())?;
+                    let mut iter: DynIter<Vertex> = (*txn).specific_vertices(iter.collect())?;
 
                     if let Some(ref t) = q.t {
                         iter = Box::new(iter.filter(move |r| match r {
@@ -624,7 +624,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
         }
         Query::VertexWithPropertyPresence(ref q) => {
             if let Some(iter) = (*txn).vertex_ids_with_property(&q.name)? {
-                let iter = (*txn).specific_vertices(&iter.collect::<Result<Vec<Uuid>>>()?)?;
+                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
                 return Err(Error::NotIndexed);
@@ -632,7 +632,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
         }
         Query::VertexWithPropertyValue(ref q) => {
             if let Some(iter) = (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
-                let iter = (*txn).specific_vertices(&iter.collect::<Result<Vec<Uuid>>>()?)?;
+                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
                 return Err(Error::NotIndexed);
@@ -739,7 +739,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
         }
         Query::SpecificEdge(ref q) => {
-            let iter = (*txn).specific_edges(&q.edges)?;
+            let iter = (*txn).specific_edges(q.edges.clone())?;
             QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
         }
         Query::Include(ref q) => {
