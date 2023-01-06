@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use std::u64;
 
 use super::managers::*;
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::{BulkInsertItem, Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
