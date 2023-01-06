@@ -8,9 +8,6 @@ use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 use uuid::Uuid;
 
-// Trying to repro the issue:
-// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=a12b6638b70d508199436e992cbda00f
-
 pub type DynIter<'a, T> = Box<dyn Iterator<Item = Result<T>> + 'a>;
 
 pub trait Transaction<'a> {
