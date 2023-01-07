@@ -130,8 +130,8 @@ impl From<glob::GlobError> for InitError {
 }
 
 #[derive(Default)]
-struct Plugins {
-    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin>>,
+struct Plugins<D: indradb::Datastore + Send + Sync + 'static> {
+    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin<D>>>,
     // Kept to ensure libraries aren't dropped
     #[allow(dead_code)]
     libraries: Vec<Library>,
@@ -140,8 +140,8 @@ struct Plugins {
 /// The IndraDB server implementation.
 #[derive(Clone)]
 pub struct Server<D: indradb::Datastore + Send + Sync + 'static> {
-    datastore: Arc<D>,
-    plugins: Arc<Plugins>,
+    datastore: Arc<indradb::Database<D>>,
+    plugins: Arc<Plugins<D>>,
 }
 
 impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {

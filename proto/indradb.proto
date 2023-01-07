@@ -28,14 +28,6 @@ message Json {
 // datastore. An example might be "liked" or "reviewed". Edges are typed and
 // directed.
 message Edge {
-    // The key to the edge.
-    EdgeKey key = 1;
-    // When the edge was created.
-    google.protobuf.Timestamp created_datetime = 2;
-}
-
-// Represents a uniquely identifiable key to an edge.
-message EdgeKey {
     // The id of the outbound vertex.
     Uuid outbound_id = 1;
     // The type of the edge.
@@ -55,18 +47,29 @@ message Vertex {
     Identifier t = 2;
 }
 
-// A query for vertices.
-message VertexQuery {
+// A query.
+message Query {
     oneof query {
-        RangeVertexQuery range = 1;
-        SpecificVertexQuery specific = 2;
-        PipeVertexQuery pipe = 3;
-        PropertyPresenceVertexQuery property_presence = 4;
-        PropertyValueVertexQuery property_value = 5;
-        PipePropertyPresenceVertexQuery pipe_property_presence = 6;
-        PipePropertyValueVertexQuery pipe_property_value = 7;
+        AllVertexQuery all_vertex = 1;
+        RangeVertexQuery range_vertex = 2;
+        SpecificVertexQuery specific_vertex = 3;
+
+        AllEdgeQuery all_edge = 4;
+        SpecificEdgeQuery specific_edge = 5;
+
+        PipeQuery pipe = 6;
+
+        PipePropertyQuery pipe_property = 7;
+        VertexWithPropertyPresenceQuery vertex_with_property_presence = 8;
+        VertexWithPropertyValueQuery vertex_with_property_value = 9;
+        EdgeWithPropertyPresenceQuery edge_with_property_presence = 10;
+        EdgeWithPropertyValueQuery edge_with_property_value = 11;
+        PipeWithPropertyPresenceQuery pipe_with_property_presence = 12;
+        PipeWithPropertyValueQuery pipe_with_property_value = 13;
     }
 }
+
+message AllVertexQuery {}
 
 // Gets a range of vertices.
 message RangeVertexQuery {
@@ -84,10 +87,17 @@ message SpecificVertexQuery {
     repeated Uuid ids = 1;
 }
 
-// Gets the vertices associated with edges.
-message PipeVertexQuery {
-    // The edge query to build off of.
-    EdgeQuery inner = 1;
+message AllEdgeQuery {}
+
+// Gets a specific set of edges.
+message SpecificEdgeQuery {
+    // The keys of the edges to get.
+    repeated EdgeKey keys = 1;
+}
+
+message PipeQuery {
+    // The query to build off of.
+    Query inner = 1;
     // Whether to get outbound or inbound vertices on the edges.
     EdgeDirection direction = 2;
     // Limits the number of vertices to get.
@@ -139,24 +149,6 @@ message PipePropertyValueVertexQuery {
     Json value = 3;
     // Whether we should look for property equality or non-equality.
     bool equal = 4;
-}
-
-// A query for edges.
-message EdgeQuery {
-    oneof query {
-        SpecificEdgeQuery specific = 1;
-        PipeEdgeQuery pipe = 2;
-        PropertyPresenceEdgeQuery property_presence = 3;
-        PropertyValueEdgeQuery property_value = 4;
-        PipePropertyPresenceEdgeQuery pipe_property_presence = 5;
-        PipePropertyValueEdgeQuery pipe_property_value = 6;
-    }
-}
-
-// Gets a specific set of edges.
-message SpecificEdgeQuery {
-    // The keys of the edges to get.
-    repeated EdgeKey keys = 1;
 }
 
 // Gets edges with a property.

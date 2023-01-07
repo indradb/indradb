@@ -40,14 +40,14 @@ impl fmt::Display for VersionInfo {
 }
 
 /// Plugins should implement this trait.
-pub trait Plugin: Send + Sync + 'static {
+pub trait Plugin<D: indradb::Datastore + Send + Sync + 'static>: Send + Sync + 'static {
     /// Executes the plugin. Returns JSON that will be sent back to the
     /// calling client.
     ///
     /// # Arguments
     /// * `database`: The database.
     /// * `arg`: The argument from the calling client.
-    fn call<D: indradb::Datastore + Send + Sync + 'static>(
+    fn call(
         &self,
         database: indradb::Database<D>,
         arg: serde_json::Value,
@@ -55,9 +55,9 @@ pub trait Plugin: Send + Sync + 'static {
 }
 
 /// A declaration of a plugin.
-pub struct PluginDeclaration {
+pub struct PluginDeclaration<D: indradb::Datastore + Send + Sync + 'static> {
     pub version_info: VersionInfo,
-    pub entries: HashMap<String, Box<dyn Plugin>>,
+    pub entries: HashMap<String, Box<dyn Plugin<D>>>,
 }
 
 /// Libraries use this macro to register their plugins.
