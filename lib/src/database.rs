@@ -276,7 +276,7 @@ impl<D: Datastore> Database<D> {
     /// Gets the number of vertices in the datastore.
     #[deprecated(since = "4.0.0", note = "use `get` with a count query")]
     pub fn get_vertex_count(&self) -> Result<u64> {
-        expect_count(self.get(AllVertexQuery.count().into())?)
+        expect_count(self.get(AllVertexQuery.count().unwrap().into())?)
     }
 
     /// Gets a range of edges specified by a query.
@@ -313,14 +313,14 @@ impl<D: Datastore> Database<D> {
         let q = SpecificVertexQuery::single(id);
 
         let q = match direction {
-            EdgeDirection::Outbound => q.outbound(),
-            EdgeDirection::Inbound => q.inbound(),
+            EdgeDirection::Outbound => q.outbound().unwrap(),
+            EdgeDirection::Inbound => q.inbound().unwrap(),
         };
 
         let q: Query = if let Some(t) = t {
-            q.t(t.clone()).count().into()
+            q.t(t.clone()).count().unwrap().into()
         } else {
-            q.count().into()
+            q.count().unwrap().into()
         };
 
         expect_count(self.get(q)?)
@@ -348,7 +348,9 @@ impl<D: Datastore> Database<D> {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     pub fn get_all_vertex_properties(&self, q: Query) -> Result<Vec<VertexProperties>> {
-        let props_query = PipePropertyQuery::new(Box::new(q));
+        // `QueryExt::properties()` not used here because this function is not
+        // generic in order to keep this object safe.
+        let props_query = PipePropertyQuery::new(Box::new(q))?;
         if let Some(QueryOutputValue::VertexProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_vertex = HashMap::new();
             for (vertex, prop_name, prop_value) in props.into_iter() {
@@ -413,7 +415,9 @@ impl<D: Datastore> Database<D> {
     /// * `q`: The query to run.
     #[deprecated(since = "4.0.0", note = "use `get`")]
     pub fn get_all_edge_properties(&self, q: Query) -> Result<Vec<EdgeProperties>> {
-        let props_query = PipePropertyQuery::new(Box::new(q));
+        // `QueryExt::properties()` not used here because this function is not
+        // generic in order to keep this object safe.
+        let props_query = PipePropertyQuery::new(Box::new(q))?;
         if let Some(QueryOutputValue::EdgeProperties(props)) = self.get(props_query.into())?.pop() {
             let mut props_by_edge = HashMap::new();
             for (edge, prop_name, prop_value) in props.into_iter() {

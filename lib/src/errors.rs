@@ -23,7 +23,7 @@ pub enum Error {
     /// For functionality that isn't supported.
     Unsupported,
 
-    /// A validation error.
+    /// A validation error occurred.
     Invalid(ValidationError),
 }
 
@@ -74,6 +74,12 @@ impl From<RocksDbError> for Error {
     }
 }
 
+impl From<ValidationError> for Error {
+    fn from(err: ValidationError) -> Self {
+        Error::Invalid(err)
+    }
+}
+
 pub type Result<T> = StdResult<T, Error>;
 
 /// A validation error
@@ -85,8 +91,13 @@ pub enum ValidationError {
     ValueTooLong,
     /// The input UUID is the maximum value, and cannot be incremented.
     CannotIncrementUuid,
-    /// A poorly formed query.
-    BadQuery,
+    /// The given query combination cannot be nested (e.g. attempting to build
+    /// a query that gets vertex properties from a query that outputs a
+    /// count.)
+    InnerQuery,
+    /// The operation cannot work with the given query, based off it's output
+    /// type (e.g. attempting to delete using a query that outputs a count.)
+    OperationOnQuery,
 }
 
 impl StdError for ValidationError {}
@@ -97,7 +108,8 @@ impl fmt::Display for ValidationError {
             ValidationError::InvalidValue => write!(f, "invalid value"),
             ValidationError::ValueTooLong => write!(f, "value too long"),
             ValidationError::CannotIncrementUuid => write!(f, "could not increment the UUID"),
-            ValidationError::BadQuery => write!(f, "bad query"),
+            ValidationError::InnerQuery => write!(f, "the given query combination cannot be nested"),
+            ValidationError::OperationOnQuery => write!(f, "the operation cannot work with the given query"),
         }
     }
 }

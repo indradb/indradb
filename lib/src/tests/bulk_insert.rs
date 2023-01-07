@@ -54,6 +54,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
         .get_vertex_properties(
             SpecificVertexQuery::single(outbound_v.id)
                 .properties()
+                .unwrap()
                 .name(Identifier::new("vertex_property_name").unwrap())
                 .into(),
         )
@@ -68,7 +69,9 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 
     let edge_properties = db
         .get_edge_properties(
-            SpecificEdgeQuery::single(edge.clone()).property(Identifier::new("edge_property_name").unwrap()),
+            SpecificEdgeQuery::single(edge.clone())
+                .property(Identifier::new("edge_property_name").unwrap())
+                .unwrap(),
         )
         .unwrap();
 

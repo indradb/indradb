@@ -5,7 +5,9 @@ fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_n
     db.index_property(property_name.clone()).unwrap();
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
     db.create_vertex(&v).unwrap();
-    let q = models::SpecificVertexQuery::single(v.id).property(property_name.clone());
+    let q = models::SpecificVertexQuery::single(v.id)
+        .property(property_name.clone())
+        .unwrap();
     db.set_vertex_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
     v.id
@@ -23,7 +25,9 @@ fn setup_edge_with_indexed_property<D: Datastore>(
     db.create_vertex(&inbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
-    let q = models::SpecificEdgeQuery::single(edge.clone()).property(property_name.clone());
+    let q = models::SpecificEdgeQuery::single(edge.clone())
+        .property(property_name.clone())
+        .unwrap();
     db.create_edge(&edge).unwrap();
     db.set_edge_properties(q.clone(), serde_json::Value::Bool(true))
         .unwrap();
@@ -54,8 +58,11 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
     db.create_vertex(&v).unwrap();
     let q = models::SpecificVertexQuery::single(v.id);
-    db.set_vertex_properties(q.clone().property(property_name.clone()), serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_vertex_properties(
+        q.clone().property(property_name.clone()).unwrap(),
+        serde_json::Value::Bool(true),
+    )
+    .unwrap();
 
     // Index property
     db.index_property(property_name.clone()).unwrap();
@@ -68,7 +75,9 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     assert_eq!(result[0].id, v.id);
 
     // Get the vertex with a piped query
-    let result = db.get_vertices(q.with_property(property_name.clone()).into()).unwrap();
+    let result = db
+        .get_vertices(q.with_property(property_name.clone()).unwrap().into())
+        .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, v.id);
 }
@@ -85,8 +94,11 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
     let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
     let q = models::SpecificEdgeQuery::single(edge.clone());
     db.create_edge(&edge).unwrap();
-    db.set_edge_properties(q.clone().property(property_name.clone()), serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_edge_properties(
+        q.clone().property(property_name.clone()).unwrap(),
+        serde_json::Value::Bool(true),
+    )
+    .unwrap();
 
     // Index property
     db.index_property(property_name.clone()).unwrap();
@@ -99,7 +111,9 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
     assert_eq!(result[0], edge);
 
     // Get the edge with a piped query
-    let result = db.get_edges(q.with_property(property_name.clone()).into()).unwrap();
+    let result = db
+        .get_edges(q.with_property(property_name.clone()).unwrap().into())
+        .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0], edge);
 }
@@ -133,7 +147,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
 
     let id = setup_vertex_with_indexed_property(db, &property_name);
     let q = models::SpecificVertexQuery::single(id);
-    db.set_vertex_properties(q.clone().property(property_name.clone()), json_false.clone())
+    db.set_vertex_properties(q.clone().property(property_name.clone()).unwrap(), json_false.clone())
         .unwrap();
 
     // property foo should not be the old value
@@ -145,6 +159,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
         .get_vertices(
             q.clone()
                 .with_property_equal_to(property_name.clone(), json_true.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -153,6 +168,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
         .get_vertices(
             q.clone()
                 .with_property_not_equal_to(property_name.clone(), json_true.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -169,6 +185,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
         .get_vertices(
             q.clone()
                 .with_property_equal_to(property_name.clone(), json_false.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -177,6 +194,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
     let result = db
         .get_vertices(
             q.with_property_not_equal_to(property_name.clone(), json_false.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -190,7 +208,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
 
     let edge = setup_edge_with_indexed_property(db, &property_name);
     let q = models::SpecificEdgeQuery::single(edge.clone());
-    db.set_edge_properties(q.clone().property(property_name.clone()), json_false.clone())
+    db.set_edge_properties(q.clone().property(property_name.clone()).unwrap(), json_false.clone())
         .unwrap();
 
     // property foo should not be the old value
@@ -202,6 +220,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
         .get_edges(
             q.clone()
                 .with_property_equal_to(property_name.clone(), json_true.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -210,6 +229,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
         .get_edges(
             q.clone()
                 .with_property_not_equal_to(property_name.clone(), json_true)
+                .unwrap()
                 .into(),
         )
         .unwrap();
@@ -226,13 +246,18 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
         .get_edges(
             q.clone()
                 .with_property_equal_to(property_name.clone(), json_false.clone())
+                .unwrap()
                 .into(),
         )
         .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0], edge);
     let result = db
-        .get_edges(q.with_property_not_equal_to(property_name.clone(), json_false).into())
+        .get_edges(
+            q.with_property_not_equal_to(property_name.clone(), json_false)
+                .unwrap()
+                .into(),
+        )
         .unwrap();
     assert_eq!(result.len(), 0);
 }

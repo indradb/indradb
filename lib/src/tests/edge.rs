@@ -68,7 +68,13 @@ pub fn should_create_a_valid_edge<D: Datastore>(db: &Database<D>) {
     // REGRESSION: Second check that getting an edge range will only fetch a
     // single edge
     let e = db
-        .get_edges(SpecificVertexQuery::single(outbound_v.id).outbound().limit(10).into())
+        .get_edges(
+            SpecificVertexQuery::single(outbound_v.id)
+                .outbound()
+                .unwrap()
+                .limit(10)
+                .into(),
+        )
         .unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(edge, e[0]);
@@ -97,7 +103,7 @@ pub fn should_delete_a_valid_edge<D: Datastore>(db: &Database<D>) {
 
     let q = SpecificEdgeQuery::single(edge);
     db.set_edge_properties(
-        q.clone().property(models::Identifier::new("foo").unwrap()),
+        q.clone().property(models::Identifier::new("foo").unwrap()).unwrap(),
         serde_json::Value::Bool(true),
     )
     .unwrap();
@@ -148,7 +154,13 @@ pub fn should_get_an_inbound_edge_count<D: Datastore>(db: &Database<D>) {
 pub fn should_get_edges_with_no_type<D: Datastore>(db: &Database<D>) {
     let (outbound_id, _) = create_edges(db);
     let range = db
-        .get_edges(SpecificVertexQuery::single(outbound_id).outbound().limit(10).into())
+        .get_edges(
+            SpecificVertexQuery::single(outbound_id)
+                .outbound()
+                .unwrap()
+                .limit(10)
+                .into(),
+        )
         .unwrap();
     check_edge_range(&range, outbound_id, 5);
 }
@@ -160,6 +172,7 @@ pub fn should_get_edge_range<D: Datastore>(db: &Database<D>) {
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
                 .outbound()
+                .unwrap()
                 .limit(100)
                 .t(t)
                 .into(),
@@ -191,6 +204,7 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
 
     let query_1 = SpecificVertexQuery::single(outbound_v.id)
         .outbound()
+        .unwrap()
         .limit(1)
         .t(models::Identifier::new("test_edge_type").unwrap());
     let range = db.get_edges(query_1.clone().into()).unwrap();
@@ -206,8 +220,10 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
 
     let query_2 = query_1
         .inbound()
+        .unwrap()
         .limit(1)
         .inbound()
+        .unwrap()
         .limit(1)
         .t(models::Identifier::new("test_edge_type").unwrap());
     let range = db.get_edges(query_2.into()).unwrap();

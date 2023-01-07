@@ -101,14 +101,38 @@ impl Query {
             Query::Include(q) => 1 + q.inner.output_len(),
         }
     }
+
+    pub(crate) fn output_type(&self) -> errors::ValidationResult<QueryOutputValue> {
+        match self {
+            Query::AllVertex(_)
+            | Query::RangeVertex(_)
+            | Query::SpecificVertex(_)
+            | Query::VertexWithPropertyPresence(_)
+            | Query::VertexWithPropertyValue(_) => Ok(QueryOutputValue::Vertices(Vec::default())),
+            Query::AllEdge(_)
+            | Query::SpecificEdge(_)
+            | Query::EdgeWithPropertyPresence(_)
+            | Query::EdgeWithPropertyValue(_) => Ok(QueryOutputValue::Edges(Vec::default())),
+            Query::Count(_) => Ok(QueryOutputValue::Count(0)),
+            Query::Pipe(q) => q.inner.output_type(),
+            Query::PipeProperty(q) => match q.inner.output_type()? {
+                QueryOutputValue::Vertices(_) => Ok(QueryOutputValue::VertexProperties(Vec::default())),
+                QueryOutputValue::Edges(_) => Ok(QueryOutputValue::EdgeProperties(Vec::default())),
+                _ => Err(errors::ValidationError::InnerQuery),
+            },
+            Query::PipeWithPropertyPresence(q) => q.inner.output_type(),
+            Query::PipeWithPropertyValue(q) => q.inner.output_type(),
+            Query::Include(q) => q.inner.output_type(),
+        }
+    }
 }
 
 pub trait QueryExt: Into<Query> {
-    fn outbound(self) -> PipeQuery {
+    fn outbound(self) -> errors::ValidationResult<PipeQuery> {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
-    fn inbound(self) -> PipeQuery {
+    fn inbound(self) -> errors::ValidationResult<PipeQuery> {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
@@ -116,7 +140,7 @@ pub trait QueryExt: Into<Query> {
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn with_property<T: Into<Identifier>>(self, name: T) -> PipeWithPropertyPresenceQuery {
+    fn with_property<T: Into<Identifier>>(self, name: T) -> errors::ValidationResult<PipeWithPropertyPresenceQuery> {
         PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, true)
     }
 
@@ -124,7 +148,7 @@ pub trait QueryExt: Into<Query> {
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn without_property<T: Into<Identifier>>(self, name: T) -> PipeWithPropertyPresenceQuery {
+    fn without_property<T: Into<Identifier>>(self, name: T) -> errors::ValidationResult<PipeWithPropertyPresenceQuery> {
         PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, false)
     }
 
@@ -137,7 +161,7 @@ pub trait QueryExt: Into<Query> {
         self,
         name: T,
         value: serde_json::Value,
-    ) -> PipeWithPropertyValueQuery {
+    ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
 
@@ -150,24 +174,24 @@ pub trait QueryExt: Into<Query> {
         self,
         name: T,
         value: serde_json::Value,
-    ) -> PipeWithPropertyValueQuery {
+    ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
 
-    fn properties(self) -> PipePropertyQuery {
+    fn properties(self) -> errors::ValidationResult<PipePropertyQuery> {
         PipePropertyQuery::new(Box::new(self.into()))
     }
 
     #[deprecated(since = "4.0.0", note = "use `.properties().name(...)`")]
-    fn property(self, name: Identifier) -> PipePropertyQuery {
-        self.properties().name(name)
+    fn property(self, name: Identifier) -> errors::ValidationResult<PipePropertyQuery> {
+        Ok(self.properties()?.name(name))
     }
 
     fn include(self) -> IncludeQuery {
         IncludeQuery::new(Box::new(self.into()))
     }
 
-    fn count(self) -> CountQuery {
+    fn count(self) -> errors::ValidationResult<CountQuery> {
         CountQuery::new(Box::new(self.into()))
     }
 }
@@ -260,12 +284,16 @@ impl PipeWithPropertyPresenceQuery {
     /// * `inner`: The query to filter.
     /// * `name`: The name of the property.
     /// * `exists`: Whether we should look for property presence or lack thereof.
-    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, exists: bool) -> Self {
-        Self {
+    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, exists: bool) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
             inner,
             name: name.into(),
             exists,
-        }
+        })
     }
 }
 
@@ -292,13 +320,22 @@ impl PipeWithPropertyValueQuery {
     /// * `name`: The property name to filter.
     /// * `value`: The property value to filter.
     /// * `equal`: Whether the value should be equal, or not equal.
-    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, value: serde_json::Value, equal: bool) -> Self {
-        Self {
+    pub fn new<T: Into<Identifier>>(
+        inner: Box<Query>,
+        name: T,
+        value: serde_json::Value,
+        equal: bool,
+    ) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
             inner,
             name: name.into(),
             value,
             equal,
-        }
+        })
     }
 }
 
@@ -431,13 +468,18 @@ impl PipeQuery {
     /// # Arguments
     /// * `inner`: The inner query.
     /// * `direction`: Which direction to pipe from.
-    pub fn new(inner: Box<Query>, direction: EdgeDirection) -> Self {
-        Self {
+    pub fn new(inner: Box<Query>, direction: EdgeDirection) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+
+        Ok(Self {
             inner,
             direction,
             limit: u32::max_value(),
             t: None,
-        }
+        })
     }
 
     /// Sets the limit.
@@ -553,12 +595,19 @@ impl CountQuery {
     ///
     /// Arguments
     /// * `inner`: The query to export.
-    pub fn new(inner: Box<Query>) -> Self {
-        Self { inner }
+    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_)
+            | QueryOutputValue::Edges(_)
+            | QueryOutputValue::VertexProperties(_)
+            | QueryOutputValue::EdgeProperties(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self { inner })
     }
 }
 
-/// Returns the vertices associated with edges, or the edges associated with vertices.
+/// Returns the properties associated with a vertex or edge.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyQuery {
     /// The inner query.
@@ -574,8 +623,12 @@ impl PipePropertyQuery {
     ///
     /// # Arguments
     /// * `inner`: The query to pipe.
-    pub fn new(inner: Box<Query>) -> Self {
-        Self { inner, name: None }
+    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self { inner, name: None })
     }
 
     /// Only include properties with a given name.

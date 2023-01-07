@@ -110,9 +110,11 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     // This query should get `inserted_id`
     let query_1 = SpecificVertexQuery::single(v.id)
         .outbound()
+        .unwrap()
         .limit(1)
         .t(edge_t.clone())
         .inbound()
+        .unwrap()
         .limit(1);
     let range = db.get_vertices(query_1.clone().into()).unwrap();
     assert_eq!(range.len(), 1);
@@ -121,9 +123,11 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     // This query should get `inserted_id`
     let query_2 = SpecificVertexQuery::single(v.id)
         .outbound()
+        .unwrap()
         .limit(1)
         .t(edge_t.clone())
         .inbound()
+        .unwrap()
         .limit(1)
         .t(models::Identifier::new("test_inbound_vertex_type").unwrap());
     let range = db.get_vertices(query_2.into()).unwrap();
@@ -133,16 +137,25 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     // This query should get nothing
     let query_3 = SpecificVertexQuery::single(v.id)
         .outbound()
+        .unwrap()
         .limit(1)
         .t(edge_t.clone())
         .inbound()
+        .unwrap()
         .limit(1)
         .t(models::Identifier::new("foo").unwrap());
     let range = db.get_vertices(query_3.into()).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
-    let query_4 = query_1.inbound().limit(1).t(edge_t).outbound().limit(1);
+    let query_4 = query_1
+        .inbound()
+        .unwrap()
+        .limit(1)
+        .t(edge_t)
+        .outbound()
+        .unwrap()
+        .limit(1);
     let range = db.get_vertices(query_4.into()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0], v);
@@ -152,7 +165,7 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
     let (outbound_id, _) = create_edges(db);
     let q = SpecificVertexQuery::single(outbound_id);
     db.set_vertex_properties(
-        q.clone().property(models::Identifier::new("foo").unwrap()),
+        q.clone().property(models::Identifier::new("foo").unwrap()).unwrap(),
         serde_json::Value::Bool(true),
     )
     .unwrap();
