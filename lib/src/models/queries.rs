@@ -64,22 +64,43 @@ pub enum Query {
     AllVertex(AllVertexQuery),
     RangeVertex(RangeVertexQuery),
     SpecificVertex(SpecificVertexQuery),
+    VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
+    VertexWithPropertyValue(VertexWithPropertyValueQuery),
 
     AllEdge(AllEdgeQuery),
     SpecificEdge(SpecificEdgeQuery),
-
-    Pipe(PipeQuery),
-
-    PipeProperty(PipePropertyQuery),
-    VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
-    VertexWithPropertyValue(VertexWithPropertyValueQuery),
     EdgeWithPropertyPresence(EdgeWithPropertyPresenceQuery),
     EdgeWithPropertyValue(EdgeWithPropertyValueQuery),
+
+    Pipe(PipeQuery),
+    PipeProperty(PipePropertyQuery),
     PipeWithPropertyPresence(PipeWithPropertyPresenceQuery),
     PipeWithPropertyValue(PipeWithPropertyValueQuery),
 
     Include(IncludeQuery),
     Count(CountQuery),
+}
+
+impl Query {
+    pub(crate) fn output_len(&self) -> usize {
+        match self {
+            Query::AllVertex(_)
+            | Query::RangeVertex(_)
+            | Query::SpecificVertex(_)
+            | Query::VertexWithPropertyPresence(_)
+            | Query::VertexWithPropertyValue(_)
+            | Query::AllEdge(_)
+            | Query::SpecificEdge(_)
+            | Query::EdgeWithPropertyPresence(_)
+            | Query::EdgeWithPropertyValue(_)
+            | Query::Count(_) => 1,
+            Query::Pipe(q) => q.inner.output_len(),
+            Query::PipeProperty(q) => q.inner.output_len(),
+            Query::PipeWithPropertyPresence(q) => q.inner.output_len(),
+            Query::PipeWithPropertyValue(q) => q.inner.output_len(),
+            Query::Include(q) => 1 + q.inner.output_len(),
+        }
+    }
 }
 
 pub trait QueryExt: Into<Query> {

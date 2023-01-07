@@ -161,8 +161,7 @@ impl<D: Datastore> Database<D> {
 
     pub fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
         let txn = self.datastore.transaction();
-        // TODO: use `Vec::with_capacity`.
-        let mut output = Vec::new();
+        let mut output = Vec::with_capacity(q.output_len());
         unsafe {
             query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }
@@ -171,7 +170,7 @@ impl<D: Datastore> Database<D> {
 
     pub fn delete(&self, q: Query) -> Result<()> {
         let mut txn = self.datastore.transaction();
-        let mut output = Vec::new();
+        let mut output = Vec::with_capacity(q.output_len());
         unsafe {
             query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }
@@ -211,7 +210,7 @@ impl<D: Datastore> Database<D> {
     /// * `value`: The property value.
     pub fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
         let mut txn = self.datastore.transaction();
-        let mut output = Vec::new();
+        let mut output = Vec::with_capacity(q.output_len());
         unsafe {
             query(&txn as *const D::Transaction<'_>, &q, &mut output)?;
         }

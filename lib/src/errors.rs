@@ -8,26 +8,30 @@ use rmp_serde::encode::Error as RmpEncodeError;
 use rocksdb::Error as RocksDbError;
 use serde_json::Error as JsonError;
 
-/// An error triggered by the datastore
+/// An error triggered by the datastore.
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
     UuidTaken,
 
-    /// An error occurred in the underlying datastore
+    /// An error occurred in the underlying datastore.
     Datastore(Box<dyn StdError + Send + Sync>),
 
-    /// A query occurred on a property that isn't indexed
+    /// A query occurred on a property that isn't indexed.
     NotIndexed,
 
-    /// For functionality that isn't supported
+    /// For functionality that isn't supported.
     Unsupported,
+
+    /// A validation error.
+    Invalid(ValidationError),
 }
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
             Error::Datastore(ref err) => Some(&**err),
+            Error::Invalid(ref err) => Some(&**err),
             _ => None,
         }
     }
@@ -40,6 +44,7 @@ impl fmt::Display for Error {
             Error::Datastore(ref err) => write!(f, "error in the underlying datastore: {}", err),
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
             Error::Unsupported => write!(f, "functionality not supported"),
+            Error::Invalid(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -74,12 +79,14 @@ pub type Result<T> = StdResult<T, Error>;
 /// A validation error
 #[derive(Debug)]
 pub enum ValidationError {
-    /// The value is invalid
+    /// The value is invalid.
     InvalidValue,
-    /// The value is too long
+    /// The value is too long.
     ValueTooLong,
-    /// The input UUID is the maximum value, and cannot be incremented
+    /// The input UUID is the maximum value, and cannot be incremented.
     CannotIncrementUuid,
+    /// A poorly formed query.
+    BadQuery,
 }
 
 impl StdError for ValidationError {}
@@ -90,6 +97,7 @@ impl fmt::Display for ValidationError {
             ValidationError::InvalidValue => write!(f, "invalid value"),
             ValidationError::ValueTooLong => write!(f, "value too long"),
             ValidationError::CannotIncrementUuid => write!(f, "could not increment the UUID"),
+            ValidationError::BadQuery => write!(f, "bad query"),
         }
     }
 }
