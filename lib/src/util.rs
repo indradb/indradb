@@ -23,18 +23,24 @@ lazy_static! {
 /// A byte-serializable value, frequently employed in the keys of key/value
 /// store.
 pub enum Component<'a> {
+    /// A UUID.
     Uuid(Uuid),
+    /// A fixed length string.
     FixedLengthString(&'a str),
+    /// An identifier.
     Identifier(&'a models::Identifier),
+    /// A JSON value.
     Json(&'a models::Json),
 }
 
 impl<'a> Component<'a> {
-    // Really just implemented to not set off a clippy warning
+    /// Returns whether the component is empty, which is always false. Really
+    /// this is just implemented to not set off a clippy warning.
     pub fn is_empty(&self) -> bool {
         false
     }
 
+    /// Gets the length of the component.
     pub fn len(&self) -> usize {
         match *self {
             Component::Uuid(_) => 16,
@@ -44,6 +50,7 @@ impl<'a> Component<'a> {
         }
     }
 
+    /// Writes a component into a cursor of bytes.
     pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
         match *self {
             Component::Uuid(uuid) => cursor.write_all(uuid.as_bytes()),
@@ -119,6 +126,10 @@ pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Strin
     buf
 }
 
+/// Reads a `u64` from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
 pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
     cursor.read_u64::<BigEndian>().unwrap()
 }

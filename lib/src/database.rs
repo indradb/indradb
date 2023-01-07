@@ -8,12 +8,27 @@ use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
 use uuid::Uuid;
 
+/// A dynamic iterator over results, which are commonly employed as
+/// transaction return types.
 pub type DynIter<'a, T> = Box<dyn Iterator<Item = Result<T>> + 'a>;
 
+/// Specifies a datastore implementation.
+///
+/// Note that this trait and its members purposefully do not employ any
+/// generic arguments. While that would improve ergonomics, it would remove
+/// object safety, which we need for plugins.
+///
+/// # Errors
+/// Nearly all methods may return an error if something unexpected happens -
+/// e.g. if there was a problem connecting to the underlying database.
 pub trait Transaction<'a> {
+    /// Gets the number of vertices.
     fn vertex_count(&self) -> u64;
+    /// Returns all vertices.
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>>;
+    /// Returns all vertices with `id >= offset`.
     fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>>;
+    /// Gets a specific set of vertices with the given IDs.
     fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
     fn vertex_ids_with_property_value(
@@ -22,6 +37,7 @@ pub trait Transaction<'a> {
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Uuid>>>;
 
+    /// Gets the number of edges.
     fn edge_count(&self) -> u64;
     fn all_edges(&'a self) -> Result<DynIter<'a, Edge>>;
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
@@ -89,15 +105,6 @@ pub trait Datastore {
     fn transaction<'a>(&'a self) -> Self::Transaction<'a>;
 }
 
-/// Specifies a datastore implementation.
-///
-/// Note that this trait and its members purposefully do not employ any
-/// generic arguments. While that would improve ergonomics, it would remove
-/// object safety, which we need for plugins.
-///
-/// # Errors
-/// All methods may return an error if something unexpected happens - e.g.
-/// if there was a problem connecting to the underlying database.
 pub struct Database<D: Datastore> {
     datastore: D,
 }
@@ -141,8 +148,7 @@ impl<D: Datastore> Database<D> {
         }
     }
 
-    /// Creates a new edge. If the edge already exists, this will update it
-    /// with a new update datetime. Returns whether the edge was successfully
+    /// Creates a new edge. Returns whether the edge was successfully
     /// created - if this is false, it's because one of the specified vertices
     /// is missing.
     ///
@@ -240,6 +246,10 @@ impl<D: Datastore> Database<D> {
         let mut txn = self.datastore.transaction();
         txn.index_property(name)
     }
+
+    // All functions after this are deprecated. They provide an interface that
+    // is close to (but not the same as) IndraDB versions below 4. At some
+    // point these will be removed, likely in version 5.
 
     /// Gets a range of vertices specified by a query.
     ///

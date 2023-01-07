@@ -264,6 +264,13 @@ pub struct PipeWithPropertyValueQuery {
 query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
 
 impl PipeWithPropertyValueQuery {
+    /// Constructs a new pipe with property value query.
+    ///
+    /// # Arguments
+    /// * `inner`: The inner query.
+    /// * `name`: The property name to filter.
+    /// * `value`: The property value to filter.
+    /// * `equal`: Whether the value should be equal, or not equal.
     pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, value: serde_json::Value, equal: bool) -> Self {
         Self {
             inner,
@@ -398,6 +405,11 @@ pub struct PipeQuery {
 query_type!(PipeQuery, Pipe);
 
 impl PipeQuery {
+    /// Constructs a new pipe query.
+    ///
+    /// # Arguments
+    /// * `inner`: The inner query.
+    /// * `direction`: Which direction to pipe from.
     pub fn new(inner: Box<Query>, direction: EdgeDirection) -> Self {
         Self {
             inner,
@@ -466,6 +478,20 @@ impl SpecificEdgeQuery {
     }
 }
 
+/// Includes the results of a query in output.
+///
+/// The outermost part of a query will always be explicitly included. This
+/// allows you to also output an intermediate result.
+///
+/// # Examples
+/// ```
+/// // A query to return all edges in the database, which are implicitly
+/// // included as the outermost results.
+/// let q = AllVertex::new().outbound();
+/// // A query to return all vertices and all edges in the database, because
+/// // vertices are explicitly included as intermediate results.
+/// let q = AllVertex::new().include().outbound();
+/// ```
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IncludeQuery {
     /// The query to export.
@@ -484,6 +510,13 @@ impl IncludeQuery {
     }
 }
 
+/// Counts the number of items returned from a query.
+///
+/// # Examples
+/// ```
+/// // A query to return the total number of vertices in the database.
+/// let q = AllVertex::new().count();
+/// ```
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CountQuery {
     /// The query to export.
@@ -502,6 +535,7 @@ impl CountQuery {
     }
 }
 
+/// Returns the vertices associated with edges, or the edges associated with vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyQuery {
     /// The inner query.
@@ -513,6 +547,10 @@ pub struct PipePropertyQuery {
 leaf_query_type!(PipePropertyQuery, PipeProperty);
 
 impl PipePropertyQuery {
+    /// Creates a new pipe property query.
+    ///
+    /// # Arguments
+    /// * `inner`: The query to pipe.
     pub fn new(inner: Box<Query>) -> Self {
         Self { inner, name: None }
     }
@@ -529,12 +567,18 @@ impl PipePropertyQuery {
     }
 }
 
+/// Value(s) returned from a query.
 #[derive(Clone, Debug)]
 pub enum QueryOutputValue {
+    /// Vertices.
     Vertices(Vec<crate::Vertex>),
+    /// Edges.
     Edges(Vec<crate::Edge>),
+    /// A Count.
     Count(u64),
+    /// Vertex properties.
     VertexProperties(Vec<(crate::Vertex, crate::Identifier, serde_json::Value)>),
+    /// Edge properties.
     EdgeProperties(Vec<(crate::Edge, crate::Identifier, serde_json::Value)>),
 }
 
