@@ -47,11 +47,7 @@ pub trait Plugin<D: indradb::Datastore + Send + Sync + 'static>: Send + Sync + '
     /// # Arguments
     /// * `database`: The database.
     /// * `arg`: The argument from the calling client.
-    fn call(
-        &self,
-        database: indradb::Database<D>,
-        arg: serde_json::Value,
-    ) -> Result<serde_json::Value, Error>;
+    fn call(&self, database: indradb::Database<D>, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
 }
 
 /// A declaration of a plugin.

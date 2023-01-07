@@ -31,7 +31,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
             Error::Datastore(ref err) => Some(&**err),
-            Error::Invalid(ref err) => Some(&**err),
+            Error::Invalid(ref err) => Some(err),
             _ => None,
         }
     }

@@ -5,7 +5,7 @@ use crate::{errors, Edge, Identifier};
 
 use uuid::Uuid;
 
-macro_rules! leaf_query_type {
+macro_rules! into_query {
     ($name:ident, $variant:ident) => {
         // we don't want to impl From since the reverse operation isn't allowed
         #[allow(clippy::from_over_into)]
@@ -20,7 +20,7 @@ macro_rules! leaf_query_type {
 macro_rules! query_type {
     ($name:ident, $variant:ident) => {
         impl QueryExt for $name {}
-        leaf_query_type!($name, $variant);
+        into_query!($name, $variant);
     };
 }
 
@@ -175,7 +175,7 @@ pub trait QueryExt: Into<Query> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexWithPropertyPresenceQuery {
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
 }
 
 query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
@@ -190,9 +190,9 @@ impl VertexWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexWithPropertyValueQuery {
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub(crate) value: serde_json::Value,
 }
 
 query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
@@ -209,7 +209,7 @@ impl VertexWithPropertyValueQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyPresenceQuery {
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
 }
 
 query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
@@ -224,9 +224,9 @@ impl EdgeWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyValueQuery {
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub(crate) value: serde_json::Value,
 }
 
 query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
@@ -244,11 +244,11 @@ impl EdgeWithPropertyValueQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyPresenceQuery {
     /// The query to filter.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
     /// Whether we should look for property presence or lack thereof.
-    pub exists: bool,
+    pub(crate) exists: bool,
 }
 
 query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
@@ -273,13 +273,13 @@ impl PipeWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyValueQuery {
     /// The query to filter.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
     /// The name of the property.
-    pub name: Identifier,
+    pub(crate) name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub(crate) value: serde_json::Value,
     /// Whether we should look for property equality or non-equality.
-    pub equal: bool,
+    pub(crate) equal: bool,
 }
 
 query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
@@ -311,13 +311,13 @@ query_type!(AllVertexQuery, AllVertex);
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
     /// Limits the number of vertices to get.
-    pub limit: u32,
+    pub(crate) limit: u32,
 
     /// Filters the type of vertices returned.
-    pub t: Option<Identifier>,
+    pub(crate) t: Option<Identifier>,
 
     /// Sets the lowest vertex ID to return.
-    pub start_id: Option<Uuid>,
+    pub(crate) start_id: Option<Uuid>,
 }
 
 query_type!(RangeVertexQuery, RangeVertex);
@@ -379,7 +379,7 @@ impl RangeVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
-    pub ids: Vec<Uuid>,
+    pub(crate) ids: Vec<Uuid>,
 }
 
 query_type!(SpecificVertexQuery, SpecificVertex);
@@ -411,16 +411,16 @@ impl SpecificVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeQuery {
     /// The edge query to build off of.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
 
     /// Whether to get outbound or inbound vertices on the edges.
-    pub direction: EdgeDirection,
+    pub(crate) direction: EdgeDirection,
 
     /// Limits the number of vertices to get.
-    pub limit: u32,
+    pub(crate) limit: u32,
 
     /// Filters the type of vertices returned.
-    pub t: Option<Identifier>,
+    pub(crate) t: Option<Identifier>,
 }
 
 query_type!(PipeQuery, Pipe);
@@ -476,7 +476,7 @@ query_type!(AllEdgeQuery, AllEdge);
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
     /// The edges to get.
-    pub edges: Vec<Edge>,
+    pub(crate) edges: Vec<Edge>,
 }
 
 query_type!(SpecificEdgeQuery, SpecificEdge);
@@ -506,17 +506,18 @@ impl SpecificEdgeQuery {
 ///
 /// # Examples
 /// ```
+/// use indradb::{AllVertexQuery, QueryExt};
 /// // A query to return all edges in the database, which are implicitly
 /// // included as the outermost results.
-/// let q = AllVertex::new().outbound();
+/// let q = AllVertexQuery.outbound();
 /// // A query to return all vertices and all edges in the database, because
 /// // vertices are explicitly included as intermediate results.
-/// let q = AllVertex::new().include().outbound();
+/// let q = AllVertexQuery.include().outbound();
 /// ```
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IncludeQuery {
     /// The query to export.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
 }
 
 query_type!(IncludeQuery, Include);
@@ -535,16 +536,17 @@ impl IncludeQuery {
 ///
 /// # Examples
 /// ```
+/// use indradb::{AllVertexQuery, QueryExt};
 /// // A query to return the total number of vertices in the database.
-/// let q = AllVertex::new().count();
+/// let q = AllVertexQuery.count();
 /// ```
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CountQuery {
     /// The query to export.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
 }
 
-leaf_query_type!(CountQuery, Count);
+into_query!(CountQuery, Count);
 
 impl CountQuery {
     /// Marks a query as exported.
@@ -560,12 +562,12 @@ impl CountQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyQuery {
     /// The inner query.
-    pub inner: Box<Query>,
+    pub(crate) inner: Box<Query>,
     /// The property name to get. If `None`, all properties will be fetched.
-    pub name: Option<Identifier>,
+    pub(crate) name: Option<Identifier>,
 }
 
-leaf_query_type!(PipePropertyQuery, PipeProperty);
+into_query!(PipePropertyQuery, PipeProperty);
 
 impl PipePropertyQuery {
     /// Creates a new pipe property query.
