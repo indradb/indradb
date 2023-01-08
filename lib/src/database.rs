@@ -4,7 +4,7 @@ use crate::models::{
     PipePropertyQuery, Query, QueryExt, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
     VertexProperty,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::vec::Vec;
 use uuid::Uuid;
 
@@ -312,7 +312,10 @@ impl<D: Datastore> Database<D> {
                 txn.delete_vertex_properties(
                     vertex_properties
                         .into_iter()
-                        .map(|(vertex, prop_name, _prop_value)| (vertex.id, prop_name))
+                        .flat_map(|vps| {
+                            let iter = vps.props.iter().map(move |vp| (vps.vertex.id, vp.name.clone()));
+                            iter.collect::<Vec<(Uuid, Identifier)>>()
+                        })
                         .collect(),
                 )?;
             }
@@ -320,7 +323,10 @@ impl<D: Datastore> Database<D> {
                 txn.delete_edge_properties(
                     edge_properties
                         .into_iter()
-                        .map(|(edge, prop_name, _prop_value)| (edge, prop_name))
+                        .flat_map(|eps| {
+                            let iter = eps.props.iter().map(move |ep| (eps.edge.clone(), ep.name.clone()));
+                            iter.collect::<Vec<(Edge, Identifier)>>()
+                        })
                         .collect(),
                 )?;
             }
@@ -460,10 +466,16 @@ impl<D: Datastore> Database<D> {
     #[deprecated(since = "4.0.0", note = "use `get`")]
     pub fn get_vertex_properties(&self, q: PipePropertyQuery) -> Result<Vec<VertexProperty>> {
         if let Some(QueryOutputValue::VertexProperties(props)) = self.get(q.into())?.pop() {
-            let iter = props
-                .into_iter()
-                .map(|(vertex, _prop_name, prop_value)| VertexProperty::new(vertex.id, prop_value));
-            Ok(iter.collect())
+            if props.len() > 1 {
+                Err(Error::Unsupported)
+            } else {
+                let iter = props.into_iter().flat_map(|vps| {
+                    vps.props
+                        .into_iter()
+                        .map(move |vp| VertexProperty::new(vps.vertex.id, vp.value))
+                });
+                Ok(iter.collect())
+            }
         } else {
             Err(Error::Unsupported)
         }
@@ -479,18 +491,7 @@ impl<D: Datastore> Database<D> {
         // generic in order to keep this object safe.
         let props_query = PipePropertyQuery::new(Box::new(q))?;
         if let Some(QueryOutputValue::VertexProperties(props)) = self.get(props_query.into())?.pop() {
-            let mut props_by_vertex = HashMap::new();
-            for (vertex, prop_name, prop_value) in props.into_iter() {
-                props_by_vertex
-                    .entry(vertex)
-                    .or_insert_with(Vec::new)
-                    .push(NamedProperty::new(prop_name, prop_value));
-            }
-            let mut grouped_properties = Vec::with_capacity(props_by_vertex.len());
-            for (vertex, named_properties) in props_by_vertex.drain() {
-                grouped_properties.push(VertexProperties::new(vertex, named_properties));
-            }
-            Ok(grouped_properties)
+            Ok(props)
         } else {
             Err(Error::Unsupported)
         }
@@ -527,10 +528,18 @@ impl<D: Datastore> Database<D> {
     #[deprecated(since = "4.0.0", note = "use `get`")]
     pub fn get_edge_properties(&self, q: PipePropertyQuery) -> Result<Vec<EdgeProperty>> {
         if let Some(QueryOutputValue::EdgeProperties(props)) = self.get(q.into())?.pop() {
-            let iter = props
-                .into_iter()
-                .map(|(edge, _prop_name, prop_value)| EdgeProperty::new(edge, prop_value));
-            Ok(iter.collect())
+            if props.len() > 1 {
+                Err(Error::Unsupported)
+            } else {
+                let iter = props.into_iter().flat_map(move |eps| {
+                    let iter = eps
+                        .props
+                        .into_iter()
+                        .map(|ep| EdgeProperty::new(eps.edge.clone(), ep.value));
+                    iter.collect::<Vec<EdgeProperty>>()
+                });
+                Ok(iter.collect())
+            }
         } else {
             Err(Error::Unsupported)
         }
@@ -546,18 +555,7 @@ impl<D: Datastore> Database<D> {
         // generic in order to keep this object safe.
         let props_query = PipePropertyQuery::new(Box::new(q))?;
         if let Some(QueryOutputValue::EdgeProperties(props)) = self.get(props_query.into())?.pop() {
-            let mut props_by_edge = HashMap::new();
-            for (edge, prop_name, prop_value) in props.into_iter() {
-                props_by_edge
-                    .entry(edge.clone())
-                    .or_insert_with(Vec::new)
-                    .push(NamedProperty::new(prop_name, prop_value));
-            }
-            let mut grouped_properties = Vec::with_capacity(props_by_edge.len());
-            for (edge, named_properties) in props_by_edge.drain() {
-                grouped_properties.push(EdgeProperties::new(edge, named_properties));
-            }
-            Ok(grouped_properties)
+            Ok(props)
         } else {
             Err(Error::Unsupported)
         }
@@ -714,18 +712,20 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    let mut edge_properties = Vec::new();
+                    let mut edge_properties = Vec::with_capacity(piped_edges.len());
                     for edge in piped_edges.into_iter() {
+                        let mut props = Vec::new();
                         if let Some(name) = &q.name {
                             if let Some(value) = (*txn).edge_property(&edge, &name)? {
-                                edge_properties.push((edge.clone(), name.clone(), value.clone()));
+                                props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         } else {
                             for result in (*txn).all_edge_properties_for_edge(&edge)? {
-                                let (prop_name, prop_value) = result?;
-                                edge_properties.push((edge.clone(), prop_name, prop_value));
+                                let (name, value) = result?;
+                                props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         }
+                        edge_properties.push(EdgeProperties::new(edge.clone(), props))
                     }
 
                     QueryOutputValue::EdgeProperties(edge_properties)
@@ -733,16 +733,18 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                 QueryOutputValue::Vertices(ref piped_vertices) => {
                     let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
                     for vertex in piped_vertices.into_iter() {
+                        let mut props = Vec::new();
                         if let Some(name) = &q.name {
                             if let Some(value) = (*txn).vertex_property(&vertex, &name)? {
-                                vertex_properties.push((vertex.clone(), name.clone(), value.clone()));
+                                props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         } else {
                             for result in (*txn).all_vertex_properties_for_vertex(&vertex)? {
-                                let (prop_name, prop_value) = result?;
-                                vertex_properties.push((vertex.clone(), prop_name, prop_value));
+                                let (name, value) = result?;
+                                props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         }
+                        vertex_properties.push(VertexProperties::new(vertex.clone(), props))
                     }
 
                     QueryOutputValue::VertexProperties(vertex_properties)
