@@ -128,10 +128,12 @@ impl Query {
 }
 
 pub trait QueryExt: Into<Query> {
+    /// Gets the outbound vertices or edges associated with this query.
     fn outbound(self) -> errors::ValidationResult<PipeQuery> {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
+    /// Gets the inbound vertices or edges associated with this query.
     fn inbound(self) -> errors::ValidationResult<PipeQuery> {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
@@ -187,15 +189,18 @@ pub trait QueryExt: Into<Query> {
         Ok(self.properties()?.name(name))
     }
 
+    /// Include this query's output, even if it is an intermediate result.
     fn include(self) -> IncludeQuery {
         IncludeQuery::new(Box::new(self.into()))
     }
 
+    /// Gets the count from this query.
     fn count(self) -> errors::ValidationResult<CountQuery> {
         CountQuery::new(Box::new(self.into()))
     }
 }
 
+/// Gets vertices with or without a given property.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexWithPropertyPresenceQuery {
     /// The name of the property.
@@ -205,6 +210,10 @@ pub struct VertexWithPropertyPresenceQuery {
 query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
 
 impl VertexWithPropertyPresenceQuery {
+    /// Creates a new vertex with property presence query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
     pub fn new<T: Into<Identifier>>(name: T) -> Self {
         Self { name: name.into() }
     }
@@ -222,6 +231,11 @@ pub struct VertexWithPropertyValueQuery {
 query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
 
 impl VertexWithPropertyValueQuery {
+    /// Creates a new vertex with property value query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
     pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
         Self {
             name: name.into(),
@@ -230,6 +244,7 @@ impl VertexWithPropertyValueQuery {
     }
 }
 
+/// Gets edges with or without a given property.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyPresenceQuery {
     /// The name of the property.
@@ -239,6 +254,10 @@ pub struct EdgeWithPropertyPresenceQuery {
 query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
 
 impl EdgeWithPropertyPresenceQuery {
+    /// Creates a new edge with property presence query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
     pub fn new<T: Into<Identifier>>(name: T) -> Self {
         Self { name: name.into() }
     }
@@ -256,6 +275,11 @@ pub struct EdgeWithPropertyValueQuery {
 query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
 
 impl EdgeWithPropertyValueQuery {
+    /// Creates a new edge with property value query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
     pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
         Self {
             name: name.into(),
