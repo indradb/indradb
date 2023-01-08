@@ -12,9 +12,8 @@ use uuid::Uuid;
 /// transaction return types.
 pub type DynIter<'a, T> = Box<dyn Iterator<Item = Result<T>> + 'a>;
 
-/// Specifies a datastore, which contains all implementation-specific logic.
-/// Database instances call into datastores. This separation allows us to
-/// minimize the amount of redundant and boilerplate logic within datastores.
+/// Specifies a datastore transaction, which contains nearly all of the
+/// datastore implementation-specific logic.
 ///
 /// Note that this trait and its members purposefully do not employ any
 /// generic arguments. While that would improve ergonomics, it would remove
@@ -92,6 +91,10 @@ pub trait Transaction<'a> {
     /// * `vertex` - The vertex.
     /// * `name` - The property name.
     fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>>;
+    /// Gets all vertex properties for a given vertex.
+    ///
+    /// # Arguments
+    /// * `vertex` - The vertex.
     fn all_vertex_properties_for_vertex(
         &'a self,
         vertex: &Vertex,
@@ -103,20 +106,60 @@ pub trait Transaction<'a> {
     /// * `edge` - The edge.
     /// * `name` - The property name.
     fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>>;
+    /// Gets all edge properties for a given edges.
+    ///
+    /// # Arguments
+    /// * `edge` - The edge.
     fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
 
+    /// Deletes the given vertices.
+    ///
+    /// # Arguments
+    /// * `vertices` - The vertices to delete.
     fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()>;
+    /// Deletes the given edges.
+    ///
+    /// # Arguments
+    /// * `edges` - The edges to delete.
     fn delete_edges(&mut self, edges: Vec<Edge>) -> Result<()>;
+    /// Deletes the given vertex properties.
+    ///
+    /// # Arguments
+    /// * `props` - The vertex properties to delete.
     fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()>;
+    /// Deletes the given edge properties.
+    ///
+    /// # Arguments
+    /// * `props` - The edge properties to delete.
     fn delete_edge_properties(&mut self, props: Vec<(Edge, Identifier)>) -> Result<()>;
 
+    /// Syncs persisted content. By default, this errors out, but this can be
+    /// overridden in datastores that support syncing.
     fn sync(&self) -> Result<()> {
         Err(Error::Unsupported)
     }
 
+    /// Creates a new vertex. Returns whether the vertex was successfully
+    /// created - if this is false, it's because a vertex with the same UUID
+    /// already exists.
+    ///
+    /// # Arguments
+    /// * `vertex`: The vertex to create.
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool>;
+    /// Creates a new edge. Returns whether the edge was successfully
+    /// created - if this is false, it's because one of the specified vertices
+    /// is missing.
+    ///
+    /// # Arguments
+    /// * `edge`: The edge to create.
     fn create_edge(&mut self, edge: &Edge) -> Result<bool>;
 
+    /// Bulk inserts many vertices, edges, and/or properties. By default, this
+    /// makes the underlying calls to insert the values, but can be overridden
+    /// to offer a more efficient implementation.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
     fn bulk_insert(&mut self, items: Vec<BulkInsertItem>) -> Result<()> {
         for item in items {
             match item {
@@ -138,16 +181,37 @@ pub trait Transaction<'a> {
         Ok(())
     }
 
+    /// Enables indexing on a specified property. When indexing is enabled on a
+    /// property, it's possible to query on its presence and values.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property to index.
     fn index_property(&mut self, name: Identifier) -> Result<()>;
 
+    /// Sets vertex properties.
+    ///
+    /// # Arguments
+    /// * `vertices`: The vertices to set the properties on.
+    /// * `name`: The property name.
+    /// * `value`: The property value.
     fn set_vertex_properties(&mut self, vertices: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()>;
+    /// Sets edge properties.
+    ///
+    /// # Arguments
+    /// * `edges`: The edges to set the properties on.
+    /// * `name`: The property name.
+    /// * `value`: The property value.
     fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()>;
 }
 
+/// Specifies a datastore, which provides datastore transaction
+/// implementations to the database.
 pub trait Datastore {
+    /// The datastore transaction type.
     type Transaction<'a>: Transaction<'a>
     where
         Self: 'a;
+    /// Creates a new transaction.
     fn transaction<'a>(&'a self) -> Self::Transaction<'a>;
 }
 
