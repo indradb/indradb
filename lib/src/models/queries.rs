@@ -224,169 +224,6 @@ pub trait QueryExt: Into<Query> {
     }
 }
 
-/// Gets vertices with or without a given property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct VertexWithPropertyPresenceQuery {
-    /// The name of the property.
-    pub(crate) name: Identifier,
-}
-
-query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
-
-impl VertexWithPropertyPresenceQuery {
-    /// Creates a new vertex with property presence query.
-    ///
-    /// # Arguments
-    /// * `name`: The property name.
-    pub fn new<T: Into<Identifier>>(name: T) -> Self {
-        Self { name: name.into() }
-    }
-}
-
-/// Gets vertices with a property equal to a given value.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct VertexWithPropertyValueQuery {
-    /// The name of the property.
-    pub(crate) name: Identifier,
-    /// The value of the property.
-    pub(crate) value: serde_json::Value,
-}
-
-query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
-
-impl VertexWithPropertyValueQuery {
-    /// Creates a new vertex with property value query.
-    ///
-    /// # Arguments
-    /// * `name`: The property name.
-    /// * `value`: The property value.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
-    }
-}
-
-/// Gets edges with or without a given property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct EdgeWithPropertyPresenceQuery {
-    /// The name of the property.
-    pub(crate) name: Identifier,
-}
-
-query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
-
-impl EdgeWithPropertyPresenceQuery {
-    /// Creates a new edge with property presence query.
-    ///
-    /// # Arguments
-    /// * `name`: The property name.
-    pub fn new<T: Into<Identifier>>(name: T) -> Self {
-        Self { name: name.into() }
-    }
-}
-
-/// Gets edges with a property equal to a given value.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct EdgeWithPropertyValueQuery {
-    /// The name of the property.
-    pub(crate) name: Identifier,
-    /// The value of the property.
-    pub(crate) value: serde_json::Value,
-}
-
-query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
-
-impl EdgeWithPropertyValueQuery {
-    /// Creates a new edge with property value query.
-    ///
-    /// # Arguments
-    /// * `name`: The property name.
-    /// * `value`: The property value.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
-    }
-}
-
-/// Gets vertices or edges with or without a property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipeWithPropertyPresenceQuery {
-    /// The query to filter.
-    pub(crate) inner: Box<Query>,
-    /// The name of the property.
-    pub(crate) name: Identifier,
-    /// Whether we should look for property presence or lack thereof.
-    pub(crate) exists: bool,
-}
-
-query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
-
-impl PipeWithPropertyPresenceQuery {
-    /// Gets vertices with a property.
-    ///
-    /// Arguments
-    /// * `inner`: The query to filter.
-    /// * `name`: The name of the property.
-    /// * `exists`: Whether we should look for property presence or lack thereof.
-    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, exists: bool) -> errors::ValidationResult<Self> {
-        match inner.output_type()? {
-            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
-            _ => return Err(errors::ValidationError::InnerQuery),
-        }
-        Ok(Self {
-            inner,
-            name: name.into(),
-            exists,
-        })
-    }
-}
-
-/// Gets vertices or edges with a property equal to a given value.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipeWithPropertyValueQuery {
-    /// The query to filter.
-    pub(crate) inner: Box<Query>,
-    /// The name of the property.
-    pub(crate) name: Identifier,
-    /// The value of the property.
-    pub(crate) value: serde_json::Value,
-    /// Whether we should look for property equality or non-equality.
-    pub(crate) equal: bool,
-}
-
-query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
-
-impl PipeWithPropertyValueQuery {
-    /// Constructs a new pipe with property value query.
-    ///
-    /// # Arguments
-    /// * `inner`: The inner query.
-    /// * `name`: The property name to filter.
-    /// * `value`: The property value to filter.
-    /// * `equal`: Whether the value should be equal, or not equal.
-    pub fn new<T: Into<Identifier>>(
-        inner: Box<Query>,
-        name: T,
-        value: serde_json::Value,
-        equal: bool,
-    ) -> errors::ValidationResult<Self> {
-        match inner.output_type()? {
-            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
-            _ => return Err(errors::ValidationError::InnerQuery),
-        }
-        Ok(Self {
-            inner,
-            name: name.into(),
-            value,
-            equal,
-        })
-    }
-}
-
 /// Gets all vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct AllVertexQuery;
@@ -488,6 +325,126 @@ impl SpecificVertexQuery {
     }
 }
 
+/// Gets vertices with or without a given property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct VertexWithPropertyPresenceQuery {
+    /// The name of the property.
+    pub(crate) name: Identifier,
+}
+
+query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
+
+impl VertexWithPropertyPresenceQuery {
+    /// Creates a new vertex with property presence query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets vertices with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct VertexWithPropertyValueQuery {
+    /// The name of the property.
+    pub(crate) name: Identifier,
+    /// The value of the property.
+    pub(crate) value: serde_json::Value,
+}
+
+query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
+
+impl VertexWithPropertyValueQuery {
+    /// Creates a new vertex with property value query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
+    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+/// Gets all edges.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct AllEdgeQuery;
+query_type!(AllEdgeQuery, AllEdge);
+
+/// Gets a specific set of edges.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct SpecificEdgeQuery {
+    /// The edges to get.
+    pub(crate) edges: Vec<Edge>,
+}
+
+query_type!(SpecificEdgeQuery, SpecificEdge);
+
+impl SpecificEdgeQuery {
+    /// Creates a new edge query for getting a list of specific edges.
+    ///
+    /// Arguments
+    /// * `edges`: The edges to get.
+    pub fn new(edges: Vec<Edge>) -> Self {
+        Self { edges }
+    }
+
+    /// Creates a new edge query for getting a single edge.
+    ///
+    /// Arguments
+    /// * `edge`: The edge to get.
+    pub fn single(edge: Edge) -> Self {
+        Self { edges: vec![edge] }
+    }
+}
+
+/// Gets edges with or without a given property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EdgeWithPropertyPresenceQuery {
+    /// The name of the property.
+    pub(crate) name: Identifier,
+}
+
+query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
+
+impl EdgeWithPropertyPresenceQuery {
+    /// Creates a new edge with property presence query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EdgeWithPropertyValueQuery {
+    /// The name of the property.
+    pub(crate) name: Identifier,
+    /// The value of the property.
+    pub(crate) value: serde_json::Value,
+}
+
+query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
+
+impl EdgeWithPropertyValueQuery {
+    /// Creates a new edge with property value query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
+    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
 /// Gets the vertices associated with edges, or edges associated with
 /// vertices.
 ///
@@ -557,35 +514,114 @@ impl PipeQuery {
     }
 }
 
-/// Gets all edges.
+/// Returns the properties associated with a vertex or edge.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct AllEdgeQuery;
-query_type!(AllEdgeQuery, AllEdge);
-
-/// Gets a specific set of edges.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SpecificEdgeQuery {
-    /// The edges to get.
-    pub(crate) edges: Vec<Edge>,
+pub struct PipePropertyQuery {
+    /// The inner query.
+    pub(crate) inner: Box<Query>,
+    /// The property name to get. If `None`, all properties will be fetched.
+    pub(crate) name: Option<Identifier>,
 }
 
-query_type!(SpecificEdgeQuery, SpecificEdge);
+into_query!(PipePropertyQuery, PipeProperty);
 
-impl SpecificEdgeQuery {
-    /// Creates a new edge query for getting a list of specific edges.
+impl PipePropertyQuery {
+    /// Creates a new pipe property query.
     ///
-    /// Arguments
-    /// * `edges`: The edges to get.
-    pub fn new(edges: Vec<Edge>) -> Self {
-        Self { edges }
+    /// # Arguments
+    /// * `inner`: The query to pipe.
+    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self { inner, name: None })
     }
 
-    /// Creates a new edge query for getting a single edge.
+    /// Only include properties with a given name.
+    ///
+    /// # Arguments
+    /// * `name`: The name filter.
+    pub fn name(self, name: Identifier) -> Self {
+        Self {
+            inner: self.inner,
+            name: Some(name),
+        }
+    }
+}
+
+/// Gets vertices or edges with or without a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipeWithPropertyPresenceQuery {
+    /// The query to filter.
+    pub(crate) inner: Box<Query>,
+    /// The name of the property.
+    pub(crate) name: Identifier,
+    /// Whether we should look for property presence or lack thereof.
+    pub(crate) exists: bool,
+}
+
+query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
+
+impl PipeWithPropertyPresenceQuery {
+    /// Gets vertices with a property.
     ///
     /// Arguments
-    /// * `edge`: The edge to get.
-    pub fn single(edge: Edge) -> Self {
-        Self { edges: vec![edge] }
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `exists`: Whether we should look for property presence or lack thereof.
+    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, exists: bool) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
+            inner,
+            name: name.into(),
+            exists,
+        })
+    }
+}
+
+/// Gets vertices or edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipeWithPropertyValueQuery {
+    /// The query to filter.
+    pub(crate) inner: Box<Query>,
+    /// The name of the property.
+    pub(crate) name: Identifier,
+    /// The value of the property.
+    pub(crate) value: serde_json::Value,
+    /// Whether we should look for property equality or non-equality.
+    pub(crate) equal: bool,
+}
+
+query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
+
+impl PipeWithPropertyValueQuery {
+    /// Constructs a new pipe with property value query.
+    ///
+    /// # Arguments
+    /// * `inner`: The inner query.
+    /// * `name`: The property name to filter.
+    /// * `value`: The property value to filter.
+    /// * `equal`: Whether the value should be equal, or not equal.
+    pub fn new<T: Into<Identifier>>(
+        inner: Box<Query>,
+        name: T,
+        value: serde_json::Value,
+        equal: bool,
+    ) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        })
     }
 }
 
@@ -652,42 +688,6 @@ impl CountQuery {
             _ => return Err(errors::ValidationError::InnerQuery),
         }
         Ok(Self { inner })
-    }
-}
-
-/// Returns the properties associated with a vertex or edge.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyQuery {
-    /// The inner query.
-    pub(crate) inner: Box<Query>,
-    /// The property name to get. If `None`, all properties will be fetched.
-    pub(crate) name: Option<Identifier>,
-}
-
-into_query!(PipePropertyQuery, PipeProperty);
-
-impl PipePropertyQuery {
-    /// Creates a new pipe property query.
-    ///
-    /// # Arguments
-    /// * `inner`: The query to pipe.
-    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
-        match inner.output_type()? {
-            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
-            _ => return Err(errors::ValidationError::InnerQuery),
-        }
-        Ok(Self { inner, name: None })
-    }
-
-    /// Only include properties with a given name.
-    ///
-    /// # Arguments
-    /// * `name`: The name filter.
-    pub fn name(self, name: Identifier) -> Self {
-        Self {
-            inner: self.inner,
-            name: Some(name),
-        }
     }
 }
 

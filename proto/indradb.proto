@@ -47,25 +47,43 @@ message Vertex {
     Identifier t = 2;
 }
 
-// A query.
+/// A query to get a set of values from the database.
 message Query {
     oneof query {
+        /// Gets all vertices.
         AllVertexQuery all_vertex = 1;
+        /// Gets a range of vertices.
         RangeVertexQuery range_vertex = 2;
+        /// Gets a specific set of vertices.
         SpecificVertexQuery specific_vertex = 3;
+        /// Gets vertices with or without a given property.
+        VertexWithPropertyPresenceQuery vertex_with_property_presence = 4;
+        /// Gets vertices with a property equal to a given value.
+        VertexWithPropertyValueQuery vertex_with_property_value = 5;
 
-        AllEdgeQuery all_edge = 4;
-        SpecificEdgeQuery specific_edge = 5;
+        /// Gets all edges.
+        AllEdgeQuery all_edge = 6;
+        /// Gets a specific set of edges.
+        SpecificEdgeQuery specific_edge = 7;
+        /// Gets edges with or without a given property.
+        EdgeWithPropertyPresenceQuery edge_with_property_presence = 8;
+        /// Gets edges with a property equal to a given value.
+        EdgeWithPropertyValueQuery edge_with_property_value = 9;
 
-        PipeQuery pipe = 6;
-
-        PipePropertyQuery pipe_property = 7;
-        VertexWithPropertyPresenceQuery vertex_with_property_presence = 8;
-        VertexWithPropertyValueQuery vertex_with_property_value = 9;
-        EdgeWithPropertyPresenceQuery edge_with_property_presence = 10;
-        EdgeWithPropertyValueQuery edge_with_property_value = 11;
+        /// Gets the vertices associated with edges, or edges associated with
+        /// vertices.
+        PipeQuery pipe = 10;
+        /// Returns the properties associated with a vertex or edge.
+        PipePropertyQuery pipe_property = 11;
+        /// Gets vertices or edges with or without a property.
         PipeWithPropertyPresenceQuery pipe_with_property_presence = 12;
+        /// Gets vertices or edges with a property equal to a given value.
         PipeWithPropertyValueQuery pipe_with_property_value = 13;
+
+        /// Includes the results of a query in output.
+        IncludeQuery include = 14;
+        /// Counts the number of items returned from a query.
+        CountQuery count = 15;
     }
 }
 

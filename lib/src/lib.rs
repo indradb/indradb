@@ -7,7 +7,6 @@
 //! layer.
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
-#![warn(missing_docs)]
 
 #[cfg(feature = "bench-suite")]
 extern crate test;

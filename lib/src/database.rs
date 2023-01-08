@@ -725,7 +725,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         }
-                        edge_properties.push(EdgeProperties::new(edge.clone(), props))
+                        if !props.is_empty() {
+                            edge_properties.push(EdgeProperties::new(edge.clone(), props));
+                        }
                     }
 
                     QueryOutputValue::EdgeProperties(edge_properties)
@@ -744,7 +746,9 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         }
-                        vertex_properties.push(VertexProperties::new(vertex.clone(), props))
+                        if !props.is_empty() {
+                            vertex_properties.push(VertexProperties::new(vertex.clone(), props));
+                        }
                     }
 
                     QueryOutputValue::VertexProperties(vertex_properties)
