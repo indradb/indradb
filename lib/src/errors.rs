@@ -12,6 +12,7 @@ use serde_json::Error as JsonError;
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
+    /// The requested UUID is already taken.
     UuidTaken,
 
     /// An error occurred in the underlying datastore.
@@ -80,6 +81,7 @@ impl From<ValidationError> for Error {
     }
 }
 
+/// A result that might be an `Error`.
 pub type Result<T> = StdResult<T, Error>;
 
 /// A validation error
@@ -114,4 +116,5 @@ impl fmt::Display for ValidationError {
     }
 }
 
+/// A result that might be a `ValidationError`.
 pub type ValidationResult<T> = StdResult<T, ValidationError>;

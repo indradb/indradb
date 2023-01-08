@@ -433,6 +433,7 @@ pub struct MemoryDatastore {
 }
 
 impl MemoryDatastore {
+    /// Creates a new in-memory database with no persistence.
     pub fn default() -> Database<MemoryDatastore> {
         Database::new(MemoryDatastore {
             internal: Arc::new(Mutex::new(InternalMemory::default())),
@@ -441,8 +442,7 @@ impl MemoryDatastore {
     }
 
     /// Reads a persisted image from disk. Calls to sync will overwrite the
-    /// file at the specified path. Uses msgpack, which unlike bincode
-    /// supports properties.
+    /// file at the specified path.
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
@@ -459,7 +459,7 @@ impl MemoryDatastore {
 
     /// Creates a new datastore. Calls to sync will overwrite the file at the
     /// specified path, but as opposed to `read`, this will not read the file
-    /// first. Uses msgpack, which unlike bincode supports properties.
+    /// first.
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.

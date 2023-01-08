@@ -12,7 +12,9 @@ use uuid::Uuid;
 /// transaction return types.
 pub type DynIter<'a, T> = Box<dyn Iterator<Item = Result<T>> + 'a>;
 
-/// Specifies a datastore implementation.
+/// Specifies a datastore, which contains all implementation-specific logic.
+/// Database instances call into datastores. This separation allows us to
+/// minimize the amount of redundant and boilerplate logic within datastores.
 ///
 /// Note that this trait and its members purposefully do not employ any
 /// generic arguments. While that would improve ergonomics, it would remove
@@ -27,10 +29,23 @@ pub trait Transaction<'a> {
     /// Returns all vertices.
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>>;
     /// Returns all vertices with `id >= offset`.
+    ///
+    /// # Arguments
+    /// * `offset` - Only fetch vertices with an offset greater than or equal
+    /// to this value.
     fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>>;
     /// Gets a specific set of vertices with the given IDs.
     fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
+    /// Get all vertices with a given property.
+    ///
+    /// # Arguments
+    /// * `name` - The property name.
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
+    /// Get all vertices with a given property value.
+    ///
+    /// # Arguments
+    /// * `name` - The property name.
+    /// * `value` - The property value.
     fn vertex_ids_with_property_value(
         &'a self,
         name: &Identifier,
@@ -39,23 +54,54 @@ pub trait Transaction<'a> {
 
     /// Gets the number of edges.
     fn edge_count(&self) -> u64;
+    /// Returns all edges.
     fn all_edges(&'a self) -> Result<DynIter<'a, Edge>>;
+    /// Returns all edges with that are greater than or equal to `offset`.
+    ///
+    /// # Arguments
+    /// * `offset` - Only fetch edges greater than or equal to this value.
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
+    /// Returns all reversed edges (where the outbound and inbound IDs are
+    /// reversed from their actual values) with that are greater than or equal
+    /// to `offset`.
+    ///
+    /// # Arguments
+    /// * `offset` - Only fetch edges greater than or equal to this value.
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
+    /// Gets a specific set of edges.
     fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>>;
+    /// Get all edges with a given property.
+    ///
+    /// # Arguments
+    /// * `name` - The property name.
     fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>>;
+    /// Get all edges with a given property value.
+    ///
+    /// # Arguments
+    /// * `name` - The property name.
+    /// * `value` - The property value.
     fn edges_with_property_value(
         &'a self,
         name: &Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Edge>>>;
 
+    /// Gets the value of a vertex property if it exists, or `None` otherwise.
+    ///
+    /// # Arguments
+    /// * `vertex` - The vertex.
+    /// * `name` - The property name.
     fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>>;
     fn all_vertex_properties_for_vertex(
         &'a self,
         vertex: &Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
 
+    /// Gets the value of an edge property if it exists, or `None` otherwise.
+    ///
+    /// # Arguments
+    /// * `edge` - The edge.
+    /// * `name` - The property name.
     fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>>;
     fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
 
@@ -105,11 +151,20 @@ pub trait Datastore {
     fn transaction<'a>(&'a self) -> Self::Transaction<'a>;
 }
 
+/// The IndraDB database.
+///
+/// This contains all of the logic shared across implementations, e.g. query
+/// handling. Underlying it (as a generic argument) are datastores, which
+/// contain implementation-specific logic.
 pub struct Database<D: Datastore> {
     datastore: D,
 }
 
 impl<D: Datastore> Database<D> {
+    /// Creates a new database.
+    ///
+    /// # Arguments
+    /// * `datastore`: The underlying datastore to use.
     pub fn new(datastore: D) -> Database<D> {
         Self { datastore }
     }
@@ -159,6 +214,10 @@ impl<D: Datastore> Database<D> {
         txn.create_edge(edge)
     }
 
+    /// Gets values specified by a query.
+    ///
+    /// # Arguments
+    /// * `q`: The query to run.
     pub fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
         let txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());
@@ -168,6 +227,10 @@ impl<D: Datastore> Database<D> {
         Ok(output)
     }
 
+    /// Deletes values specified by a query.
+    ///
+    /// # Arguments
+    /// * `q`: The query to run.
     pub fn delete(&self, q: Query) -> Result<()> {
         let mut txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());
@@ -236,11 +299,11 @@ impl<D: Datastore> Database<D> {
         txn.bulk_insert(items)
     }
 
-    // Enables indexing on a specified property. When indexing is enabled on a
-    // property, it's possible to query on its presence and values.
-    //
-    // # Arguments
-    // * `name`: The name of the property to index.
+    /// Enables indexing on a specified property. When indexing is enabled on a
+    /// property, it's possible to query on its presence and values.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property to index.
     pub fn index_property(&self, name: Identifier) -> Result<()> {
         let mut txn = self.datastore.transaction();
         txn.index_property(name)
