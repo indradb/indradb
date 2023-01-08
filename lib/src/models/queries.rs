@@ -34,7 +34,9 @@ macro_rules! query_type {
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
 pub enum EdgeDirection {
+    /// Outbound direction.
     Outbound,
+    /// Inbound direction.
     Inbound,
 }
 
@@ -59,25 +61,42 @@ impl From<EdgeDirection> for String {
     }
 }
 
+/// A query to get a set of values from the database.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Query {
+    /// Gets all vertices.
     AllVertex(AllVertexQuery),
+    /// Gets a range of vertices.
     RangeVertex(RangeVertexQuery),
+    /// Gets a specific set of vertices.
     SpecificVertex(SpecificVertexQuery),
+    /// Gets vertices with or without a given property.
     VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
+    /// Gets vertices with a property equal to a given value.
     VertexWithPropertyValue(VertexWithPropertyValueQuery),
 
+    /// Gets all edges.
     AllEdge(AllEdgeQuery),
+    /// Gets a specific set of edges.
     SpecificEdge(SpecificEdgeQuery),
+    /// Gets edges with or without a given property.
     EdgeWithPropertyPresence(EdgeWithPropertyPresenceQuery),
+    /// Gets edges with a property equal to a given value.
     EdgeWithPropertyValue(EdgeWithPropertyValueQuery),
 
+    /// Gets the vertices associated with edges, or edges associated with
+    /// vertices.
     Pipe(PipeQuery),
+    /// Returns the properties associated with a vertex or edge.
     PipeProperty(PipePropertyQuery),
+    /// Gets vertices or edges with or without a property.
     PipeWithPropertyPresence(PipeWithPropertyPresenceQuery),
+    /// Gets vertices or edges with a property equal to a given value.
     PipeWithPropertyValue(PipeWithPropertyValueQuery),
 
+    /// Includes the results of a query in output.
     Include(IncludeQuery),
+    /// Counts the number of items returned from a query.
     Count(CountQuery),
 }
 
@@ -127,6 +146,7 @@ impl Query {
     }
 }
 
+/// Extension trait containing common functions for all query structs.
 pub trait QueryExt: Into<Query> {
     /// Gets the outbound vertices or edges associated with this query.
     fn outbound(self) -> errors::ValidationResult<PipeQuery> {
@@ -180,10 +200,14 @@ pub trait QueryExt: Into<Query> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
 
+    /// Gets the properties associated with the query results.
     fn properties(self) -> errors::ValidationResult<PipePropertyQuery> {
         PipePropertyQuery::new(Box::new(self.into()))
     }
 
+    /// Gets a specific property by name associated with the query results.
+    /// This is kept to ease transition to 4.0.0, and will be removed at some
+    /// point.
     #[deprecated(since = "4.0.0", note = "use `.properties().name(...)`")]
     fn property(self, name: Identifier) -> errors::ValidationResult<PipePropertyQuery> {
         Ok(self.properties()?.name(name))
@@ -263,7 +287,7 @@ impl EdgeWithPropertyPresenceQuery {
     }
 }
 
-/// Gets vertices with a property equal to a given value.
+/// Gets edges with a property equal to a given value.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyValueQuery {
     /// The name of the property.
@@ -288,7 +312,7 @@ impl EdgeWithPropertyValueQuery {
     }
 }
 
-/// Gets vertices with a property.
+/// Gets vertices or edges with or without a property.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyPresenceQuery {
     /// The query to filter.
@@ -321,7 +345,7 @@ impl PipeWithPropertyPresenceQuery {
     }
 }
 
-/// Gets vertices with a property equal to a given value.
+/// Gets vertices or edges with a property equal to a given value.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyValueQuery {
     /// The query to filter.
