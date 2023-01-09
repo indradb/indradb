@@ -143,7 +143,6 @@ pub fn generate_uuid_v1() -> Uuid {
 /// Gets the next UUID that would occur after the given one.
 ///
 /// # Arguments
-///
 /// * `uuid`: The input UUID.
 ///
 /// # Errors
@@ -162,6 +161,66 @@ pub fn next_uuid(uuid: Uuid) -> ValidationResult<Uuid> {
     }
 
     Err(ValidationError::CannotIncrementUuid)
+}
+
+/// Extracts vertices from the last query output value, or `None`.
+///
+/// # Arguments
+/// * `output`: The query output.
+pub fn extract_vertices(mut output: Vec<models::QueryOutputValue>) -> Option<Vec<models::Vertex>> {
+    if let Some(models::QueryOutputValue::Vertices(vertices)) = output.pop() {
+        Some(vertices)
+    } else {
+        None
+    }
+}
+
+/// Extracts edges from the last query output value, or `None`.
+///
+/// # Arguments
+/// * `output`: The query output.
+pub fn extract_edges(mut output: Vec<models::QueryOutputValue>) -> Option<Vec<models::Edge>> {
+    if let Some(models::QueryOutputValue::Edges(edges)) = output.pop() {
+        Some(edges)
+    } else {
+        None
+    }
+}
+
+/// Extracts a count from the last query output value, or `None`.
+///
+/// # Arguments
+/// * `output`: The query output.
+pub fn extract_count(mut output: Vec<models::QueryOutputValue>) -> Option<u64> {
+    if let Some(models::QueryOutputValue::Count(count)) = output.pop() {
+        Some(count)
+    } else {
+        None
+    }
+}
+
+/// Extracts vertex properties from the last query output value, or `None`.
+///
+/// # Arguments
+/// * `output`: The query output.
+pub fn extract_vertex_properties(mut output: Vec<models::QueryOutputValue>) -> Option<Vec<models::VertexProperties>> {
+    if let Some(models::QueryOutputValue::VertexProperties(props)) = output.pop() {
+        Some(props)
+    } else {
+        None
+    }
+}
+
+/// Extracts edge properties from the last query output value, or `None`.
+///
+/// # Arguments
+/// * `output`: The query output.
+pub fn extract_edge_properties(mut output: Vec<models::QueryOutputValue>) -> Option<Vec<models::EdgeProperties>> {
+    if let Some(models::QueryOutputValue::EdgeProperties(props)) = output.pop() {
+        Some(props)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -1,11 +1,12 @@
 /// Defines a unit test function.
 #[macro_export]
 macro_rules! define_test {
-    ($name:ident, $datastore_constructor:expr) => {
+    ($name:ident, $db_constructor:expr) => {
         #[test]
         fn $name() {
-            let datastore = $datastore_constructor;
-            $crate::tests::$name(&datastore);
+            let db = $db_constructor;
+            let test_db = TestDatabase { db };
+            $crate::tests::$name(&test_db);
         }
     };
 }

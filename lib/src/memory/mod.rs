@@ -20,7 +20,6 @@ mod tests {
 
     full_test_impl!(MemoryDatastore::default());
 
-    #[allow(deprecated)]
     fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();
         db.set_properties(
@@ -32,9 +31,8 @@ mod tests {
         id
     }
 
-    #[allow(deprecated)]
     fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
-        assert_eq!(db.get_vertex_count().unwrap(), 1);
+        assert_eq!(db.get(AllVertices::count()).unwrap(), vec![QueryOutputValue::Count(1)]);
         let vertices = db.get_vertices(SpecificVertexQuery::new(vec![id]).into()).unwrap();
         assert_eq!(vertices.len(), 1);
         assert_eq!(vertices[0].id, id);

@@ -1,8 +1,7 @@
-use crate::{
-    BulkInsertItem, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
-};
+use super::TestDatabase;
+use crate::{BulkInsertItem, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
-pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
+pub fn should_bulk_insert<D: Datastore>(db: &TestDatabase<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -84,7 +83,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 }
 
 // Bulk insert allows for redundant vertex insertion
-pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
+pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &TestDatabase<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let vertex = Vertex::new(vertex_t);
 
@@ -96,7 +95,7 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
 
 // As an optimization, bulk insert does not verify that the vertices
 // associated with an inserted edge exist; this verifies that
-pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(db: &Database<D>) {
+pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(db: &TestDatabase<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let v1 = Vertex::new(vertex_t.clone());
     let v2 = Vertex::new(vertex_t);
