@@ -1,13 +1,13 @@
 use std::collections::HashSet;
 
-use super::util::{create_edge_from, create_edges, TestDatabase};
+use super::util::TestDatabase;
 use crate::{models, Datastore, QueryExt, RangeVertexQuery, SpecificVertexQuery};
 
 use uuid::Uuid;
 
 pub fn should_create_vertex_from_type<D: Datastore>(db: &TestDatabase<D>) {
     let t = models::Identifier::new("test_vertex_type").unwrap();
-    db.create_vertex_from_type(t).unwrap();
+    db.db.create_vertex_from_type(t).unwrap();
 }
 
 pub fn should_get_range_vertices<D: Datastore>(db: &TestDatabase<D>) {
@@ -105,7 +105,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &TestDatabase<D>) {
 
     let v = models::Vertex::new(vertex_t);
     db.create_vertex(&v).unwrap();
-    let inserted_id = create_edge_from(db, v.id);
+    let inserted_id = db.create_edge_from(v.id);
 
     // This query should get `inserted_id`
     let query_1 = SpecificVertexQuery::single(v.id)
@@ -162,7 +162,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &TestDatabase<D>) {
 }
 
 pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, _) = create_edges(db);
+    let (outbound_id, _) = db.create_edges();
     let q = SpecificVertexQuery::single(outbound_id);
     db.set_vertex_properties(
         q.clone().property(models::Identifier::new("foo").unwrap()).unwrap(),
@@ -180,7 +180,7 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &TestDatabase<D>)
 }
 
 pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &TestDatabase<D>) {
-    let (_, inbound_ids) = create_edges(db);
+    let (_, inbound_ids) = db.create_edges();
     let inbound_id = inbound_ids[0];
     let q = SpecificVertexQuery::single(inbound_id);
     db.delete_vertices(q.clone().into()).unwrap();

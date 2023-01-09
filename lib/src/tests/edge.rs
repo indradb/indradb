@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use super::util::{create_edge_from, create_edges, TestDatabase};
+use super::util::TestDatabase;
 use crate::{models, Datastore, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 
 use uuid::Uuid;
@@ -123,7 +123,7 @@ pub fn should_not_delete_an_invalid_edge<D: Datastore>(db: &TestDatabase<D>) {
 }
 
 pub fn should_get_an_edge_count<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, _) = create_edges(db);
+    let (outbound_id, _) = db.create_edges();
     let t = models::Identifier::new("test_edge_type").unwrap();
     let count = db
         .get_edge_count(outbound_id, Some(&t), EdgeDirection::Outbound)
@@ -132,7 +132,7 @@ pub fn should_get_an_edge_count<D: Datastore>(db: &TestDatabase<D>) {
 }
 
 pub fn should_get_an_edge_count_with_no_type<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, _) = create_edges(db);
+    let (outbound_id, _) = db.create_edges();
     let count = db.get_edge_count(outbound_id, None, EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 5);
 }
@@ -146,13 +146,13 @@ pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore>(db: &TestDatab
 }
 
 pub fn should_get_an_inbound_edge_count<D: Datastore>(db: &TestDatabase<D>) {
-    let (_, inbound_ids) = create_edges(db);
+    let (_, inbound_ids) = db.create_edges();
     let count = db.get_edge_count(inbound_ids[0], None, EdgeDirection::Inbound).unwrap();
     assert_eq!(count, 1);
 }
 
 pub fn should_get_edges_with_no_type<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, _) = create_edges(db);
+    let (outbound_id, _) = db.create_edges();
     let range = db
         .get_edges(
             SpecificVertexQuery::single(outbound_id)
@@ -166,7 +166,7 @@ pub fn should_get_edges_with_no_type<D: Datastore>(db: &TestDatabase<D>) {
 }
 
 pub fn should_get_edge_range<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, _) = create_edges(db);
+    let (outbound_id, _) = db.create_edges();
     let t = models::Identifier::new("test_edge_type").unwrap();
     let range = db
         .get_edges(
@@ -182,7 +182,7 @@ pub fn should_get_edge_range<D: Datastore>(db: &TestDatabase<D>) {
 }
 
 pub fn should_get_edges<D: Datastore>(db: &TestDatabase<D>) {
-    let (outbound_id, inbound_ids) = create_edges(db);
+    let (outbound_id, inbound_ids) = db.create_edges();
     let t = models::Identifier::new("test_edge_type").unwrap();
     let q = SpecificEdgeQuery::new(vec![
         Edge::new(outbound_id, t.clone(), inbound_ids[0]),
@@ -200,7 +200,7 @@ pub fn should_get_edges_piped<D: Datastore>(db: &TestDatabase<D>) {
     let outbound_v = models::Vertex::new(vertex_t);
     db.create_vertex(&outbound_v).unwrap();
 
-    let inbound_id = create_edge_from(db, outbound_v.id);
+    let inbound_id = db.create_edge_from(outbound_v.id);
 
     let query_1 = SpecificVertexQuery::single(outbound_v.id)
         .outbound()

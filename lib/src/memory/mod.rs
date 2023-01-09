@@ -14,7 +14,8 @@ full_bench_impl!(MemoryDatastore::default());
 #[cfg(test)]
 mod tests {
     use super::MemoryDatastore;
-    use crate::{Database, Identifier, SpecificVertexQuery};
+    use crate::util::{extract_count, extract_vertices};
+    use crate::{AllVertexQuery, Database, Identifier, QueryExt, SpecificVertexQuery};
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
@@ -32,8 +33,11 @@ mod tests {
     }
 
     fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
-        assert_eq!(db.get(AllVertices::count()).unwrap(), vec![QueryOutputValue::Count(1)]);
-        let vertices = db.get_vertices(SpecificVertexQuery::new(vec![id]).into()).unwrap();
+        assert_eq!(
+            extract_count(db.get(AllVertexQuery.count().unwrap().into()).unwrap()),
+            Some(1)
+        );
+        let vertices = extract_vertices(db.get(SpecificVertexQuery::new(vec![id]).into()).unwrap()).unwrap();
         assert_eq!(vertices.len(), 1);
         assert_eq!(vertices[0].id, id);
         assert_eq!(vertices[0].t, Identifier::default());

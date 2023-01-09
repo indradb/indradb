@@ -1,6 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::util::{extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices};
-use crate::{models, Database, Datastore};
+use crate::{models, Database, Datastore, QueryExt};
 
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ use uuid::Uuid;
 /// of refactoring needed, tests now get passed an instance of `TestDatabase`
 /// instead, which more closely mirrors the old interface.
 pub struct TestDatabase<D: Datastore> {
-    db: Database<D>,
+    pub db: Database<D>,
 }
 
 impl<D: Datastore> TestDatabase<D> {
@@ -35,7 +35,7 @@ impl<D: Datastore> TestDatabase<D> {
 
     /// Gets the number of vertices in the datastore.
     pub fn get_vertex_count(&self) -> Result<u64> {
-        extract_count(self.db.get(models::AllVertexQuery.count().unwrap().into())?).map_err(Error::Unsupported)
+        extract_count(self.db.get(models::AllVertexQuery.count().unwrap().into())?).ok_or(Error::Unsupported)
     }
 
     /// Gets a range of edges specified by a query.
@@ -43,7 +43,7 @@ impl<D: Datastore> TestDatabase<D> {
     /// # Arguments
     /// * `q`: The query to run.
     pub fn get_edges(&self, q: models::Query) -> Result<Vec<models::Edge>> {
-        extract_edges(self.db.get(q)?).map_err(Error::Unsupported)
+        extract_edges(self.db.get(q)?).ok_or(Error::Unsupported)
     }
 
     /// Deletes a set of edges specified by a query.
@@ -80,7 +80,7 @@ impl<D: Datastore> TestDatabase<D> {
             q.count().unwrap().into()
         };
 
-        extract_count(self.db.get(q)?).map_err(Error::Unsupported)
+        extract_count(self.db.get(q)?).ok_or(Error::Unsupported)
     }
 
     /// Gets vertex properties.
@@ -88,7 +88,7 @@ impl<D: Datastore> TestDatabase<D> {
     /// # Arguments
     /// * `q`: The query to run.
     pub fn get_vertex_properties(&self, q: models::PipePropertyQuery) -> Result<Vec<models::VertexProperty>> {
-        let props = extract_vertex_properties(self.db.get(q.into())?).map_err(Error::Unsupported)?;
+        let props = extract_vertex_properties(self.db.get(q.into())?).ok_or(Error::Unsupported)?;
         if props.len() > 1 {
             Err(Error::Unsupported)
         } else {
@@ -109,7 +109,7 @@ impl<D: Datastore> TestDatabase<D> {
         // `QueryExt::properties()` not used here because this function is not
         // generic in order to keep this object safe.
         let props_query = models::PipePropertyQuery::new(Box::new(q))?;
-        let props = extract_vertex_properties(self.db.get(props_query.into())?).map_err(Error::Unsupported)?;
+        let props = extract_vertex_properties(self.db.get(props_query.into())?).ok_or(Error::Unsupported)?;
         Ok(props)
     }
 
@@ -140,7 +140,7 @@ impl<D: Datastore> TestDatabase<D> {
     /// # Arguments
     /// * `q`: The query to run.
     pub fn get_edge_properties(&self, q: models::PipePropertyQuery) -> Result<Vec<models::EdgeProperty>> {
-        let props = extract_edge_properties(self.db.get(q.into())?).map_err(Error::Unsupported)?;
+        let props = extract_edge_properties(self.db.get(q.into())?).ok_or(Error::Unsupported)?;
         if props.len() > 1 {
             Err(Error::Unsupported)
         } else {
@@ -163,7 +163,7 @@ impl<D: Datastore> TestDatabase<D> {
         // `QueryExt::properties()` not used here because this function is not
         // generic in order to keep this object safe.
         let props_query = models::PipePropertyQuery::new(Box::new(q))?;
-        extract_edge_properties(self.db.get(props_query.into())?).map_err(Error::Unsupported)
+        extract_edge_properties(self.db.get(props_query.into())?).ok_or(Error::Unsupported)
     }
 
     /// Sets edge properties.
@@ -187,31 +187,66 @@ impl<D: Datastore> TestDatabase<D> {
     pub fn delete_edge_properties(&self, q: models::PipePropertyQuery) -> Result<()> {
         self.db.delete(q.into())
     }
-}
 
-// TODO: move these into datastore
+    /// Creates a new vertex. Returns whether the vertex was successfully
+    /// created - if this is false, it's because a vertex with the same UUID
+    /// already exists.
+    ///
+    /// # Arguments
+    /// * `vertex`: The vertex to create.
+    pub fn create_vertex(&self, vertex: &models::Vertex) -> Result<bool> {
+        self.db.create_vertex(vertex)
+    }
 
-pub fn create_edge_from<D: Datastore>(db: &TestDatabase<D>, outbound_id: Uuid) -> Uuid {
-    let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
-    let inbound_v = models::Vertex::new(inbound_vertex_t);
-    db.create_vertex(&inbound_v).unwrap();
-    let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_id, edge_t, inbound_v.id);
-    db.create_edge(&edge).unwrap();
-    inbound_v.id
-}
+    /// Creates a new edge. Returns whether the edge was successfully
+    /// created - if this is false, it's because one of the specified vertices
+    /// is missing.
+    ///
+    /// # Arguments
+    /// * `edge`: The edge to create.
+    pub fn create_edge(&self, edge: &models::Edge) -> Result<bool> {
+        self.db.create_edge(edge)
+    }
 
-pub fn create_edges<D: Datastore>(db: &TestDatabase<D>) -> (Uuid, [Uuid; 5]) {
-    let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(outbound_vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    let inbound_ids: [Uuid; 5] = [
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-    ];
+    /// Bulk inserts many vertices, edges, and/or properties.
+    ///
+    /// # Arguments
+    /// * `items`: The items to insert.
+    pub fn bulk_insert(&self, items: Vec<models::BulkInsertItem>) -> Result<()> {
+        self.db.bulk_insert(items)
+    }
 
-    (outbound_v.id, inbound_ids)
+    /// Enables indexing on a specified property. When indexing is enabled on a
+    /// property, it's possible to query on its presence and values.
+    ///
+    /// # Arguments
+    /// * `name`: The name of the property to index.
+    pub fn index_property(&self, name: models::Identifier) -> Result<()> {
+        self.db.index_property(name)
+    }
+
+    pub fn create_edge_from(&self, outbound_id: Uuid) -> Uuid {
+        let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
+        let inbound_v = models::Vertex::new(inbound_vertex_t);
+        self.create_vertex(&inbound_v).unwrap();
+        let edge_t = models::Identifier::new("test_edge_type").unwrap();
+        let edge = models::Edge::new(outbound_id, edge_t, inbound_v.id);
+        self.create_edge(&edge).unwrap();
+        inbound_v.id
+    }
+
+    pub fn create_edges(&self) -> (Uuid, [Uuid; 5]) {
+        let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
+        let outbound_v = models::Vertex::new(outbound_vertex_t);
+        self.create_vertex(&outbound_v).unwrap();
+        let inbound_ids: [Uuid; 5] = [
+            self.create_edge_from(outbound_v.id),
+            self.create_edge_from(outbound_v.id),
+            self.create_edge_from(outbound_v.id),
+            self.create_edge_from(outbound_v.id),
+            self.create_edge_from(outbound_v.id),
+        ];
+
+        (outbound_v.id, inbound_ids)
+    }
 }

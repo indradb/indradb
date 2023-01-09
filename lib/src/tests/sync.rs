@@ -3,5 +3,5 @@ use crate::Datastore;
 
 pub fn should_sync<D: Datastore>(db: &TestDatabase<D>) {
     // just make sure that it runs fine
-    db.sync().unwrap();
+    db.db.sync().unwrap();
 }

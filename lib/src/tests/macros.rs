@@ -4,6 +4,7 @@ macro_rules! define_test {
     ($name:ident, $db_constructor:expr) => {
         #[test]
         fn $name() {
+            use crate::tests::TestDatabase;
             let db = $db_constructor;
             let test_db = TestDatabase { db };
             $crate::tests::$name(&test_db);
