@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::errors::Error;
 
+use indradb::util::extract_vertices;
 use threadpool::ThreadPool;
 
 const DEFAULT_NUM_THREADS: usize = 8;
@@ -46,19 +47,24 @@ pub fn map<M: VertexMapper, D: indradb::Datastore + Send + Sync + 'static>(
             break;
         }
 
-        let q = indradb::RangeVertexQuery {
-            limit: query_limit,
-            t: t_filter.clone(),
-            start_id: last_id,
-        };
+        let mut q = indradb::RangeVertexQuery::new().limit(query_limit);
+        if let Some(ref t_filter) = t_filter {
+            q = q.t(t_filter.clone());
+        }
+        if let Some(last_id) = last_id {
+            q = q.start_id(last_id);
+        }
 
-        let vertices = match db.get_vertices(q.into()) {
-            Ok(value) => value,
+
+        let output = match db.get(q.into()) {
+            Ok(output) => output,
             Err(err) => {
                 *last_err.lock().unwrap() = Some(err.into());
                 break;
             }
         };
+
+        let vertices = extract_vertices(output).unwrap();
 
         let is_last_query = vertices.len() < query_limit as usize;
         if let Some(last_vertex) = vertices.last() {

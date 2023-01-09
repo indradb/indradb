@@ -186,140 +186,16 @@ message PipeWithPropertyValueQuery {
     bool equal = 4;
 }
 
-// Gets property values associated with vertices.
-message VertexPropertyQuery {
-    reserved 2;
-    // The vertex query to build off of.
-    VertexQuery inner = 1;
-    // The name of the property to get.
-    Identifier name = 3;
-}
-
-// Gets vertices with a property.
-message PropertyPresenceVertexQuery {
-    // The name of the property.
-    Identifier name = 1;
-}
-
-// Gets vertices with a property equal to a given value.
-message PropertyValueVertexQuery {
-    // The name of the property.
-    Identifier name = 1;
-    // The value of the property.
-    Json value = 2;
-}
-
-// Gets vertices with a property.
-message PipePropertyPresenceVertexQuery {
-    // The query to filter.
-    VertexQuery inner = 1;
-    // The name of the property.
-    Identifier name = 2;
-    // Whether we should look for property presence or lack thereof.
-    bool exists = 3;
-}
-
-// Gets vertices with a property equal to a given value.
-message PipePropertyValueVertexQuery {
-    // The query to filter.
-    VertexQuery inner = 1;
-    // The name of the property.
-    Identifier name = 2;
-    // The value of the property.
-    Json value = 3;
-    // Whether we should look for property equality or non-equality.
-    bool equal = 4;
-}
-
-// Gets edges with a property.
-message PropertyPresenceEdgeQuery {
-    // The name of the property.
-    Identifier name = 1;
-}
-
-// Gets edges with a property equal to a given value.
-message PropertyValueEdgeQuery {
-    // The name of the property.
-    Identifier name = 1;
-    // The value of the property.
-    Json value = 2;
-}
-
-// Gets edges with a property.
-message PipePropertyPresenceEdgeQuery {
-    // The query to filter.
-    EdgeQuery inner = 1;
-    // The name of the property.
-    Identifier name = 2;
-    // Whether we should look for property presence or lack thereof.
-    bool exists = 3;
-}
-
-// Gets edges with a property equal to a given value.
-message PipePropertyValueEdgeQuery {
-    // The query to filter.
-    EdgeQuery inner = 1;
-    // The name of the property.
-    Identifier name = 2;
-    // The value of the property.
-    Json value = 3;
-    // Whether we should look for property equality or non-equality.
-    bool equal = 4;
-}
-
-// Gets the edges associated with vertices.
-message PipeEdgeQuery {
-    // The vertex query to build off of.
-    VertexQuery inner = 1;
-    // Whether to get outbound or inbound edges on the vertices.
-    EdgeDirection direction = 2;
-    // Filters the type of edges returned.
-    Identifier t = 3;
-    // Specifies the newest update datetime for returned edges.
-    google.protobuf.Timestamp high = 4;
-    // Specifies the oldest update datetime for returned edges.
-    google.protobuf.Timestamp low = 5;
-    // Limits the number of edges to get.
-    uint32 limit = 6;
-}
-
-// Gets property values associated with edges.
-message EdgePropertyQuery {
-    reserved 2;
-    // The edge query to build off of.
-    EdgeQuery inner = 1;
-    // The name of the property to get.
-    Identifier name = 3;
-}
-
 // Includes the results of a query in output.
-///
+//
 // The outermost part of a query will always be explicitly included. This
 // allows you to also output an intermediate result.
-///
-// # Examples
-// ```
-// use indradb::{AllVertexQuery, QueryExt};
-// // A query to return all edges in the database, which are implicitly
-// // included as the outermost results.
-// let q = AllVertexQuery.outbound();
-// // A query to return all vertices and all edges in the database, because
-// // vertices are explicitly included as intermediate results.
-// let q = AllVertexQuery.include().outbound();
-// ```
 message IncludeQuery {
     // The query to export.
     Query inner = 1;
 }
 
 // Counts the number of items returned from a query.
-///
-// # Examples
-// ```
-// use indradb::{AllVertexQuery, QueryExt};
-// // A query to return the total number of vertices in the database.
-// let q = AllVertexQuery.count();
-// ```
 message CountQuery {
     // The query to export.
     Query inner = 1;
@@ -330,7 +206,7 @@ message QueryOutputValue {
     oneof value {
         Vertex vertex = 1;
         Edge edge = 2;
-        u64 count = 3;
+        uint64 count = 3;
         VertexProperties vertex_properties = 4;
         EdgeProperties edge_properties = 5;
         bool end_set = 6;
@@ -422,28 +298,14 @@ message IndexPropertyRequest {
     Identifier name = 1;
 }
 
-message GetEdgeCountRequest {
-    Uuid id = 1;
+message SetPropertiesRequest {
+    Query q = 1;
     Identifier t = 2;
-    EdgeDirection direction = 3;
-}
-
-message SetVertexPropertiesRequest {
-    VertexPropertyQuery q = 1;
-    Json value = 2;
-}
-
-message SetEdgePropertiesRequest {
-    EdgePropertyQuery q = 1;
-    Json value = 2;
+    Json value = 3;
 }
 
 message CreateResponse {
     bool created = 1;
-}
-
-message CountResponse {
-    uint64 count = 1;
 }
 
 // A request to execute a plugin.
@@ -463,48 +325,9 @@ service IndraDB {
 
     /// Syncs persisted content. Depending on the datastore implementation,
     /// this has different meanings - including potentially being a no-op.
-    rpc sync(google.protobuf.Empty) returns (google.protobuf.Empty);
-
-    /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
-    /// already exists.
-    rpc create_vertex(&self, vertex: &Vertex) returns Result<bool>;
-
-    /// Creates a new vertex with just a type specification. As opposed to
-    /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
-    rpc create_vertex_from_type(&self, t: Identifier) returns Result<Uuid>;
-
-    /// Creates a new edge. Returns whether the edge was successfully
-    /// created - if this is false, it's because one of the specified vertices
-    /// is missing.
-    rpc create_edge(&self, edge: &Edge) returns Result<bool>;
-
-    /// Gets values specified by a query.
-    rpc get(&self, q: Query) returns Result<Vec<QueryOutputValue>>;
-
-    /// Deletes values specified by a query.
-    rpc delete(&self, q: Query) returns Result<()>;
-
-    /// Sets properties.
-    rpc set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) returns Result<()>;
-
-    /// Bulk inserts many vertices, edges, and/or properties.
-    rpc bulk_insert(&self, items: Vec<BulkInsertItem>) returns Result<()>;
-
-    /// Enables indexing on a specified property. When indexing is enabled on a
-    /// property, it's possible to query on its presence and values.
-    rpc index_property(&self, name: Identifier) returns Result<()>;
-
-    /////////
-    
-    // Syncs persisted content. Depending on the datastore implementation,
-    // this has different meanings - including potentially being a no-op.
     rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty);
 
-    // Creates a new vertex. Returns whether the vertex was successfully
-    // created - if this is false, it's because a vertex with the same UUID
-    // already exists.
+    // Creates a new vertex.
     rpc CreateVertex(Vertex) returns (CreateResponse);
 
     // Creates a new vertex with just a type specification. As opposed to
@@ -512,53 +335,17 @@ service IndraDB {
     // the vertex's UUID. Returns the new vertex's UUID.
     rpc CreateVertexFromType(Identifier) returns (Uuid);
 
-    // Gets a range of vertices specified by a query.
-    rpc GetVertices(VertexQuery) returns (stream Vertex);
+    /// Creates a new edge.
+    rpc CreateEdge(Edge) returns (CreateResponse);
 
-    // Deletes existing vertices specified by a query.
-    rpc DeleteVertices(VertexQuery) returns (google.protobuf.Empty);
+    /// Gets values specified by a query.
+    rpc Get(Query) returns (stream QueryOutputValue);
 
-    // Gets the number of vertices in the datastore.
-    rpc GetVertexCount(google.protobuf.Empty) returns (CountResponse);
+    /// Deletes values specified by a query.
+    rpc Delete(Query) returns (google.protobuf.Empty);
 
-    // Creates a new edge. If the edge already exists, this will update it
-    // with a new update datetime. Returns whether the edge was successfully
-    // created - if this is false, it's because one of the specified vertices
-    // is missing.
-    rpc CreateEdge(EdgeKey) returns (CreateResponse);
-
-    // Gets a range of edges specified by a query.
-    rpc GetEdges(EdgeQuery) returns (stream Edge);
-
-    // Deletes a set of edges specified by a query.
-    rpc DeleteEdges(EdgeQuery) returns (google.protobuf.Empty);
-
-    // Gets the number of edges associated with a vertex.
-    rpc GetEdgeCount(GetEdgeCountRequest) returns (CountResponse);
-
-    // Gets vertex properties.
-    rpc GetVertexProperties(VertexPropertyQuery) returns (stream VertexProperty);
-
-    // Gets vertexes and all properties for each vertex.
-    rpc GetAllVertexProperties(VertexQuery) returns (stream VertexProperties);
-
-    // Sets vertex properties.
-    rpc SetVertexProperties(SetVertexPropertiesRequest) returns (google.protobuf.Empty);
-
-    // Deletes vertex properties.
-    rpc DeleteVertexProperties(VertexPropertyQuery) returns (google.protobuf.Empty);
-
-    // Gets edge properties.
-    rpc GetEdgeProperties(EdgePropertyQuery) returns (stream EdgeProperty);
-
-    // Sets edge properties.
-    rpc SetEdgeProperties(SetEdgePropertiesRequest) returns (google.protobuf.Empty);
-
-    // Deletes edge properties.
-    rpc DeleteEdgeProperties(EdgePropertyQuery) returns (google.protobuf.Empty);
-
-    // Gets edges and all properties for each edge.
-    rpc GetAllEdgeProperties(EdgeQuery) returns (stream EdgeProperties);
+    /// Sets properties.
+    rpc SetProperties(SetPropertiesRequest) returns (google.protobuf.Empty);
 
     // Bulk inserts many vertices, edges, and/or properties.
     //

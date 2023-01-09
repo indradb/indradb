@@ -1,8 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::models::{
-    AllVertexQuery, BulkInsertItem, Edge, EdgeDirection, EdgeProperties, EdgeProperty, Identifier, NamedProperty,
-    PipePropertyQuery, Query, QueryExt, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
-    VertexProperty,
+    BulkInsertItem, Edge, EdgeDirection, EdgeProperties, Identifier, NamedProperty, Query, QueryOutputValue, Vertex,
+    VertexProperties,
 };
 use std::collections::HashSet;
 use std::vec::Vec;
