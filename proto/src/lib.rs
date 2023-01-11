@@ -5,9 +5,8 @@ extern crate indradb;
 tonic::include_proto!("indradb");
 
 pub use bulk_insert_item::Item as BulkInsertItemVariant;
-pub use edge_query::Query as EdgeQueryVariant;
 pub use indra_db_client::IndraDbClient as ProtoClient;
-pub use vertex_query::Query as VertexQueryVariant;
+pub use query::Query as QueryVariant;
 
 mod converters;
 pub use converters::*;

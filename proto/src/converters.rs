@@ -116,11 +116,11 @@ impl TryInto<serde_json::Value> for crate::Json {
 }
 
 impl From<indradb::Edge> for crate::Edge {
-    fn from(key: indradb::Edge) -> Self {
+    fn from(edge: indradb::Edge) -> Self {
         crate::Edge {
-            outbound_id: Some(key.outbound_id.into()),
-            t: Some(key.t.into()),
-            inbound_id: Some(key.inbound_id.into()),
+            outbound_id: Some(edge.outbound_id.into()),
+            t: Some(edge.t.into()),
+            inbound_id: Some(edge.inbound_id.into()),
         }
     }
 }
@@ -157,18 +157,31 @@ impl TryInto<indradb::Vertex> for crate::Vertex {
     }
 }
 
-impl From<indradb::VertexQuery> for crate::VertexQuery {
-    fn from(q: indradb::VertexQuery) -> Self {
-        crate::VertexQuery {
+impl From<indradb::Query> for crate::Query {
+    fn from(q: indradb::Query) -> Self {
+        crate::Query {
             query: Some(match q {
-                indradb::VertexQuery::Range(q) => crate::VertexQueryVariant::Range(crate::RangeVertexQuery {
+                indradb::Query::AllVertex(q) => crate::QueryVariant::AllVertex(crate::AllVertexQuery {}),
+                indradb::Query::RangeVertex(q) => crate::QueryVariant::RangeVertex(crate::RangeVertexQuery {
                     limit: q.limit,
                     t: q.t.map(|t| t.into()),
                     start_id: q.start_id.map(|start_id| start_id.into()),
                 }),
-                indradb::VertexQuery::Specific(q) => crate::VertexQueryVariant::Specific(crate::SpecificVertexQuery {
+                indradb::Query::SpecificVertex(q) => crate::QueryVariant::SpecificVertex(crate::SpecificVertexQuery {
                     ids: q.ids.into_iter().map(|id| id.into()).collect(),
                 }),
+                indradb::Query::VertexWithPropertyPresence(q) => {
+                    crate::QueryVariant::VertexWithPropertyPresence(crate::VertexWithPropertyPresenceQuery {
+                        name: Some(q.name.into()),
+                    })
+                }
+                indradb::Query::VertexWithPropertyValue(q) => {
+                    crate::QueryVariant::VertexWithPropertyValue(crate::VertexWithPropertyValueQuery {
+                        name: Some(q.name.into()),
+                        value: Some(q.value.into()),
+                    })
+                }
+
                 indradb::VertexQuery::Pipe(q) => {
                     let mut proto_q = crate::PipeVertexQuery {
                         inner: Some(Box::new((*q.inner).into())),
@@ -359,7 +372,7 @@ impl TryInto<indradb::VertexProperties> for crate::VertexProperties {
 impl From<indradb::EdgeProperty> for crate::EdgeProperty {
     fn from(prop: indradb::EdgeProperty) -> Self {
         crate::EdgeProperty {
-            key: Some(prop.key.into()),
+            edge: Some(prop.edge.into()),
             value: Some(prop.value.into()),
         }
     }
@@ -370,7 +383,7 @@ impl TryInto<indradb::EdgeProperty> for crate::EdgeProperty {
 
     fn try_into(self) -> Result<indradb::EdgeProperty, Self::Error> {
         Ok(indradb::EdgeProperty::new(
-            required_field("key", self.key)?.try_into()?,
+            required_field("edge", self.edge)?.try_into()?,
             required_field("value", self.value)?.try_into()?,
         ))
     }
@@ -403,7 +416,7 @@ impl From<indradb::BulkInsertItem> for crate::BulkInsertItem {
         crate::BulkInsertItem {
             item: Some(match item {
                 indradb::BulkInsertItem::Vertex(vertex) => crate::BulkInsertItemVariant::Vertex(vertex.into()),
-                indradb::BulkInsertItem::Edge(key) => crate::BulkInsertItemVariant::Edge(key.into()),
+                indradb::BulkInsertItem::Edge(edge) => crate::BulkInsertItemVariant::Edge(edge.into()),
                 indradb::BulkInsertItem::VertexProperty(id, name, value) => {
                     crate::BulkInsertItemVariant::VertexProperty(crate::VertexPropertyBulkInsertItem {
                         id: Some(id.into()),
@@ -411,9 +424,9 @@ impl From<indradb::BulkInsertItem> for crate::BulkInsertItem {
                         value: Some(value.into()),
                     })
                 }
-                indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
+                indradb::BulkInsertItem::EdgeProperty(edge, name, value) => {
                     crate::BulkInsertItemVariant::EdgeProperty(crate::EdgePropertyBulkInsertItem {
-                        key: Some(key.into()),
+                        edge: Some(edge.into()),
                         name: Some(name.into()),
                         value: Some(value.into()),
                     })
@@ -429,14 +442,14 @@ impl TryInto<indradb::BulkInsertItem> for crate::BulkInsertItem {
     fn try_into(self) -> Result<indradb::BulkInsertItem, Self::Error> {
         Ok(match required_field("item", self.item)? {
             crate::BulkInsertItemVariant::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.try_into()?),
-            crate::BulkInsertItemVariant::Edge(key) => indradb::BulkInsertItem::Edge(key.try_into()?),
+            crate::BulkInsertItemVariant::Edge(edge) => indradb::BulkInsertItem::Edge(edge.try_into()?),
             crate::BulkInsertItemVariant::VertexProperty(item) => indradb::BulkInsertItem::VertexProperty(
                 required_field("id", item.id)?.try_into()?,
                 required_field("name", item.name)?.try_into()?,
                 required_field("value", item.value)?.try_into()?,
             ),
             crate::BulkInsertItemVariant::EdgeProperty(item) => indradb::BulkInsertItem::EdgeProperty(
-                required_field("key", item.key)?.try_into()?,
+                required_field("edge", item.edge)?.try_into()?,
                 required_field("name", item.name)?.try_into()?,
                 required_field("value", item.value)?.try_into()?,
             ),

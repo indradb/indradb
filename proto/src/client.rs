@@ -144,7 +144,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get(&self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>> {
+    pub async fn get(&self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
         todo!();
     }
 
@@ -152,7 +152,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn delete(&self, q: indradb::Query) -> Result<()> {
+    pub async fn delete(&self, q: indradb::Query) -> Result<(), ClientError> {
         todo!();
     }
 
@@ -167,7 +167,7 @@ impl Client {
         q: indradb::Query,
         name: indradb::Identifier,
         value: serde_json::Value,
-    ) -> Result<()> {
+    ) -> Result<(), ClientError> {
         todo!();
     }
 

@@ -61,7 +61,7 @@ macro_rules! register_plugins {
     ( $indradb_interface_version:expr, $( $name:expr, $t:expr ),* ) => {
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn register<D: indradb::Datastore>(db: indradb::Database<D>) -> $crate::PluginDeclaration {
+        pub unsafe extern "C" fn register<D: indradb::Datastore + Send + Sync + 'static>(db: Arc<indradb::Database<D>>) -> $crate::PluginDeclaration {
             use std::collections::HashMap;
             let mut entries = HashMap::new();
             $(

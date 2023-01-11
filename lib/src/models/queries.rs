@@ -233,13 +233,13 @@ query_type!(AllVertexQuery, AllVertex);
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RangeVertexQuery {
     /// Limits the number of vertices to get.
-    pub(crate) limit: u32,
+    pub limit: u32,
 
     /// Filters the type of vertices returned.
-    pub(crate) t: Option<Identifier>,
+    pub t: Option<Identifier>,
 
     /// Sets the lowest vertex ID to return.
-    pub(crate) start_id: Option<Uuid>,
+    pub start_id: Option<Uuid>,
 }
 
 query_type!(RangeVertexQuery, RangeVertex);
@@ -301,7 +301,7 @@ impl RangeVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
-    pub(crate) ids: Vec<Uuid>,
+    pub ids: Vec<Uuid>,
 }
 
 query_type!(SpecificVertexQuery, SpecificVertex);
@@ -329,7 +329,7 @@ impl SpecificVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexWithPropertyPresenceQuery {
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
 }
 
 query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
@@ -348,9 +348,9 @@ impl VertexWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct VertexWithPropertyValueQuery {
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
     /// The value of the property.
-    pub(crate) value: serde_json::Value,
+    pub value: serde_json::Value,
 }
 
 query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
@@ -378,7 +378,7 @@ query_type!(AllEdgeQuery, AllEdge);
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
     /// The edges to get.
-    pub(crate) edges: Vec<Edge>,
+    pub edges: Vec<Edge>,
 }
 
 query_type!(SpecificEdgeQuery, SpecificEdge);
@@ -405,7 +405,7 @@ impl SpecificEdgeQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyPresenceQuery {
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
 }
 
 query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
@@ -424,9 +424,9 @@ impl EdgeWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct EdgeWithPropertyValueQuery {
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
     /// The value of the property.
-    pub(crate) value: serde_json::Value,
+    pub value: serde_json::Value,
 }
 
 query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
@@ -453,16 +453,16 @@ impl EdgeWithPropertyValueQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeQuery {
     /// The edge query to build off of.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
 
     /// Whether to get outbound or inbound vertices on the edges.
-    pub(crate) direction: EdgeDirection,
+    pub direction: EdgeDirection,
 
     /// Limits the number of vertices to get.
-    pub(crate) limit: u32,
+    pub limit: u32,
 
     /// Filters the type of vertices returned.
-    pub(crate) t: Option<Identifier>,
+    pub t: Option<Identifier>,
 }
 
 query_type!(PipeQuery, Pipe);
@@ -518,9 +518,9 @@ impl PipeQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipePropertyQuery {
     /// The inner query.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
     /// The property name to get. If `None`, all properties will be fetched.
-    pub(crate) name: Option<Identifier>,
+    pub name: Option<Identifier>,
 }
 
 into_query!(PipePropertyQuery, PipeProperty);
@@ -554,11 +554,11 @@ impl PipePropertyQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyPresenceQuery {
     /// The query to filter.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
     /// Whether we should look for property presence or lack thereof.
-    pub(crate) exists: bool,
+    pub exists: bool,
 }
 
 query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
@@ -587,13 +587,13 @@ impl PipeWithPropertyPresenceQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct PipeWithPropertyValueQuery {
     /// The query to filter.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
     /// The name of the property.
-    pub(crate) name: Identifier,
+    pub name: Identifier,
     /// The value of the property.
-    pub(crate) value: serde_json::Value,
+    pub value: serde_json::Value,
     /// Whether we should look for property equality or non-equality.
-    pub(crate) equal: bool,
+    pub equal: bool,
 }
 
 query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
@@ -643,7 +643,7 @@ impl PipeWithPropertyValueQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IncludeQuery {
     /// The query to export.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
 }
 
 query_type!(IncludeQuery, Include);
@@ -669,7 +669,7 @@ impl IncludeQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CountQuery {
     /// The query to export.
-    pub(crate) inner: Box<Query>,
+    pub inner: Box<Query>,
 }
 
 into_query!(CountQuery, Count);

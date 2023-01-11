@@ -125,8 +125,8 @@ message AllEdgeQuery {}
 
 // Gets a specific set of edges.
 message SpecificEdgeQuery {
-    // The keys of the edges to get.
-    repeated Edge keys = 1;
+    // The edges to get.
+    repeated Edge edges = 1;
 }
 
 // Gets edges with or without a given property.
@@ -253,8 +253,8 @@ message VertexProperties {
 
 // Represents an edge property.
 message EdgeProperty {
-    // The key to the edge.
-    Edge key = 1;
+    // The edge.
+    Edge edge = 1;
     // The property value.
     Json value = 2;
 }
@@ -288,7 +288,7 @@ message VertexPropertyBulkInsertItem {
 // An edge property to insert.
 message EdgePropertyBulkInsertItem {
     reserved 2;
-    Edge key = 1;
+    Edge edge = 1;
     Identifier name = 4;
     Json value = 3;
 }

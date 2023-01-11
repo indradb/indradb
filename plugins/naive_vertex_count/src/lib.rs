@@ -44,4 +44,6 @@ impl<D: indradb::Datastore + Send + Sync + 'static> plugin::Plugin for NaiveVert
     }
 }
 
-plugin::register_plugins!(1, "naive_vertex_count", Box::new(crate::NaiveVertexCountPlugin {}));
+plugin::register_plugins!(1, "naive_vertex_count", |db| Box::new(crate::NaiveVertexCountPlugin {
+    db
+}));
