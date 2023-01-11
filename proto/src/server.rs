@@ -130,8 +130,8 @@ impl From<glob::GlobError> for InitError {
 }
 
 #[derive(Default)]
-struct Plugins<D: indradb::Datastore + Send + Sync + 'static> {
-    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin<D>>>,
+struct Plugins {
+    entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin>>,
     // Kept to ensure libraries aren't dropped
     #[allow(dead_code)]
     libraries: Vec<Library>,
@@ -140,8 +140,8 @@ struct Plugins<D: indradb::Datastore + Send + Sync + 'static> {
 /// The IndraDB server implementation.
 #[derive(Clone)]
 pub struct Server<D: indradb::Datastore + Send + Sync + 'static> {
-    datastore: Arc<indradb::Database<D>>,
-    plugins: Arc<Plugins<D>>,
+    db: Arc<indradb::Database<D>>,
+    plugins: Arc<Plugins>,
 }
 
 impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
@@ -149,9 +149,9 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
     ///
     /// # Arguments
     /// * `datastore`: The underlying datastore to use.
-    pub fn new(datastore: Arc<D>) -> Self {
+    pub fn new(db: Arc<indradb::Database<D>>) -> Self {
         Self {
-            datastore,
+            db,
             plugins: Arc::new(Plugins::default()),
         }
     }
@@ -159,7 +159,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
     /// Creates a new server with plugins enabled.
     ///
     /// # Arguments
-    /// * `datastore`: The underlying datastore to use.
+    /// * `db`: The underlying database to use.
     /// * `library_paths`: Paths to libraries to enable.
     ///
     /// # Errors
@@ -168,7 +168,10 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
     /// # Safety
     /// Loading and executing plugins is inherently unsafe. Only run libraries
     /// that you've vetted.
-    pub unsafe fn new_with_plugins(datastore: Arc<D>, library_paths: Vec<PathBuf>) -> Result<Self, InitError> {
+    pub unsafe fn new_with_plugins(
+        db: Arc<indradb::Database<D>>,
+        library_paths: Vec<PathBuf>,
+    ) -> Result<Self, InitError> {
         let mut libraries = Vec::new();
         let mut plugin_entries = HashMap::new();
 
@@ -194,7 +197,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
         }
 
         Ok(Self {
-            datastore,
+            db,
             plugins: Arc::new(Plugins {
                 libraries,
                 entries: plugin_entries,
@@ -210,17 +213,15 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn sync(&self, _: Request<()>) -> Result<Response<()>, Status> {
-        let datastore = self.datastore.clone();
-
-        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.sync()).await)?;
+        let db = self.db.clone();
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.sync()).await)?;
         Ok(Response::new(()))
     }
 
     async fn create_vertex(&self, request: Request<crate::Vertex>) -> Result<Response<crate::CreateResponse>, Status> {
-        let datastore = self.datastore.clone();
-
+        let db = self.db.clone();
         let vertex = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_vertex(&vertex)).await)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex(&vertex)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
@@ -228,23 +229,21 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         &self,
         request: Request<crate::Identifier>,
     ) -> Result<Response<crate::Uuid>, Status> {
-        let datastore = self.datastore.clone();
-
+        let db = self.db.clone();
         let t = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_vertex_from_type(t)).await)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex_from_type(t)).await)?;
         Ok(Response::new(res.into()))
     }
 
     async fn create_edge(&self, request: Request<crate::EdgeKey>) -> Result<Response<crate::CreateResponse>, Status> {
-        let datastore = self.datastore.clone();
-
+        let db = self.db.clone();
         let key = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.create_edge(&key)).await)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(&key)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
     async fn bulk_insert(&self, request: Request<Streaming<crate::BulkInsertItem>>) -> Result<Response<()>, Status> {
-        let datastore = self.datastore.clone();
+        let db = self.db.clone();
 
         let items = {
             let mut stream = request.into_inner();
@@ -257,15 +256,15 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
             items
         };
 
-        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.bulk_insert(items)).await)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.bulk_insert(items)).await)?;
         Ok(Response::new(()))
     }
 
     async fn index_property(&self, request: Request<crate::IndexPropertyRequest>) -> Result<Response<()>, Status> {
-        let datastore = self.datastore.clone();
+        let db = self.db.clone();
 
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
-        map_jh_indra_result(tokio::task::spawn_blocking(move || datastore.index_property(name)).await)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.index_property(name)).await)?;
         Ok(Response::new(()))
     }
 
@@ -281,11 +280,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
-            let response = {
-                plugin
-                    .call(self.datastore.clone(), arg)
-                    .map_err(|err| Status::internal(format!("{}", err)))?
-            };
+            let response = { plugin.call(arg).map_err(|err| Status::internal(format!("{}", err)))? };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),
             }))
@@ -298,17 +293,17 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
 /// Runs the IndraDB server.
 ///
 /// # Arguments
-/// * `datastore`: The underlying datastore to use.
+/// * `db`: The underlying database to use.
 /// * `listener`: The TCP listener to run the gRPC server on.
 ///
 /// # Errors
 /// This will return an error if the gRPC fails to start on the given
 /// listener.
-pub async fn run<D>(datastore: Arc<D>, listener: TcpListener) -> Result<(), TonicTransportError>
+pub async fn run<D>(db: Arc<indradb::Database<D>>, listener: TcpListener) -> Result<(), TonicTransportError>
 where
     D: indradb::Datastore + Send + Sync + 'static,
 {
-    let service = crate::indra_db_server::IndraDbServer::new(Server::new(datastore));
+    let service = crate::indra_db_server::IndraDbServer::new(Server::new(db));
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()
         .add_service(service)
@@ -321,7 +316,7 @@ where
 /// Runs the IndraDB server with plugins enabled.
 ///
 /// # Arguments
-/// * `datastore`: The underlying datastore to use.
+/// * `db`: The underlying database to use.
 /// * `listener`: The TCP listener to run the gRPC server on.
 /// * `plugin_path_pattern`: A [glob](https://docs.rs/glob/0.3.0/glob/) to the
 ///   plugin paths to be used.
@@ -334,7 +329,7 @@ where
 /// Loading and executing plugins is inherently unsafe. Only run libraries that
 /// you've vetted.
 pub async unsafe fn run_with_plugins<D>(
-    datastore: Arc<D>,
+    db: Arc<indradb::Database<D>>,
     listener: TcpListener,
     plugin_path_pattern: &str,
 ) -> Result<(), InitError>
@@ -346,7 +341,7 @@ where
         plugin_paths.push(entry?);
     }
 
-    let server = Server::new_with_plugins(datastore, plugin_paths)?;
+    let server = Server::new_with_plugins(db, plugin_paths)?;
     let service = crate::indra_db_server::IndraDbServer::new(server);
     let incoming = TcpListenerStream::new(listener);
     TonicServer::builder()

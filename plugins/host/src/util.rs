@@ -34,7 +34,7 @@ pub trait VertexMapper: Send + Sync + 'static {
 /// * `database`: The database.
 pub fn map<M: VertexMapper, D: indradb::Datastore + Send + Sync + 'static>(
     mapper: Arc<M>,
-    db: indradb::Database<D>,
+    db: &indradb::Database<D>,
 ) -> Result<(), Error> {
     let pool = ThreadPool::new(max(mapper.num_threads(), 1));
     let query_limit = max(mapper.query_limit(), 1);

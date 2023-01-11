@@ -162,7 +162,12 @@ impl Client {
     /// * `q`: The query to run.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub async fn set_properties(&self, q: indradb::Query, name: indradb::Identifier, value: serde_json::Value) -> Result<()> {
+    pub async fn set_properties(
+        &self,
+        q: indradb::Query,
+        name: indradb::Identifier,
+        value: serde_json::Value,
+    ) -> Result<()> {
         todo!();
     }
 

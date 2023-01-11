@@ -40,20 +40,19 @@ impl fmt::Display for VersionInfo {
 }
 
 /// Plugins should implement this trait.
-pub trait Plugin<D: indradb::Datastore + Send + Sync + 'static>: Send + Sync + 'static {
+pub trait Plugin: Send + Sync + 'static {
     /// Executes the plugin. Returns JSON that will be sent back to the
     /// calling client.
     ///
     /// # Arguments
-    /// * `database`: The database.
     /// * `arg`: The argument from the calling client.
-    fn call(&self, database: indradb::Database<D>, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
+    fn call(&self, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
 }
 
 /// A declaration of a plugin.
-pub struct PluginDeclaration<D: indradb::Datastore + Send + Sync + 'static> {
+pub struct PluginDeclaration {
     pub version_info: VersionInfo,
-    pub entries: HashMap<String, Box<dyn Plugin<D>>>,
+    pub entries: HashMap<String, Box<dyn Plugin>>,
 }
 
 /// Libraries use this macro to register their plugins.
@@ -62,12 +61,12 @@ macro_rules! register_plugins {
     ( $indradb_interface_version:expr, $( $name:expr, $t:expr ),* ) => {
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn register() -> $crate::PluginDeclaration {
+        pub unsafe extern "C" fn register<D: indradb::Datastore>(db: indradb::Database<D>) -> $crate::PluginDeclaration {
             use std::collections::HashMap;
             let mut entries = HashMap::new();
             $(
                 {
-                    let t: Box<dyn $crate::Plugin> = $t;
+                    let t: Box<dyn $crate::Plugin> = $t(db);
                     entries.insert($name.to_string(), t);
                 }
             )*
