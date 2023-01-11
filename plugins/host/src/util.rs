@@ -55,7 +55,6 @@ pub fn map<M: VertexMapper, D: indradb::Datastore + Send + Sync + 'static>(
             q = q.start_id(last_id);
         }
 
-
         let output = match db.get(q.into()) {
             Ok(output) => output,
             Err(err) => {
