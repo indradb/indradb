@@ -182,45 +182,37 @@ impl From<indradb::Query> for crate::Query {
                     })
                 }
 
-                indradb::VertexQuery::Pipe(q) => {
-                    let mut proto_q = crate::PipeVertexQuery {
+                indradb::Query::AllEdge(q) => crate::QueryVariant::AllEdge(crate::AllEdgeQuery {}),
+                indradb::Query::SpecificEdge(q) => crate::QueryVariant::SpecificEdge(crate::SpecificEdgeQuery {
+                    edges: q.edges.into_iter().map(|id| id.into()).collect(),
+                }),
+                indradb::Query::EdgeWithPropertyPresence(q) => {
+                    crate::QueryVariant::EdgeWithPropertyPresence(crate::EdgeWithPropertyPresenceQuery {
+                        name: Some(q.name.into()),
+                    })
+                }
+                indradb::Query::EdgeWithPropertyValue(q) => {
+                    crate::QueryVariant::EdgeWithPropertyValue(crate::EdgeWithPropertyValueQuery {
+                        name: Some(q.name.into()),
+                        value: Some(q.value.into()),
+                    })
+                }
+
+                indradb::Query::Pipe(q) => {
+                    let mut proto_q = crate::PipeQuery {
                         inner: Some(Box::new((*q.inner).into())),
                         direction: 0,
                         limit: q.limit,
                         t: q.t.map(|t| t.into()),
                     };
                     proto_q.set_direction(q.direction.into());
-                    crate::VertexQueryVariant::Pipe(Box::new(proto_q))
+                    crate::QueryVariant::Pipe(Box::new(proto_q))
                 }
-                indradb::VertexQuery::PropertyPresence(q) => {
-                    let proto_q = crate::PropertyPresenceVertexQuery {
+                indradb::Query::PipeProperty(q) => {
+                    let proto_q = crate::PipePropertyQuery {
                         name: Some(q.name.into()),
                     };
-                    crate::VertexQueryVariant::PropertyPresence(proto_q)
-                }
-                indradb::VertexQuery::PropertyValue(q) => {
-                    let proto_q = crate::PropertyValueVertexQuery {
-                        name: Some(q.name.into()),
-                        value: Some(q.value.into()),
-                    };
-                    crate::VertexQueryVariant::PropertyValue(proto_q)
-                }
-                indradb::VertexQuery::PipePropertyPresence(q) => {
-                    let proto_q = crate::PipePropertyPresenceVertexQuery {
-                        inner: Some(Box::new((*q.inner).into())),
-                        name: Some(q.name.into()),
-                        exists: q.exists,
-                    };
-                    crate::VertexQueryVariant::PipePropertyPresence(Box::new(proto_q))
-                }
-                indradb::VertexQuery::PipePropertyValue(q) => {
-                    let proto_q = crate::PipePropertyValueVertexQuery {
-                        inner: Some(Box::new((*q.inner).into())),
-                        name: Some(q.name.into()),
-                        value: Some(q.value.into()),
-                        equal: q.equal,
-                    };
-                    crate::VertexQueryVariant::PipePropertyValue(Box::new(proto_q))
+                    crate::QueryVariant::PipeProperty(proto_q)
                 }
             }),
         }
