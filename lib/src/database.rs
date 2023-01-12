@@ -386,7 +386,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 ) -> Result<()> {
     // TODO: validate query
     let value = match q {
-        Query::AllVertex(_) => {
+        Query::AllVertex => {
             let iter = (*txn).all_vertices()?;
             QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
         }
@@ -658,7 +658,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             values
         }
-        Query::AllEdge(_) => {
+        Query::AllEdge => {
             let iter = (*txn).all_edges()?;
             QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
         }
@@ -673,8 +673,8 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
         Query::Count(ref q) => {
             let count = match &*q.inner {
                 // These paths are optimized
-                Query::AllVertex(_) => (*txn).vertex_count(),
-                Query::AllEdge(_) => (*txn).edge_count(),
+                Query::AllVertex => (*txn).vertex_count(),
+                Query::AllEdge => (*txn).edge_count(),
                 q => {
                     query(txn, q, output)?;
                     let piped_values = output.pop().unwrap();

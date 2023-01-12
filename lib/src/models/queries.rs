@@ -65,7 +65,7 @@ impl From<EdgeDirection> for String {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Query {
     /// Gets all vertices.
-    AllVertex(AllVertexQuery),
+    AllVertex,
     /// Gets a range of vertices.
     RangeVertex(RangeVertexQuery),
     /// Gets a specific set of vertices.
@@ -76,7 +76,7 @@ pub enum Query {
     VertexWithPropertyValue(VertexWithPropertyValueQuery),
 
     /// Gets all edges.
-    AllEdge(AllEdgeQuery),
+    AllEdge,
     /// Gets a specific set of edges.
     SpecificEdge(SpecificEdgeQuery),
     /// Gets edges with or without a given property.
@@ -103,12 +103,12 @@ pub enum Query {
 impl Query {
     pub(crate) fn output_len(&self) -> usize {
         match self {
-            Query::AllVertex(_)
+            Query::AllVertex
             | Query::RangeVertex(_)
             | Query::SpecificVertex(_)
             | Query::VertexWithPropertyPresence(_)
             | Query::VertexWithPropertyValue(_)
-            | Query::AllEdge(_)
+            | Query::AllEdge
             | Query::SpecificEdge(_)
             | Query::EdgeWithPropertyPresence(_)
             | Query::EdgeWithPropertyValue(_)
@@ -123,12 +123,12 @@ impl Query {
 
     pub(crate) fn output_type(&self) -> errors::ValidationResult<QueryOutputValue> {
         match self {
-            Query::AllVertex(_)
+            Query::AllVertex
             | Query::RangeVertex(_)
             | Query::SpecificVertex(_)
             | Query::VertexWithPropertyPresence(_)
             | Query::VertexWithPropertyValue(_) => Ok(QueryOutputValue::Vertices(Vec::default())),
-            Query::AllEdge(_)
+            Query::AllEdge
             | Query::SpecificEdge(_)
             | Query::EdgeWithPropertyPresence(_)
             | Query::EdgeWithPropertyValue(_) => Ok(QueryOutputValue::Edges(Vec::default())),
@@ -227,7 +227,16 @@ pub trait QueryExt: Into<Query> {
 /// Gets all vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct AllVertexQuery;
-query_type!(AllVertexQuery, AllVertex);
+
+impl QueryExt for AllVertexQuery {}
+
+// we don't want to impl From since the reverse operation isn't allowed
+#[allow(clippy::from_over_into)]
+impl Into<Query> for AllVertexQuery {
+    fn into(self) -> Query {
+        Query::AllVertex
+    }
+}
 
 /// Gets a range of vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -372,7 +381,16 @@ impl VertexWithPropertyValueQuery {
 /// Gets all edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct AllEdgeQuery;
-query_type!(AllEdgeQuery, AllEdge);
+
+impl QueryExt for AllEdgeQuery {}
+
+// we don't want to impl From since the reverse operation isn't allowed
+#[allow(clippy::from_over_into)]
+impl Into<Query> for AllEdgeQuery {
+    fn into(self) -> Query {
+        Query::AllEdge
+    }
+}
 
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
