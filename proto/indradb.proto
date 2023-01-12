@@ -51,7 +51,7 @@ message Vertex {
 message Query {
     oneof query {
         // Gets all vertices.
-        AllVertexQuery all_vertex = 1;
+        google.protobuf.Empty all_vertex = 1;
         // Gets a range of vertices.
         RangeVertexQuery range_vertex = 2;
         // Gets a specific set of vertices.
@@ -62,7 +62,7 @@ message Query {
         VertexWithPropertyValueQuery vertex_with_property_value = 5;
 
         // Gets all edges.
-        AllEdgeQuery all_edge = 6;
+        google.protobuf.Empty all_edge = 6;
         // Gets a specific set of edges.
         SpecificEdgeQuery specific_edge = 7;
         // Gets edges with or without a given property.
@@ -86,9 +86,6 @@ message Query {
         CountQuery count = 15;
     }
 }
-
-// Gets all vertices.
-message AllVertexQuery {}
 
 // Gets a range of vertices.
 message RangeVertexQuery {
@@ -119,9 +116,6 @@ message VertexWithPropertyValueQuery {
     // The value of the property.
     Json value = 2;
 }
-
-// Gets all edges.
-message AllEdgeQuery {}
 
 // Gets a specific set of edges.
 message SpecificEdgeQuery {
@@ -209,7 +203,7 @@ message QueryOutputValue {
         uint64 count = 3;
         VertexProperties vertex_properties = 4;
         EdgeProperties edge_properties = 5;
-        bool end_set = 6;
+        google.protobuf.Empty end_set = 6;
     }
 }
 

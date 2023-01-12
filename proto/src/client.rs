@@ -157,60 +157,63 @@ impl Client {
         let mut res = self.0.get(q).await?.into_inner();
 
         while let Some(res) = res.next().await {
-            match res {
-                crate::QueryOutputValueVariant::Vertex(v) => {
+            match res?.value {
+                Some(crate::QueryOutputValueVariant::Vertex(v)) => {
                     if cur_output.is_none() {
                         cur_output = Some(indradb::QueryOutputValue::Vertices(Vec::new()));
                     }
-                    if let Some(indradb::QueryOutputValue::Vertices(vertices)) = cur_output {
-                        vertices.push(v.into());
+                    if let Some(indradb::QueryOutputValue::Vertices(ref mut vertices)) = cur_output {
+                        vertices.push(v.try_into()?);
                     } else {
                         return Err(ClientError::InvalidQueryOutputStream);
                     }
                 }
-                crate::QueryOutputValueVariant::Edge(e) => {
+                Some(crate::QueryOutputValueVariant::Edge(e)) => {
                     if cur_output.is_none() {
                         cur_output = Some(indradb::QueryOutputValue::Edges(Vec::new()));
                     }
-                    if let Some(indradb::QueryOutputValue::Edges(edges)) = cur_output {
-                        edges.push(e.into());
+                    if let Some(indradb::QueryOutputValue::Edges(ref mut edges)) = cur_output {
+                        edges.push(e.try_into()?);
                     } else {
                         return Err(ClientError::InvalidQueryOutputStream);
                     }
                 }
-                crate::QueryOutputValueVariant::Count(c) => {
+                Some(crate::QueryOutputValueVariant::Count(c)) => {
                     if cur_output.is_some() {
                         return Err(ClientError::InvalidQueryOutputStream);
                     } else {
                         cur_output = Some(indradb::QueryOutputValue::Count(c));
                     }
                 }
-                crate::QueryOutputValueVariant::VertexProperties(vp) => {
+                Some(crate::QueryOutputValueVariant::VertexProperties(vp)) => {
                     if cur_output.is_none() {
                         cur_output = Some(indradb::QueryOutputValue::VertexProperties(Vec::new()));
                     }
-                    if let Some(indradb::QueryOutputValue::VertexProperties(vps)) = cur_output {
-                        vps.push(vp.into());
+                    if let Some(indradb::QueryOutputValue::VertexProperties(ref mut vps)) = cur_output {
+                        vps.push(vp.try_into()?);
                     } else {
                         return Err(ClientError::InvalidQueryOutputStream);
                     }
                 }
-                crate::QueryOutputValueVariant::EdgeProperties(ep) => {
+                Some(crate::QueryOutputValueVariant::EdgeProperties(ep)) => {
                     if cur_output.is_none() {
                         cur_output = Some(indradb::QueryOutputValue::EdgeProperties(Vec::new()));
                     }
-                    if let Some(indradb::QueryOutputValue::EdgeProperties(eps)) = cur_output {
-                        eps.push(ep.into());
+                    if let Some(indradb::QueryOutputValue::EdgeProperties(ref mut eps)) = cur_output {
+                        eps.push(ep.try_into()?);
                     } else {
                         return Err(ClientError::InvalidQueryOutputStream);
                     }
                 }
-                crate::QueryOutputValueVariant::EndSet(_) => {
+                Some(crate::QueryOutputValueVariant::EndSet(_)) => {
                     if let Some(cur_output_inner) = cur_output.take() {
                         output.push(cur_output_inner);
                     } else {
                         return Err(ClientError::InvalidQueryOutputStream);
                     }
+                }
+                None => {
+                    return Err(ClientError::InvalidQueryOutputStream);
                 }
             }
         }

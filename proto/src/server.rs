@@ -16,16 +16,14 @@ use tonic::{Request, Response, Status, Streaming};
 
 const CHANNEL_CAPACITY: usize = 100;
 
-fn send<IT, PT>(tx: mpsc::Sender<Result<PT, Status>>, result: Result<Vec<IT>, indradb::Error>)
+fn send<IT, PT>(tx: mpsc::Sender<Result<PT, Status>>, result: Result<IT, indradb::Error>)
 where
     IT: Into<PT>,
 {
     match map_indradb_result(result) {
-        Ok(values) => {
-            for value in values {
-                if let Err(err) = tx.blocking_send(Ok(value.into())) {
-                    eprintln!("could not send message to client: {}", err);
-                }
+        Ok(value) => {
+            if let Err(err) = tx.blocking_send(Ok(value.into())) {
+                eprintln!("could not send message to client: {}", err);
             }
         }
         Err(err) => {
@@ -247,10 +245,46 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let db = self.db.clone();
         let q: indradb::Query = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
-        tokio::task::spawn_blocking(move || {
-            let res = db.get(q);
-            send(tx, res)
+        tokio::task::spawn_blocking(move || match db.get(q) {
+            Ok(output) => {
+                let end_set = crate::QueryOutputValue {
+                    value: Some(crate::QueryOutputValueVariant::EndSet(())),
+                };
+                for values in output.into_iter() {
+                    match values {
+                        indradb::QueryOutputValue::Vertices(vertices) => {
+                            for vertex in vertices.into_iter() {
+                                send(tx, Ok(vertex));
+                            }
+                        }
+                        indradb::QueryOutputValue::Edges(edges) => {
+                            for edge in edges.into_iter() {
+                                send(tx, Ok(edge));
+                            }
+                        }
+                        indradb::QueryOutputValue::Count(count) => {
+                            send(tx, Ok(count.into()));
+                        }
+                        indradb::QueryOutputValue::VertexProperties(vertex_properties) => {
+                            for vertex_property in vertex_properties.into_iter() {
+                                send(tx, Ok(vertex_property));
+                            }
+                        }
+                        indradb::QueryOutputValue::EdgeProperties(edge_properties) => {
+                            for edge_property in edge_properties.into_iter() {
+                                send(tx, Ok(edge_property));
+                            }
+                        }
+                    }
+
+                    if let Err(err) = tx.blocking_send(Ok(end_set)) {
+                        eprintln!("could not send message to client: {}", err);
+                    }
+                }
+            }
+            Err(err) => send(tx, Err(err)),
         });
+
         Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
     }
 

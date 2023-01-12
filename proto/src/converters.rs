@@ -161,7 +161,7 @@ impl From<indradb::Query> for crate::Query {
     fn from(q: indradb::Query) -> Self {
         crate::Query {
             query: Some(match q {
-                indradb::Query::AllVertex(q) => crate::QueryVariant::AllVertex(crate::AllVertexQuery {}),
+                indradb::Query::AllVertex => crate::QueryVariant::AllVertex(()),
                 indradb::Query::RangeVertex(q) => crate::QueryVariant::RangeVertex(crate::RangeVertexQuery {
                     limit: q.limit,
                     t: q.t.map(|t| t.into()),
@@ -182,7 +182,7 @@ impl From<indradb::Query> for crate::Query {
                     })
                 }
 
-                indradb::Query::AllEdge(q) => crate::QueryVariant::AllEdge(crate::AllEdgeQuery {}),
+                indradb::Query::AllEdge => crate::QueryVariant::AllEdge(()),
                 indradb::Query::SpecificEdge(q) => crate::QueryVariant::SpecificEdge(crate::SpecificEdgeQuery {
                     edges: q.edges.into_iter().map(|id| id.into()).collect(),
                 }),
@@ -210,9 +210,10 @@ impl From<indradb::Query> for crate::Query {
                 }
                 indradb::Query::PipeProperty(q) => {
                     let proto_q = crate::PipePropertyQuery {
-                        name: Some(q.name.into()),
+                        inner: Some(Box::new((*q.inner).into())),
+                        name: q.name.map(|name| name.into()),
                     };
-                    crate::QueryVariant::PipeProperty(proto_q)
+                    crate::QueryVariant::PipeProperty(Box::new(proto_q))
                 }
                 indradb::Query::PipeWithPropertyPresence(q) => {
                     let proto_q = crate::PipeWithPropertyPresenceQuery {
@@ -220,7 +221,7 @@ impl From<indradb::Query> for crate::Query {
                         name: Some(q.name.into()),
                         exists: q.exists,
                     };
-                    crate::QueryVariant::PipeWithPropertyPresence(proto_q)
+                    crate::QueryVariant::PipeWithPropertyPresence(Box::new(proto_q))
                 }
                 indradb::Query::PipeWithPropertyValue(q) => {
                     let proto_q = crate::PipeWithPropertyValueQuery {
@@ -229,20 +230,20 @@ impl From<indradb::Query> for crate::Query {
                         value: Some(q.value.into()),
                         equal: q.equal,
                     };
-                    crate::QueryVariant::PipeWithPropertyValue(proto_q)
+                    crate::QueryVariant::PipeWithPropertyValue(Box::new(proto_q))
                 }
 
-                indradb::Query::IncludeQuery(q) => {
+                indradb::Query::Include(q) => {
                     let proto_q = crate::IncludeQuery {
                         inner: Some(Box::new((*q.inner).into())),
                     };
-                    crate::QueryVariant::IncludeQuery(proto_q)
+                    crate::QueryVariant::Include(Box::new(proto_q))
                 }
                 indradb::Query::Count(q) => {
                     let proto_q = crate::CountQuery {
                         inner: Some(Box::new((*q.inner).into())),
                     };
-                    crate::QueryVariant::CountQuery(proto_q)
+                    crate::QueryVariant::Count(Box::new(proto_q))
                 }
             }),
         }
@@ -254,15 +255,15 @@ impl TryInto<indradb::Query> for crate::Query {
 
     fn try_into(self) -> Result<indradb::Query, Self::Error> {
         Ok(match required_field("query", self.query)? {
-            crate::QueryVariant::AllVertex(_q) => indradb::Query::AllVertex(indradb::AllVertexQuery),
-            crate::QueryVariant::RangeVertex(q) => indradb::Query::Range(indradb::RangeVertexQuery {
+            crate::QueryVariant::AllVertex(_q) => indradb::Query::AllVertex,
+            crate::QueryVariant::RangeVertex(q) => indradb::Query::RangeVertex(indradb::RangeVertexQuery {
                 limit: q.limit,
                 t: q.t.map(|t| t.try_into()).transpose()?,
                 start_id: q.start_id.map(|start_id| start_id.try_into()).transpose()?,
             }),
             crate::QueryVariant::SpecificVertex(q) => {
                 let ids: Result<Vec<Uuid>, ConversionError> = q.ids.into_iter().map(|id| id.try_into()).collect();
-                indradb::Query::Specific(indradb::SpecificVertexQuery { ids: ids? })
+                indradb::Query::SpecificVertex(indradb::SpecificVertexQuery { ids: ids? })
             }
             crate::QueryVariant::VertexWithPropertyPresence(q) => {
                 let name = required_field("name", q.name)?;
@@ -279,11 +280,11 @@ impl TryInto<indradb::Query> for crate::Query {
                 })
             }
 
-            crate::QueryVariant::AllEdge(_q) => indradb::Query::AllEdge(indradb::AllEdgeQuery),
+            crate::QueryVariant::AllEdge(_q) => indradb::Query::AllEdge,
             crate::QueryVariant::SpecificEdge(q) => {
                 let edges: Result<Vec<indradb::Edge>, ConversionError> =
                     q.edges.into_iter().map(|id| id.try_into()).collect();
-                indradb::Query::Specific(indradb::SpecificEdgeQuery { edges: edges? })
+                indradb::Query::SpecificEdge(indradb::SpecificEdgeQuery { edges: edges? })
             }
             crate::QueryVariant::EdgeWithPropertyPresence(q) => {
                 let name = required_field("name", q.name)?;
@@ -312,20 +313,20 @@ impl TryInto<indradb::Query> for crate::Query {
                     inner: Box::new((*inner).try_into()?),
                 })
             }
-            crate::QueryVariant::PipePropertyPresence(q) => {
+            crate::QueryVariant::PipeWithPropertyPresence(q) => {
                 let inner = required_field("inner", q.inner)?;
                 let name = required_field("name", q.name)?;
-                indradb::Query::PipePropertyPresence(indradb::PipePropertyPresenceQuery {
+                indradb::Query::PipeWithPropertyPresence(indradb::PipeWithPropertyPresenceQuery {
                     inner: Box::new((*inner).try_into()?),
                     name: name.try_into()?,
                     exists: q.exists,
                 })
             }
-            crate::QueryVariant::PipePropertyValue(q) => {
+            crate::QueryVariant::PipeWithPropertyValue(q) => {
                 let inner = required_field("inner", q.inner)?;
                 let name = required_field("name", q.name)?;
                 let value = required_field("value", q.value)?;
-                indradb::Query::PipePropertyValue(indradb::PipePropertyValueQuery {
+                indradb::Query::PipeWithPropertyValue(indradb::PipeWithPropertyValueQuery {
                     inner: Box::new((*inner).try_into()?),
                     name: name.try_into()?,
                     value: value.try_into()?,
@@ -513,21 +514,23 @@ impl TryInto<indradb::Identifier> for crate::IndexPropertyRequest {
     }
 }
 
-impl TryInto<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
+impl TryInto<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::SetPropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::VertexPropertyQuery, serde_json::Value), Self::Error> {
+    fn try_into(self) -> Result<(indradb::Query, indradb::Identifier, serde_json::Value), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
+        let name = required_field("name", self.name)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
-        Ok((q, value))
+        Ok((q, name, value))
     }
 }
 
-impl From<(indradb::VertexPropertyQuery, serde_json::Value)> for crate::SetVertexPropertiesRequest {
-    fn from(value: (indradb::VertexPropertyQuery, serde_json::Value)) -> Self {
-        crate::SetVertexPropertiesRequest {
+impl From<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::SetPropertiesRequest {
+    fn from(value: (indradb::Query, indradb::Identifier, serde_json::Value)) -> Self {
+        crate::SetPropertiesRequest {
             q: Some(value.0.into()),
-            value: Some(value.1.into()),
+            name: Some(value.1.into()),
+            value: Some(value.2.into()),
         }
     }
 }
