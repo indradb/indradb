@@ -242,6 +242,32 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
+    type GetStream = Pin<Box<dyn Stream<Item = Result<crate::QueryOutputValue, Status>> + Send + Sync + 'static>>;
+    async fn get(&self, request: Request<crate::Query>) -> Result<Response<Self::GetStream>, Status> {
+        let db = self.db.clone();
+        let q: indradb::Query = map_conversion_result(request.into_inner().try_into())?;
+        let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
+        tokio::task::spawn_blocking(move || {
+            let res = db.get(q);
+            send(tx, res)
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+    }
+
+    async fn delete(&self, request: Request<crate::Query>) -> Result<Response<()>, Status> {
+        let db = self.db.clone();
+        let q: indradb::Query = map_conversion_result(request.into_inner().try_into())?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.delete(q)).await)?;
+        Ok(Response::new(()))
+    }
+
+    async fn set_properties(&self, request: Request<crate::SetPropertiesRequest>) -> Result<Response<()>, Status> {
+        let db = self.db.clone();
+        let (q, name, value) = map_conversion_result(request.into_inner().try_into())?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.set_properties(q, name, value)).await)?;
+        Ok(Response::new(()))
+    }
+
     async fn bulk_insert(&self, request: Request<Streaming<crate::BulkInsertItem>>) -> Result<Response<()>, Status> {
         let db = self.db.clone();
 
