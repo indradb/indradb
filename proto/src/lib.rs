@@ -7,6 +7,7 @@ tonic::include_proto!("indradb");
 pub use bulk_insert_item::Item as BulkInsertItemVariant;
 pub use indra_db_client::IndraDbClient as ProtoClient;
 pub use query::Query as QueryVariant;
+pub use query_output_value::QueryOutputValue as QueryOutputValueVariant;
 
 mod converters;
 pub use converters::*;

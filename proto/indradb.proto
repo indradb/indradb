@@ -300,7 +300,7 @@ message IndexPropertyRequest {
 
 message SetPropertiesRequest {
     Query q = 1;
-    Identifier t = 2;
+    Identifier name = 2;
     Json value = 3;
 }
 

@@ -25,6 +25,9 @@ pub enum ClientError {
     Transport { inner: TonicTransportError },
     /// The gRPC channel has been closed.
     ChannelClosed,
+    /// This occurs when the outputs from a query are ordered incorrectly,
+    /// signifying a logic bug.
+    InvalidQueryOutputStream,
 }
 
 impl StdError for ClientError {
@@ -45,6 +48,7 @@ impl fmt::Display for ClientError {
             ClientError::Grpc { ref inner } => write!(f, "grpc error: {}", inner),
             ClientError::Transport { ref inner } => write!(f, "transport error: {}", inner),
             ClientError::ChannelClosed => write!(f, "failed to send request: channel closed"),
+            ClientError::InvalidQueryOutputStream => write!(f, "invalid query output stream"),
         }
     }
 }
@@ -136,8 +140,10 @@ impl Client {
     ///
     /// # Arguments
     /// * `key`: The edge to create.
-    pub async fn create_edge(&mut self, key: &indradb::EdgeKey) -> Result<bool, ClientError> {
-        todo!();
+    pub async fn create_edge(&mut self, edge: &indradb::Edge) -> Result<bool, ClientError> {
+        let edge: crate::Edge = edge.clone().into();
+        let res = self.0.create_edge(edge).await?;
+        Ok(res.into_inner().created)
     }
 
     /// Gets values specified by a query.
@@ -145,7 +151,71 @@ impl Client {
     /// # Arguments
     /// * `q`: The query to run.
     pub async fn get(&self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
-        todo!();
+        let q: crate::Query = q.into();
+        let mut output = Vec::<indradb::QueryOutputValue>::new();
+        let mut cur_output = Option::<indradb::QueryOutputValue>::None;
+        let mut res = self.0.get(q).await?.into_inner();
+
+        while let Some(res) = res.next().await {
+            match res {
+                crate::QueryOutputValueVariant::Vertex(v) => {
+                    if cur_output.is_none() {
+                        cur_output = Some(indradb::QueryOutputValue::Vertices(Vec::new()));
+                    }
+                    if let Some(indradb::QueryOutputValue::Vertices(vertices)) = cur_output {
+                        vertices.push(v.into());
+                    } else {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    }
+                }
+                crate::QueryOutputValueVariant::Edge(e) => {
+                    if cur_output.is_none() {
+                        cur_output = Some(indradb::QueryOutputValue::Edges(Vec::new()));
+                    }
+                    if let Some(indradb::QueryOutputValue::Edges(edges)) = cur_output {
+                        edges.push(e.into());
+                    } else {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    }
+                }
+                crate::QueryOutputValueVariant::Count(c) => {
+                    if cur_output.is_some() {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    } else {
+                        cur_output = Some(indradb::QueryOutputValue::Count(c));
+                    }
+                }
+                crate::QueryOutputValueVariant::VertexProperties(vp) => {
+                    if cur_output.is_none() {
+                        cur_output = Some(indradb::QueryOutputValue::VertexProperties(Vec::new()));
+                    }
+                    if let Some(indradb::QueryOutputValue::VertexProperties(vps)) = cur_output {
+                        vps.push(vp.into());
+                    } else {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    }
+                }
+                crate::QueryOutputValueVariant::EdgeProperties(ep) => {
+                    if cur_output.is_none() {
+                        cur_output = Some(indradb::QueryOutputValue::EdgeProperties(Vec::new()));
+                    }
+                    if let Some(indradb::QueryOutputValue::EdgeProperties(eps)) = cur_output {
+                        eps.push(ep.into());
+                    } else {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    }
+                }
+                crate::QueryOutputValueVariant::EndSet(_) => {
+                    if let Some(cur_output_inner) = cur_output.take() {
+                        output.push(cur_output_inner);
+                    } else {
+                        return Err(ClientError::InvalidQueryOutputStream);
+                    }
+                }
+            }
+        }
+
+        Ok(output)
     }
 
     /// Deletes values specified by a query.
@@ -153,7 +223,9 @@ impl Client {
     /// # Arguments
     /// * `q`: The query to run.
     pub async fn delete(&self, q: indradb::Query) -> Result<(), ClientError> {
-        todo!();
+        let q: crate::Query = q.into();
+        self.0.delete(q).await?;
+        Ok(())
     }
 
     /// Sets properties.
@@ -168,7 +240,16 @@ impl Client {
         name: indradb::Identifier,
         value: serde_json::Value,
     ) -> Result<(), ClientError> {
-        todo!();
+        let q: crate::Query = q.into();
+        let name: crate::Identifier = name.into();
+        let value: crate::Json = value.into();
+        let req = Request::new(crate::SetPropertiesRequest {
+            q: q.into(),
+            name: name.into(),
+            value: value.into(),
+        });
+        self.0.set_properties(req).await?;
+        Ok(())
     }
 
     /// Bulk inserts many vertices, edges, and/or properties.
@@ -223,12 +304,12 @@ impl Client {
         name: &str,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, ClientError> {
-        let request = Request::new(crate::ExecutePluginRequest {
+        let req = Request::new(crate::ExecutePluginRequest {
             name: name.to_string(),
             arg: Some(arg.into()),
         });
-        let response = self.0.execute_plugin(request).await?;
-        match response.into_inner().value {
+        let res = self.0.execute_plugin(req).await?;
+        match res.into_inner().value {
             Some(value) => Ok(value.try_into()?),
             None => Ok(serde_json::Value::Null),
         }
