@@ -235,10 +235,10 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         Ok(Response::new(res.into()))
     }
 
-    async fn create_edge(&self, request: Request<crate::EdgeKey>) -> Result<Response<crate::CreateResponse>, Status> {
+    async fn create_edge(&self, request: Request<crate::Edge>) -> Result<Response<crate::CreateResponse>, Status> {
         let db = self.db.clone();
-        let key = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(&key)).await)?;
+        let edge = map_conversion_result(request.into_inner().try_into())?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(&edge)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 

@@ -150,7 +150,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get(&self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
+    pub async fn get(&mut self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
         let q: crate::Query = q.into();
         let mut output = Vec::<indradb::QueryOutputValue>::new();
         let mut cur_output = Option::<indradb::QueryOutputValue>::None;
@@ -222,7 +222,7 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn delete(&self, q: indradb::Query) -> Result<(), ClientError> {
+    pub async fn delete(&mut self, q: indradb::Query) -> Result<(), ClientError> {
         let q: crate::Query = q.into();
         self.0.delete(q).await?;
         Ok(())
@@ -235,7 +235,7 @@ impl Client {
     /// * `name`: The property name.
     /// * `value`: The property value.
     pub async fn set_properties(
-        &self,
+        &mut self,
         q: indradb::Query,
         name: indradb::Identifier,
         value: serde_json::Value,
