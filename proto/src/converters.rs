@@ -137,6 +137,14 @@ impl TryInto<indradb::Edge> for crate::Edge {
     }
 }
 
+impl From<indradb::Edge> for crate::QueryOutputValue {
+    fn from(edge: indradb::Edge) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::Edge(edge.into())),
+        }
+    }
+}
+
 impl From<indradb::Vertex> for crate::Vertex {
     fn from(vertex: indradb::Vertex) -> Self {
         crate::Vertex {
@@ -154,6 +162,14 @@ impl TryInto<indradb::Vertex> for crate::Vertex {
             required_field("id", self.id)?.try_into()?,
             required_field("t", self.t)?.try_into()?,
         ))
+    }
+}
+
+impl From<indradb::Vertex> for crate::QueryOutputValue {
+    fn from(vertex: indradb::Vertex) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::Vertex(vertex.into())),
+        }
     }
 }
 
@@ -313,6 +329,14 @@ impl TryInto<indradb::Query> for crate::Query {
                     inner: Box::new((*inner).try_into()?),
                 })
             }
+            crate::QueryVariant::PipeProperty(q) => {
+                let inner = required_field("inner", q.inner)?;
+                let name = required_field("name", q.name)?;
+                indradb::Query::PipeProperty(indradb::PipePropertyQuery {
+                    inner: Box::new((*inner).try_into()?),
+                    name: name.try_into()?,
+                })
+            }
             crate::QueryVariant::PipeWithPropertyPresence(q) => {
                 let inner = required_field("inner", q.inner)?;
                 let name = required_field("name", q.name)?;
@@ -331,6 +355,19 @@ impl TryInto<indradb::Query> for crate::Query {
                     name: name.try_into()?,
                     value: value.try_into()?,
                     equal: q.equal,
+                })
+            }
+
+            crate::QueryVariant::Include(q) => {
+                let inner = required_field("inner", q.inner)?;
+                indradb::Query::Include(indradb::IncludeQuery {
+                    inner: Box::new((*inner).try_into()?),
+                })
+            }
+            crate::QueryVariant::Count(q) => {
+                let inner = required_field("inner", q.inner)?;
+                indradb::Query::Count(indradb::CountQuery {
+                    inner: Box::new((*inner).try_into()?),
                 })
             }
         })
@@ -417,6 +454,14 @@ impl TryInto<indradb::VertexProperties> for crate::VertexProperties {
     }
 }
 
+impl From<indradb::VertexProperties> for crate::QueryOutputValue {
+    fn from(props: indradb::VertexProperties) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::VertexProperties(props.into())),
+        }
+    }
+}
+
 impl From<indradb::EdgeProperty> for crate::EdgeProperty {
     fn from(prop: indradb::EdgeProperty) -> Self {
         crate::EdgeProperty {
@@ -456,6 +501,14 @@ impl TryInto<indradb::EdgeProperties> for crate::EdgeProperties {
             required_field("edge", self.edge)?.try_into()?,
             props?,
         ))
+    }
+}
+
+impl From<indradb::EdgeProperties> for crate::QueryOutputValue {
+    fn from(props: indradb::EdgeProperties) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::EdgeProperties(props.into())),
+        }
     }
 }
 
@@ -531,6 +584,22 @@ impl From<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::S
             q: Some(value.0.into()),
             name: Some(value.1.into()),
             value: Some(value.2.into()),
+        }
+    }
+}
+
+impl From<u64> for crate::QueryOutputValue {
+    fn from(count: u64) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::Count(count)),
+        }
+    }
+}
+
+impl From<()> for crate::QueryOutputValue {
+    fn from(_: ()) -> Self {
+        crate::QueryOutputValue {
+            value: Some(crate::QueryOutputValueVariant::EndSet(())),
         }
     }
 }
