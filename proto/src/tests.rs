@@ -58,11 +58,7 @@ impl ClientDatastore {
     }
 }
 
-impl indradb::Datastore for ClientDatastore {
-    fn sync(&self) -> Result<(), indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
-    }
-
+impl indradb::tests::DatabaseV3 for ClientDatastore {
     fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
         map_client_result(
             self.exec
@@ -71,15 +67,7 @@ impl indradb::Datastore for ClientDatastore {
         )
     }
 
-    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().create_vertex_from_type(t)),
-        )
-    }
-
-    fn get_vertices(&self, q: indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
+    fn get_vertices(&self, q: indradb::Query) -> Result<Vec<indradb::Vertex>, indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -87,7 +75,7 @@ impl indradb::Datastore for ClientDatastore {
         )
     }
 
-    fn delete_vertices(&self, q: indradb::VertexQuery) -> Result<(), indradb::Error> {
+    fn delete_vertices(&self, q: indradb::Query) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -103,15 +91,15 @@ impl indradb::Datastore for ClientDatastore {
         )
     }
 
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
+    fn create_edge(&self, e: &indradb::Edge) -> Result<bool, indradb::Error> {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().create_edge(e)))
     }
 
-    fn get_edges(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
+    fn get_edges(&self, q: indradb::Query) -> Result<Vec<indradb::Edge>, indradb::Error> {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get_edges(q)))
     }
 
-    fn delete_edges(&self, q: indradb::EdgeQuery) -> Result<(), indradb::Error> {
+    fn delete_edges(&self, q: indradb::Query) -> Result<(), indradb::Error> {
         map_client_result(
             self.exec
                 .borrow_mut()

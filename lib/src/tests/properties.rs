@@ -1,9 +1,9 @@
-use super::TestDatabase;
-use crate::{Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use super::util::DatabaseV3;
+use crate::{Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
 
 use uuid::Uuid;
 
-pub fn should_handle_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_handle_vertex_properties<D: DatabaseV3>(db: &D) {
     let t = Identifier::new("test_vertex_type").unwrap();
     let v = Vertex::new(t);
     db.create_vertex(&v).unwrap();
@@ -37,7 +37,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_get_all_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_get_all_vertex_properties<D: DatabaseV3>(db: &D) {
     let t = Identifier::new("a_vertex").unwrap();
     let v1 = &Vertex::new(t.clone());
     let v2 = &Vertex::new(t.clone());
@@ -80,7 +80,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result_3.len(), 0);
 }
 
-pub fn should_not_set_invalid_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_set_invalid_vertex_properties<D: DatabaseV3>(db: &D) {
     let q = SpecificVertexQuery::single(Uuid::default())
         .property(Identifier::new("foo").unwrap())
         .unwrap();
@@ -89,7 +89,7 @@ pub fn should_not_set_invalid_vertex_properties<D: Datastore>(db: &TestDatabase<
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_delete_invalid_vertex_properties<D: DatabaseV3>(db: &D) {
     let q = SpecificVertexQuery::single(Uuid::default())
         .property(Identifier::new("foo").unwrap())
         .unwrap();
@@ -105,7 +105,7 @@ pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(db: &TestDataba
     db.delete_vertex_properties(q).unwrap();
 }
 
-pub fn should_handle_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_handle_edge_properties<D: DatabaseV3>(db: &D) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -145,7 +145,7 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_get_all_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_get_all_edge_properties<D: DatabaseV3>(db: &D) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -185,7 +185,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_set_invalid_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_set_invalid_edge_properties<D: DatabaseV3>(db: &D) {
     let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     let q = SpecificEdgeQuery::single(edge)
         .property(Identifier::new("bar").unwrap())
@@ -195,7 +195,7 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(db: &TestDatabase<D>
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_delete_invalid_edge_properties<D: DatabaseV3>(db: &D) {
     let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
     db.delete_edge_properties(
         SpecificEdgeQuery::single(edge)

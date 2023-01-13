@@ -1,8 +1,8 @@
-use super::TestDatabase;
-use crate::{models, Datastore, Error, QueryExt};
+use super::util::DatabaseV3;
+use crate::{models, Error, QueryExt};
 use uuid::Uuid;
 
-fn setup_vertex_with_indexed_property<D: Datastore>(db: &TestDatabase<D>, property_name: &models::Identifier) -> Uuid {
+fn setup_vertex_with_indexed_property<D: DatabaseV3>(db: &D, property_name: &models::Identifier) -> Uuid {
     db.index_property(property_name.clone()).unwrap();
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
     db.create_vertex(&v).unwrap();
@@ -14,10 +14,7 @@ fn setup_vertex_with_indexed_property<D: Datastore>(db: &TestDatabase<D>, proper
     v.id
 }
 
-fn setup_edge_with_indexed_property<D: Datastore>(
-    db: &TestDatabase<D>,
-    property_name: &models::Identifier,
-) -> models::Edge {
+fn setup_edge_with_indexed_property<D: DatabaseV3>(db: &D, property_name: &models::Identifier) -> models::Edge {
     db.index_property(property_name.clone()).unwrap();
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let outbound_v = models::Vertex::new(vertex_t.clone());
@@ -35,7 +32,7 @@ fn setup_edge_with_indexed_property<D: Datastore>(
     edge
 }
 
-pub fn should_not_query_unindexed_vertex_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_query_unindexed_vertex_property<D: DatabaseV3>(db: &D) {
     let result =
         db.get_vertices(models::VertexWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
@@ -44,7 +41,7 @@ pub fn should_not_query_unindexed_vertex_property<D: Datastore>(db: &TestDatabas
     }
 }
 
-pub fn should_not_query_unindexed_edge_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_not_query_unindexed_edge_property<D: DatabaseV3>(db: &D) {
     let result =
         db.get_edges(models::EdgeWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()).into());
     match result {
@@ -53,7 +50,7 @@ pub fn should_not_query_unindexed_edge_property<D: Datastore>(db: &TestDatabase<
     }
 }
 
-pub fn should_index_existing_vertex_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_index_existing_vertex_property<D: DatabaseV3>(db: &D) {
     // Setup
     let property_name = models::Identifier::new("existing-vertex-property").unwrap();
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
@@ -83,7 +80,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &TestDatabase<D>)
     assert_eq!(result[0].id, v.id);
 }
 
-pub fn should_index_existing_edge_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_index_existing_edge_property<D: DatabaseV3>(db: &D) {
     // Setup
     let property_name = models::Identifier::new("existing-edge-property").unwrap();
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
@@ -119,7 +116,7 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result[0], edge);
 }
 
-pub fn should_delete_indexed_vertex_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_delete_indexed_vertex_property<D: DatabaseV3>(db: &D) {
     let property_name = models::Identifier::new("deletable-vertex-property").unwrap();
     let id = setup_vertex_with_indexed_property(db, &property_name);
     let q = models::SpecificVertexQuery::single(id);
@@ -130,7 +127,7 @@ pub fn should_delete_indexed_vertex_property<D: Datastore>(db: &TestDatabase<D>)
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_delete_indexed_edge_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_delete_indexed_edge_property<D: DatabaseV3>(db: &D) {
     let property_name = models::Identifier::new("deletable-edge-property").unwrap();
     let edge = setup_edge_with_indexed_property(db, &property_name);
     let q = models::SpecificEdgeQuery::single(edge);
@@ -141,7 +138,7 @@ pub fn should_delete_indexed_edge_property<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_update_indexed_vertex_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_update_indexed_vertex_property<D: DatabaseV3>(db: &D) {
     let json_true = serde_json::Value::Bool(true);
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-vertex-property").unwrap();
@@ -202,7 +199,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &TestDatabase<D>)
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_update_indexed_edge_property<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_update_indexed_edge_property<D: DatabaseV3>(db: &D) {
     let json_true = serde_json::Value::Bool(true);
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-edge-property").unwrap();
@@ -263,7 +260,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &TestDatabase<D>) {
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_query_indexed_vertex_property_empty<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_query_indexed_vertex_property_empty<D: DatabaseV3>(db: &D) {
     let property_name = models::Identifier::new("queryable-vertex-property").unwrap();
     db.index_property(property_name.clone()).unwrap();
     let result = db
@@ -272,7 +269,7 @@ pub fn should_query_indexed_vertex_property_empty<D: Datastore>(db: &TestDatabas
     assert_eq!(result.len(), 0);
 }
 
-pub fn should_query_indexed_edge_property_empty<D: Datastore>(db: &TestDatabase<D>) {
+pub fn should_query_indexed_edge_property_empty<D: DatabaseV3>(db: &D) {
     let property_name = models::Identifier::new("queryable-edge-property").unwrap();
     db.index_property(property_name.clone()).unwrap();
     let result = db

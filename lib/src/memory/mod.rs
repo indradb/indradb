@@ -14,12 +14,14 @@ full_bench_impl!(MemoryDatastore::default());
 #[cfg(test)]
 mod tests {
     use super::MemoryDatastore;
+    use crate::tests::TestDatabase;
     use crate::util::{extract_count, extract_vertices};
     use crate::{AllVertexQuery, Database, Identifier, QueryExt, SpecificVertexQuery};
+
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
-    full_test_impl!(MemoryDatastore::default());
+    full_test_impl!(TestDatabase::new(MemoryDatastore::default()));
 
     fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();

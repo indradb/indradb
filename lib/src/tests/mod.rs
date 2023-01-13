@@ -14,7 +14,6 @@ mod indexing;
 #[macro_use]
 mod macros;
 mod properties;
-mod sync;
 mod util;
 mod vertex;
 
@@ -23,6 +22,5 @@ pub use self::edge::*;
 pub use self::indexing::*;
 pub use self::macros::*;
 pub use self::properties::*;
-pub use self::sync::*;
 pub use self::util::*;
 pub use self::vertex::*;
