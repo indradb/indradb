@@ -331,10 +331,10 @@ impl TryInto<indradb::Query> for crate::Query {
             }
             crate::QueryVariant::PipeProperty(q) => {
                 let inner = required_field("inner", q.inner)?;
-                let name = required_field("name", q.name)?;
+                let name = q.name.map(|n| n.try_into()).transpose()?;
                 indradb::Query::PipeProperty(indradb::PipePropertyQuery {
                     inner: Box::new((*inner).try_into()?),
-                    name: name.try_into()?,
+                    name,
                 })
             }
             crate::QueryVariant::PipeWithPropertyPresence(q) => {
@@ -601,16 +601,5 @@ impl From<()> for crate::QueryOutputValue {
         crate::QueryOutputValue {
             value: Some(crate::QueryOutputValueVariant::EndSet(())),
         }
-    }
-}
-
-fn to_chrono_time(ts: prost_types::Timestamp) -> DateTime<Utc> {
-    Utc.timestamp_opt(ts.seconds, ts.nanos as u32).unwrap()
-}
-
-fn to_proto_time(dt: &DateTime<Utc>) -> prost_types::Timestamp {
-    prost_types::Timestamp {
-        seconds: dt.timestamp(),
-        nanos: dt.timestamp_subsec_nanos() as i32,
     }
 }

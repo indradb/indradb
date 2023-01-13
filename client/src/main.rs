@@ -2,9 +2,7 @@ mod errors;
 use std::error::Error as StdError;
 
 use clap::{App, AppSettings, Arg, SubCommand};
-use indradb::{
-    EdgeKey, EdgePropertyQuery, EdgeQuery, SpecificEdgeQuery, SpecificVertexQuery, VertexPropertyQuery, VertexQuery,
-};
+use indradb::{SpecificEdgeQuery, SpecificVertexQuery};
 use indradb_proto as proto;
 use std::convert::TryInto;
 
@@ -309,15 +307,15 @@ fn build_vertex_query(matches: &clap::ArgMatches) -> Result<VertexQuery, Box<dyn
     Ok(VertexQuery::Specific(SpecificVertexQuery::single(vertex_id)))
 }
 
-fn build_edge_key(matches: &clap::ArgMatches) -> Result<EdgeKey, Box<dyn StdError>> {
+fn build_edge_key(matches: &clap::ArgMatches) -> Result<Edge, Box<dyn StdError>> {
     let edge_type = indradb::Identifier::new(matches.value_of("type").unwrap())?;
     let outbound_id = uuid::Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
     let inbound_id = uuid::Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
-    let edge_key = indradb::EdgeKey::new(outbound_id, edge_type, inbound_id);
+    let edge_key = Edge::new(outbound_id, edge_type, inbound_id);
 
     Ok(edge_key)
 }
 
-fn build_edge_query(edge_key: EdgeKey) -> EdgeQuery {
-    EdgeQuery::Specific(SpecificEdgeQuery::single(edge_key))
+fn build_edge_query(edge: Edge) -> EdgeQuery {
+    EdgeQuery::Specific(SpecificEdgeQuery::single(edge))
 }
