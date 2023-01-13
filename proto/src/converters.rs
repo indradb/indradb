@@ -5,8 +5,6 @@ use std::convert::TryInto;
 use std::error::Error as StdError;
 use std::fmt;
 
-use chrono::TimeZone;
-use chrono::{DateTime, Utc};
 use indradb::ValidationError;
 use serde_json::Error as SerdeJsonError;
 use uuid::Error as UuidError;

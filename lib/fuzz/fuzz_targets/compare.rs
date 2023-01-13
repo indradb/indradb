@@ -501,25 +501,6 @@ impl Into<uuid::Uuid> for Uuid {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DateTime(chrono::DateTime<chrono::Utc>);
-
-impl Into<chrono::DateTime<chrono::Utc>> for DateTime {
-    fn into(self) -> chrono::DateTime<chrono::Utc> {
-        self.0
-    }
-}
-
-impl<'a> Arbitrary<'a> for DateTime {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let t: i64 = u.arbitrary()?;
-        let n: u32 = u.arbitrary()?;
-        let naive = chrono::NaiveDateTime::from_timestamp_opt(t, n).ok_or(arbitrary::Error::IncorrectFormat)?;
-        let dt = chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc);
-        Ok(Self { 0: dt })
-    }
-}
-
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub enum Json {
     Null,
