@@ -12,6 +12,14 @@ def run(args, cwd="."):
     print("%s => %s" % (cwd, args))
     subprocess.check_call(args, cwd=cwd)
 
+def parse_version(s):
+    try:
+        new_version = tuple([int(x) for x in s.split(".")])
+        assert len(new_version) == 3
+        return new_version
+    except:
+        raise Exception("Invalid version specification")
+
 def update_version(path, new_version, categories):
     with open(path, "r") as f:
         contents = f.read().splitlines()
@@ -43,25 +51,24 @@ def update_all_versions(path, new_version):
     update_dependency_versions(path, new_version)
 
 def main():
-    if len(sys.argv) < 2:
-        raise Exception("No version specified")
+    if len(sys.argv) < 3:
+        raise Exception("No versions specified")
 
-    try:
-        new_version = tuple([int(x) for x in sys.argv[1].split(".")])
-        assert len(new_version) == 3
-    except:
-        raise Exception("Invalid version specification")
+    main_new_version = parse_version(sys.argv[1])
+    plugin_host_new_version = parse_version(sys.argv[2])
 
-    update_all_versions("lib/Cargo.toml", new_version)
-    update_all_versions("proto/Cargo.toml", new_version)
-    update_all_versions("server/Cargo.toml", new_version)
-    update_all_versions("client/Cargo.toml", new_version)
-    update_dependency_versions("plugins/host/Cargo.toml", new_version)
+    update_all_versions("lib/Cargo.toml", main_new_version)
+    update_all_versions("proto/Cargo.toml", main_new_version)
+    update_all_versions("server/Cargo.toml", main_new_version)
+    update_all_versions("client/Cargo.toml", main_new_version)
+
+    update_package_version("plugins/host/Cargo.toml", plugin_host_new_version)
+    update_dependency_versions("plugins/host/Cargo.toml", main_new_version)
 
     run(["make", "check", "test"])
 
     # a github action will pickup this tag push and create a release
-    new_version_str = "v{}".format(".".join(str(x) for x in new_version))
+    new_version_str = "v{}".format(".".join(str(x) for x in main_new_version))
     run(["git", "commit", "-a", "-m", new_version_str])
     run(["git", "tag", "-a", new_version_str, "-m", new_version_str])
     run(["git", "push", "origin", new_version_str])
