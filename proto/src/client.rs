@@ -25,9 +25,6 @@ pub enum ClientError {
     Transport { inner: TonicTransportError },
     /// The gRPC channel has been closed.
     ChannelClosed,
-    /// This occurs when the outputs from a query are ordered incorrectly,
-    /// signifying a logic bug.
-    InvalidQueryOutputStream,
 }
 
 impl StdError for ClientError {
@@ -48,7 +45,6 @@ impl fmt::Display for ClientError {
             ClientError::Grpc { ref inner } => write!(f, "grpc error: {}", inner),
             ClientError::Transport { ref inner } => write!(f, "transport error: {}", inner),
             ClientError::ChannelClosed => write!(f, "failed to send request: channel closed"),
-            ClientError::InvalidQueryOutputStream => write!(f, "invalid query output stream"),
         }
     }
 }
@@ -153,71 +149,10 @@ impl Client {
     pub async fn get(&mut self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
         let q: crate::Query = q.into();
         let mut output = Vec::<indradb::QueryOutputValue>::new();
-        let mut cur_output = Option::<indradb::QueryOutputValue>::None;
         let mut res = self.0.get(q).await?.into_inner();
-
         while let Some(res) = res.next().await {
-            match res?.value {
-                Some(crate::QueryOutputValueVariant::Vertex(v)) => {
-                    if cur_output.is_none() {
-                        cur_output = Some(indradb::QueryOutputValue::Vertices(Vec::new()));
-                    }
-                    if let Some(indradb::QueryOutputValue::Vertices(ref mut vertices)) = cur_output {
-                        vertices.push(v.try_into()?);
-                    } else {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    }
-                }
-                Some(crate::QueryOutputValueVariant::Edge(e)) => {
-                    if cur_output.is_none() {
-                        cur_output = Some(indradb::QueryOutputValue::Edges(Vec::new()));
-                    }
-                    if let Some(indradb::QueryOutputValue::Edges(ref mut edges)) = cur_output {
-                        edges.push(e.try_into()?);
-                    } else {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    }
-                }
-                Some(crate::QueryOutputValueVariant::Count(c)) => {
-                    if cur_output.is_some() {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    } else {
-                        cur_output = Some(indradb::QueryOutputValue::Count(c));
-                    }
-                }
-                Some(crate::QueryOutputValueVariant::VertexProperties(vp)) => {
-                    if cur_output.is_none() {
-                        cur_output = Some(indradb::QueryOutputValue::VertexProperties(Vec::new()));
-                    }
-                    if let Some(indradb::QueryOutputValue::VertexProperties(ref mut vps)) = cur_output {
-                        vps.push(vp.try_into()?);
-                    } else {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    }
-                }
-                Some(crate::QueryOutputValueVariant::EdgeProperties(ep)) => {
-                    if cur_output.is_none() {
-                        cur_output = Some(indradb::QueryOutputValue::EdgeProperties(Vec::new()));
-                    }
-                    if let Some(indradb::QueryOutputValue::EdgeProperties(ref mut eps)) = cur_output {
-                        eps.push(ep.try_into()?);
-                    } else {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    }
-                }
-                Some(crate::QueryOutputValueVariant::EndSet(_)) => {
-                    if let Some(cur_output_inner) = cur_output.take() {
-                        output.push(cur_output_inner);
-                    } else {
-                        return Err(ClientError::InvalidQueryOutputStream);
-                    }
-                }
-                None => {
-                    return Err(ClientError::InvalidQueryOutputStream);
-                }
-            }
+            output.push(res?.try_into()?);
         }
-
         Ok(output)
     }
 

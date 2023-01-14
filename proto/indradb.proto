@@ -198,13 +198,28 @@ message CountQuery {
 // Value(s) returned from a query.
 message QueryOutputValue {
     oneof value {
-        Vertex vertex = 1;
-        Edge edge = 2;
+        QueryOutputVertices vertices = 1;
+        QueryOutputEdges edges = 2;
         uint64 count = 3;
-        VertexProperties vertex_properties = 4;
-        EdgeProperties edge_properties = 5;
-        google.protobuf.Empty end_set = 6;
+        QueryOutputVertexProperties vertex_properties = 4;
+        QueryOutputEdgeProperties edge_properties = 5;
     }
+}
+
+message QueryOutputVertices {
+    repeated Vertex vertices = 1;
+}
+
+message QueryOutputEdges {
+    repeated Edge edges = 1;
+}
+
+message QueryOutputVertexProperties {
+    repeated VertexProperties vertex_properties = 1;
+}
+
+message QueryOutputEdgeProperties {
+    repeated EdgeProperties edge_properties = 1;
 }
 
 // Specifies what kind of items should be piped from one type of query to

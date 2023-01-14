@@ -135,14 +135,6 @@ impl TryInto<indradb::Edge> for crate::Edge {
     }
 }
 
-impl From<indradb::Edge> for crate::QueryOutputValue {
-    fn from(edge: indradb::Edge) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::Edge(edge.into())),
-        }
-    }
-}
-
 impl From<indradb::Vertex> for crate::Vertex {
     fn from(vertex: indradb::Vertex) -> Self {
         crate::Vertex {
@@ -160,14 +152,6 @@ impl TryInto<indradb::Vertex> for crate::Vertex {
             required_field("id", self.id)?.try_into()?,
             required_field("t", self.t)?.try_into()?,
         ))
-    }
-}
-
-impl From<indradb::Vertex> for crate::QueryOutputValue {
-    fn from(vertex: indradb::Vertex) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::Vertex(vertex.into())),
-        }
     }
 }
 
@@ -372,6 +356,62 @@ impl TryInto<indradb::Query> for crate::Query {
     }
 }
 
+impl From<indradb::QueryOutputValue> for crate::QueryOutputValue {
+    fn from(output: indradb::QueryOutputValue) -> Self {
+        let variant = match output {
+            indradb::QueryOutputValue::Vertices(vertices) => {
+                crate::QueryOutputValueVariant::Vertices(crate::QueryOutputVertices {
+                    vertices: vertices.into_iter().map(|e| e.into()).collect()
+                })
+            }
+            indradb::QueryOutputValue::Edges(edges) => {
+                crate::QueryOutputValueVariant::Edges(crate::QueryOutputEdges {
+                    edges: edges.into_iter().map(|e| e.into()).collect()
+                })
+            }
+            indradb::QueryOutputValue::Count(count) => {
+                crate::QueryOutputValueVariant::Count(count)
+            }
+            indradb::QueryOutputValue::VertexProperties(vertex_properties) => {
+                crate::QueryOutputValueVariant::VertexProperties(crate::QueryOutputVertexProperties {
+                    vertex_properties: vertex_properties.into_iter().map(|vp| vp.into()).collect()
+                })
+            }
+            indradb::QueryOutputValue::EdgeProperties(edge_properties) => {
+                crate::QueryOutputValueVariant::EdgeProperties(crate::QueryOutputEdgeProperties {
+                    edge_properties: edge_properties.into_iter().map(|ep| ep.into()).collect()
+                })
+            }
+        };
+
+        crate::QueryOutputValue { value: Some(variant) }
+    }
+}
+
+impl TryInto<indradb::QueryOutputValue> for crate::QueryOutputValue {
+    type Error = ConversionError;
+
+    fn try_into(self) -> Result<indradb::QueryOutputValue, Self::Error> {
+        Ok(match required_field("value", self.value)? {
+            crate::QueryOutputValueVariant::Vertices(vertices) => {
+                todo!();
+            }
+            crate::QueryOutputValueVariant::Edges(edges) => {
+                todo!();
+            }
+            crate::QueryOutputValueVariant::Count(count) => {
+                todo!();
+            }
+            crate::QueryOutputValueVariant::VertexProperties(vertex_properties) => {
+                todo!();
+            }
+            crate::QueryOutputValueVariant::EdgeProperties(edge_properties) => {
+                todo!();
+            }
+        })
+    }
+}
+
 impl From<indradb::EdgeDirection> for crate::EdgeDirection {
     fn from(direction: indradb::EdgeDirection) -> Self {
         match direction {
@@ -452,14 +492,6 @@ impl TryInto<indradb::VertexProperties> for crate::VertexProperties {
     }
 }
 
-impl From<indradb::VertexProperties> for crate::QueryOutputValue {
-    fn from(props: indradb::VertexProperties) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::VertexProperties(props.into())),
-        }
-    }
-}
-
 impl From<indradb::EdgeProperty> for crate::EdgeProperty {
     fn from(prop: indradb::EdgeProperty) -> Self {
         crate::EdgeProperty {
@@ -499,14 +531,6 @@ impl TryInto<indradb::EdgeProperties> for crate::EdgeProperties {
             required_field("edge", self.edge)?.try_into()?,
             props?,
         ))
-    }
-}
-
-impl From<indradb::EdgeProperties> for crate::QueryOutputValue {
-    fn from(props: indradb::EdgeProperties) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::EdgeProperties(props.into())),
-        }
     }
 }
 
@@ -582,22 +606,6 @@ impl From<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::S
             q: Some(value.0.into()),
             name: Some(value.1.into()),
             value: Some(value.2.into()),
-        }
-    }
-}
-
-impl From<u64> for crate::QueryOutputValue {
-    fn from(count: u64) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::Count(count)),
-        }
-    }
-}
-
-impl From<()> for crate::QueryOutputValue {
-    fn from(_: ()) -> Self {
-        crate::QueryOutputValue {
-            value: Some(crate::QueryOutputValueVariant::EndSet(())),
         }
     }
 }
