@@ -20,7 +20,6 @@ path = "src/lib.rs"
 default = ["client"]
 server = ["tokio", "tokio-stream", "libloading", "indradb-plugin-host", "glob"]
 client = ["tokio", "tokio-stream"]
-bench-suite = ["indradb-lib/bench-suite", "test-suite"]
 test-suite = ["indradb-lib/test-suite", "client", "server"]
 
 [dependencies]
