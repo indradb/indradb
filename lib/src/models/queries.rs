@@ -208,7 +208,7 @@ pub trait QueryExt: Into<Query> {
     /// Gets a specific property by name associated with the query results.
     /// This is kept to ease transition to 4.0.0, and will be removed at some
     /// point.
-    #[deprecated(since = "4.0.0", note = "use `.properties().name(...)`")]
+    #[deprecated(since = "4.0.0", note = "use `.properties()?.name(...)`")]
     fn property(self, name: Identifier) -> errors::ValidationResult<PipePropertyQuery> {
         Ok(self.properties()?.name(name))
     }

@@ -4,8 +4,13 @@ use std::convert::TryInto;
 use std::error::Error as StdError;
 
 use clap::{App, AppSettings, Arg, SubCommand};
-use indradb::util::extract_count;
-use indradb::{Error, Identifier, Query, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use indradb::util::{
+    extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices,
+    generate_uuid_v1,
+};
+use indradb::{
+    AllEdgeQuery, AllVertexQuery, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+};
 use indradb_proto as proto;
 use uuid::Uuid;
 
@@ -151,9 +156,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
         client.ping().await?;
         println!("ok");
         return Ok(());
-    }
-
-    if let Some(matches) = matches.subcommand_matches("set") {
+    } else if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             let vertex_type = Identifier::new(matches.value_of("type").unwrap())?;
             let uuid = match matches.value_of("id") {
@@ -165,111 +168,95 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             if !res {
                 return Err(Box::new(Error::UuidTaken));
             }
-
             println!("{:?}", vertex);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
-            let edge_key = build_edge(matches)?;
-            let res = client.create_edge(&edge_key).await?;
+            let edge = build_edge(matches)?;
+            let res = client.create_edge(&edge).await?;
             if !res {
                 return Err(Box::new(errors::VertexInvalidError));
             }
-
-            println!("{:?}", edge_key);
+            println!("{:?}", edge);
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
-            let vertex_query = build_vertex_query(matches)?;
+            let vertex_query = build_vertex_query(matches)?.into();
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
             let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
             client
-                .set_vertex_properties(VertexPropertyQuery::new(vertex_query, property_name), property_value)
+                .set_properties(vertex_query, property_name, property_value)
                 .await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
             let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
             let edge_query = SpecificEdgeQuery::single(build_edge(matches)?).into();
-            client
-                .set_edge_properties(EdgePropertyQuery::new(edge_query, property_name), property_value)
-                .await?;
+            client.set_properties(edge_query, property_name, property_value).await?;
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
-        let q = if matches.subcommand_matches("vertex").is_some() {
-            Query::AllVertex.count().into()
-        } else if let Some(matches) = matches.subcommand_matches("edge") {
-            Query::AllEdge.count().into()
-        };
-        let output = client.get(q).await?;
-        println!("{}", extract_count(output));
+        if matches.subcommand_matches("vertex").is_some() {
+            let output = client.get(AllVertexQuery.count()?.into()).await?;
+            println!("{}", extract_count(output).unwrap());
+        } else if matches.subcommand_matches("edge").is_some() {
+            let output = client.get(AllEdgeQuery.count()?.into()).await?;
+            println!("{}", extract_count(output).unwrap());
+        }
     } else if let Some(matches) = matches.subcommand_matches("get") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
-            let vertex_query = build_vertex_query(matches)?;
-            let vertices = client.get_vertices(vertex_query).await?;
-            println!("{:?}", vertices);
+            let vertex_query = build_vertex_query(matches)?.into();
+            let output = client.get(vertex_query).await?;
+            println!("{:?}", extract_vertices(output));
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let edge_query = SpecificEdgeQuery::single(build_edge(matches)?).into();
-            let edges = client.get_edges(edge_query).await?;
-            println!("{:?}", edges);
+            let output = client.get(edge_query).await?;
+            println!("{:?}", extract_edges(output));
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let property_name = matches.value_of("name");
-            match property_name {
+            let q = match property_name {
                 Some(property_name) => {
                     let property_name = Identifier::new(property_name)?;
-                    let vertex_property = client
-                        .get_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
-                        .await?;
-                    println!("{:?}", vertex_property);
+                    build_vertex_query(matches)?.properties()?.name(property_name).into()
                 }
-                None => {
-                    let vertex_properties = client.get_all_vertex_properties(build_vertex_query(matches)?).await?;
-                    println!("{:?}", vertex_properties);
-                }
-            }
+                None => build_vertex_query(matches)?.properties()?.into(),
+            };
+            let output = client.get(q).await?;
+            println!("{:?}", extract_vertex_properties(output));
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = matches.value_of("name");
-            let edge_query = SpecificEdgeQuery::single(build_edge(matches)?).into();
-            match property_name {
+            let edge_query = SpecificEdgeQuery::single(build_edge(matches)?);
+            let q = match property_name {
                 Some(property_name) => {
                     let property_name = Identifier::new(property_name)?;
-                    let edge_property = client
-                        .get_edge_properties(EdgePropertyQuery::new(edge_query, property_name))
-                        .await?;
-                    println!("{:?}", edge_property);
+                    edge_query.properties()?.name(property_name).into()
                 }
-                None => {
-                    let edge_property = client.get_all_edge_properties(edge_query).await?;
-                    println!("{:?}", edge_property);
-                }
-            }
+                None => edge_query.properties()?.into(),
+            };
+            let output = client.get(q).await?;
+            println!("{:?}", extract_edge_properties(output));
         }
     } else if let Some(matches) = matches.subcommand_matches("delete") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
-            client.delete_vertices(build_vertex_query(matches)?).await?;
+            let q = build_vertex_query(matches)?.into();
+            client.delete(q).await?;
         } else if let Some(matches) = matches.subcommand_matches("edge") {
-            client
-                .delete_edges(SpecificEdgeQuery::single(build_edge(matches)?).into())
-                .await?;
+            let q = SpecificEdgeQuery::single(build_edge(matches)?).into();
+            client.delete(q).await?;
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
-
-            client
-                .delete_vertex_properties(VertexPropertyQuery::new(build_vertex_query(matches)?, property_name))
-                .await?;
+            let q = build_vertex_query(matches)?.properties()?.name(property_name).into();
+            client.delete(q).await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
-
-            client
-                .delete_edge_properties(EdgePropertyQuery::new(
-                    SpecificEdgeQuery::single(build_edge(matches)?).into(),
-                    property_name,
-                ))
-                .await?;
+            let q = SpecificEdgeQuery::single(build_edge(matches)?)
+                .properties()?
+                .name(property_name)
+                .into();
+            client.delete(q).await?;
         }
     }
 
     Ok(())
 }
 
-fn build_vertex_query(matches: &clap::ArgMatches) -> Result<Query, Box<dyn StdError>> {
+fn build_vertex_query(matches: &clap::ArgMatches) -> Result<SpecificVertexQuery, Box<dyn StdError>> {
     let vertex_id = Uuid::parse_str(matches.value_of("uuid").unwrap())?;
-    Ok(SpecificVertexQuery::single(vertex_id).into())
+    Ok(SpecificVertexQuery::single(vertex_id))
 }
 
 fn build_edge(matches: &clap::ArgMatches) -> Result<Edge, Box<dyn StdError>> {

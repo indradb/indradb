@@ -12,7 +12,11 @@ use crate::cli::CliDatastoreArgs;
 use indradb_proto as proto;
 use tokio::net::TcpListener;
 
-async fn run_server<D>(datastore: D, listener: TcpListener, plugin_path: &Option<String>) -> Result<(), Box<dyn Error>>
+async fn run_server<D>(
+    datastore: indradb::Database<D>,
+    listener: TcpListener,
+    plugin_path: &Option<String>,
+) -> Result<(), Box<dyn Error>>
 where
     D: indradb::Datastore + Send + Sync + 'static,
 {
@@ -57,8 +61,8 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
         CliDatastoreArgs::Memory { path } => {
             let datastore = match path {
                 None => indradb::MemoryDatastore::default(),
-                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read(path)?,
-                Some(path) => indradb::MemoryDatastore::create(path)?,
+                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read_msgpack(path)?,
+                Some(path) => indradb::MemoryDatastore::create_msgpack(path)?,
             };
             run_server(datastore, listener, &args.plugin_path).await
         }
