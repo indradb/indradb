@@ -60,22 +60,19 @@ impl ClientDatastore {
     }
 
     fn get(&self, q: indradb::Query) -> indradb::Result<Vec<indradb::QueryOutputValue>> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get(q)),
-        )
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get(q)))
     }
 
     fn delete(&self, q: indradb::Query) -> indradb::Result<()> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete(q)),
-        )
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().delete(q)))
     }
 
-    fn set_properties(&self, q: indradb::Query, name: indradb::Identifier, value: serde_json::Value) -> indradb::Result<()> {
+    fn set_properties(
+        &self,
+        q: indradb::Query,
+        name: indradb::Identifier,
+        value: serde_json::Value,
+    ) -> indradb::Result<()> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -144,7 +141,8 @@ impl indradb::tests::DatabaseV3 for ClientDatastore {
 
     fn get_all_vertex_properties(&self, q: indradb::Query) -> indradb::Result<Vec<indradb::VertexProperties>> {
         let props_query = indradb::PipePropertyQuery::new(Box::new(q))?;
-        let props = indradb::util::extract_vertex_properties(self.get(props_query.into())?).ok_or(indradb::Error::Unsupported)?;
+        let props = indradb::util::extract_vertex_properties(self.get(props_query.into())?)
+            .ok_or(indradb::Error::Unsupported)?;
         Ok(props)
     }
 
@@ -204,7 +202,11 @@ impl indradb::tests::DatabaseV3 for ClientDatastore {
     }
 
     fn create_edge(&self, edge: &indradb::Edge) -> indradb::Result<bool> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().create_edge(edge)))
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().create_edge(edge)),
+        )
     }
 
     fn bulk_insert(&self, items: Vec<indradb::BulkInsertItem>) -> indradb::Result<()> {

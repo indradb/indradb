@@ -361,25 +361,21 @@ impl From<indradb::QueryOutputValue> for crate::QueryOutputValue {
         let variant = match output {
             indradb::QueryOutputValue::Vertices(vertices) => {
                 crate::QueryOutputValueVariant::Vertices(crate::QueryOutputVertices {
-                    vertices: vertices.into_iter().map(|e| e.into()).collect()
+                    vertices: vertices.into_iter().map(|e| e.into()).collect(),
                 })
             }
-            indradb::QueryOutputValue::Edges(edges) => {
-                crate::QueryOutputValueVariant::Edges(crate::QueryOutputEdges {
-                    edges: edges.into_iter().map(|e| e.into()).collect()
-                })
-            }
-            indradb::QueryOutputValue::Count(count) => {
-                crate::QueryOutputValueVariant::Count(count)
-            }
+            indradb::QueryOutputValue::Edges(edges) => crate::QueryOutputValueVariant::Edges(crate::QueryOutputEdges {
+                edges: edges.into_iter().map(|e| e.into()).collect(),
+            }),
+            indradb::QueryOutputValue::Count(count) => crate::QueryOutputValueVariant::Count(count),
             indradb::QueryOutputValue::VertexProperties(vertex_properties) => {
                 crate::QueryOutputValueVariant::VertexProperties(crate::QueryOutputVertexProperties {
-                    vertex_properties: vertex_properties.into_iter().map(|vp| vp.into()).collect()
+                    vertex_properties: vertex_properties.into_iter().map(|vp| vp.into()).collect(),
                 })
             }
             indradb::QueryOutputValue::EdgeProperties(edge_properties) => {
                 crate::QueryOutputValueVariant::EdgeProperties(crate::QueryOutputEdgeProperties {
-                    edge_properties: edge_properties.into_iter().map(|ep| ep.into()).collect()
+                    edge_properties: edge_properties.into_iter().map(|ep| ep.into()).collect(),
                 })
             }
         };
@@ -394,19 +390,31 @@ impl TryInto<indradb::QueryOutputValue> for crate::QueryOutputValue {
     fn try_into(self) -> Result<indradb::QueryOutputValue, Self::Error> {
         Ok(match required_field("value", self.value)? {
             crate::QueryOutputValueVariant::Vertices(vertices) => {
-                todo!();
+                let vertices: Result<Vec<indradb::Vertex>, ConversionError> =
+                    vertices.vertices.into_iter().map(|v| v.try_into()).collect();
+                indradb::QueryOutputValue::Vertices(vertices?)
             }
             crate::QueryOutputValueVariant::Edges(edges) => {
-                todo!();
+                let edges: Result<Vec<indradb::Edge>, ConversionError> =
+                    edges.edges.into_iter().map(|e| e.try_into()).collect();
+                indradb::QueryOutputValue::Edges(edges?)
             }
-            crate::QueryOutputValueVariant::Count(count) => {
-                todo!();
-            }
+            crate::QueryOutputValueVariant::Count(count) => indradb::QueryOutputValue::Count(count),
             crate::QueryOutputValueVariant::VertexProperties(vertex_properties) => {
-                todo!();
+                let vertex_properties: Result<Vec<indradb::VertexProperties>, ConversionError> = vertex_properties
+                    .vertex_properties
+                    .into_iter()
+                    .map(|vp| vp.try_into())
+                    .collect();
+                indradb::QueryOutputValue::VertexProperties(vertex_properties?)
             }
             crate::QueryOutputValueVariant::EdgeProperties(edge_properties) => {
-                todo!();
+                let edge_properties: Result<Vec<indradb::EdgeProperties>, ConversionError> = edge_properties
+                    .edge_properties
+                    .into_iter()
+                    .map(|ep| ep.try_into())
+                    .collect();
+                indradb::QueryOutputValue::EdgeProperties(edge_properties?)
             }
         })
     }
