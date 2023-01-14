@@ -6,11 +6,9 @@ use uuid::Uuid;
 
 /// A trait for the IndraDB v3 datastore interface.
 ///
-/// IndraDB versions < 4 had a very different interface, which the fairly
-/// extensive test suite was written against. Parts of the test suite was
-/// updated for the new interface, but not all of it. To decrease the amount
-/// of refactoring needed, tests now get passed an impl of `DatabaseV3`
-/// instead, which more closely mirrors the old interface.
+/// IndraDB versions < 4 had a different interface, which test suite was
+/// written against. Rather than rewrite the test suite, the tests were updated
+/// to work with this trait, which more closely mirrors the old interface.
 ///
 /// Since, unlike `Database`, this is a trait, it has the added bonus of being
 /// mockable. Datastore implementations that want to test against the test
