@@ -90,9 +90,7 @@ pub fn parse_cli_args() -> CliArgs {
                     path: Some(path.to_os_string()),
                 }
             } else {
-                CliDatastoreArgs::Memory {
-                    path: None,
-                }
+                CliDatastoreArgs::Memory { path: None }
             }
         } else if let Some(matches) = matches.subcommand_matches("rocksdb") {
             CliDatastoreArgs::Rocksdb {
@@ -101,9 +99,7 @@ pub fn parse_cli_args() -> CliArgs {
                 repair: matches.is_present(ROCKSDB_REPAIR),
             }
         } else {
-            CliDatastoreArgs::Memory {
-                path: None,
-            }
+            CliDatastoreArgs::Memory { path: None }
         },
         plugin_path: matches.value_of(PLUGIN_PATH).map(|s| s.to_string()),
     }

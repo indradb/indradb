@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use indradb;
 use indradb_plugin_host as plugin;
 
 pub struct HelloWorldPlugin {}

@@ -710,7 +710,7 @@ impl CountQuery {
 }
 
 /// Value(s) returned from a query.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum QueryOutputValue {
     /// Vertices.
     Vertices(Vec<crate::Vertex>),
