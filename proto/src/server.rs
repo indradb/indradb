@@ -166,9 +166,12 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
         for library_path in library_paths {
             let library = Library::new(&library_path)?;
 
-            let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
-                library.get(b"register")?;
-            let decl = func();
+            let func: libloading::Symbol<
+                unsafe extern "C" fn(
+                    db: Arc<indradb::Database<impl indradb::Datastore + Send + Sync + 'static>>,
+                ) -> indradb_plugin_host::PluginDeclaration,
+            > = library.get(b"register")?;
+            let decl = func(db);
 
             if decl.version_info != indradb_version_info {
                 return Err(InitError::VersionMismatch {

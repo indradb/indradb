@@ -3,6 +3,8 @@ use std::fmt;
 
 use crate::errors::Error;
 
+pub type DynTransaction<'a> = Box<dyn indradb::Transaction<'a> + Send + Sync + 'static>;
+
 /// Represents the rustc compiler version and the plugin interface version.
 /// When a plugin is loaded, the `VersionInfo` of the server is
 /// cross-referenced against the `VersionInfo` exported by the plugin. If they
@@ -45,8 +47,9 @@ pub trait Plugin: Send + Sync + 'static {
     /// calling client.
     ///
     /// # Arguments
+    /// * `txn`: An IndraDB datastore transaction.
     /// * `arg`: The argument from the calling client.
-    fn call(&self, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
+    fn call(&self, txn: DynTransaction, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
 }
 
 /// A declaration of a plugin.
@@ -61,12 +64,12 @@ macro_rules! register_plugins {
     ( $indradb_interface_version:expr, $( $name:expr, $t:expr ),* ) => {
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn register<D: indradb::Datastore + Send + Sync + 'static>(db: Arc<indradb::Database<D>>) -> $crate::PluginDeclaration {
+        pub unsafe extern "C" fn register() -> $crate::PluginDeclaration {
             use std::collections::HashMap;
             let mut entries = HashMap::new();
             $(
                 {
-                    let t: Box<dyn $crate::Plugin> = $t(db);
+                    let t: Box<dyn $crate::Plugin> = $t();
                     entries.insert($name.to_string(), t);
                 }
             )*
