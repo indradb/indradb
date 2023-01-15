@@ -93,7 +93,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     }
                 }
             }
-            Ok(Some(Box::new(vertex_ids.into_iter().map(|e| Ok(e)))))
+            Ok(Some(Box::new(vertex_ids.into_iter().map(Ok))))
         } else {
             Ok(None)
         }
@@ -140,7 +140,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         let iter = edges
             .into_iter()
             .filter(move |edge| self.internal.edges.contains(edge))
-            .map(|e| Ok(e.clone()));
+            .map(Ok);
         Ok(Box::new(iter))
     }
 
@@ -154,7 +154,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     }
                 }
             }
-            Ok(Some(Box::new(edges.into_iter().map(|e| Ok(e)))))
+            Ok(Some(Box::new(edges.into_iter().map(Ok))))
         } else {
             Ok(None)
         }
@@ -196,7 +196,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for ((_prop_vertex_id, prop_name), prop_value) in self.internal.vertex_properties.range(from..to) {
             vertex_properties.push((prop_name.clone(), prop_value.0.clone()));
         }
-        Ok(Box::new(vertex_properties.into_iter().map(|p| Ok(p))))
+        Ok(Box::new(vertex_properties.into_iter().map(Ok)))
     }
 
     fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>> {
@@ -211,12 +211,12 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         let mut edge_properties = Vec::new();
         let from = &(edge.clone(), Identifier::default());
         for ((prop_edge, prop_name), prop_value) in self.internal.edge_properties.range(from..) {
-            if &prop_edge != &edge {
+            if prop_edge != edge {
                 break;
             }
             edge_properties.push((prop_name.clone(), prop_value.0.clone()));
         }
-        Ok(Box::new(edge_properties.into_iter().map(|p| Ok(p))))
+        Ok(Box::new(edge_properties.into_iter().map(Ok)))
     }
 
     fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()> {
@@ -473,7 +473,7 @@ impl MemoryDatastore {
 
 impl Datastore for MemoryDatastore {
     type Transaction<'a> = MemoryTransaction<'a>;
-    fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
+    fn transaction(&'_ self) -> Self::Transaction<'_> {
         MemoryTransaction {
             internal: self.internal.lock().unwrap(),
             path: self.path.clone(),

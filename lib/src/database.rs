@@ -211,7 +211,7 @@ pub trait Datastore {
     where
         Self: 'a;
     /// Creates a new transaction.
-    fn transaction<'a>(&'a self) -> Self::Transaction<'a>;
+    fn transaction(&'_ self) -> Self::Transaction<'_>;
 }
 
 /// The IndraDB database.
@@ -412,7 +412,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
         }
         Query::Pipe(ref q) => {
-            query(txn, &*q.inner, output)?;
+            query(txn, &q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -492,20 +492,20 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             values
         }
         Query::PipeProperty(ref q) => {
-            query(txn, &*q.inner, output)?;
+            query(txn, &q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
                     let mut edge_properties = Vec::with_capacity(piped_edges.len());
-                    for edge in piped_edges.into_iter() {
+                    for edge in piped_edges {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).edge_property(&edge, &name)? {
+                            if let Some(value) = (*txn).edge_property(edge, name)? {
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         } else {
-                            for result in (*txn).all_edge_properties_for_edge(&edge)? {
+                            for result in (*txn).all_edge_properties_for_edge(edge)? {
                                 let (name, value) = result?;
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
@@ -519,14 +519,14 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
                     let mut vertex_properties = Vec::with_capacity(piped_vertices.len());
-                    for vertex in piped_vertices.into_iter() {
+                    for vertex in piped_vertices {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).vertex_property(&vertex, &name)? {
+                            if let Some(value) = (*txn).vertex_property(vertex, name)? {
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
                         } else {
-                            for result in (*txn).all_vertex_properties_for_vertex(&vertex)? {
+                            for result in (*txn).all_vertex_properties_for_vertex(vertex)? {
                                 let (name, value) = result?;
                                 props.push(NamedProperty::new(name.clone(), value.clone()));
                             }
@@ -581,7 +581,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             }
         }
         Query::PipeWithPropertyPresence(ref q) => {
-            query(txn, &*q.inner, output)?;
+            query(txn, &q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -591,7 +591,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                         None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_edges.iter().filter(move |e| {
-                        let contains = edges_with_property.contains(&e);
+                        let contains = edges_with_property.contains(e);
                         (q.exists && contains) || (!q.exists && !contains)
                     });
                     QueryOutputValue::Edges(iter.cloned().collect())
@@ -620,7 +620,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             values
         }
         Query::PipeWithPropertyValue(ref q) => {
-            query(txn, &*q.inner, output)?;
+            query(txn, &q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -630,7 +630,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                         None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_edges.iter().filter(move |e| {
-                        let contains = edges.contains(&e);
+                        let contains = edges.contains(e);
                         (q.equal && contains) || (!q.equal && !contains)
                     });
                     QueryOutputValue::Edges(iter.cloned().collect())
@@ -667,7 +667,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
         }
         Query::Include(ref q) => {
-            query(txn, &*q.inner, output)?;
+            query(txn, &q.inner, output)?;
             output.pop().unwrap()
         }
         Query::Count(ref q) => {
@@ -688,7 +688,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     len as u64
                 }
             };
-            QueryOutputValue::Count(count as u64)
+            QueryOutputValue::Count(count)
         }
     };
 

@@ -508,7 +508,7 @@ impl RocksdbDatastore {
 
 impl Datastore for RocksdbDatastore {
     type Transaction<'a> = RocksdbTransaction<'a> where Self: 'a;
-    fn transaction<'a>(&'a self) -> Self::Transaction<'a> {
+    fn transaction(&'_ self) -> Self::Transaction<'_> {
         RocksdbTransaction {
             db: &self.db,
             indexed_properties: self.indexed_properties.clone(),
