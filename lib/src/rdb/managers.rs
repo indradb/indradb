@@ -146,14 +146,15 @@ impl<'a> EdgeManager<'a> {
     pub fn set(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
+        let reversed_edge = edge.reversed();
 
         if edge_range_manager.contains(edge)? {
             edge_range_manager.delete(batch, edge)?;
-            reversed_edge_range_manager.delete(batch, edge)?;
+            reversed_edge_range_manager.delete(batch, &reversed_edge)?;
         }
 
         edge_range_manager.set(batch, edge)?;
-        reversed_edge_range_manager.set(batch, edge)?;
+        reversed_edge_range_manager.set(batch, &reversed_edge)?;
         Ok(())
     }
 
