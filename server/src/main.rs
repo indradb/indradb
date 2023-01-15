@@ -54,15 +54,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 return Ok(());
             }
 
-            let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
+            let datastore = indradb::RocksdbDatastore::new_db(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
             run_server(datastore, listener, &args.plugin_path).await
         }
         CliDatastoreArgs::Memory { path } => {
             let datastore = match path {
-                None => indradb::MemoryDatastore::default(),
-                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read_msgpack(path)?,
-                Some(path) => indradb::MemoryDatastore::create_msgpack(path)?,
+                None => indradb::MemoryDatastore::new_db(),
+                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read_msgpack_db(path)?,
+                Some(path) => indradb::MemoryDatastore::create_msgpack_db(path)?,
             };
             run_server(datastore, listener, &args.plugin_path).await
         }

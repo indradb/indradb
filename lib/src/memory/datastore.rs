@@ -434,7 +434,7 @@ pub struct MemoryDatastore {
 
 impl MemoryDatastore {
     /// Creates a new in-memory database with no persistence.
-    pub fn default() -> Database<MemoryDatastore> {
+    pub fn new_db() -> Database<MemoryDatastore> {
         Database::new(MemoryDatastore {
             internal: Arc::new(Mutex::new(InternalMemory::default())),
             path: None,
@@ -446,7 +446,7 @@ impl MemoryDatastore {
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
-    pub fn read_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, RmpDecodeError> {
+    pub fn read_msgpack_db<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, RmpDecodeError> {
         let path = path.into();
         let f = File::open(&path).map_err(RmpDecodeError::InvalidDataRead)?;
         let buf = BufReader::new(f);
@@ -463,7 +463,7 @@ impl MemoryDatastore {
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
-    pub fn create_msgpack<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, BincodeError> {
+    pub fn create_msgpack_db<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, BincodeError> {
         Ok(Database::new(MemoryDatastore {
             internal: Arc::new(Mutex::new(InternalMemory::default())),
             path: Some(path.into()),
