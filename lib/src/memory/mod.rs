@@ -8,7 +8,7 @@ mod datastore;
 pub use datastore::MemoryDatastore;
 
 #[cfg(feature = "bench-suite")]
-full_bench_impl!(MemoryDatastore::default());
+full_bench_impl!(MemoryDatastore::new_db());
 
 #[cfg(feature = "test-suite")]
 #[cfg(test)]
@@ -21,7 +21,7 @@ mod tests {
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
-    full_test_impl!(TestDatabase::new(MemoryDatastore::default()));
+    full_test_impl!(TestDatabase::new(MemoryDatastore::new_db()));
 
     fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();
@@ -48,10 +48,10 @@ mod tests {
     #[test]
     fn should_serialize_msgpack() {
         let path = NamedTempFile::new().unwrap();
-        let db = MemoryDatastore::create_msgpack(path.path()).unwrap();
+        let db = MemoryDatastore::create_msgpack_db(path.path());
         let id = create_vertex_with_property(&db);
         db.sync().unwrap();
-        let db = MemoryDatastore::read_msgpack(path.path()).unwrap();
+        let db = MemoryDatastore::read_msgpack_db(path.path()).unwrap();
         expect_vertex(&db, id);
     }
 }

@@ -237,7 +237,7 @@ full_test_impl!({
     let listener = rt.block_on(TcpListener::bind(&addr)).unwrap();
     let port = listener.local_addr().unwrap().port();
     rt.spawn(crate::run_server(
-        Arc::new(indradb::MemoryDatastore::default()),
+        Arc::new(indradb::MemoryDatastore::new_db()),
         listener,
     ));
 

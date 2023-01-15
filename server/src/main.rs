@@ -62,7 +62,7 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             let datastore = match path {
                 None => indradb::MemoryDatastore::new_db(),
                 Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read_msgpack_db(path)?,
-                Some(path) => indradb::MemoryDatastore::create_msgpack_db(path)?,
+                Some(path) => indradb::MemoryDatastore::create_msgpack_db(path),
             };
             run_server(datastore, listener, &args.plugin_path).await
         }

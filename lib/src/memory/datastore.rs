@@ -9,7 +9,6 @@ use crate::errors::{Error, Result};
 use crate::util;
 use crate::{Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
-use bincode::Error as BincodeError;
 use rmp_serde::decode::Error as RmpDecodeError;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
@@ -463,11 +462,11 @@ impl MemoryDatastore {
     ///
     /// # Arguments
     /// * `path`: The path to the persisted image.
-    pub fn create_msgpack_db<P: Into<PathBuf>>(path: P) -> StdResult<Database<MemoryDatastore>, BincodeError> {
-        Ok(Database::new(MemoryDatastore {
+    pub fn create_msgpack_db<P: Into<PathBuf>>(path: P) -> Database<MemoryDatastore> {
+        Database::new(MemoryDatastore {
             internal: Arc::new(Mutex::new(InternalMemory::default())),
             path: Some(path.into()),
-        }))
+        })
     }
 }
 
