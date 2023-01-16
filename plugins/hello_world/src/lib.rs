@@ -1,15 +1,13 @@
 //! Demonstrates a basic plugin.
 
-use std::sync::Arc;
-
 use indradb_plugin_host as plugin;
 
 pub struct HelloWorldPlugin {}
 
 impl plugin::Plugin for HelloWorldPlugin {
-    fn call(
+    fn call<'a>(
         &self,
-        _txn: plugin::DynTransaction<'_>,
+        _txn: &'a mut plugin::DynTransaction<'a>,
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let greeting = format!("hello, {}", arg);

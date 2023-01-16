@@ -49,7 +49,7 @@ pub trait Plugin: Send + Sync + 'static {
     /// # Arguments
     /// * `txn`: An IndraDB datastore transaction.
     /// * `arg`: The argument from the calling client.
-    fn call(&self, txn: DynTransaction, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
+    fn call<'a>(&self, txn: &'a mut DynTransaction<'a>, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
 }
 
 /// A declaration of a plugin.

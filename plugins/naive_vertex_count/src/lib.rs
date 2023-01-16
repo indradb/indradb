@@ -22,20 +22,18 @@ impl plugin::util::VertexMapper for NaiveVertexCountMapper {
 pub struct NaiveVertexCountPlugin {}
 
 impl plugin::Plugin for NaiveVertexCountPlugin {
-    fn call(
+    fn call<'a>(
         &self,
-        txn: plugin::DynTransaction<'_>,
-        arg: serde_json::Value,
+        txn: &'a mut plugin::DynTransaction<'a>,
+        _arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
-        let mapper = NaiveVertexCountMapper {
+        let mapper = Arc::new(NaiveVertexCountMapper {
             count: AtomicU64::new(0),
-        };
-        plugin::util::map(txn, mapper.map, None)?;
+        });
+        plugin::util::map(txn, mapper.clone())?;
         let count = mapper.count.load(Ordering::Relaxed);
         Ok(count.into())
     }
 }
 
-plugin::register_plugins!(1, "naive_vertex_count", || Box::new(crate::NaiveVertexCountPlugin {
-    db
-}));
+plugin::register_plugins!(1, "naive_vertex_count", || Box::new(crate::NaiveVertexCountPlugin {}));

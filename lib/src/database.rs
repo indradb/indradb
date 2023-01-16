@@ -220,7 +220,7 @@ pub trait Datastore {
 /// handling. Underlying it (as a generic argument) are datastores, which
 /// contain implementation-specific logic.
 pub struct Database<D: Datastore> {
-    datastore: D,
+    pub datastore: D,
 }
 
 impl<D: Datastore> Database<D> {

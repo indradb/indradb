@@ -166,12 +166,9 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
         for library_path in library_paths {
             let library = Library::new(&library_path)?;
 
-            let func: libloading::Symbol<
-                unsafe extern "C" fn(
-                    db: Arc<indradb::Database<impl indradb::Datastore + Send + Sync + 'static>>,
-                ) -> indradb_plugin_host::PluginDeclaration,
-            > = library.get(b"register")?;
-            let decl = func(db);
+            let func: libloading::Symbol<unsafe extern "C" fn() -> indradb_plugin_host::PluginDeclaration> =
+                library.get(b"register")?;
+            let decl = func();
 
             if decl.version_info != indradb_version_info {
                 return Err(InitError::VersionMismatch {
@@ -300,7 +297,12 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
-            let response = { plugin.call(arg).map_err(|err| Status::internal(format!("{}", err)))? };
+            let txn = Box::new(self.db.datastore.transaction());
+            let response = {
+                plugin
+                    .call(&mut txn, arg)
+                    .map_err(|err| Status::internal(format!("{}", err)))?
+            };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),
             }))

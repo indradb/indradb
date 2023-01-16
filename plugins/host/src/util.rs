@@ -8,19 +8,24 @@ use threadpool::ThreadPool;
 
 const DEFAULT_NUM_THREADS: usize = 8;
 
+/// Trait for running an operation on all vertices in a datastore.
+pub trait VertexMapper: Send + Sync + 'static {
+    /// The number of threads that should execute the map operation.
+    fn num_threads(&self) -> usize {
+        DEFAULT_NUM_THREADS
+    }
+    /// The map operation.
+    fn map(&self, vertex: indradb::Vertex) -> Result<(), Error>;
+}
+
 /// Runs an operation on all vertices in the datastore.
 ///
 /// # Arguments
 /// * `mapper`: Specified options and the map operation to run.
 /// * `database`: The database.
-pub fn map<'a, F: FnOnce(indradb::Vertex) -> Result<(), Error> + Send + Clone>(
-    txn: DynTransaction<'a>,
-    mapper: F,
-    num_threads: Option<usize>,
-) -> Result<(), Error> {
-    let pool = ThreadPool::new(max(num_threads.unwrap_or(DEFAULT_NUM_THREADS), 1));
+pub fn map<'a, M: VertexMapper>(txn: &'a mut DynTransaction<'a>, mapper: Arc<M>) -> Result<(), Error> {
+    let pool = ThreadPool::new(max(mapper.num_threads(), 1));
     let last_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
-
     for vertex in txn.all_vertices()? {
         if last_err.lock().unwrap().is_some() {
             break;
@@ -31,7 +36,7 @@ pub fn map<'a, F: FnOnce(indradb::Vertex) -> Result<(), Error> + Send + Clone>(
                 let mapper = mapper.clone();
                 let last_err = last_err.clone();
                 pool.execute(move || {
-                    if let Err(err) = mapper(vertex) {
+                    if let Err(err) = mapper.map(vertex) {
                         *last_err.lock().unwrap() = Some(err);
                     }
                 });
