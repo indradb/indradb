@@ -211,7 +211,7 @@ pub trait Datastore {
     where
         Self: 'a;
     /// Creates a new transaction.
-    fn transaction(&'_ self) -> Self::Transaction<'_>;
+    fn transaction(&self) -> Self::Transaction<'_>;
 }
 
 /// The IndraDB database.
