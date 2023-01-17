@@ -24,7 +24,7 @@ pub struct NaiveVertexCountPlugin {}
 impl plugin::Plugin for NaiveVertexCountPlugin {
     fn call<'a>(
         &self,
-        mut txn: Box<dyn indradb::Transaction<'a>>,
+        txn: Box<dyn indradb::Transaction<'a>>,
         _arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let mapper = Arc::new(NaiveVertexCountMapper {

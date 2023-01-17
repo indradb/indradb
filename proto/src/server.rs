@@ -297,7 +297,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {
-            let mut txn = Box::new(self.db.datastore.transaction());
+            let txn = Box::new(self.db.datastore.transaction());
             let response = {
                 plugin
                     .call(txn, arg)
