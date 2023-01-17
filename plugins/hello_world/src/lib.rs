@@ -7,7 +7,7 @@ pub struct HelloWorldPlugin {}
 impl plugin::Plugin for HelloWorldPlugin {
     fn call<'a>(
         &self,
-        _txn: &'a mut dyn indradb::Transaction<'a>,
+        _txn: *mut (dyn indradb::Transaction<'a> + 'a),
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let greeting = format!("hello, {}", arg);

@@ -22,7 +22,7 @@ pub trait VertexMapper: Send + Sync + 'static {
 /// # Arguments
 /// * `mapper`: Specified options and the map operation to run.
 /// * `database`: The database.
-pub fn map<'a, M: VertexMapper>(txn: &'a dyn indradb::Transaction<'a>, mapper: Arc<M>) -> Result<(), Error> {
+pub fn map<'a, M: VertexMapper>(txn: *const (dyn indradb::Transaction<'a> + 'a), mapper: Arc<M>) -> Result<(), Error> {
     let last_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
     let pool = ThreadPool::new(max(mapper.num_threads(), 1));
     let txn_ptr = txn as *const dyn indradb::Transaction<'a>;
