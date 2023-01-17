@@ -3,8 +3,6 @@ use std::fmt;
 
 use crate::errors::Error;
 
-pub type DynTransaction<'a> = Box<dyn indradb::Transaction<'a> + Send + Sync + 'static>;
-
 /// Represents the rustc compiler version and the plugin interface version.
 /// When a plugin is loaded, the `VersionInfo` of the server is
 /// cross-referenced against the `VersionInfo` exported by the plugin. If they
@@ -49,7 +47,11 @@ pub trait Plugin: Send + Sync + 'static {
     /// # Arguments
     /// * `txn`: An IndraDB datastore transaction.
     /// * `arg`: The argument from the calling client.
-    fn call<'a>(&self, txn: &'a mut DynTransaction<'a>, arg: serde_json::Value) -> Result<serde_json::Value, Error>;
+    fn call<'a>(
+        &self,
+        txn: Box<dyn indradb::Transaction<'a>>,
+        arg: serde_json::Value,
+    ) -> Result<serde_json::Value, Error>;
 }
 
 /// A declaration of a plugin.

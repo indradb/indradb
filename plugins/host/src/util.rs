@@ -2,7 +2,6 @@ use std::cmp::max;
 use std::sync::{Arc, Mutex};
 
 use crate::errors::Error;
-use crate::DynTransaction;
 
 use threadpool::ThreadPool;
 
@@ -23,9 +22,10 @@ pub trait VertexMapper: Send + Sync + 'static {
 /// # Arguments
 /// * `mapper`: Specified options and the map operation to run.
 /// * `database`: The database.
-pub fn map<'a, M: VertexMapper>(txn: &'a mut DynTransaction<'a>, mapper: Arc<M>) -> Result<(), Error> {
-    let pool = ThreadPool::new(max(mapper.num_threads(), 1));
+pub fn map<'a, M: VertexMapper>(txn: Box<dyn indradb::Transaction<'a>>, mapper: Arc<M>) -> Result<(), Error> {
     let last_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
+    let pool = ThreadPool::new(max(mapper.num_threads(), 1));
+
     for vertex in txn.all_vertices()? {
         if last_err.lock().unwrap().is_some() {
             break;
