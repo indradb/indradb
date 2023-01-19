@@ -10,7 +10,7 @@ use std::result::Result as StdResult;
 use std::time::Duration;
 
 use indradb::{
-    AllEdgeQuery, AllVertexQuery, BulkInsertItem, Database, Datastore, DynIter, Edge, EdgeWithPropertyPresenceQuery,
+    AllEdgeQuery, AllVertexQuery, BulkInsertItem, Datastore, DynIter, Edge, EdgeWithPropertyPresenceQuery,
     EdgeWithPropertyValueQuery, Error, Identifier, Query, QueryExt, RangeVertexQuery, Result, SpecificEdgeQuery,
     SpecificVertexQuery, Transaction, Vertex, VertexWithPropertyPresenceQuery, VertexWithPropertyValueQuery,
 };
@@ -98,11 +98,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
         let q = VertexWithPropertyPresenceQuery::new(name.clone());
         let vertices = indradb::util::extract_vertices(self.get(q.into())?).unwrap();
-        if vertices.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
-        }
+        Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
     }
 
     fn vertex_ids_with_property_value(
@@ -112,11 +108,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
     ) -> Result<Option<DynIter<'a, Uuid>>> {
         let q = VertexWithPropertyValueQuery::new(name.clone(), value.clone());
         let vertices = indradb::util::extract_vertices(self.get(q.into())?).unwrap();
-        if vertices.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
-        }
+        Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
     }
 
     fn edge_count(&self) -> u64 {
@@ -150,11 +142,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
     fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
         let q = EdgeWithPropertyPresenceQuery::new(name.clone());
         let edges = indradb::util::extract_edges(self.get(q.into())?).unwrap();
-        if edges.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Box::new(edges.into_iter().map(Ok))))
-        }
+        Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
     fn edges_with_property_value(
@@ -164,11 +152,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
     ) -> Result<Option<DynIter<'a, Edge>>> {
         let q = EdgeWithPropertyValueQuery::new(name.clone(), value.clone());
         let edges = indradb::util::extract_edges(self.get(q.into())?).unwrap();
-        if edges.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Box::new(edges.into_iter().map(Ok))))
-        }
+        Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
     fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>> {
@@ -347,6 +331,7 @@ impl Datastore for ClientDatastore {
 }
 
 full_test_impl!({
+    use indradb::Database;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
     use tokio::net::TcpListener;
