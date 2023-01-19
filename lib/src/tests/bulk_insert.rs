@@ -1,7 +1,9 @@
-use super::util::DatabaseV3;
-use crate::{BulkInsertItem, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use super::util;
+use crate::{
+    BulkInsertItem, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+};
 
-pub fn should_bulk_insert<D: DatabaseV3>(db: &D) {
+pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let outbound_v = Vertex::new(vertex_t.clone());
     let inbound_v = Vertex::new(vertex_t);
@@ -32,9 +34,7 @@ pub fn should_bulk_insert<D: DatabaseV3>(db: &D) {
 
     db.bulk_insert(items).unwrap();
 
-    let vertices = db
-        .get_vertices(SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into())
-        .unwrap();
+    let vertices = util::get_vertices(db, SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into()).unwrap();
 
     assert_eq!(vertices.len(), 2);
     assert_eq!(vertices[0].id, outbound_v.id);
@@ -42,22 +42,22 @@ pub fn should_bulk_insert<D: DatabaseV3>(db: &D) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = db.get_edges(SpecificEdgeQuery::single(edge.clone()).into()).unwrap();
+    let edges = util::get_edges(db, SpecificEdgeQuery::single(edge.clone()).into()).unwrap();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].outbound_id, outbound_v.id);
     assert_eq!(edges[0].t, edge_t);
     assert_eq!(edges[0].inbound_id, inbound_v.id);
 
-    let vertex_properties = db
-        .get_vertex_properties(
-            SpecificVertexQuery::single(outbound_v.id)
-                .properties()
-                .unwrap()
-                .name(Identifier::new("vertex_property_name").unwrap())
-                .into(),
-        )
-        .unwrap();
+    let vertex_properties = util::get_vertex_properties(
+        db,
+        SpecificVertexQuery::single(outbound_v.id)
+            .properties()
+            .unwrap()
+            .name(Identifier::new("vertex_property_name").unwrap())
+            .into(),
+    )
+    .unwrap();
 
     assert_eq!(vertex_properties.len(), 1);
     assert_eq!(vertex_properties[0].id, outbound_v.id);
@@ -66,13 +66,14 @@ pub fn should_bulk_insert<D: DatabaseV3>(db: &D) {
         serde_json::Value::String("vertex_property_value".to_string())
     );
 
-    let edge_properties = db
-        .get_edge_properties(
-            SpecificEdgeQuery::single(edge.clone())
-                .property(Identifier::new("edge_property_name").unwrap())
-                .unwrap(),
-        )
-        .unwrap();
+    let edge_properties = util::get_edge_properties(
+        db,
+        SpecificEdgeQuery::single(edge.clone())
+            .properties()
+            .unwrap()
+            .name(Identifier::new("edge_property_name").unwrap()),
+    )
+    .unwrap();
 
     assert_eq!(edge_properties.len(), 1);
     assert_eq!(edge_properties[0].edge, edge);
@@ -83,7 +84,7 @@ pub fn should_bulk_insert<D: DatabaseV3>(db: &D) {
 }
 
 // Bulk insert allows for redundant vertex insertion
-pub fn should_bulk_insert_a_redundant_vertex<D: DatabaseV3>(db: &D) {
+pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let vertex = Vertex::new(vertex_t);
 
@@ -95,7 +96,7 @@ pub fn should_bulk_insert_a_redundant_vertex<D: DatabaseV3>(db: &D) {
 
 // As an optimization, bulk insert does not verify that the vertices
 // associated with an inserted edge exist; this verifies that
-pub fn should_bulk_insert_an_invalid_edge<D: DatabaseV3>(db: &D) {
+pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let v1 = Vertex::new(vertex_t.clone());
     let v2 = Vertex::new(vertex_t);

@@ -19,10 +19,9 @@ mod tests {
     #[cfg(feature = "test-suite")]
     full_test_impl!({
         use super::RocksdbDatastore;
-        use crate::tests::TestDatabase;
         use tempfile::tempdir;
         let path = tempdir().unwrap().into_path();
-        TestDatabase::new(RocksdbDatastore::new_db(path, Some(1)).unwrap())
+        RocksdbDatastore::new_db(path, Some(1)).unwrap()
     });
 
     #[test]

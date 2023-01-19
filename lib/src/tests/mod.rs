@@ -22,5 +22,4 @@ pub use self::edge::*;
 pub use self::indexing::*;
 pub use self::macros::*;
 pub use self::properties::*;
-pub use self::util::*;
 pub use self::vertex::*;
