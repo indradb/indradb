@@ -146,8 +146,8 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn get(&mut self, q: indradb::Query) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
-        let q: crate::Query = q.into();
+    pub async fn get<Q: Into<indradb::Query>>(&mut self, q: Q) -> Result<Vec<indradb::QueryOutputValue>, ClientError> {
+        let q: crate::Query = q.into().into();
         let mut output = Vec::<indradb::QueryOutputValue>::new();
         let mut res = self.0.get(q).await?.into_inner();
         while let Some(res) = res.next().await {
@@ -160,8 +160,8 @@ impl Client {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub async fn delete(&mut self, q: indradb::Query) -> Result<(), ClientError> {
-        let q: crate::Query = q.into();
+    pub async fn delete<Q: Into<indradb::Query>>(&mut self, q: Q) -> Result<(), ClientError> {
+        let q: crate::Query = q.into().into();
         self.0.delete(q).await?;
         Ok(())
     }
@@ -172,17 +172,16 @@ impl Client {
     /// * `q`: The query to run.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub async fn set_properties(
+    pub async fn set_properties<Q: Into<indradb::Query>>(
         &mut self,
-        q: indradb::Query,
+        q: Q,
         name: indradb::Identifier,
         value: serde_json::Value,
     ) -> Result<(), ClientError> {
-        let q: crate::Query = q.into();
         let name: crate::Identifier = name.into();
         let value: crate::Json = value.into();
         let req = Request::new(crate::SetPropertiesRequest {
-            q: q.into(),
+            q: Some(q.into().into()),
             name: name.into(),
             value: value.into(),
         });

@@ -68,6 +68,7 @@ For further reference, see the [docs](https://indradb.github.io/python-client/in
 The gRPC bindings library is available as [`indradb-proto`](https://crates.io/crates/indradb-proto). An example:
 
 ```rust
+use indradb;
 use indradb_proto as proto;
 
 // Connect to the server and make sure it's up
@@ -81,11 +82,11 @@ client.create_vertex(&out_v).await?;
 client.create_vertex(&in_v).await?;
 
 // Add an edge between the vertices
-let key = indradb::EdgeKey::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
+let key = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
 client.create_edge(&key).await?;
 
 // Query for the edge
-let e = client.get_edges(indradb::SpecificEdgeQuery::single(key.clone()).into()).await?;
+let e = indradb::util::extract_edges(client.get(indradb::SpecificEdgeQuery::single(key.clone())).await?);
 assert_eq!(e.len(), 1);
 assert_eq!(key, e[0].key);
 ```

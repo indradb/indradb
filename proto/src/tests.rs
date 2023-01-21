@@ -44,23 +44,19 @@ pub struct ClientTransaction {
 
 impl<'a> ClientTransaction {
     fn get<Q: Into<Query>>(&self, q: Q) -> Result<Vec<QueryOutputValue>> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get(q.into())))
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get(q)))
     }
 
     fn delete<Q: Into<Query>>(&self, q: Q) -> Result<()> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete(q.into())),
-        )
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().delete(q)))
     }
 
     fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: serde_json::Value) -> Result<()> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().set_properties(
-            q.into(),
-            name,
-            value,
-        )))
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().set_properties(q, name, value)),
+        )
     }
 
     fn get_count<Q: Into<Query>>(&self, q: Q) -> u64 {
