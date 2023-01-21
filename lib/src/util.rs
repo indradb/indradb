@@ -34,14 +34,9 @@ pub enum Component<'a> {
 }
 
 impl<'a> Component<'a> {
-    /// Returns whether the component is empty, which is always false. Really
-    /// this is just implemented to not set off a clippy warning.
-    pub fn is_empty(&self) -> bool {
-        false
-    }
-
-    /// Gets the length of the component.
-    pub fn len(&self) -> usize {
+    /// Gets the length of the component. This isn't called `len` to avoid a
+    /// clippy warning.
+    pub fn byte_len(&self) -> usize {
         match *self {
             Component::Uuid(_) => 16,
             Component::FixedLengthString(s) => s.len(),
@@ -74,7 +69,7 @@ impl<'a> Component<'a> {
 /// # Arguments
 /// * `components`: The components to serialize to bytes.
 pub fn build(components: &[Component]) -> Vec<u8> {
-    let len = components.iter().fold(0, |len, component| len + component.len());
+    let len = components.iter().fold(0, |len, component| len + component.byte_len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
 
     for component in components {
