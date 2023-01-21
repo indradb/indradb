@@ -390,7 +390,6 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
     q: &Query,
     output: &mut Vec<QueryOutputValue>,
 ) -> Result<()> {
-    // TODO: validate query
     let value = match q {
         Query::AllVertex => {
             let iter = (*txn).all_vertices()?;

@@ -61,19 +61,18 @@ pub struct RocksdbTransaction<'a> {
 }
 
 impl<'a> RocksdbTransaction<'a> {
-    // TODO: return iterators w/ these
-    fn vertices_from_property_value_iterator(
-        &self,
+    fn vertex_ids_from_property_value_iterator(
+        &'a self,
         iter: impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a,
-    ) -> Result<Vec<Vertex>> {
-        let mut vertices = Vec::new();
-        for item in iter {
-            let (_, _, id) = item?;
-            if let Some(t) = self.vertex_manager.get(id)? {
-                vertices.push(Vertex::with_id(id, t));
-            }
-        }
-        Ok(vertices)
+    ) -> impl Iterator<Item = Result<Uuid>> + 'a {
+        iter.filter_map(|item| match item {
+            Ok((_, _, id)) => match self.vertex_manager.exists(id) {
+                Ok(true) => Some(Ok(id)),
+                Ok(false) => None,
+                Err(err) => Some(Err(err)),
+            },
+            Err(err) => Some(Err(err)),
+        })
     }
 }
 
@@ -106,8 +105,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
         if self.indexed_properties.read().unwrap().contains(name) {
             let iter = self.vertex_property_value_manager.iterate_for_name(name);
-            let vertices = self.vertices_from_property_value_iterator(iter)?;
-            let iter = vertices.into_iter().map(|v| Ok(v.id));
+            let iter = self.vertex_ids_from_property_value_iterator(iter);
             Ok(Some(Box::new(iter)))
         } else {
             Ok(None)
@@ -123,8 +121,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
             let iter = self
                 .vertex_property_value_manager
                 .iterate_for_value(name, &Json::new(value.clone()));
-            let vertices = self.vertices_from_property_value_iterator(iter)?;
-            let iter = vertices.into_iter().map(|v| Ok(v.id));
+            let iter = self.vertex_ids_from_property_value_iterator(iter);
             Ok(Some(Box::new(iter)))
         } else {
             Ok(None)
