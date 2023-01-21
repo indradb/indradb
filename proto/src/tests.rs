@@ -1,7 +1,10 @@
 //! Scaffolding for testing and benchmarking. This exposes an implementation
-//! of Datastore, so that the standard testing and benchmarking suite can be
-//! reused. Under the hood, it uses a tokio runtime to call async functions
-//! from non-async functions.
+//! of `Datastore` and `Transaction`. Under the hood, it uses a tokio runtime
+//! to call async functions from non-async functions. This allows us to reuse
+//! the standard testing suite, but it's a huge hack! It's trait
+//! implementations that are simulating low-level functionality (stuff that
+//! runs below the database) via the high-level client (stuff that runs above
+//! the database.)
 
 use std::cell::RefCell;
 use std::convert::TryInto;
