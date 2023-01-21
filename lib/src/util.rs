@@ -220,7 +220,10 @@ pub fn extract_edge_properties(mut output: Vec<models::QueryOutputValue>) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_uuid_v1, next_uuid};
+    use super::{
+        extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices,
+        generate_uuid_v1, next_uuid,
+    };
     use core::str::FromStr;
     use uuid::Uuid;
 
@@ -242,5 +245,30 @@ mod tests {
 
         let from_uuid = Uuid::from_str("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap();
         assert!(next_uuid(from_uuid).is_err());
+    }
+
+    #[test]
+    fn should_not_extract_vertices_on_empty() {
+        assert_eq!(extract_vertices(vec![]), None);
+    }
+
+    #[test]
+    fn should_not_extract_edges_on_empty() {
+        assert_eq!(extract_edges(vec![]), None);
+    }
+
+    #[test]
+    fn should_not_extract_count_on_empty() {
+        assert_eq!(extract_count(vec![]), None);
+    }
+
+    #[test]
+    fn should_not_extract_vertex_properties_on_empty() {
+        assert_eq!(extract_vertex_properties(vec![]), None);
+    }
+
+    #[test]
+    fn should_not_extract_edge_properties_on_empty() {
+        assert_eq!(extract_edge_properties(vec![]), None);
     }
 }
