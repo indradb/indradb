@@ -222,6 +222,9 @@ pub trait Datastore {
 /// This contains all of the logic shared across implementations, e.g. query
 /// handling. Underlying it (as a generic argument) are datastores, which
 /// contain implementation-specific logic.
+///
+/// As an IndraDB end-user, you should interact with this rather than
+/// datastores.
 pub struct Database<D: Datastore> {
     pub datastore: D,
 }
