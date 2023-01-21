@@ -12,24 +12,16 @@ pub fn should_create_vertex_from_type<D: Datastore>(db: &Database<D>) {
     db.create_vertex_from_type(t).unwrap();
 }
 
+pub fn should_get_all_vertices<D: Datastore>(db: &Database<D>) {
+    let mut inserted_ids = create_vertices(db);
+    let range = util::get_vertices(db, AllVertexQuery).unwrap();
+    check_has_all_vertices(range, inserted_ids);
+}
+
 pub fn should_get_range_vertices<D: Datastore>(db: &Database<D>) {
     let mut inserted_ids = create_vertices(db);
-
     let range = util::get_vertices(db, RangeVertexQuery::new()).unwrap();
-
-    assert!(range.len() >= 5);
-
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
-
-    for vertex in &range {
-        if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
-            assert_eq!(vertex.t, models::Identifier::new("test_vertex_type").unwrap());
-            inserted_ids.remove(index);
-        }
-
-        assert!(!covered_ids.contains(&vertex.id));
-        covered_ids.insert(vertex.id);
-    }
+    check_has_all_vertices(range, inserted_ids);
 }
 
 pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(db: &Database<D>) {
@@ -203,6 +195,20 @@ pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {
 pub fn should_not_delete_on_vertex_count<D: Datastore>(db: &Database<D>) {
     let result = db.delete(AllVertexQuery.count().unwrap());
     expect_err!(result, errors::Error::OperationOnQuery);
+}
+
+fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid>) {
+    assert!(range.len() >= 5);
+    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    for vertex in &range {
+        if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
+            assert_eq!(vertex.t, models::Identifier::new("test_vertex_type").unwrap());
+            inserted_ids.remove(index);
+        }
+
+        assert!(!covered_ids.contains(&vertex.id));
+        covered_ids.insert(vertex.id);
+    }
 }
 
 fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<Uuid> {

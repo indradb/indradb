@@ -23,6 +23,7 @@ macro_rules! full_test_impl {
         define_test!(should_bulk_insert_an_invalid_edge, $code);
 
         // Vertices
+        define_test!(should_get_all_vertices, $code);
         define_test!(should_create_vertex_from_type, $code);
         define_test!(should_get_range_vertices, $code);
         define_test!(should_get_no_vertices_with_zero_limit, $code);
