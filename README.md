@@ -82,13 +82,16 @@ client.create_vertex(&out_v).await?;
 client.create_vertex(&in_v).await?;
 
 // Add an edge between the vertices
-let key = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
-client.create_edge(&key).await?;
+let edge = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
+client.create_edge(&edge).await?;
 
 // Query for the edge
-let e = indradb::util::extract_edges(client.get(indradb::SpecificEdgeQuery::single(key.clone())).await?);
+let output: Vec<indradb::QueryOutputValue> = client.get(indradb::SpecificEdgeQuery::single(edge.clone())).await?;
+// Convenience function to extract out the edges from the query results
+let e = indradb::util::extract_edges(output).unwrap();
 assert_eq!(e.len(), 1);
-assert_eq!(key, e[0].key);
+assert_eq!(edge, e[0]);
+Ok(())
 ```
 
 The rust gRPC bindings library is built to closely mirror the rust library. But if you're using 100% rust, and don't need a server, you can skip all the gRPC rigmarole and just use the rust library directly. For further reference, see the [docs](https://docs.rs/indradb-proto/latest/indradb_proto/) and the [wikipedia indexing example](https://github.com/indradb/wikipedia-example), which heavily relies on `indradb-proto`.
