@@ -30,12 +30,12 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
     fn into(self) -> indradb::BulkInsertItem {
         match self {
             BulkInsertItem::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.into()),
-            BulkInsertItem::Edge(key) => indradb::BulkInsertItem::Edge(key.into()),
+            BulkInsertItem::Edge(edge) => indradb::BulkInsertItem::Edge(edge.into()),
             BulkInsertItem::VertexProperty(id, name, value) => {
                 indradb::BulkInsertItem::VertexProperty(id.into(), name.into(), value.into())
             }
-            BulkInsertItem::EdgeProperty(key, name, value) => {
-                indradb::BulkInsertItem::EdgeProperty(key.into(), name.into(), value.into())
+            BulkInsertItem::EdgeProperty(edge, name, value) => {
+                indradb::BulkInsertItem::EdgeProperty(edge.into(), name.into(), value.into())
             }
         }
     }
@@ -554,10 +554,10 @@ fuzz_target!(|ops: Vec<Op>| {
                 let o2 = d2.delete(q);
                 cmp!(o1, o2);
             }
-            Op::CreateEdge(key) => {
-                let key: indradb::Edge = key.into();
-                let v1 = d1.create_edge(&key);
-                let v2 = d2.create_edge(&key);
+            Op::CreateEdge(edge) => {
+                let edge: indradb::Edge = edge.into();
+                let v1 = d1.create_edge(&edge);
+                let v2 = d2.create_edge(&edge);
                 cmp!(v1, v2);
             }
             Op::SetProperties(q, name, value) => {

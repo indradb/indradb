@@ -168,14 +168,14 @@ pub trait Transaction<'a> {
                 BulkInsertItem::Vertex(vertex) => {
                     self.create_vertex(&vertex)?;
                 }
-                BulkInsertItem::Edge(edge_key) => {
-                    self.create_edge(&edge_key)?;
+                BulkInsertItem::Edge(edge) => {
+                    self.create_edge(&edge)?;
                 }
                 BulkInsertItem::VertexProperty(id, name, value) => {
                     self.set_vertex_properties(vec![id], name, value)?;
                 }
-                BulkInsertItem::EdgeProperty(edge_key, name, value) => {
-                    self.set_edge_properties(vec![edge_key], name, value)?;
+                BulkInsertItem::EdgeProperty(edge, name, value) => {
+                    self.set_edge_properties(vec![edge], name, value)?;
                 }
             }
         }

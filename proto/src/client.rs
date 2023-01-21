@@ -135,7 +135,7 @@ impl Client {
     /// is missing.
     ///
     /// # Arguments
-    /// * `key`: The edge to create.
+    /// * `edge`: The edge to create.
     pub async fn create_edge(&mut self, edge: &indradb::Edge) -> Result<bool, ClientError> {
         let edge: crate::Edge = edge.clone().into();
         let res = self.0.create_edge(edge).await?;

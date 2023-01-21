@@ -52,13 +52,12 @@ client.create_vertex(out_v)
 client.create_vertex(in_v)
 
 # Add an edge between the vertices
-key = indradb.EdgeKey(out_v.id, "bar", in_v.id)
-client.create_edge(key)
+edge = indradb.Edge(out_v.id, "bar", in_v.id)
+client.create_edge(edge)
 
 # Query for the edge
-results = list(client.get_edges(indradb.SpecificEdgeQuery(key))
-self.assertEqual(len(results), 1)
-self.assertEqual(results[0].key, key)
+results = list(client.get(indradb.SpecificEdgeQuery(edge))
+print(results)
 ```
 
 For further reference, see the [docs](https://indradb.github.io/python-client/indradb/) and [python bindings tests](https://github.com/indradb/python-client/tree/master/tests).
