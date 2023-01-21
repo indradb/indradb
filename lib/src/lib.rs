@@ -8,11 +8,10 @@
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
 
+#[cfg_attr(test, macro_use)]
+extern crate serde_json;
 #[cfg(feature = "bench-suite")]
 extern crate test;
-#[cfg(test)]
-#[macro_use]
-extern crate serde_json;
 
 #[cfg(feature = "test-suite")]
 #[macro_use]
