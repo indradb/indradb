@@ -3,6 +3,12 @@ use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+#[macro_export]
+macro_rules! wrapped_json {
+    ($($json:tt)+) => { Json::new(json!($($json)+)) };
+}
 
 fn hash<H: Hasher>(value: &serde_json::Value, state: &mut H) {
     match value {
@@ -165,5 +171,28 @@ impl PartialEq for Json {
 impl PartialOrd for Json {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         partial_cmp(&self.0, &other.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Json;
+
+    #[test]
+    fn should_compare() {
+        assert!(wrapped_json!("foo1") < wrapped_json!("foo2"));
+        assert_eq!(wrapped_json!(null), wrapped_json!(null));
+        assert!(wrapped_json!(true) > wrapped_json!(false));
+        assert!(wrapped_json!(3) < wrapped_json!(4));
+        assert!(wrapped_json!(3) < wrapped_json!(4.0));
+        assert_eq!(wrapped_json!(4.0), wrapped_json!(4.0));
+        assert!(wrapped_json!(3.0) < wrapped_json!(4));
+        assert!(wrapped_json!([3.0, 4.0]) < wrapped_json!([4.0, 3.0]));
+        assert!(wrapped_json!({}) == wrapped_json!({}));
+
+        let json_u64 = Json::new(serde_json::Value::Number(serde_json::Number::from(u64::max_value())));
+        assert_eq!(json_u64, json_u64);
+        assert!(wrapped_json!(3) < json_u64);
+        assert!(json_u64 > wrapped_json!(3));
     }
 }
