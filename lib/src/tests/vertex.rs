@@ -8,7 +8,7 @@ use uuid::Uuid;
 pub fn should_get_range_vertices<D: Datastore>(db: &Database<D>) {
     let mut inserted_ids = create_vertices(db);
 
-    let range = util::get_vertices(db, RangeVertexQuery::new().into()).unwrap();
+    let range = util::get_vertices(db, RangeVertexQuery::new()).unwrap();
 
     assert!(range.len() >= 5);
 
@@ -27,7 +27,7 @@ pub fn should_get_range_vertices<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(db: &Database<D>) {
     create_vertices(db);
-    let range = util::get_vertices(db, RangeVertexQuery::new().limit(0).into()).unwrap();
+    let range = util::get_vertices(db, RangeVertexQuery::new().limit(0)).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -35,9 +35,7 @@ pub fn should_get_range_vertices_out_of_range<D: Datastore>(db: &Database<D>) {
     create_vertices(db);
     let range = util::get_vertices(
         db,
-        RangeVertexQuery::new()
-            .start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap())
-            .into(),
+        RangeVertexQuery::new().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
     )
     .unwrap();
     assert_eq!(range.len(), 0);
@@ -46,7 +44,7 @@ pub fn should_get_range_vertices_out_of_range<D: Datastore>(db: &Database<D>) {
 pub fn should_get_no_vertices_with_type_filter<D: Datastore>(db: &Database<D>) {
     let type_filter = models::Identifier::new("foo").unwrap();
     create_vertices(db);
-    let range = util::get_vertices(db, RangeVertexQuery::new().t(type_filter).into()).unwrap();
+    let range = util::get_vertices(db, RangeVertexQuery::new().t(type_filter)).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -54,7 +52,7 @@ pub fn should_get_single_vertex<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let vertex = models::Vertex::new(vertex_t);
     db.create_vertex(&vertex).unwrap();
-    let range = util::get_vertices(db, SpecificVertexQuery::single(vertex.id).into()).unwrap();
+    let range = util::get_vertices(db, SpecificVertexQuery::single(vertex.id)).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, vertex.id);
     assert_eq!(range[0].t.0, "test_vertex_type");
@@ -64,7 +62,7 @@ pub fn should_get_single_vertex_nonexisting<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let vertex = models::Vertex::new(vertex_t);
     db.create_vertex(&vertex).unwrap();
-    let range = util::get_vertices(db, SpecificVertexQuery::single(Uuid::default()).into()).unwrap();
+    let range = util::get_vertices(db, SpecificVertexQuery::single(Uuid::default())).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -73,7 +71,7 @@ pub fn should_get_vertices<D: Datastore>(db: &Database<D>) {
 
     let range = util::get_vertices(
         db,
-        SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()]).into(),
+        SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()]),
     )
     .unwrap();
 
@@ -109,7 +107,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .inbound()
         .unwrap()
         .limit(1);
-    let range = util::get_vertices(db, query_1.clone().into()).unwrap();
+    let range = util::get_vertices(db, query_1.clone()).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -123,7 +121,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .unwrap()
         .limit(1)
         .t(models::Identifier::new("test_inbound_vertex_type").unwrap());
-    let range = util::get_vertices(db, query_2.into()).unwrap();
+    let range = util::get_vertices(db, query_2).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, inserted_id);
 
@@ -137,7 +135,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .unwrap()
         .limit(1)
         .t(models::Identifier::new("foo").unwrap());
-    let range = util::get_vertices(db, query_3.into()).unwrap();
+    let range = util::get_vertices(db, query_3).unwrap();
     assert_eq!(range.len(), 0);
 
     // This query should get `v`
@@ -149,7 +147,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .outbound()
         .unwrap()
         .limit(1);
-    let range = util::get_vertices(db, query_4.into()).unwrap();
+    let range = util::get_vertices(db, query_4).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0], v);
 }
@@ -158,13 +156,13 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
     let (outbound_id, _) = util::create_edges(db);
     let q = SpecificVertexQuery::single(outbound_id);
     db.set_properties(
-        q.clone().into(),
+        q.clone(),
         models::Identifier::new("foo").unwrap(),
         serde_json::Value::Bool(true),
     )
     .unwrap();
-    db.delete(q.clone().into()).unwrap();
-    let v = util::get_vertices(db, q.into()).unwrap();
+    db.delete(q.clone()).unwrap();
+    let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let count = util::get_edge_count(db, outbound_id, Some(&t), models::EdgeDirection::Outbound).unwrap();
@@ -175,8 +173,8 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) {
     let (_, inbound_ids) = util::create_edges(db);
     let inbound_id = inbound_ids[0];
     let q = SpecificVertexQuery::single(inbound_id);
-    db.delete(q.clone().into()).unwrap();
-    let v = util::get_vertices(db, q.into()).unwrap();
+    db.delete(q.clone()).unwrap();
+    let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
     let count = util::get_edge_count(db, inbound_id, Some(&t), models::EdgeDirection::Inbound).unwrap();
@@ -184,7 +182,7 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(db: &Database<D>) {
-    db.delete(SpecificVertexQuery::single(Uuid::default()).into()).unwrap();
+    db.delete(SpecificVertexQuery::single(Uuid::default())).unwrap();
 }
 
 pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {

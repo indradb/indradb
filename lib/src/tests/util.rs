@@ -29,15 +29,18 @@ pub(crate) fn create_edges<D: Datastore>(db: &Database<D>) -> (Uuid, [Uuid; 5]) 
     (outbound_v.id, inbound_ids)
 }
 
-pub(crate) fn get_vertices<D: Datastore>(db: &Database<D>, q: models::Query) -> Result<Vec<models::Vertex>> {
+pub(crate) fn get_vertices<D: Datastore, Q: Into<models::Query>>(
+    db: &Database<D>,
+    q: Q,
+) -> Result<Vec<models::Vertex>> {
     Ok(extract_vertices(db.get(q)?).unwrap())
 }
 
 pub(crate) fn get_vertex_count<D: Datastore>(db: &Database<D>) -> Result<u64> {
-    Ok(extract_count(db.get(models::AllVertexQuery.count().unwrap().into())?).unwrap())
+    Ok(extract_count(db.get(models::AllVertexQuery.count().unwrap())?).unwrap())
 }
 
-pub(crate) fn get_edges<D: Datastore>(db: &Database<D>, q: models::Query) -> Result<Vec<models::Edge>> {
+pub(crate) fn get_edges<D: Datastore, Q: Into<models::Query>>(db: &Database<D>, q: Q) -> Result<Vec<models::Edge>> {
     Ok(extract_edges(db.get(q)?).unwrap())
 }
 
@@ -67,7 +70,7 @@ pub(crate) fn get_vertex_properties<D: Datastore>(
     db: &Database<D>,
     q: models::PipePropertyQuery,
 ) -> Result<Vec<models::VertexProperty>> {
-    let props = extract_vertex_properties(db.get(q.into())?).unwrap();
+    let props = extract_vertex_properties(db.get(q)?).unwrap();
     if props.len() > 1 {
         Err(Error::Unsupported)
     } else {
@@ -80,14 +83,14 @@ pub(crate) fn get_vertex_properties<D: Datastore>(
     }
 }
 
-pub(crate) fn get_all_vertex_properties<D: Datastore>(
+pub(crate) fn get_all_vertex_properties<D: Datastore, Q: Into<models::Query>>(
     db: &Database<D>,
-    q: models::Query,
+    q: Q,
 ) -> Result<Vec<models::VertexProperties>> {
     // `QueryExt::properties()` not used here because this function is not
     // generic in order to keep this object safe.
-    let props_query = models::PipePropertyQuery::new(Box::new(q))?;
-    let props = extract_vertex_properties(db.get(props_query.into())?).unwrap();
+    let props_query = models::PipePropertyQuery::new(Box::new(q.into()))?;
+    let props = extract_vertex_properties(db.get(props_query)?).unwrap();
     Ok(props)
 }
 
@@ -95,7 +98,7 @@ pub(crate) fn get_edge_properties<D: Datastore>(
     db: &Database<D>,
     q: models::PipePropertyQuery,
 ) -> Result<Vec<models::EdgeProperty>> {
-    let props = extract_edge_properties(db.get(q.into())?).unwrap();
+    let props = extract_edge_properties(db.get(q)?).unwrap();
     if props.len() > 1 {
         Err(Error::Unsupported)
     } else {
@@ -110,12 +113,12 @@ pub(crate) fn get_edge_properties<D: Datastore>(
     }
 }
 
-pub(crate) fn get_all_edge_properties<D: Datastore>(
+pub(crate) fn get_all_edge_properties<D: Datastore, Q: Into<models::Query>>(
     db: &Database<D>,
-    q: models::Query,
+    q: Q,
 ) -> Result<Vec<models::EdgeProperties>> {
     // `QueryExt::properties()` not used here because this function is not
     // generic in order to keep this object safe.
-    let props_query = models::PipePropertyQuery::new(Box::new(q))?;
-    Ok(extract_edge_properties(db.get(props_query.into())?).unwrap())
+    let props_query = models::PipePropertyQuery::new(Box::new(q.into()))?;
+    Ok(extract_edge_properties(db.get(props_query)?).unwrap())
 }

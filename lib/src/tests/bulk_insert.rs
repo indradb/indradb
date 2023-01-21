@@ -34,7 +34,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 
     db.bulk_insert(items).unwrap();
 
-    let vertices = util::get_vertices(db, SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id]).into()).unwrap();
+    let vertices = util::get_vertices(db, SpecificVertexQuery::new(vec![outbound_v.id, inbound_v.id])).unwrap();
 
     assert_eq!(vertices.len(), 2);
     assert_eq!(vertices[0].id, outbound_v.id);
@@ -42,7 +42,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = util::get_edges(db, SpecificEdgeQuery::single(edge.clone()).into()).unwrap();
+    let edges = util::get_edges(db, SpecificEdgeQuery::single(edge.clone())).unwrap();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].outbound_id, outbound_v.id);
@@ -54,8 +54,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
         SpecificVertexQuery::single(outbound_v.id)
             .properties()
             .unwrap()
-            .name(Identifier::new("vertex_property_name").unwrap())
-            .into(),
+            .name(Identifier::new("vertex_property_name").unwrap()),
     )
     .unwrap();
 

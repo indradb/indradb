@@ -25,7 +25,7 @@ mod tests {
     fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();
         db.set_properties(
-            SpecificVertexQuery::single(id).into(),
+            SpecificVertexQuery::single(id),
             Identifier::default(),
             serde_json::Value::Bool(true),
         )
@@ -34,11 +34,8 @@ mod tests {
     }
 
     fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
-        assert_eq!(
-            extract_count(db.get(AllVertexQuery.count().unwrap().into()).unwrap()),
-            Some(1)
-        );
-        let vertices = extract_vertices(db.get(SpecificVertexQuery::new(vec![id]).into()).unwrap()).unwrap();
+        assert_eq!(extract_count(db.get(AllVertexQuery.count().unwrap()).unwrap()), Some(1));
+        let vertices = extract_vertices(db.get(SpecificVertexQuery::new(vec![id])).unwrap()).unwrap();
         assert_eq!(vertices.len(), 1);
         assert_eq!(vertices[0].id, id);
         assert_eq!(vertices[0].t, Identifier::default());

@@ -281,7 +281,8 @@ impl<D: Datastore> Database<D> {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub fn get(&self, q: Query) -> Result<Vec<QueryOutputValue>> {
+    pub fn get<Q: Into<Query>>(&self, q: Q) -> Result<Vec<QueryOutputValue>> {
+        let q = q.into();
         let txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());
         unsafe {
@@ -294,7 +295,8 @@ impl<D: Datastore> Database<D> {
     ///
     /// # Arguments
     /// * `q`: The query to run.
-    pub fn delete(&self, q: Query) -> Result<()> {
+    pub fn delete<Q: Into<Query>>(&self, q: Q) -> Result<()> {
+        let q = q.into();
         let mut txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());
         unsafe {
@@ -340,7 +342,8 @@ impl<D: Datastore> Database<D> {
     /// * `q`: The query to run.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub fn set_properties(&self, q: Query, name: Identifier, value: serde_json::Value) -> Result<()> {
+    pub fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: serde_json::Value) -> Result<()> {
+        let q = q.into();
         let mut txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());
         unsafe {
@@ -412,7 +415,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
         }
         Query::Pipe(ref q) => {
-            query(txn, &q.inner, output)?;
+            query(txn, &*q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -492,7 +495,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             values
         }
         Query::PipeProperty(ref q) => {
-            query(txn, &q.inner, output)?;
+            query(txn, &*q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -581,7 +584,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             }
         }
         Query::PipeWithPropertyPresence(ref q) => {
-            query(txn, &q.inner, output)?;
+            query(txn, &*q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -620,7 +623,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             values
         }
         Query::PipeWithPropertyValue(ref q) => {
-            query(txn, &q.inner, output)?;
+            query(txn, &*q.inner, output)?;
             let piped_values = output.pop().unwrap();
 
             let values = match piped_values {
@@ -667,7 +670,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
         }
         Query::Include(ref q) => {
-            query(txn, &q.inner, output)?;
+            query(txn, &*q.inner, output)?;
             output.pop().unwrap()
         }
         Query::Count(ref q) => {
