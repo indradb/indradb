@@ -14,12 +14,16 @@ macro_rules! define_test {
 #[macro_export]
 macro_rules! full_test_impl {
     ($code:expr) => {
+        // Sync
+        define_test!(should_sync, $code);
+
         // Bulk insert
         define_test!(should_bulk_insert, $code);
         define_test!(should_bulk_insert_a_redundant_vertex, $code);
         define_test!(should_bulk_insert_an_invalid_edge, $code);
 
         // Vertices
+        define_test!(should_create_vertex_from_type, $code);
         define_test!(should_get_range_vertices, $code);
         define_test!(should_get_no_vertices_with_zero_limit, $code);
         define_test!(should_get_range_vertices_out_of_range, $code);

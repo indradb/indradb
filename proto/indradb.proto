@@ -103,7 +103,7 @@ message SpecificVertexQuery {
     repeated Uuid ids = 1;
 }
 
-/// Gets vertices with or without a given property.
+// Gets vertices with or without a given property.
 message VertexWithPropertyPresenceQuery {
     // The name of the property.
     Identifier name = 1;
@@ -332,8 +332,8 @@ service IndraDB {
     // Pings the server.
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
 
-    /// Syncs persisted content. Depending on the datastore implementation,
-    /// this has different meanings - including potentially being a no-op.
+    // Syncs persisted content. Depending on the datastore implementation,
+    // this has different meanings - including potentially being a no-op.
     rpc Sync(google.protobuf.Empty) returns (google.protobuf.Empty);
 
     // Creates a new vertex.
@@ -344,16 +344,16 @@ service IndraDB {
     // the vertex's UUID. Returns the new vertex's UUID.
     rpc CreateVertexFromType(Identifier) returns (Uuid);
 
-    /// Creates a new edge.
+    // Creates a new edge.
     rpc CreateEdge(Edge) returns (CreateResponse);
 
-    /// Gets values specified by a query.
+    // Gets values specified by a query.
     rpc Get(Query) returns (stream QueryOutputValue);
 
-    /// Deletes values specified by a query.
+    // Deletes values specified by a query.
     rpc Delete(Query) returns (google.protobuf.Empty);
 
-    /// Sets properties.
+    // Sets properties.
     rpc SetProperties(SetPropertiesRequest) returns (google.protobuf.Empty);
 
     // Bulk inserts many vertices, edges, and/or properties.

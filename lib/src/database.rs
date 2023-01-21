@@ -331,7 +331,7 @@ impl<D: Datastore> Database<D> {
                         .collect(),
                 )?;
             }
-            QueryOutputValue::Count(_) => return Err(Error::Unsupported),
+            QueryOutputValue::Count(_) => return Err(Error::OperationOnQuery),
         }
         Ok(())
     }
@@ -357,7 +357,7 @@ impl<D: Datastore> Database<D> {
             QueryOutputValue::Edges(edges) => {
                 txn.set_edge_properties(edges, name, value)?;
             }
-            _ => return Err(Error::Unsupported),
+            _ => return Err(Error::OperationOnQuery),
         }
         Ok(())
     }
@@ -483,7 +483,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Edges(edges)
                 }
                 _ => {
-                    return Err(Error::Unsupported);
+                    return Err(Error::OperationOnQuery);
                 }
             };
 
@@ -542,7 +542,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::VertexProperties(vertex_properties)
                 }
                 _ => {
-                    return Err(Error::Unsupported);
+                    return Err(Error::OperationOnQuery);
                 }
             };
 
@@ -611,7 +611,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Vertices(iter.cloned().collect())
                 }
                 _ => {
-                    return Err(Error::Unsupported);
+                    return Err(Error::OperationOnQuery);
                 }
             };
 
@@ -650,7 +650,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Vertices(iter.cloned().collect())
                 }
                 _ => {
-                    return Err(Error::Unsupported);
+                    return Err(Error::OperationOnQuery);
                 }
             };
 
@@ -686,7 +686,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                         QueryOutputValue::Edges(e) => e.len(),
                         QueryOutputValue::VertexProperties(p) => p.len(),
                         QueryOutputValue::EdgeProperties(p) => p.len(),
-                        _ => return Err(Error::Unsupported),
+                        _ => return Err(Error::OperationOnQuery),
                     };
                     len as u64
                 }

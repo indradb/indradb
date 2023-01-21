@@ -27,6 +27,10 @@ pub enum Error {
 
     /// A validation error occurred.
     Invalid(ValidationError),
+
+    /// The operation cannot work with the given query, based off it's output
+    /// type (e.g. attempting to delete using a query that outputs a count.)
+    OperationOnQuery,
 }
 
 impl StdError for Error {
@@ -47,6 +51,7 @@ impl fmt::Display for Error {
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
             Error::Unsupported => write!(f, "functionality not supported"),
             Error::Invalid(ref err) => write!(f, "{}", err),
+            Error::OperationOnQuery => write!(f, "the operation cannot work with the given query"),
         }
     }
 }
@@ -99,9 +104,6 @@ pub enum ValidationError {
     /// a query that gets vertex properties from a query that outputs a
     /// count.)
     InnerQuery,
-    /// The operation cannot work with the given query, based off it's output
-    /// type (e.g. attempting to delete using a query that outputs a count.)
-    OperationOnQuery,
 }
 
 impl StdError for ValidationError {}
@@ -113,7 +115,6 @@ impl fmt::Display for ValidationError {
             ValidationError::ValueTooLong => write!(f, "value too long"),
             ValidationError::CannotIncrementUuid => write!(f, "could not increment the UUID"),
             ValidationError::InnerQuery => write!(f, "the given query combination cannot be nested"),
-            ValidationError::OperationOnQuery => write!(f, "the operation cannot work with the given query"),
         }
     }
 }

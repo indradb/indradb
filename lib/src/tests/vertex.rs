@@ -5,6 +5,11 @@ use crate::{models, Database, Datastore, QueryExt, RangeVertexQuery, SpecificVer
 
 use uuid::Uuid;
 
+pub fn should_create_vertex_from_type<D: Datastore>(db: &Database<D>) {
+    let t = models::Identifier::new("test_vertex_type").unwrap();
+    db.create_vertex_from_type(t).unwrap();
+}
+
 pub fn should_get_range_vertices<D: Datastore>(db: &Database<D>) {
     let mut inserted_ids = create_vertices(db);
 

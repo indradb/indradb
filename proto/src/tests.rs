@@ -247,6 +247,10 @@ impl<'a> Transaction<'a> for ClientTransaction {
         Ok(())
     }
 
+    fn sync(&self) -> Result<()> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
+    }
+
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
         map_client_result(
             self.exec
