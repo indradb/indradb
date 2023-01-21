@@ -1,7 +1,7 @@
 use super::util;
 use crate::{
-    errors, expect_err, AllVertexQuery, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery,
-    SpecificVertexQuery, Vertex,
+    errors, expect_err, AllVertexQuery, Database, Datastore, Edge, Identifier, PipePropertyQuery, QueryExt,
+    SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
 use uuid::Uuid;
@@ -297,5 +297,16 @@ pub fn should_not_set_properties_on_count<D: Datastore>(db: &Database<D>) {
         Identifier::new("foo").unwrap(),
         serde_json::Value::Bool(true),
     );
+    expect_err!(result, errors::Error::OperationOnQuery);
+}
+
+pub fn should_not_pipe_properties_on_vertex_count<D: Datastore>(db: &Database<D>) {
+    // We have to build the query without it's constructor because the
+    // constructor will catch this issue and trigger a `ValidationError`.
+    let q = PipePropertyQuery {
+        inner: Box::new(AllVertexQuery.count().unwrap().into()),
+        name: None,
+    };
+    let result = db.get(q);
     expect_err!(result, errors::Error::OperationOnQuery);
 }

@@ -38,6 +38,7 @@ macro_rules! full_test_impl {
         define_test!(should_delete_a_valid_inbound_vertex, $code);
         define_test!(should_not_delete_an_invalid_vertex, $code);
         define_test!(should_not_delete_on_vertex_count, $code);
+        define_test!(should_not_pipe_on_vertex_count, $code);
 
         // Edges
         define_test!(should_get_a_valid_edge, $code);
@@ -77,5 +78,6 @@ macro_rules! full_test_impl {
         define_test!(should_not_delete_invalid_edge_properties, $code);
         define_test!(should_get_all_edge_properties, $code);
         define_test!(should_not_set_properties_on_count, $code);
+        define_test!(should_not_pipe_properties_on_vertex_count, $code);
     };
 }

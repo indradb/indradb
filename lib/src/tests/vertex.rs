@@ -197,6 +197,19 @@ pub fn should_not_delete_on_vertex_count<D: Datastore>(db: &Database<D>) {
     expect_err!(result, errors::Error::OperationOnQuery);
 }
 
+pub fn should_not_pipe_on_vertex_count<D: Datastore>(db: &Database<D>) {
+    // We have to build the query without it's constructor because the
+    // constructor will catch this issue and trigger a `ValidationError`.
+    let q = models::PipeQuery {
+        inner: Box::new(AllVertexQuery.count().unwrap().into()),
+        direction: models::EdgeDirection::Outbound,
+        limit: 1,
+        t: None,
+    };
+    let result = db.get(q);
+    expect_err!(result, errors::Error::OperationOnQuery);
+}
+
 fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid>) {
     assert!(range.len() >= 5);
     let mut covered_ids: HashSet<Uuid> = HashSet::new();
