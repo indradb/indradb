@@ -1,3 +1,14 @@
+/// Helper macro for expecting an error result.
+#[macro_export]
+macro_rules! expect_err {
+    ($result:expr, $err:pat) => {
+        match $result {
+            Err($err) => (),
+            _ => assert!(false, "unexpected result: {:?}", $result),
+        }
+    };
+}
+
 /// Defines a unit test function.
 #[macro_export]
 macro_rules! define_test {
@@ -55,6 +66,9 @@ macro_rules! full_test_impl {
         define_test!(should_get_edge_range, $code);
         define_test!(should_get_edges, $code);
         define_test!(should_get_edges_piped, $code);
+
+        // Include queries
+        define_test!(should_get_with_include_query, $code);
 
         // Indexing
         define_test!(should_not_query_unindexed_vertex_property, $code);

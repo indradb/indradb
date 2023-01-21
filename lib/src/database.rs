@@ -687,12 +687,16 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     query(txn, q, output)?;
                     let piped_values = output.pop().unwrap();
                     let len = match piped_values {
-                        QueryOutputValue::Vertices(v) => v.len(),
-                        QueryOutputValue::Edges(e) => e.len(),
-                        QueryOutputValue::VertexProperties(p) => p.len(),
-                        QueryOutputValue::EdgeProperties(p) => p.len(),
+                        QueryOutputValue::Vertices(ref v) => v.len(),
+                        QueryOutputValue::Edges(ref e) => e.len(),
+                        QueryOutputValue::VertexProperties(ref p) => p.len(),
+                        QueryOutputValue::EdgeProperties(ref p) => p.len(),
                         _ => return Err(Error::OperationOnQuery),
                     };
+                    if let Query::Include(_) = q {
+                        // keep the value exported
+                        output.push(piped_values);
+                    }
                     len as u64
                 }
             };
