@@ -60,13 +60,16 @@ pub trait Transaction<'a> {
     /// * `offset` - Only fetch edges greater than or equal to this value.
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
     /// Returns all reversed edges (where the outbound and inbound IDs are
-    /// reversed from their actual values) with that are greater than or equal
+    /// reversed from their actual values) that are greater than or equal
     /// to `offset`.
     ///
     /// # Arguments
     /// * `offset` - Only fetch edges greater than or equal to this value.
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>>;
     /// Gets a specific set of edges.
+    ///
+    /// # Arguments
+    /// * `edges` - The edges to get.
     fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>>;
     /// Get all edges with a given property.
     ///
