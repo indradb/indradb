@@ -119,8 +119,7 @@ impl From<glob::GlobError> for InitError {
 struct Plugins {
     entries: HashMap<String, Box<dyn indradb_plugin_host::Plugin>>,
     // Kept to ensure libraries aren't dropped
-    #[allow(dead_code)]
-    libraries: Vec<Library>,
+    _libraries: Vec<Library>,
 }
 
 /// The IndraDB server implementation.
@@ -185,7 +184,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
         Ok(Self {
             db,
             plugins: Arc::new(Plugins {
-                libraries,
+                _libraries: libraries,
                 entries: plugin_entries,
             }),
         })
