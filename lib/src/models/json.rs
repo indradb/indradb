@@ -3,12 +3,6 @@ use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-#[macro_export]
-macro_rules! wrapped_json {
-    ($($json:tt)+) => { Json::new(json!($($json)+)) };
-}
 
 fn hash<H: Hasher>(value: &serde_json::Value, state: &mut H) {
     match value {
@@ -176,8 +170,13 @@ impl PartialOrd for Json {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::Json;
+    use serde_json::json;
+    use std::collections::HashSet;
+
+    macro_rules! wrapped_json {
+        ($($json:tt)+) => { Json::new(json!($($json)+)) };
+    }
 
     fn json_u64() -> Json {
         Json::new(serde_json::Value::Number(serde_json::Number::from(u64::max_value())))
@@ -189,13 +188,25 @@ mod tests {
 
     #[test]
     fn should_hash() {
-        assert_eq!(HashSet::from([wrapped_json!(null)]), HashSet::from([wrapped_json!(null)]));
+        assert_eq!(
+            HashSet::from([wrapped_json!(null)]),
+            HashSet::from([wrapped_json!(null)])
+        );
         assert_eq!(HashSet::from([json_i64()]), HashSet::from([json_i64()]));
         assert_eq!(HashSet::from([json_u64()]), HashSet::from([json_u64()]));
         assert_eq!(HashSet::from([wrapped_json!(3.0)]), HashSet::from([wrapped_json!(3.0)]));
-        assert_eq!(HashSet::from([wrapped_json!("foo")]), HashSet::from([wrapped_json!("foo")]));
-        assert_eq!(HashSet::from([wrapped_json!(["foo"])]), HashSet::from([wrapped_json!(["foo"])]));
-        assert_eq!(HashSet::from([wrapped_json!({"foo": true})]), HashSet::from([wrapped_json!({"foo": true})]));
+        assert_eq!(
+            HashSet::from([wrapped_json!("foo")]),
+            HashSet::from([wrapped_json!("foo")])
+        );
+        assert_eq!(
+            HashSet::from([wrapped_json!(["foo"])]),
+            HashSet::from([wrapped_json!(["foo"])])
+        );
+        assert_eq!(
+            HashSet::from([wrapped_json!({"foo": true})]),
+            HashSet::from([wrapped_json!({"foo": true})])
+        );
     }
 
     #[test]

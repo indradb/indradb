@@ -1,5 +1,5 @@
-use std::hash::{Hash, Hasher};
 use crate::{util::generate_uuid_v1, Identifier};
+use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
 /// A vertex.
@@ -55,9 +55,9 @@ impl Eq for Vertex {}
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::Vertex;
     use crate::Identifier;
+    use std::collections::HashSet;
     use uuid::Uuid;
 
     #[test]
