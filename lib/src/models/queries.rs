@@ -724,8 +724,20 @@ pub enum QueryOutputValue {
 
 #[cfg(test)]
 mod tests {
-    use super::EdgeDirection;
+    use super::{
+        AllVertexQuery, CountQuery, EdgeDirection, PipePropertyQuery, PipeQuery, PipeWithPropertyPresenceQuery,
+        PipeWithPropertyValueQuery, Query, QueryExt,
+    };
+    use crate::{Identifier, ValidationError};
+    use serde_json::json;
     use std::str::FromStr;
+
+    fn expect_inner_query_err<T: core::fmt::Debug>(result: Result<T, ValidationError>) {
+        match result {
+            Err(ValidationError::InnerQuery) => (),
+            _ => assert!(false, "unexpected result: {:?}", result),
+        }
+    }
 
     #[test]
     fn should_convert_str_to_edge_direction() {
@@ -740,5 +752,24 @@ mod tests {
         assert_eq!(s, "outbound".to_string());
         let s: String = EdgeDirection::Inbound.into();
         assert_eq!(s, "inbound".to_string());
+    }
+
+    #[test]
+    fn should_fail_for_nested_count_queries() {
+        let q: Query = AllVertexQuery.count().unwrap().into();
+        expect_inner_query_err(CountQuery::new(Box::new(q.clone())));
+        expect_inner_query_err(PipeQuery::new(Box::new(q.clone()), EdgeDirection::Outbound));
+        expect_inner_query_err(PipePropertyQuery::new(Box::new(q.clone())));
+        expect_inner_query_err(PipeWithPropertyPresenceQuery::new(
+            Box::new(q.clone()),
+            Identifier::new("foo").unwrap(),
+            true,
+        ));
+        expect_inner_query_err(PipeWithPropertyValueQuery::new(
+            Box::new(q.clone()),
+            Identifier::new("foo").unwrap(),
+            json!("bar"),
+            true,
+        ));
     }
 }
