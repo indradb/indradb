@@ -89,14 +89,35 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn should_fail_for_invalid_identifiers() {
+    fn should_create() {
+        assert_eq!(Identifier::new("foo").unwrap().as_str(), "foo");
         let long_t = (0..256).map(|_| "X").collect::<String>();
         assert!(Identifier::new(long_t).is_err());
         assert!(Identifier::new("$").is_err());
     }
 
     #[test]
-    fn should_convert_str_to_identifier() {
-        assert_eq!(Identifier::from_str("foo").unwrap(), Identifier::new("foo").unwrap());
+    fn should_create_unchecked() {
+        unsafe {
+            assert_eq!(Identifier::new_unchecked("foo").as_str(), "foo");
+            assert_eq!(Identifier::new_unchecked("$").as_str(), "$");
+        }
+    }
+
+    #[test]
+    fn should_try_from_str() {
+        assert_eq!(Identifier::try_from("foo".to_string()).unwrap().as_str(), "foo");
+        let long_t = (0..256).map(|_| "X").collect::<String>();
+        assert!(Identifier::try_from(long_t).is_err());
+        assert!(Identifier::try_from("$".to_string()).is_err());
+    }
+
+    #[test]
+    fn should_convert_between_identifier_and_string() {
+        let id = Identifier::new("foo").unwrap();
+        assert_eq!(Identifier::from_str("foo").unwrap(), id);
+        assert_eq!(id.as_str(), "foo");
+        assert_eq!(id.to_string(), "foo".to_string());
+        assert_eq!(id.into_string(), "foo".to_string());
     }
 }
