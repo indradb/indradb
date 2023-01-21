@@ -101,6 +101,9 @@ pub enum Query {
 }
 
 impl Query {
+    /// Determines the number of output values the query will produce without
+    /// running it, so we can allocate a `Vec` with the correct capacity
+    /// ahead-of-time.
     pub(crate) fn output_len(&self) -> usize {
         match self {
             Query::AllVertex
@@ -121,6 +124,9 @@ impl Query {
         }
     }
 
+    /// Determines the `QueryOutputValue` variant that will be produced
+    /// without running the query, which can help validate the query
+    /// ahead-of-time.
     pub(crate) fn output_type(&self) -> errors::ValidationResult<QueryOutputValue> {
         match self {
             Query::AllVertex
@@ -158,7 +164,7 @@ pub trait QueryExt: Into<Query> {
         PipeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
-    /// Gets vertices with a property.
+    /// Gets values with a property.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -166,7 +172,7 @@ pub trait QueryExt: Into<Query> {
         PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, true)
     }
 
-    /// Gets vertices without a property.
+    /// Gets values without a property.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -174,7 +180,7 @@ pub trait QueryExt: Into<Query> {
         PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, false)
     }
 
-    /// Gets vertices with a property equal to a given value.
+    /// Gets values with a property equal to a given value.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -187,7 +193,7 @@ pub trait QueryExt: Into<Query> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    /// Gets vertices with a property not equal to a given value.
+    /// Gets values with a property not equal to a given value.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -465,13 +471,13 @@ pub struct PipeQuery {
     /// The edge query to build off of.
     pub inner: Box<Query>,
 
-    /// Whether to get outbound or inbound vertices on the edges.
+    /// Whether to get outbound or inbound values.
     pub direction: EdgeDirection,
 
-    /// Limits the number of vertices to get.
+    /// Limits the number of values to get.
     pub limit: u32,
 
-    /// Filters the type of vertices returned.
+    /// Filters the type of values returned.
     pub t: Option<Identifier>,
 }
 
@@ -510,7 +516,7 @@ impl PipeQuery {
         }
     }
 
-    /// Filter the type of vertices returned.
+    /// Filter the type of values returned.
     ///
     /// # Arguments
     /// * `t`: Sets the type filter.
