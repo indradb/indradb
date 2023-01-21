@@ -1,6 +1,5 @@
-use std::hash::{Hash, Hasher};
-
 use crate::{util::generate_uuid_v1, Identifier};
+use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
 /// A vertex.
@@ -53,3 +52,19 @@ impl Hash for Vertex {
 }
 
 impl Eq for Vertex {}
+
+#[cfg(test)]
+mod tests {
+    use super::Vertex;
+    use crate::Identifier;
+    use std::collections::HashSet;
+    use uuid::Uuid;
+
+    #[test]
+    fn should_hash() {
+        assert_eq!(
+            HashSet::from([Vertex::with_id(Uuid::default(), Identifier::new("foo").unwrap())]),
+            HashSet::from([Vertex::with_id(Uuid::default(), Identifier::new("foo").unwrap())])
+        );
+    }
+}
