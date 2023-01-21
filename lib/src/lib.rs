@@ -10,6 +10,7 @@
 
 #[cfg(feature = "bench-suite")]
 extern crate test;
+#[cfg(test)]
 #[macro_use]
 extern crate serde_json;
 
