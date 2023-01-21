@@ -4,6 +4,16 @@ use crate::{models, Database, Datastore, QueryExt};
 
 use uuid::Uuid;
 
+#[macro_export]
+macro_rules! expect_err {
+    ($result:expr, $err:pat) => {
+        match $result {
+            Err($err) => (),
+            _ => assert!(false, "unexpected result: {:?}", $result),
+        }
+    };
+}
+
 pub(crate) fn create_edge_from<D: Datastore>(db: &Database<D>, outbound_id: Uuid) -> Uuid {
     let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
     let inbound_v = models::Vertex::new(inbound_vertex_t);

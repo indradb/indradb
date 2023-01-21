@@ -1,5 +1,8 @@
 use super::util;
-use crate::{Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex};
+use crate::{
+    errors, expect_err, AllVertexQuery, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery,
+    SpecificVertexQuery, Vertex,
+};
 
 use uuid::Uuid;
 
@@ -286,4 +289,13 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
             .name(Identifier::new("bleh").unwrap()),
     )
     .unwrap();
+}
+
+pub fn should_not_set_properties_on_count<D: Datastore>(db: &Database<D>) {
+    let result = db.set_properties(
+        AllVertexQuery.count().unwrap(),
+        Identifier::new("foo").unwrap(),
+        serde_json::Value::Bool(true),
+    );
+    expect_err!(result, errors::Error::OperationOnQuery);
 }

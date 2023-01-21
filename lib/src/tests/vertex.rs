@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use super::util;
-use crate::{models, Database, Datastore, QueryExt, RangeVertexQuery, SpecificVertexQuery};
+use crate::{
+    errors, expect_err, models, AllVertexQuery, Database, Datastore, QueryExt, RangeVertexQuery, SpecificVertexQuery,
+};
 
 use uuid::Uuid;
 
@@ -196,6 +198,11 @@ pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {
     db.create_vertex(&v).unwrap();
     let count = util::get_vertex_count(db).unwrap();
     assert!(count >= 1);
+}
+
+pub fn should_not_delete_on_vertex_count<D: Datastore>(db: &Database<D>) {
+    let result = db.delete(AllVertexQuery.count().unwrap());
+    expect_err!(result, errors::Error::OperationOnQuery);
 }
 
 fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<Uuid> {

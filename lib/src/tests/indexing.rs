@@ -1,5 +1,5 @@
 use super::util;
-use crate::{models, Database, Datastore, Error, QueryExt};
+use crate::{expect_err, models, Database, Datastore, Error, QueryExt};
 use uuid::Uuid;
 
 fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_name: &models::Identifier) -> Uuid {
@@ -31,19 +31,12 @@ fn setup_edge_with_indexed_property<D: Datastore>(
     edge
 }
 
-fn expect_not_indexed_err<T: core::fmt::Debug>(result: Result<T, Error>) {
-    match result {
-        Err(Error::NotIndexed) => (),
-        _ => assert!(false, "unexpected result: {:?}", result),
-    }
-}
-
 pub fn should_not_query_unindexed_vertex_property<D: Datastore>(db: &Database<D>) {
     let result = util::get_vertices(
         db,
         models::VertexWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()),
     );
-    expect_not_indexed_err(result);
+    expect_err!(result, Error::NotIndexed);
 }
 
 pub fn should_not_query_unindexed_edge_property<D: Datastore>(db: &Database<D>) {
@@ -51,7 +44,7 @@ pub fn should_not_query_unindexed_edge_property<D: Datastore>(db: &Database<D>) 
         db,
         models::EdgeWithPropertyPresenceQuery::new(models::Identifier::new("foo").unwrap()),
     );
-    expect_not_indexed_err(result);
+    expect_err!(result, Error::NotIndexed);
 }
 
 pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
@@ -81,7 +74,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
 
     // Check against another property
     let result = util::get_vertices(db, q.clone().without_property(other_property_name.clone()).unwrap());
-    expect_not_indexed_err(result);
+    expect_err!(result, Error::NotIndexed);
     db.index_property(other_property_name.clone()).unwrap();
     let result = util::get_vertices(db, q.without_property(other_property_name).unwrap()).unwrap();
     assert_eq!(result.len(), 1);
@@ -121,7 +114,7 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
 
     // Check against another property
     let result = util::get_edges(db, q.clone().without_property(other_property_name.clone()).unwrap());
-    expect_not_indexed_err(result);
+    expect_err!(result, Error::NotIndexed);
     db.index_property(other_property_name.clone()).unwrap();
     let result = util::get_edges(db, q.without_property(other_property_name).unwrap()).unwrap();
     assert_eq!(result.len(), 1);
