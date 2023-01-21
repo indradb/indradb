@@ -176,7 +176,27 @@ impl PartialOrd for Json {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use super::Json;
+
+    fn json_u64() -> Json {
+        Json::new(serde_json::Value::Number(serde_json::Number::from(u64::max_value())))
+    }
+
+    fn json_i64() -> Json {
+        Json::new(serde_json::Value::Number(serde_json::Number::from(i64::min_value())))
+    }
+
+    #[test]
+    fn should_hash() {
+        assert_eq!(HashSet::from([wrapped_json!(null)]), HashSet::from([wrapped_json!(null)]));
+        assert_eq!(HashSet::from([json_i64()]), HashSet::from([json_i64()]));
+        assert_eq!(HashSet::from([json_u64()]), HashSet::from([json_u64()]));
+        assert_eq!(HashSet::from([wrapped_json!(3.0)]), HashSet::from([wrapped_json!(3.0)]));
+        assert_eq!(HashSet::from([wrapped_json!("foo")]), HashSet::from([wrapped_json!("foo")]));
+        assert_eq!(HashSet::from([wrapped_json!(["foo"])]), HashSet::from([wrapped_json!(["foo"])]));
+        assert_eq!(HashSet::from([wrapped_json!({"foo": true})]), HashSet::from([wrapped_json!({"foo": true})]));
+    }
 
     #[test]
     fn should_compare() {
@@ -188,11 +208,24 @@ mod tests {
         assert_eq!(wrapped_json!(4.0), wrapped_json!(4.0));
         assert!(wrapped_json!(3.0) < wrapped_json!(4));
         assert!(wrapped_json!([3.0, 4.0]) < wrapped_json!([4.0, 3.0]));
-        assert!(wrapped_json!({}) == wrapped_json!({}));
 
-        let json_u64 = Json::new(serde_json::Value::Number(serde_json::Number::from(u64::max_value())));
-        assert_eq!(json_u64, json_u64);
-        assert!(wrapped_json!(3) < json_u64);
-        assert!(json_u64 > wrapped_json!(3));
+        assert_eq!(json_u64(), json_u64());
+        assert!(wrapped_json!(3) < json_u64());
+        assert!(json_u64() > wrapped_json!(3.0));
+        assert!(wrapped_json!(3.0) < json_u64());
+
+        assert!(json_u64() > json_i64());
+        assert!(json_i64() < json_u64());
+        assert!(wrapped_json!(3) > json_i64());
+        assert!(json_i64() < wrapped_json!(3.0));
+
+        assert!(wrapped_json!({}) == wrapped_json!({}));
+        assert!(wrapped_json!({"key": "value0"}) < wrapped_json!({"key": "value1"}));
+        assert!(wrapped_json!({"key": "value1"}) > wrapped_json!({"key": "value0"}));
+        assert!(wrapped_json!({"key1": "value0"}) > wrapped_json!({"key0": "value1"}));
+        assert_eq!(wrapped_json!({"key": "value"}), wrapped_json!({"key": "value"}));
+        assert!(wrapped_json!({"key": "value"}) > wrapped_json!({}));
+        assert!(wrapped_json!({}) < wrapped_json!({"key": "value"}));
+        assert!(wrapped_json!({"key": "value"}) > wrapped_json!({}));
     }
 }
