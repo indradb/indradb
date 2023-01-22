@@ -144,6 +144,12 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-vertex-property").unwrap();
 
+    let result = util::get_vertices(
+        db,
+        models::VertexWithPropertyValueQuery::new(property_name.clone(), json_true.clone()),
+    );
+    expect_err!(result, Error::NotIndexed);
+
     let id = setup_vertex_with_indexed_property(db, &property_name);
     let q = models::SpecificVertexQuery::single(id);
     db.set_properties(q.clone(), property_name.clone(), json_false.clone())
@@ -204,6 +210,12 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
     let json_true = serde_json::Value::Bool(true);
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-edge-property").unwrap();
+
+    let result = util::get_edges(
+        db,
+        models::EdgeWithPropertyValueQuery::new(property_name.clone(), json_true.clone()),
+    );
+    expect_err!(result, Error::NotIndexed);
 
     let edge = setup_edge_with_indexed_property(db, &property_name);
     let q = models::SpecificEdgeQuery::single(edge.clone());

@@ -17,7 +17,7 @@ macro_rules! into_query {
     };
 }
 
-macro_rules! query_type {
+macro_rules! nestable_query {
     ($name:ident, $variant:ident) => {
         impl QueryExt for $name {}
         into_query!($name, $variant);
@@ -249,7 +249,7 @@ pub struct RangeVertexQuery {
     pub start_id: Option<Uuid>,
 }
 
-query_type!(RangeVertexQuery, RangeVertex);
+nestable_query!(RangeVertexQuery, RangeVertex);
 
 impl Default for RangeVertexQuery {
     fn default() -> Self {
@@ -311,7 +311,7 @@ pub struct SpecificVertexQuery {
     pub ids: Vec<Uuid>,
 }
 
-query_type!(SpecificVertexQuery, SpecificVertex);
+nestable_query!(SpecificVertexQuery, SpecificVertex);
 
 impl SpecificVertexQuery {
     /// Creates a new vertex query for getting a list of vertices by their
@@ -339,7 +339,7 @@ pub struct VertexWithPropertyPresenceQuery {
     pub name: Identifier,
 }
 
-query_type!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
+nestable_query!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
 
 impl VertexWithPropertyPresenceQuery {
     /// Creates a new vertex with property presence query.
@@ -360,7 +360,7 @@ pub struct VertexWithPropertyValueQuery {
     pub value: serde_json::Value,
 }
 
-query_type!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
+nestable_query!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
 
 impl VertexWithPropertyValueQuery {
     /// Creates a new vertex with property value query.
@@ -397,7 +397,7 @@ pub struct SpecificEdgeQuery {
     pub edges: Vec<Edge>,
 }
 
-query_type!(SpecificEdgeQuery, SpecificEdge);
+nestable_query!(SpecificEdgeQuery, SpecificEdge);
 
 impl SpecificEdgeQuery {
     /// Creates a new edge query for getting a list of specific edges.
@@ -424,7 +424,7 @@ pub struct EdgeWithPropertyPresenceQuery {
     pub name: Identifier,
 }
 
-query_type!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
+nestable_query!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
 
 impl EdgeWithPropertyPresenceQuery {
     /// Creates a new edge with property presence query.
@@ -445,7 +445,7 @@ pub struct EdgeWithPropertyValueQuery {
     pub value: serde_json::Value,
 }
 
-query_type!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
+nestable_query!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
 
 impl EdgeWithPropertyValueQuery {
     /// Creates a new edge with property value query.
@@ -481,7 +481,7 @@ pub struct PipeQuery {
     pub t: Option<Identifier>,
 }
 
-query_type!(PipeQuery, Pipe);
+nestable_query!(PipeQuery, Pipe);
 
 impl PipeQuery {
     /// Constructs a new pipe query.
@@ -577,7 +577,7 @@ pub struct PipeWithPropertyPresenceQuery {
     pub exists: bool,
 }
 
-query_type!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
+nestable_query!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
 
 impl PipeWithPropertyPresenceQuery {
     /// Gets vertices with a property.
@@ -612,7 +612,7 @@ pub struct PipeWithPropertyValueQuery {
     pub equal: bool,
 }
 
-query_type!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
+nestable_query!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
 
 impl PipeWithPropertyValueQuery {
     /// Constructs a new pipe with property value query.
@@ -662,7 +662,7 @@ pub struct IncludeQuery {
     pub inner: Box<Query>,
 }
 
-query_type!(IncludeQuery, Include);
+nestable_query!(IncludeQuery, Include);
 
 impl IncludeQuery {
     /// Marks a query as exported.

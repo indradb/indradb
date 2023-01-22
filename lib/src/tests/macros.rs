@@ -52,6 +52,7 @@ macro_rules! full_test_impl {
         define_test!(should_not_pipe_on_vertex_count, $code);
 
         // Edges
+        define_test!(should_get_all_edges, $code);
         define_test!(should_get_a_valid_edge, $code);
         define_test!(should_not_get_an_invalid_edge, $code);
         define_test!(should_create_a_valid_edge, $code);
@@ -68,7 +69,8 @@ macro_rules! full_test_impl {
         define_test!(should_get_edges_piped, $code);
 
         // Include queries
-        define_test!(should_get_with_include_query, $code);
+        define_test!(should_get_nested_include_query, $code);
+        define_test!(should_get_unnested_include_query, $code);
 
         // Indexing
         define_test!(should_not_query_unindexed_vertex_property, $code);
@@ -93,5 +95,6 @@ macro_rules! full_test_impl {
         define_test!(should_get_all_edge_properties, $code);
         define_test!(should_not_set_properties_on_count, $code);
         define_test!(should_not_pipe_properties_on_vertex_count, $code);
+        define_test!(should_not_pipe_property_presence_on_vertex_count, $code);
     };
 }

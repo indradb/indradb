@@ -1,9 +1,24 @@
 use std::collections::HashSet;
 
 use super::util;
-use crate::{models, Database, Datastore, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
+use crate::{
+    models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, QueryExt, QueryOutputValue, SpecificEdgeQuery,
+    SpecificVertexQuery,
+};
 
 use uuid::Uuid;
+
+pub fn should_get_all_edges<D: Datastore>(db: &Database<D>) {
+    let (outbound_id, inbound_ids) = util::create_edges(db);
+    let edges = util::get_edges(db, AllEdgeQuery).unwrap();
+    assert_eq!(
+        edges,
+        inbound_ids
+            .into_iter()
+            .map(|id| Edge::new(outbound_id, models::Identifier::new("test_edge_type").unwrap(), id))
+            .collect::<Vec<Edge>>()
+    );
+}
 
 pub fn should_get_a_valid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
