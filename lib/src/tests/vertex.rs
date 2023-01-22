@@ -51,9 +51,8 @@ pub fn should_get_no_vertices_with_type_filter<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_single_vertex<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let vertex = models::Vertex::new(vertex_t);
-    db.create_vertex(&vertex).unwrap();
-    let range = util::get_vertices(db, SpecificVertexQuery::single(vertex.id)).unwrap();
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
+    let range = util::get_vertices(db, SpecificVertexQuery::single(id)).unwrap();
     assert_eq!(range.len(), 1);
     assert_eq!(range[0].id, id);
     assert_eq!(range[0].t.as_str(), "test_vertex_type");
@@ -61,8 +60,7 @@ pub fn should_get_single_vertex<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_single_vertex_nonexisting<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let vertex = models::Vertex::new(vertex_t);
-    db.create_vertex(&vertex).unwrap();
+    db.create_vertex_from_type(vertex_t).unwrap();
     let range = util::get_vertices(db, SpecificVertexQuery::single(Uuid::default())).unwrap();
     assert_eq!(range.len(), 0);
 }
@@ -94,17 +92,15 @@ pub fn should_get_vertices<D: Datastore>(db: &Database<D>) {
 pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-
-    let v = models::Vertex::new(vertex_t);
-    db.create_vertex(&v).unwrap();
-    let inserted_id = util::create_edge_from(db, v.id);
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
+    let inserted_id = util::create_edge_from(db, id);
 
     // This query should get `inserted_id`
-    let query_1 = SpecificVertexQuery::single(v.id)
+    let query_1 = SpecificVertexQuery::single(id)
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1);
@@ -113,11 +109,11 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get `inserted_id`
-    let query_2 = SpecificVertexQuery::single(v.id)
+    let query_2 = SpecificVertexQuery::single(id)
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1)
@@ -127,11 +123,11 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
     assert_eq!(range[0].id, inserted_id);
 
     // This query should get nothing
-    let query_3 = SpecificVertexQuery::single(v.id)
+    let query_3 = SpecificVertexQuery::single(id)
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1)
@@ -150,7 +146,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .limit(1);
     let range = util::get_vertices(db, query_4).unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0], v);
+    assert_eq!(range[0].id, id);
 }
 
 pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
@@ -166,7 +162,7 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
     let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
-    let count = util::get_edge_count(db, outbound_id, Some(&t), models::EdgeDirection::Outbound).unwrap();
+    let count = util::get_edge_count(db, outbound_id, Some(t), models::EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -178,7 +174,7 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) {
     let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
-    let count = util::get_edge_count(db, inbound_id, Some(&t), models::EdgeDirection::Inbound).unwrap();
+    let count = util::get_edge_count(db, inbound_id, Some(t), models::EdgeDirection::Inbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -188,11 +184,10 @@ pub fn should_not_delete_an_invalid_vertex<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let v = models::Vertex::new(vertex_t);
-    db.create_vertex(&v).unwrap();
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
     let count = util::get_vertex_count(db).unwrap();
     assert!(count >= 1);
-    let count = extract_count(db.get(SpecificVertexQuery::single(v.id).count().unwrap()).unwrap()).unwrap();
+    let count = extract_count(db.get(SpecificVertexQuery::single(id).count().unwrap()).unwrap()).unwrap();
     assert!(count >= 1);
 }
 
@@ -230,20 +225,10 @@ fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid
 
 fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<Uuid> {
     let t = models::Identifier::new("test_vertex_type").unwrap();
-
-    let vertices = vec![
-        models::Vertex::new(t.clone()),
-        models::Vertex::new(t.clone()),
-        models::Vertex::new(t.clone()),
-        models::Vertex::new(t.clone()),
-        models::Vertex::new(t),
-    ];
-
-    for vertex in &vertices {
-        db.create_vertex(vertex).unwrap();
+    let mut ids = Vec::with_capacity(5);
+    for _i in 0..5 {
+        let id = db.create_vertex_from_type(t).unwrap();
+        ids.push(id);
     }
-
-    let mut vertex_ids: Vec<Uuid> = vertices.into_iter().map(|v| v.id).collect();
-    vertex_ids.sort();
-    vertex_ids
+    ids
 }

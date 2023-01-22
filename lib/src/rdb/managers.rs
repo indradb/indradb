@@ -82,7 +82,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Identifier(&vertex.t)]));
+        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
         Ok(())
     }
 
@@ -101,7 +101,7 @@ impl<'a> VertexManager<'a> {
                 batch,
                 indexed_properties,
                 vertex_property_owner_id,
-                &vertex_property_name,
+                vertex_property_name,
             )?;
         }
 
@@ -173,7 +173,7 @@ impl<'a> EdgeManager<'a> {
         let edge_property_manager = EdgePropertyManager::new(self.db);
         for item in edge_property_manager.iterate_for_owner(edge)? {
             let (edge_property_edge, edge_property_name, _) = item?;
-            edge_property_manager.delete(batch, indexed_properties, &edge_property_edge, &edge_property_name)?;
+            edge_property_manager.delete(batch, indexed_properties, &edge_property_edge, edge_property_name)?;
         }
 
         Ok(())
@@ -203,7 +203,7 @@ impl<'a> EdgeRangeManager<'a> {
     fn key(&self, edge: &models::Edge) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(&edge.t),
+            util::Component::Identifier(edge.t),
             util::Component::Uuid(edge.inbound_id),
         ])
     }
@@ -229,7 +229,7 @@ impl<'a> EdgeRangeManager<'a> {
     pub fn iterate_for_root(
         &'a self,
         id: Uuid,
-        t: Option<&models::Identifier>,
+        t: Option<models::Identifier>,
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         let (prefix, iter) = match t {
             Some(t) => {
@@ -256,7 +256,7 @@ impl<'a> EdgeRangeManager<'a> {
     pub fn iterate_for_range(
         &'a self,
         first_id: Uuid,
-        t: &models::Identifier,
+        t: models::Identifier,
         second_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         let low_key = util::build(&[
@@ -305,7 +305,7 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    fn key(&self, vertex_id: Uuid, name: &models::Identifier) -> Vec<u8> {
+    fn key(&self, vertex_id: Uuid, name: models::Identifier) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(vertex_id),
             util::Component::FixedLengthString(&name.0),
@@ -336,7 +336,7 @@ impl<'a> VertexPropertyManager<'a> {
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::Json>> {
+    pub fn get(&self, vertex_id: Uuid, name: models::Identifier) -> Result<Option<models::Json>> {
         match self.db.get_cf(self.cf, self.key(vertex_id, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
@@ -348,10 +348,10 @@ impl<'a> VertexPropertyManager<'a> {
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
         vertex_id: Uuid,
-        name: &models::Identifier,
+        name: models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
-        let is_indexed = indexed_properties.contains(name);
+        let is_indexed = indexed_properties.contains(&name);
         let key = self.key(vertex_id, name);
         if is_indexed {
             self.delete(batch, indexed_properties, vertex_id, name)?;
@@ -370,9 +370,9 @@ impl<'a> VertexPropertyManager<'a> {
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
         vertex_id: Uuid,
-        name: &models::Identifier,
+        name: models::Identifier,
     ) -> Result<()> {
-        if indexed_properties.contains(name) {
+        if indexed_properties.contains(&name) {
             if let Some(value) = self.get(vertex_id, name)? {
                 let vertex_property_value_manager = VertexPropertyValueManager::new(self.db);
                 vertex_property_value_manager.delete(batch, vertex_id, name, &value);
@@ -401,10 +401,10 @@ impl<'a> EdgePropertyManager<'a> {
         }
     }
 
-    fn key(&self, edge: &models::Edge, name: &models::Identifier) -> Vec<u8> {
+    fn key(&self, edge: &models::Edge, name: models::Identifier) -> Vec<u8> {
         util::build(&[
             util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(&edge.t),
+            util::Component::Identifier(edge.t),
             util::Component::Uuid(edge.inbound_id),
             util::Component::FixedLengthString(&name.0),
         ])
@@ -416,7 +416,7 @@ impl<'a> EdgePropertyManager<'a> {
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
         let prefix = util::build(&[
             util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(&edge.t),
+            util::Component::Identifier(edge.t),
             util::Component::Uuid(edge.inbound_id),
         ]);
 
@@ -450,7 +450,7 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, edge: &models::Edge, name: &models::Identifier) -> Result<Option<models::Json>> {
+    pub fn get(&self, edge: &models::Edge, name: models::Identifier) -> Result<Option<models::Json>> {
         match self.db.get_cf(self.cf, self.key(edge, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
@@ -462,10 +462,10 @@ impl<'a> EdgePropertyManager<'a> {
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
         edge: &models::Edge,
-        name: &models::Identifier,
+        name: models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
-        let is_indexed = indexed_properties.contains(name);
+        let is_indexed = indexed_properties.contains(&name);
         let key = self.key(edge, name);
         if is_indexed {
             self.delete(batch, indexed_properties, edge, name)?;
@@ -484,9 +484,9 @@ impl<'a> EdgePropertyManager<'a> {
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
         edge: &models::Edge,
-        name: &models::Identifier,
+        name: models::Identifier,
     ) -> Result<()> {
-        if indexed_properties.contains(name) {
+        if indexed_properties.contains(&name) {
             if let Some(value) = self.get(edge, name)? {
                 let edge_property_value_manager = EdgePropertyValueManager::new(self.db);
                 edge_property_value_manager.delete(batch, edge, name, &value);
@@ -515,7 +515,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
+    fn key(&self, property_name: models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
@@ -542,7 +542,7 @@ impl<'a> VertexPropertyValueManager<'a> {
 
     pub fn iterate_for_name(
         &'a self,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
     ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
@@ -553,7 +553,7 @@ impl<'a> VertexPropertyValueManager<'a> {
 
     pub fn iterate_for_value(
         &'a self,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
         let prefix = util::build(&[
@@ -570,7 +570,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         &self,
         batch: &mut WriteBatch,
         vertex_id: Uuid,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
@@ -581,7 +581,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         &self,
         batch: &mut WriteBatch,
         vertex_id: Uuid,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
@@ -607,12 +607,12 @@ impl<'a> EdgePropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, edge: &models::Edge) -> Vec<u8> {
+    fn key(&self, property_name: models::Identifier, property_value: &models::Json, edge: &models::Edge) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
             util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(&edge.t),
+            util::Component::Identifier(edge.t),
             util::Component::Uuid(edge.inbound_id),
         ])
     }
@@ -638,7 +638,7 @@ impl<'a> EdgePropertyValueManager<'a> {
 
     pub fn iterate_for_name(
         &'a self,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
     ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
@@ -649,7 +649,7 @@ impl<'a> EdgePropertyValueManager<'a> {
 
     pub fn iterate_for_value(
         &'a self,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
         let prefix = util::build(&[
@@ -666,7 +666,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         &self,
         batch: &mut WriteBatch,
         edge: &models::Edge,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, edge);
@@ -677,7 +677,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         &self,
         batch: &mut WriteBatch,
         edge: &models::Edge,
-        property_name: &models::Identifier,
+        property_name: models::Identifier,
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, edge);

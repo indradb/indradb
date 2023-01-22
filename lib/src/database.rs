@@ -38,7 +38,7 @@ pub trait Transaction<'a> {
     ///
     /// # Arguments
     /// * `name` - The property name.
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
+    fn vertex_ids_with_property(&'a self, name: Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
     /// Get all vertices with a given property value.
     ///
     /// # Arguments
@@ -46,7 +46,7 @@ pub trait Transaction<'a> {
     /// * `value` - The property value.
     fn vertex_ids_with_property_value(
         &'a self,
-        name: &Identifier,
+        name: Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Uuid>>>;
 
@@ -75,7 +75,7 @@ pub trait Transaction<'a> {
     ///
     /// # Arguments
     /// * `name` - The property name.
-    fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>>;
+    fn edges_with_property(&'a self, name: Identifier) -> Result<Option<DynIter<'a, Edge>>>;
     /// Get all edges with a given property value.
     ///
     /// # Arguments
@@ -83,7 +83,7 @@ pub trait Transaction<'a> {
     /// * `value` - The property value.
     fn edges_with_property_value(
         &'a self,
-        name: &Identifier,
+        name: Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Edge>>>;
 
@@ -92,7 +92,7 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `vertex` - The vertex.
     /// * `name` - The property name.
-    fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>>;
+    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>>;
     /// Gets all vertex properties for a given vertex.
     ///
     /// # Arguments
@@ -107,7 +107,7 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `edge` - The edge.
     /// * `name` - The property name.
-    fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>>;
+    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>>;
     /// Gets all edge properties for a given edges.
     ///
     /// # Arguments
@@ -320,7 +320,7 @@ impl<D: Datastore> Database<D> {
                     vertex_properties
                         .into_iter()
                         .flat_map(|vps| {
-                            let iter = vps.props.iter().map(move |vp| (vps.vertex.id, vp.name.clone()));
+                            let iter = vps.props.iter().map(move |vp| (vps.vertex.id, vp.name));
                             iter.collect::<Vec<(Uuid, Identifier)>>()
                         })
                         .collect(),
@@ -331,7 +331,7 @@ impl<D: Datastore> Database<D> {
                     edge_properties
                         .into_iter()
                         .flat_map(|eps| {
-                            let iter = eps.props.iter().map(move |ep| (eps.edge.clone(), ep.name.clone()));
+                            let iter = eps.props.iter().map(move |ep| (eps.edge.clone(), ep.name));
                             iter.collect::<Vec<(Edge, Identifier)>>()
                         })
                         .collect(),
@@ -448,7 +448,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
                     for vertex in piped_vertices {
                         let lower_bound = match &q.t {
-                            Some(t) => Edge::new(vertex.id, t.clone(), Uuid::default()),
+                            Some(t) => Edge::new(vertex.id, *t, Uuid::default()),
                             None => Edge::new(vertex.id, Identifier::default(), Uuid::default()),
                         };
 
@@ -509,13 +509,13 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     for edge in piped_edges {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).edge_property(edge, name)? {
-                                props.push(NamedProperty::new(name.clone(), value.clone()));
+                            if let Some(value) = (*txn).edge_property(edge, *name)? {
+                                props.push(NamedProperty::new(*name, value.clone()));
                             }
                         } else {
                             for result in (*txn).all_edge_properties_for_edge(edge)? {
                                 let (name, value) = result?;
-                                props.push(NamedProperty::new(name.clone(), value.clone()));
+                                props.push(NamedProperty::new(name, value.clone()));
                             }
                         }
                         if !props.is_empty() {
@@ -530,13 +530,13 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     for vertex in piped_vertices {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).vertex_property(vertex, name)? {
-                                props.push(NamedProperty::new(name.clone(), value.clone()));
+                            if let Some(value) = (*txn).vertex_property(vertex, *name)? {
+                                props.push(NamedProperty::new(*name, value.clone()));
                             }
                         } else {
                             for result in (*txn).all_vertex_properties_for_vertex(vertex)? {
                                 let (name, value) = result?;
-                                props.push(NamedProperty::new(name.clone(), value.clone()));
+                                props.push(NamedProperty::new(name, value.clone()));
                             }
                         }
                         if !props.is_empty() {
@@ -559,7 +559,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             values
         }
         Query::VertexWithPropertyPresence(ref q) => {
-            if let Some(iter) = (*txn).vertex_ids_with_property(&q.name)? {
+            if let Some(iter) = (*txn).vertex_ids_with_property(q.name)? {
                 let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
@@ -567,7 +567,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             }
         }
         Query::VertexWithPropertyValue(ref q) => {
-            if let Some(iter) = (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
+            if let Some(iter) = (*txn).vertex_ids_with_property_value(q.name, &q.value)? {
                 let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
@@ -575,14 +575,14 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
             }
         }
         Query::EdgeWithPropertyPresence(ref q) => {
-            if let Some(iter) = (*txn).edges_with_property(&q.name)? {
+            if let Some(iter) = (*txn).edges_with_property(q.name)? {
                 QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
             } else {
                 return Err(Error::NotIndexed);
             }
         }
         Query::EdgeWithPropertyValue(ref q) => {
-            if let Some(iter) = (*txn).edges_with_property_value(&q.name, &q.value)? {
+            if let Some(iter) = (*txn).edges_with_property_value(q.name, &q.value)? {
                 QueryOutputValue::Edges(iter.collect::<Result<Vec<Edge>>>()?)
             } else {
                 return Err(Error::NotIndexed);
@@ -594,7 +594,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    let edges_with_property = match (*txn).edges_with_property(&q.name)? {
+                    let edges_with_property = match (*txn).edges_with_property(q.name)? {
                         Some(iter) => iter.collect::<Result<HashSet<Edge>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
@@ -605,7 +605,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Edges(iter.cloned().collect())
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
-                    let vertices_with_property = match (*txn).vertex_ids_with_property(&q.name)? {
+                    let vertices_with_property = match (*txn).vertex_ids_with_property(q.name)? {
                         Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
@@ -633,7 +633,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    let edges = match (*txn).edges_with_property_value(&q.name, &q.value)? {
+                    let edges = match (*txn).edges_with_property_value(q.name, &q.value)? {
                         Some(iter) => iter.collect::<Result<HashSet<Edge>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
@@ -644,7 +644,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     QueryOutputValue::Edges(iter.cloned().collect())
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
-                    let vertex_ids = match (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
+                    let vertex_ids = match (*txn).vertex_ids_with_property_value(q.name, &q.value)? {
                         Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
