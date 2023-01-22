@@ -213,11 +213,11 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     async fn create_vertex_from_type(
         &self,
         request: Request<crate::Identifier>,
-    ) -> Result<Response<crate::Uuid>, Status> {
+    ) -> Result<Response<crate::CreateVertexFromTypeResponse>, Status> {
         let db = self.db.clone();
         let t = map_conversion_result(request.into_inner().try_into())?;
         let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex_from_type(t)).await)?;
-        Ok(Response::new(res.into()))
+        Ok(Response::new(crate::CreateVertexFromTypeResponse { id: res }))
     }
 
     async fn create_edge(&self, request: Request<crate::Edge>) -> Result<Response<crate::CreateResponse>, Status> {

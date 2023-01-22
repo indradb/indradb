@@ -5,8 +5,6 @@ use crate::{
     models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
 };
 
-use uuid::Uuid;
-
 pub fn should_get_all_edges<D: Datastore>(db: &Database<D>) {
     let (outbound_id, inbound_ids) = util::create_edges(db);
     let edges = util::get_edges(db, AllEdgeQuery).unwrap();
@@ -47,15 +45,11 @@ pub fn should_not_get_an_invalid_edge<D: Datastore>(db: &Database<D>) {
 
     let e = util::get_edges(
         db,
-        SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t.clone(), Uuid::default())),
+        SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t.clone(), 0)),
     )
     .unwrap();
     assert_eq!(e.len(), 0);
-    let e = util::get_edges(
-        db,
-        SpecificEdgeQuery::single(Edge::new(Uuid::default(), edge_t, inbound_v.id)),
-    )
-    .unwrap();
+    let e = util::get_edges(db, SpecificEdgeQuery::single(Edge::new(0, edge_t, inbound_v.id))).unwrap();
     assert_eq!(e.len(), 0);
 }
 
@@ -99,7 +93,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let outbound_v = models::Vertex::new(vertex_t);
     db.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t, Uuid::default());
+    let edge = models::Edge::new(outbound_v.id, edge_t, 0);
     let result = db.create_edge(&edge);
     assert_eq!(result.unwrap(), false);
 }
@@ -133,12 +127,8 @@ pub fn should_not_delete_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let outbound_v = models::Vertex::new(vertex_t);
     db.create_vertex(&outbound_v).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    db.delete(SpecificEdgeQuery::single(Edge::new(
-        outbound_v.id,
-        edge_t,
-        Uuid::default(),
-    )))
-    .unwrap();
+    db.delete(SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t, 0)))
+        .unwrap();
 }
 
 pub fn should_get_an_edge_count<D: Datastore>(db: &Database<D>) {
@@ -156,7 +146,7 @@ pub fn should_get_an_edge_count_with_no_type<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let t = models::Identifier::new("test_edge_type").unwrap();
-    let count = util::get_edge_count(db, Uuid::default(), Some(&t), EdgeDirection::Outbound).unwrap();
+    let count = util::get_edge_count(db, 0, Some(&t), EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -248,9 +238,9 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
     );
 }
 
-fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected_length: usize) {
+fn check_edge_range(range: &[models::Edge], expected_outbound_id: u64, expected_length: usize) {
     assert_eq!(range.len(), expected_length);
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<u64> = HashSet::new();
     let t = models::Identifier::new("test_edge_type").unwrap();
 
     for edge in range {

@@ -5,8 +5,6 @@ use crate::{
     PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
-use uuid::Uuid;
-
 pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     let t = Identifier::new("test_vertex_type").unwrap();
     let v = Vertex::new(t);
@@ -103,7 +101,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_set_invalid_vertex_properties<D: Datastore>(db: &Database<D>) {
-    let q = SpecificVertexQuery::single(Uuid::default());
+    let q = SpecificVertexQuery::single(0);
     db.set_properties(q.clone(), Identifier::new("foo").unwrap(), serde_json::Value::Null)
         .unwrap();
     let result =
@@ -112,7 +110,7 @@ pub fn should_not_set_invalid_vertex_properties<D: Datastore>(db: &Database<D>) 
 }
 
 pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(db: &Database<D>) {
-    let q = SpecificVertexQuery::single(Uuid::default())
+    let q = SpecificVertexQuery::single(0)
         .properties()
         .unwrap()
         .name(Identifier::new("foo").unwrap());
@@ -258,7 +256,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_set_invalid_edge_properties<D: Datastore>(db: &Database<D>) {
-    let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
+    let edge = Edge::new(0, Identifier::new("foo").unwrap(), 0);
     let q = SpecificEdgeQuery::single(edge);
     db.set_properties(q.clone(), Identifier::new("bar").unwrap(), serde_json::Value::Null)
         .unwrap();
@@ -267,7 +265,7 @@ pub fn should_not_set_invalid_edge_properties<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>) {
-    let edge = Edge::new(Uuid::default(), Identifier::new("foo").unwrap(), Uuid::default());
+    let edge = Edge::new(0, Identifier::new("foo").unwrap(), 0);
     db.delete(
         SpecificEdgeQuery::single(edge)
             .properties()

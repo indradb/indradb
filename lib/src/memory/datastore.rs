@@ -6,17 +6,15 @@ use std::result::Result as StdResult;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::errors::{Error, Result};
-use crate::util;
-use crate::{Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
+use crate::{Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, ValidationError, Vertex};
 
 use rmp_serde::decode::Error as RmpDecodeError;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
-use uuid::Uuid;
 
 #[derive(Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 enum IndexedPropertyMember {
-    Vertex(Uuid),
+    Vertex(u64),
     Edge(Edge),
 }
 
@@ -26,10 +24,10 @@ enum IndexedPropertyMember {
 // latter approach would risk deadlocking without extreme care.
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct InternalMemory {
-    vertices: BTreeMap<Uuid, Identifier>,
+    vertices: BTreeMap<u64, Identifier>,
     edges: BTreeSet<Edge>,
     reversed_edges: BTreeSet<Edge>,
-    vertex_properties: BTreeMap<(Uuid, Identifier), Json>,
+    vertex_properties: BTreeMap<(u64, Identifier), Json>,
     edge_properties: BTreeMap<(Edge, Identifier), Json>,
     property_values: HashMap<Identifier, HashMap<Json, HashSet<IndexedPropertyMember>>>,
 }
@@ -63,7 +61,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+    fn range_vertices(&'a self, offset: u64) -> Result<DynIter<'a, Vertex>> {
         let iter = self
             .internal
             .vertices
@@ -72,7 +70,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+    fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>> {
         let iter = ids.into_iter().filter_map(move |id| {
             self.internal
                 .vertices
@@ -82,9 +80,9 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, u64>>> {
         if let Some(container) = self.internal.property_values.get(name) {
-            let mut vertex_ids = HashSet::<Uuid>::default();
+            let mut vertex_ids = HashSet::<u64>::default();
             for sub_container in container.values() {
                 for member in sub_container {
                     if let IndexedPropertyMember::Vertex(id) = member {
@@ -102,7 +100,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         &'a self,
         name: &Identifier,
         value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Uuid>>> {
+    ) -> Result<Option<DynIter<'a, u64>>> {
         let container = self.get_property_values(name)?;
         let wrapped_value = Json::new(value.clone());
         if let Some(sub_container) = container.get(&wrapped_value) {
@@ -191,7 +189,10 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         let mut vertex_properties = Vec::new();
         let from = &(vertex.id, Identifier::default());
-        let to = &(util::next_uuid(vertex.id).unwrap(), Identifier::default());
+        let to = &(
+            vertex.id.checked_add(1).ok_or(ValidationError::CannotIncrementId)?,
+            Identifier::default(),
+        );
         for ((_prop_vertex_id, prop_name), prop_value) in self.internal.vertex_properties.range(from..to) {
             vertex_properties.push((prop_name.clone(), prop_value.0.clone()));
         }
@@ -222,7 +223,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for vertex in vertices {
             self.internal.vertices.remove(&vertex.id);
 
-            let mut deletable_vertex_properties: Vec<(Uuid, Identifier)> = Vec::new();
+            let mut deletable_vertex_properties: Vec<(u64, Identifier)> = Vec::new();
             for (property_key, _) in self
                 .internal
                 .vertex_properties
@@ -273,7 +274,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(())
     }
 
-    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()> {
+    fn delete_vertex_properties(&mut self, props: Vec<(u64, Identifier)>) -> Result<()> {
         for prop in props {
             if let Some(property_value) = self.internal.vertex_properties.remove(&prop) {
                 let (property_vertex_id, property_name) = prop;
@@ -372,7 +373,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
 
     fn set_vertex_properties(
         &mut self,
-        vertex_ids: Vec<Uuid>,
+        vertex_ids: Vec<u64>,
         name: Identifier,
         value: serde_json::Value,
     ) -> Result<()> {

@@ -10,7 +10,6 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::transport::{Channel, Endpoint, Error as TonicTransportError};
 use tonic::{Request, Status};
-use uuid::Uuid;
 
 const CHANNEL_CAPACITY: usize = 100;
 
@@ -106,7 +105,7 @@ impl Client {
     }
 
     /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
+    /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
     ///
     /// # Arguments
@@ -119,14 +118,14 @@ impl Client {
 
     /// Creates a new vertex with just a type specification. As opposed to
     /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
+    /// the vertex's ID. Returns the new vertex's ID.
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<Uuid, ClientError> {
+    pub async fn create_vertex_from_type(&mut self, t: indradb::Identifier) -> Result<u64, ClientError> {
         let t: crate::Identifier = t.into();
         let res = self.0.create_vertex_from_type(t).await?;
-        Ok(res.into_inner().try_into()?)
+        Ok(res.into_inner().id)
     }
 
     /// Creates a new edge. If the edge already exists, this will update it

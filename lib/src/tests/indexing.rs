@@ -1,8 +1,7 @@
 use super::util;
 use crate::{expect_err, models, Database, Datastore, Error, QueryExt};
-use uuid::Uuid;
 
-fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_name: &models::Identifier) -> Uuid {
+fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_name: &models::Identifier) -> u64 {
     db.index_property(property_name.clone()).unwrap();
     let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
     db.create_vertex(&v).unwrap();
