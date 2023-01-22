@@ -13,10 +13,10 @@ use std::result::Result as StdResult;
 use std::time::Duration;
 
 use indradb::{
-    util, AllEdgeQuery, AllVertexQuery, BulkInsertItem, Datastore, DynIter, Edge, EdgeWithPropertyPresenceQuery,
-    EdgeWithPropertyValueQuery, Error, Identifier, Query, QueryExt, QueryOutputValue, RangeVertexQuery, Result,
-    SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex, VertexWithPropertyPresenceQuery,
-    VertexWithPropertyValueQuery,
+    util, AllEdgeQuery, AllVertexQuery, BulkInsertItem, CountQueryExt, Datastore, DynIter, Edge,
+    EdgeWithPropertyPresenceQuery, EdgeWithPropertyValueQuery, Error, Identifier, Query, QueryExt, QueryOutputValue,
+    RangeVertexQuery, Result, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
+    VertexWithPropertyPresenceQuery, VertexWithPropertyValueQuery,
 };
 
 use tokio::runtime::Runtime;

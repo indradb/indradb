@@ -1,7 +1,7 @@
 use super::util;
 use crate::{
-    AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, IncludeQuery, NamedProperty,
-    PipePropertyQuery, QueryExt, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
+    CountQueryExt, Database, Datastore, Edge, Identifier, NamedProperty, QueryExt, QueryOutputValue,
+    SpecificVertexQuery, Vertex, VertexProperties,
 };
 
 pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
@@ -39,7 +39,8 @@ pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
         q.clone(),
         Identifier::new("bar").unwrap(),
         serde_json::Value::Bool(true),
-    );
+    )
+    .unwrap();
     let output = db.get(q.include().properties().unwrap()).unwrap();
     assert_eq!(
         output,
@@ -64,7 +65,8 @@ pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
         q.clone(),
         Identifier::new("bar").unwrap(),
         serde_json::Value::Bool(true),
-    );
+    )
+    .unwrap();
     let output = db
         .get(
             q.clone()

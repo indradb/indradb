@@ -9,7 +9,8 @@ use indradb::util::{
     generate_uuid_v1,
 };
 use indradb::{
-    AllEdgeQuery, AllVertexQuery, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+    AllEdgeQuery, AllVertexQuery, CountQueryExt, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery,
+    SpecificVertexQuery, Vertex,
 };
 use indradb_proto as proto;
 use uuid::Uuid;

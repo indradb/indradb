@@ -1,6 +1,6 @@
 use crate::models::{
-    AllEdgeQuery, BulkInsertItem, CountQueryExt, Edge, Identifier, Query, QueryExt, SpecificEdgeQuery,
-    SpecificVertexQuery, Vertex,
+    AllEdgeQuery, BulkInsertItem, CountQueryExt, Edge, Identifier, Query, SpecificEdgeQuery, SpecificVertexQuery,
+    Vertex,
 };
 use crate::{Database, Datastore};
 

@@ -15,13 +15,13 @@ pub fn should_create_vertex_from_type<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_get_all_vertices<D: Datastore>(db: &Database<D>) {
-    let mut inserted_ids = create_vertices(db);
+    let inserted_ids = create_vertices(db);
     let range = util::get_vertices(db, AllVertexQuery).unwrap();
     check_has_all_vertices(range, inserted_ids);
 }
 
 pub fn should_get_range_vertices<D: Datastore>(db: &Database<D>) {
-    let mut inserted_ids = create_vertices(db);
+    let inserted_ids = create_vertices(db);
     let range = util::get_vertices(db, RangeVertexQuery::new()).unwrap();
     check_has_all_vertices(range, inserted_ids);
 }

@@ -310,11 +310,12 @@ pub fn should_get_a_vertex_properties_count<D: Datastore>(db: &Database<D>) {
     let v = Vertex::new(vertex_t);
     db.create_vertex(&v).unwrap();
     let q = SpecificVertexQuery::single(v.id);
-    let result = db.set_properties(
+    db.set_properties(
         q.clone(),
         Identifier::new("foo").unwrap(),
         serde_json::Value::Bool(true),
-    );
+    )
+    .unwrap();
     let count = extract_count(
         db.get(
             q.properties()
