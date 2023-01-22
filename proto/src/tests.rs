@@ -153,7 +153,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
-    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
+    fn vertex_property(&self, vertex: Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
         let q = SpecificVertexQuery::single(vertex.id).properties().unwrap().name(name);
         let props = util::extract_vertex_properties(self.get(q)?).unwrap();
         match props.len() {
@@ -169,7 +169,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
 
     fn all_vertex_properties_for_vertex(
         &'a self,
-        vertex: &Vertex,
+        vertex: Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         let q = SpecificVertexQuery::single(vertex.id).properties().unwrap();
         let props = util::extract_vertex_properties(self.get(q)?).unwrap();
@@ -184,8 +184,8 @@ impl<'a> Transaction<'a> for ClientTransaction {
         }
     }
 
-    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
-        let q = SpecificEdgeQuery::single(edge.clone()).properties().unwrap().name(name);
+    fn edge_property(&self, edge: Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
+        let q = SpecificEdgeQuery::single(edge).properties().unwrap().name(name);
         let props = util::extract_edge_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(None),
@@ -198,8 +198,8 @@ impl<'a> Transaction<'a> for ClientTransaction {
         }
     }
 
-    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
-        let q = SpecificEdgeQuery::single(edge.clone()).properties().unwrap();
+    fn all_edge_properties_for_edge(&'a self, edge: Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+        let q = SpecificEdgeQuery::single(edge).properties().unwrap();
         let props = util::extract_edge_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(Box::new(Vec::default().into_iter())),
@@ -243,7 +243,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         Ok(vertices?.into_iter().map(|v| v.id).max().unwrap_or(0))
     }
 
-    fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
+    fn create_vertex(&mut self, vertex: Vertex) -> Result<bool> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -251,7 +251,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         )
     }
 
-    fn create_edge(&mut self, edge: &Edge) -> Result<bool> {
+    fn create_edge(&mut self, edge: Edge) -> Result<bool> {
         map_client_result(
             self.exec
                 .borrow_mut()

@@ -24,7 +24,7 @@ pub fn should_get_a_valid_edge<D: Datastore>(db: &Database<D>) {
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
 
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     let e = util::get_edges(db, SpecificEdgeQuery::single(edge)).unwrap();
     assert_eq!(e.len(), 1);
@@ -53,17 +53,17 @@ pub fn should_create_a_valid_edge<D: Datastore>(db: &Database<D>) {
 
     // Set the edge and check
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
-    db.create_edge(&edge).unwrap();
-    let e = util::get_edges(db, SpecificEdgeQuery::single(edge.clone())).unwrap();
+    db.create_edge(edge).unwrap();
+    let e = util::get_edges(db, SpecificEdgeQuery::single(edge)).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(edge, e[0]);
 
     // `create_edge` should support the ability of updating an existing edge
     // - test for that
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     // First check that getting a single edge will still...get a single edge
-    let e = util::get_edges(db, SpecificEdgeQuery::single(edge.clone())).unwrap();
+    let e = util::get_edges(db, SpecificEdgeQuery::single(edge)).unwrap();
     assert_eq!(e.len(), 1);
     assert_eq!(edge, e[0]);
 
@@ -83,7 +83,7 @@ pub fn should_not_create_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let outbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, 0);
-    let result = db.create_edge(&edge);
+    let result = db.create_edge(edge);
     assert_eq!(result.unwrap(), false);
 }
 
@@ -94,7 +94,7 @@ pub fn should_delete_a_valid_edge<D: Datastore>(db: &Database<D>) {
 
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     let q = SpecificEdgeQuery::single(edge);
     db.set_properties(

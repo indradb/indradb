@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 ///
 /// Vertices are how you would represent nouns in the datastore. An example
 /// might be a user, or a movie. All vertices have a unique ID and a type.
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     /// The id of the vertex.
     pub id: u64,

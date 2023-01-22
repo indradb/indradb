@@ -19,8 +19,8 @@ fn setup_edge_with_indexed_property<D: Datastore>(db: &Database<D>, property_nam
     let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
-    let q = models::SpecificEdgeQuery::single(edge.clone());
-    db.create_edge(&edge).unwrap();
+    let q = models::SpecificEdgeQuery::single(edge);
+    db.create_edge(edge).unwrap();
     db.set_properties(q, property_name, serde_json::Value::Bool(true))
         .unwrap();
     edge
@@ -71,7 +71,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     // Check against another property
     let result = util::get_vertices(db, q.clone().without_property(other_property_name).unwrap());
     expect_err!(result, Error::NotIndexed);
-    db.index_property(other_property_name.clone()).unwrap();
+    db.index_property(other_property_name).unwrap();
     let result = util::get_vertices(db, q.without_property(other_property_name).unwrap()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
@@ -86,8 +86,8 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
     let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
-    let q = models::SpecificEdgeQuery::single(edge.clone());
-    db.create_edge(&edge).unwrap();
+    let q = models::SpecificEdgeQuery::single(edge);
+    db.create_edge(edge).unwrap();
     db.set_properties(q.clone(), property_name, serde_json::Value::Bool(true))
         .unwrap();
 
@@ -211,7 +211,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
     expect_err!(result, Error::NotIndexed);
 
     let edge = setup_edge_with_indexed_property(db, property_name);
-    let q = models::SpecificEdgeQuery::single(edge.clone());
+    let q = models::SpecificEdgeQuery::single(edge);
     db.set_properties(q.clone(), property_name, json_false.clone()).unwrap();
 
     // property foo should not be the old value
@@ -235,7 +235,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
     )
     .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0], edge.clone());
+    assert_eq!(result[0], edge);
 
     // property foo should be the new value
     let result = util::get_edges(

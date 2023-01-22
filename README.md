@@ -84,7 +84,7 @@ let edge = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v
 client.create_edge(&edge).await?;
 
 // Query for the edge
-let output: Vec<indradb::QueryOutputValue> = client.get(indradb::SpecificEdgeQuery::single(edge.clone())).await?;
+let output: Vec<indradb::QueryOutputValue> = client.get(indradb::SpecificEdgeQuery::single(edge)).await?;
 // Convenience function to extract out the edges from the query results
 let e = indradb::util::extract_edges(output).unwrap();
 assert_eq!(e.len(), 1);
@@ -126,7 +126,7 @@ let edge = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v
 db.create_edge(&edge)?;
 
 // Query for the edge
-let output: Vec<indradb::QueryOutputValue> = db.get(indradb::SpecificEdgeQuery::single(edge.clone()))?;
+let output: Vec<indradb::QueryOutputValue> = db.get(indradb::SpecificEdgeQuery::single(edge))?;
 // Convenience function to extract out the edges from the query results
 let e = indradb::util::extract_edges(output).unwrap();
 assert_eq!(e.len(), 1);

@@ -8,10 +8,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     let outbound_v = Vertex::new(1_000_000, vertex_t);
     let inbound_v = Vertex::new(1_000_001, vertex_t);
 
-    let items = vec![
-        BulkInsertItem::Vertex(outbound_v.clone()),
-        BulkInsertItem::Vertex(inbound_v.clone()),
-    ];
+    let items = vec![BulkInsertItem::Vertex(outbound_v), BulkInsertItem::Vertex(inbound_v)];
 
     db.bulk_insert(items).unwrap();
 
@@ -19,14 +16,14 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
 
     let items = vec![
-        BulkInsertItem::Edge(edge.clone()),
+        BulkInsertItem::Edge(edge),
         BulkInsertItem::VertexProperty(
             outbound_v.id,
             Identifier::new("vertex_property_name").unwrap(),
             serde_json::Value::String("vertex_property_value".to_string()),
         ),
         BulkInsertItem::EdgeProperty(
-            edge.clone(),
+            edge,
             Identifier::new("edge_property_name").unwrap(),
             serde_json::Value::String("edge_property_value".to_string()),
         ),
@@ -42,7 +39,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     assert_eq!(vertices[1].id, inbound_v.id);
     assert_eq!(vertices[1].t, inbound_v.t);
 
-    let edges = util::get_edges(db, SpecificEdgeQuery::single(edge.clone())).unwrap();
+    let edges = util::get_edges(db, SpecificEdgeQuery::single(edge)).unwrap();
 
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].outbound_id, outbound_v.id);
@@ -67,7 +64,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 
     let edge_properties = util::get_edge_properties(
         db,
-        SpecificEdgeQuery::single(edge.clone())
+        SpecificEdgeQuery::single(edge)
             .properties()
             .unwrap()
             .name(Identifier::new("edge_property_name").unwrap()),

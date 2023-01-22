@@ -127,9 +127,9 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
     let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
     let edge = Edge::new(outbound_id, edge_t, inbound_id);
-    let q = SpecificEdgeQuery::single(edge.clone());
+    let q = SpecificEdgeQuery::single(edge);
 
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     // Check to make sure there's no initial value
     let result = util::get_edge_properties(
@@ -196,9 +196,9 @@ pub fn should_get_all_edge_properties<D: Datastore>(db: &Database<D>) {
     let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
     let edge = Edge::new(outbound_id, edge_t, inbound_id);
-    let eq = SpecificEdgeQuery::single(edge.clone());
+    let eq = SpecificEdgeQuery::single(edge);
 
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     // Check to make sure there's no initial value
     let result = util::get_all_edge_properties(db, eq.clone()).unwrap();
@@ -269,7 +269,7 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
     let inbound_id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
 
     let edge = Edge::new(outbound_id, Identifier::new("baz").unwrap(), inbound_id);
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
     db.delete(
         SpecificEdgeQuery::single(edge)
             .properties()

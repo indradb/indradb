@@ -157,7 +157,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             let vertex_type = Identifier::new(matches.value_of("type").unwrap())?;
             let vertex = if let Some(id) = matches.value_of("id") {
                 let vertex = Vertex::new(id.parse::<u64>()?, vertex_type);
-                if !client.create_vertex(&vertex).await? {
+                if !client.create_vertex(vertex).await? {
                     return Err(Box::new(Error::IdTaken));
                 }
                 vertex
@@ -168,7 +168,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             println!("{:?}", vertex);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let edge = build_edge(matches)?;
-            let res = client.create_edge(&edge).await?;
+            let res = client.create_edge(edge).await?;
             if !res {
                 return Err(Box::new(errors::VertexInvalidError));
             }

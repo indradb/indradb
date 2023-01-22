@@ -521,8 +521,8 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::CreateVertex(vertex) => {
                 let vertex = vertex.into();
-                let v1 = d1.create_vertex(&vertex);
-                let v2 = d2.create_vertex(&vertex);
+                let v1 = d1.create_vertex(vertex);
+                let v2 = d2.create_vertex(vertex);
                 cmp!(v1, v2);
             }
             Op::Get(q) => {
@@ -539,8 +539,8 @@ fuzz_target!(|ops: Vec<Op>| {
             }
             Op::CreateEdge(edge) => {
                 let edge: indradb::Edge = edge.into();
-                let v1 = d1.create_edge(&edge);
-                let v2 = d2.create_edge(&edge);
+                let v1 = d1.create_edge(edge);
+                let v2 = d2.create_edge(edge);
                 cmp!(v1, v2);
             }
             Op::SetProperties(q, name, value) => {

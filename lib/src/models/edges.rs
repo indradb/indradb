@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// Edges are how you would represent a verb or a relationship in the
 /// datastore. An example might be "liked" or "reviewed". Edges are typed and
 /// directed.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Edge {
     /// The id of the outbound vertex.
     pub outbound_id: u64,

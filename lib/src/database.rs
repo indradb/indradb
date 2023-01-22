@@ -91,14 +91,14 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `vertex` - The vertex.
     /// * `name` - The property name.
-    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>>;
+    fn vertex_property(&self, vertex: Vertex, name: Identifier) -> Result<Option<serde_json::Value>>;
     /// Gets all vertex properties for a given vertex.
     ///
     /// # Arguments
     /// * `vertex` - The vertex.
     fn all_vertex_properties_for_vertex(
         &'a self,
-        vertex: &Vertex,
+        vertex: Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
 
     /// Gets the value of an edge property if it exists, or `None` otherwise.
@@ -106,12 +106,12 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `edge` - The edge.
     /// * `name` - The property name.
-    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>>;
+    fn edge_property(&self, edge: Edge, name: Identifier) -> Result<Option<serde_json::Value>>;
     /// Gets all edge properties for a given edges.
     ///
     /// # Arguments
     /// * `edge` - The edge.
-    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
+    fn all_edge_properties_for_edge(&'a self, edge: Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
 
     /// Deletes the given vertices.
     ///
@@ -149,14 +149,14 @@ pub trait Transaction<'a> {
     ///
     /// # Arguments
     /// * `vertex`: The vertex to create.
-    fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool>;
+    fn create_vertex(&mut self, vertex: Vertex) -> Result<bool>;
     /// Creates a new edge. Returns whether the edge was successfully
     /// created - if this is false, it's because one of the specified vertices
     /// is missing.
     ///
     /// # Arguments
     /// * `edge`: The edge to create.
-    fn create_edge(&mut self, edge: &Edge) -> Result<bool>;
+    fn create_edge(&mut self, edge: Edge) -> Result<bool>;
 
     /// Bulk inserts many vertices, edges, and/or properties. By default, this
     /// makes the underlying calls to insert the values, but can be overridden
@@ -168,10 +168,10 @@ pub trait Transaction<'a> {
         for item in items {
             match item {
                 BulkInsertItem::Vertex(vertex) => {
-                    self.create_vertex(&vertex)?;
+                    self.create_vertex(vertex)?;
                 }
                 BulkInsertItem::Edge(edge) => {
-                    self.create_edge(&edge)?;
+                    self.create_edge(edge)?;
                 }
                 BulkInsertItem::VertexProperty(id, name, value) => {
                     self.set_vertex_properties(vec![id], name, value)?;
@@ -253,7 +253,7 @@ impl<D: Datastore> Database<D> {
     ///
     /// # Arguments
     /// * `vertex`: The vertex to create.
-    pub fn create_vertex(&self, vertex: &Vertex) -> Result<bool> {
+    pub fn create_vertex(&self, vertex: Vertex) -> Result<bool> {
         let mut txn = self.datastore.transaction();
         txn.create_vertex(vertex)
     }
@@ -269,7 +269,7 @@ impl<D: Datastore> Database<D> {
         let next_id = txn.max_id()?.checked_add(1).ok_or(Error::IdTaken)?;
         let vertex = Vertex::new(next_id, t);
 
-        if !txn.create_vertex(&vertex)? {
+        if !txn.create_vertex(vertex)? {
             Err(Error::IdTaken)
         } else {
             Ok(vertex.id)
@@ -282,7 +282,7 @@ impl<D: Datastore> Database<D> {
     ///
     /// # Arguments
     /// * `edge`: The edge to create.
-    pub fn create_edge(&self, edge: &Edge) -> Result<bool> {
+    pub fn create_edge(&self, edge: Edge) -> Result<bool> {
         let mut txn = self.datastore.transaction();
         txn.create_edge(edge)
     }
@@ -335,7 +335,7 @@ impl<D: Datastore> Database<D> {
                     edge_properties
                         .into_iter()
                         .flat_map(|eps| {
-                            let iter = eps.props.iter().map(move |ep| (eps.edge.clone(), ep.name));
+                            let iter = eps.props.iter().map(move |ep| (eps.edge, ep.name));
                             iter.collect::<Vec<(Edge, Identifier)>>()
                         })
                         .collect(),
@@ -513,17 +513,17 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     for edge in piped_edges {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).edge_property(edge, *name)? {
+                            if let Some(value) = (*txn).edge_property(*edge, *name)? {
                                 props.push(NamedProperty::new(*name, value.clone()));
                             }
                         } else {
-                            for result in (*txn).all_edge_properties_for_edge(edge)? {
+                            for result in (*txn).all_edge_properties_for_edge(*edge)? {
                                 let (name, value) = result?;
                                 props.push(NamedProperty::new(name, value.clone()));
                             }
                         }
                         if !props.is_empty() {
-                            edge_properties.push(EdgeProperties::new(edge.clone(), props));
+                            edge_properties.push(EdgeProperties::new(*edge, props));
                         }
                     }
 
@@ -534,17 +534,17 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                     for vertex in piped_vertices {
                         let mut props = Vec::new();
                         if let Some(name) = &q.name {
-                            if let Some(value) = (*txn).vertex_property(vertex, *name)? {
+                            if let Some(value) = (*txn).vertex_property(*vertex, *name)? {
                                 props.push(NamedProperty::new(*name, value.clone()));
                             }
                         } else {
-                            for result in (*txn).all_vertex_properties_for_vertex(vertex)? {
+                            for result in (*txn).all_vertex_properties_for_vertex(*vertex)? {
                                 let (name, value) = result?;
                                 props.push(NamedProperty::new(name, value.clone()));
                             }
                         }
                         if !props.is_empty() {
-                            vertex_properties.push(VertexProperties::new(vertex.clone(), props));
+                            vertex_properties.push(VertexProperties::new(*vertex, props));
                         }
                     }
 

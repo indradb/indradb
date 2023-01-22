@@ -7,7 +7,7 @@ pub(crate) fn create_edge_from<D: Datastore>(db: &Database<D>, outbound_id: u64)
     let id = db.create_vertex_from_type(inbound_vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, id);
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
     id
 }
 
@@ -101,7 +101,7 @@ pub(crate) fn get_edge_properties<D: Datastore>(
             let iter = eps
                 .props
                 .into_iter()
-                .map(|ep| models::EdgeProperty::new(eps.edge.clone(), ep.value));
+                .map(|ep| models::EdgeProperty::new(eps.edge, ep.value));
             iter.collect::<Vec<models::EdgeProperty>>()
         });
         Ok(iter.collect())

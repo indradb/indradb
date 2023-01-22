@@ -67,12 +67,9 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>> {
-        let iter = ids.into_iter().filter_map(move |id| {
-            self.internal
-                .vertices
-                .get(&id)
-                .map(|value| Ok(Vertex::new(id, value.clone())))
-        });
+        let iter = ids
+            .into_iter()
+            .filter_map(move |id| self.internal.vertices.get(&id).map(|value| Ok(Vertex::new(id, *value))));
         Ok(Box::new(iter))
     }
 
@@ -115,17 +112,17 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn all_edges(&'a self) -> Result<DynIter<'a, Edge>> {
-        let iter = self.internal.edges.iter().map(|e| Ok(e.clone()));
+        let iter = self.internal.edges.iter().map(|e| Ok(*e));
         Ok(Box::new(iter))
     }
 
     fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
-        let iter = self.internal.edges.range(offset..).map(|e| Ok(e.clone()));
+        let iter = self.internal.edges.range(offset..).map(|e| Ok(*e));
         Ok(Box::new(iter))
     }
 
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
-        let iter = self.internal.reversed_edges.range(offset..).map(|e| Ok(e.clone()));
+        let iter = self.internal.reversed_edges.range(offset..).map(|e| Ok(*e));
         Ok(Box::new(iter))
     }
 
@@ -143,7 +140,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             for sub_container in container.values() {
                 for member in sub_container {
                     if let IndexedPropertyMember::Edge(edge) = member {
-                        edges.insert(edge.clone());
+                        edges.insert(*edge);
                     }
                 }
             }
@@ -165,13 +162,13 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 IndexedPropertyMember::Edge(edge) if self.internal.edges.contains(edge) => Some(edge),
                 _ => None,
             }));
-            Ok(Some(Box::new(iter.map(|e| Ok(e.clone())))))
+            Ok(Some(Box::new(iter.map(|e| Ok(*e)))))
         } else {
             Ok(None)
         }
     }
 
-    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
+    fn vertex_property(&self, vertex: Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
         if let Some(value) = self.internal.vertex_properties.get(&(vertex.id, name)) {
             Ok(Some(value.0.clone()))
         } else {
@@ -181,7 +178,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
 
     fn all_vertex_properties_for_vertex(
         &'a self,
-        vertex: &Vertex,
+        vertex: Vertex,
     ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         let mut vertex_properties = Vec::new();
         let from = &(vertex.id, Identifier::default());
@@ -195,19 +192,19 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(Box::new(vertex_properties.into_iter().map(Ok)))
     }
 
-    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
-        if let Some(value) = self.internal.edge_properties.get(&(edge.clone(), name)) {
+    fn edge_property(&self, edge: Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
+        if let Some(value) = self.internal.edge_properties.get(&(edge, name)) {
             Ok(Some(value.0.clone()))
         } else {
             Ok(None)
         }
     }
 
-    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+    fn all_edge_properties_for_edge(&'a self, edge: Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
         let mut edge_properties = Vec::new();
-        let from = &(edge.clone(), Identifier::default());
+        let from = &(edge, Identifier::default());
         for ((prop_edge, prop_name), prop_value) in self.internal.edge_properties.range(from..) {
-            if prop_edge != edge {
+            if prop_edge != &edge {
                 break;
             }
             edge_properties.push((*prop_name, prop_value.0.clone()));
@@ -231,14 +228,14 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                     break;
                 }
 
-                deletable_vertex_properties.push(property_key.clone());
+                deletable_vertex_properties.push(*property_key);
             }
             self.delete_vertex_properties(deletable_vertex_properties)?;
 
             let mut deletable_edges: Vec<Edge> = Vec::new();
             for edge in self.internal.edges.iter() {
                 if edge.outbound_id == vertex.id || edge.inbound_id == vertex.id {
-                    deletable_edges.push(edge.clone());
+                    deletable_edges.push(*edge);
                 }
             }
             self.delete_edges(deletable_edges)?;
@@ -252,18 +249,14 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             self.internal.reversed_edges.remove(&edge.reversed());
 
             let mut deletable_edge_properties: Vec<(Edge, Identifier)> = Vec::new();
-            for (property_key, _) in self
-                .internal
-                .edge_properties
-                .range((edge.clone(), Identifier::default())..)
-            {
+            for (property_key, _) in self.internal.edge_properties.range((edge, Identifier::default())..) {
                 let &(ref property_edge, _) = property_key;
 
                 if &edge != property_edge {
                     break;
                 }
 
-                deletable_edge_properties.push(property_key.clone());
+                deletable_edge_properties.push(*property_key);
             }
             self.delete_edge_properties(deletable_edge_properties)?;
         }
@@ -322,7 +315,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         }
     }
 
-    fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
+    fn create_vertex(&mut self, vertex: Vertex) -> Result<bool> {
         let mut inserted = false;
 
         self.internal.vertices.entry(vertex.id).or_insert_with(|| {
@@ -333,14 +326,14 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(inserted)
     }
 
-    fn create_edge(&mut self, edge: &Edge) -> Result<bool> {
+    fn create_edge(&mut self, edge: Edge) -> Result<bool> {
         if !self.internal.vertices.contains_key(&edge.outbound_id)
             || !self.internal.vertices.contains_key(&edge.inbound_id)
         {
             return Ok(false);
         }
 
-        self.internal.edges.insert(edge.clone());
+        self.internal.edges.insert(edge);
         self.internal.reversed_edges.insert(edge.reversed());
         Ok(true)
     }
@@ -356,11 +349,11 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             }
         }
         for edge in self.internal.edges.iter() {
-            if let Some(value) = self.internal.edge_properties.get(&(edge.clone(), name)) {
+            if let Some(value) = self.internal.edge_properties.get(&(*edge, name)) {
                 property_container
                     .entry(value.clone())
                     .or_insert_with(HashSet::new)
-                    .insert(IndexedPropertyMember::Edge(edge.clone()));
+                    .insert(IndexedPropertyMember::Edge(*edge));
             }
         }
 
@@ -407,7 +400,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()> {
         let mut deletable_edge_properties = Vec::new();
         for edge in &edges {
-            deletable_edge_properties.push((edge.clone(), name));
+            deletable_edge_properties.push((*edge, name));
         }
         self.delete_edge_properties(deletable_edge_properties)?;
 
@@ -415,7 +408,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         for edge in &edges {
             self.internal
                 .edge_properties
-                .insert((edge.clone(), name), wrapped_value.clone());
+                .insert((*edge, name), wrapped_value.clone());
         }
 
         if let Some(property_container) = self.internal.property_values.get_mut(&name) {

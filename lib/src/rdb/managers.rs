@@ -97,7 +97,7 @@ impl<'a> VertexManager<'a> {
         })
     }
 
-    pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
+    pub fn create(&self, batch: &mut WriteBatch, vertex: models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
         batch.put_cf(self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
         Ok(())
@@ -129,7 +129,7 @@ impl<'a> VertexManager<'a> {
             for item in edge_range_manager.iterate_for_root(id, None)? {
                 let edge = item?;
                 debug_assert_eq!(edge.outbound_id, id);
-                edge_manager.delete(batch, indexed_properties, &edge)?;
+                edge_manager.delete(batch, indexed_properties, edge)?;
             }
         }
 
@@ -138,7 +138,7 @@ impl<'a> VertexManager<'a> {
             for item in reversed_edge_range_manager.iterate_for_root(id, None)? {
                 let edge = item?;
                 debug_assert_eq!(edge.outbound_id, id);
-                edge_manager.delete(batch, indexed_properties, &edge)?;
+                edge_manager.delete(batch, indexed_properties, edge)?;
             }
         }
 
@@ -160,18 +160,18 @@ impl<'a> EdgeManager<'a> {
         EdgeManager { db }
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, edge: models::Edge) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
         let reversed_edge = edge.reversed();
 
         if edge_range_manager.contains(edge)? {
             edge_range_manager.delete(batch, edge)?;
-            reversed_edge_range_manager.delete(batch, &reversed_edge)?;
+            reversed_edge_range_manager.delete(batch, reversed_edge)?;
         }
 
         edge_range_manager.set(batch, edge)?;
-        reversed_edge_range_manager.set(batch, &reversed_edge)?;
+        reversed_edge_range_manager.set(batch, reversed_edge)?;
         Ok(())
     }
 
@@ -179,18 +179,18 @@ impl<'a> EdgeManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        edge: &models::Edge,
+        edge: models::Edge,
     ) -> Result<()> {
         let edge_range_manager = EdgeRangeManager::new(self.db);
         edge_range_manager.delete(batch, edge)?;
 
         let reversed_edge_range_manager = EdgeRangeManager::new_reversed(self.db);
-        reversed_edge_range_manager.delete(batch, &edge.reversed())?;
+        reversed_edge_range_manager.delete(batch, edge.reversed())?;
 
         let edge_property_manager = EdgePropertyManager::new(self.db);
         for item in edge_property_manager.iterate_for_owner(edge)? {
             let (edge_property_edge, edge_property_name, _) = item?;
-            edge_property_manager.delete(batch, indexed_properties, &edge_property_edge, edge_property_name)?;
+            edge_property_manager.delete(batch, indexed_properties, edge_property_edge, edge_property_name)?;
         }
 
         Ok(())
@@ -217,7 +217,7 @@ impl<'a> EdgeRangeManager<'a> {
         }
     }
 
-    fn key(&self, edge: &models::Edge) -> Vec<u8> {
+    fn key(&self, edge: models::Edge) -> Vec<u8> {
         util::build(&[
             util::Component::U64(edge.outbound_id),
             util::Component::Identifier(edge.t),
@@ -239,7 +239,7 @@ impl<'a> EdgeRangeManager<'a> {
         })
     }
 
-    pub fn contains(&self, edge: &models::Edge) -> Result<bool> {
+    pub fn contains(&self, edge: models::Edge) -> Result<bool> {
         Ok(self.db.get_cf(self.cf, self.key(edge))?.is_some())
     }
 
@@ -292,13 +292,13 @@ impl<'a> EdgeRangeManager<'a> {
         self.iterate(iterator)
     }
 
-    pub fn set(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
+    pub fn set(&self, batch: &mut WriteBatch, edge: models::Edge) -> Result<()> {
         let key = self.key(edge);
         batch.put_cf(self.cf, &key, []);
         Ok(())
     }
 
-    pub fn delete(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
+    pub fn delete(&self, batch: &mut WriteBatch, edge: models::Edge) -> Result<()> {
         batch.delete_cf(self.cf, self.key(edge));
         Ok(())
     }
@@ -415,7 +415,7 @@ impl<'a> EdgePropertyManager<'a> {
         }
     }
 
-    fn key(&self, edge: &models::Edge, name: models::Identifier) -> Vec<u8> {
+    fn key(&self, edge: models::Edge, name: models::Identifier) -> Vec<u8> {
         util::build(&[
             util::Component::U64(edge.outbound_id),
             util::Component::Identifier(edge.t),
@@ -426,7 +426,7 @@ impl<'a> EdgePropertyManager<'a> {
 
     pub fn iterate_for_owner(
         &'a self,
-        edge: &'a models::Edge,
+        edge: models::Edge,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
         let prefix = util::build(&[
             util::Component::U64(edge.outbound_id),
@@ -464,7 +464,7 @@ impl<'a> EdgePropertyManager<'a> {
         Ok(Box::new(mapped))
     }
 
-    pub fn get(&self, edge: &models::Edge, name: models::Identifier) -> Result<Option<models::Json>> {
+    pub fn get(&self, edge: models::Edge, name: models::Identifier) -> Result<Option<models::Json>> {
         match self.db.get_cf(self.cf, self.key(edge, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
@@ -475,7 +475,7 @@ impl<'a> EdgePropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        edge: &models::Edge,
+        edge: models::Edge,
         name: models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
@@ -497,7 +497,7 @@ impl<'a> EdgePropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        edge: &models::Edge,
+        edge: models::Edge,
         name: models::Identifier,
     ) -> Result<()> {
         if indexed_properties.contains(&name) {
@@ -621,7 +621,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: models::Identifier, property_value: &models::Json, edge: &models::Edge) -> Vec<u8> {
+    fn key(&self, property_name: models::Identifier, property_value: &models::Json, edge: models::Edge) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
@@ -679,7 +679,7 @@ impl<'a> EdgePropertyValueManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
-        edge: &models::Edge,
+        edge: models::Edge,
         property_name: models::Identifier,
         property_value: &models::Json,
     ) {
@@ -690,7 +690,7 @@ impl<'a> EdgePropertyValueManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        edge: &models::Edge,
+        edge: models::Edge,
         property_name: models::Identifier,
         property_value: &models::Json,
     ) {

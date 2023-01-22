@@ -110,8 +110,8 @@ impl Client {
     ///
     /// # Arguments
     /// * `vertex`: The vertex to create.
-    pub async fn create_vertex(&mut self, vertex: &indradb::Vertex) -> Result<bool, ClientError> {
-        let vertex: crate::Vertex = vertex.clone().into();
+    pub async fn create_vertex(&mut self, vertex: indradb::Vertex) -> Result<bool, ClientError> {
+        let vertex: crate::Vertex = vertex.into();
         let res = self.0.create_vertex(vertex).await?;
         Ok(res.into_inner().created)
     }
@@ -135,8 +135,8 @@ impl Client {
     ///
     /// # Arguments
     /// * `edge`: The edge to create.
-    pub async fn create_edge(&mut self, edge: &indradb::Edge) -> Result<bool, ClientError> {
-        let edge: crate::Edge = edge.clone().into();
+    pub async fn create_edge(&mut self, edge: indradb::Edge) -> Result<bool, ClientError> {
+        let edge: crate::Edge = edge.into();
         let res = self.0.create_edge(edge).await?;
         Ok(res.into_inner().created)
     }

@@ -206,7 +206,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     async fn create_vertex(&self, request: Request<crate::Vertex>) -> Result<Response<crate::CreateResponse>, Status> {
         let db = self.db.clone();
         let vertex = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex(&vertex)).await)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex(vertex)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 
@@ -223,7 +223,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     async fn create_edge(&self, request: Request<crate::Edge>) -> Result<Response<crate::CreateResponse>, Status> {
         let db = self.db.clone();
         let edge = map_conversion_result(request.into_inner().try_into())?;
-        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(&edge)).await)?;
+        let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(edge)).await)?;
         Ok(Response::new(crate::CreateResponse { created: res }))
     }
 

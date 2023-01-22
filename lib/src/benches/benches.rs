@@ -39,7 +39,7 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let edge = Edge::new(outbound_id, t, inbound_id);
 
     b.iter(|| {
-        db.create_edge(&edge).unwrap();
+        db.create_edge(edge).unwrap();
     });
 }
 
@@ -50,11 +50,11 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
         let outbound_id = db.create_vertex_from_type(t).unwrap();
         let inbound_id = db.create_vertex_from_type(t).unwrap();
         let edge = Edge::new(outbound_id, t, inbound_id);
-        db.create_edge(&edge).unwrap();
+        db.create_edge(edge).unwrap();
         edge
     };
 
-    let q: Query = SpecificEdgeQuery::single(edge.clone()).into();
+    let q: Query = SpecificEdgeQuery::single(edge).into();
 
     b.iter(|| {
         db.get(q.clone()).unwrap();
@@ -67,7 +67,7 @@ pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, db: &mut Database<D>)
     let outbound_id = db.create_vertex_from_type(t).unwrap();
     let inbound_id = db.create_vertex_from_type(t).unwrap();
     let edge = Edge::new(outbound_id, t, inbound_id);
-    db.create_edge(&edge).unwrap();
+    db.create_edge(edge).unwrap();
 
     let q: Query = AllEdgeQuery.count().unwrap().into();
 
@@ -104,7 +104,7 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
         ));
     }
     for edge in edges.into_iter() {
-        items.push(BulkInsertItem::Edge(edge.clone()));
+        items.push(BulkInsertItem::Edge(edge));
         items.push(BulkInsertItem::EdgeProperty(edge, t, serde_json::Value::Bool(true)));
     }
 

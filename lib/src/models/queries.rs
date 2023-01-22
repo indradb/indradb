@@ -31,7 +31,7 @@ macro_rules! nestable_query {
 /// query to an edge query. `EdgeDirection`s are used to specify which
 /// end of things you want to pipe - either the outbound items or the inbound
 /// items.
-#[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash)]
 pub enum EdgeDirection {
     /// Outbound direction.
     Outbound,
