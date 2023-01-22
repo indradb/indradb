@@ -732,7 +732,7 @@ pub enum QueryOutputValue {
 mod tests {
     use super::{
         AllVertexQuery, CountQuery, CountQueryExt, EdgeDirection, PipePropertyQuery, PipeQuery,
-        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query, QueryExt,
+        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query,
     };
     use crate::{Identifier, ValidationError};
     use serde_json::json;
