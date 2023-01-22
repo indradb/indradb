@@ -1,15 +1,17 @@
 use std::convert::TryFrom;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use crate::errors::{ValidationError, ValidationResult};
 
-use serde::{Deserialize, Serialize};
+use internment::Intern;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A string that must be less than 256 characters long, and can only contain
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
-#[derive(Eq, PartialEq, Clone, Debug, Hash, Ord, PartialOrd, Serialize, Deserialize)]
-pub struct Identifier(pub(crate) String);
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
+pub struct Identifier(pub(crate) Intern<String>);
 
 impl Identifier {
     /// Constructs a new identifier.
@@ -28,7 +30,7 @@ impl Identifier {
         } else if !s.chars().all(|c| c == '-' || c == '_' || c.is_alphanumeric()) {
             Err(ValidationError::InvalidValue)
         } else {
-            Ok(Identifier(s))
+            Ok(Self(Intern::new(s)))
         }
     }
 
@@ -41,23 +43,25 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
-        Identifier(s.into())
+        Self(Intern::new(s.into()))
     }
 
     /// Gets a reference to the identifier value.
     pub fn as_str(&self) -> &str {
         &self.0
     }
-
-    /// Converts the identifier into a string with the underlying value.
-    pub fn into_string(self) -> String {
-        self.0
-    }
 }
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self("".to_string())
+        Self(Intern::new("".to_string()))
+    }
+}
+
+impl Deref for Identifier {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -77,9 +81,23 @@ impl TryFrom<String> for Identifier {
     }
 }
 
-impl ToString for Identifier {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl Serialize for Identifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (*self.0).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Identifier {
+    fn deserialize<D>(deserializer: D) -> Result<Identifier, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: String = Deserialize::deserialize(deserializer)?;
+        let id = unsafe { Identifier::new_unchecked(v) };
+        Ok(id)
     }
 }
 
@@ -118,6 +136,5 @@ mod tests {
         assert_eq!(Identifier::from_str("foo").unwrap(), id);
         assert_eq!(id.as_str(), "foo");
         assert_eq!(id.to_string(), "foo".to_string());
-        assert_eq!(id.into_string(), "foo".to_string());
     }
 }

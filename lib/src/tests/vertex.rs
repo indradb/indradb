@@ -55,8 +55,8 @@ pub fn should_get_single_vertex<D: Datastore>(db: &Database<D>) {
     db.create_vertex(&vertex).unwrap();
     let range = util::get_vertices(db, SpecificVertexQuery::single(vertex.id)).unwrap();
     assert_eq!(range.len(), 1);
-    assert_eq!(range[0].id, vertex.id);
-    assert_eq!(range[0].t.0, "test_vertex_type");
+    assert_eq!(range[0].id, id);
+    assert_eq!(range[0].t.as_str(), "test_vertex_type");
 }
 
 pub fn should_get_single_vertex_nonexisting<D: Datastore>(db: &Database<D>) {
