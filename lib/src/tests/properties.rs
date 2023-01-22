@@ -1,6 +1,7 @@
 use super::util;
+use crate::util::extract_count;
 use crate::{
-    errors, expect_err, AllVertexQuery, Database, Datastore, Edge, Identifier, PipePropertyQuery,
+    errors, expect_err, AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, PipePropertyQuery,
     PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
@@ -289,6 +290,43 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
             .name(Identifier::new("bleh").unwrap()),
     )
     .unwrap();
+}
+
+pub fn should_get_an_edge_properties_count<D: Datastore>(db: &Database<D>) {
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
+    let v = Vertex::new(vertex_t);
+    db.create_vertex(&v).unwrap();
+    let q = SpecificVertexQuery::single(v.id);
+    let count = extract_count(
+        db.get(q.outbound().unwrap().properties().unwrap().count().unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(count == 0);
+}
+
+pub fn should_get_a_vertex_properties_count<D: Datastore>(db: &Database<D>) {
+    let vertex_t = Identifier::new("test_vertex_type").unwrap();
+    let v = Vertex::new(vertex_t);
+    db.create_vertex(&v).unwrap();
+    let q = SpecificVertexQuery::single(v.id);
+    let result = db.set_properties(
+        q.clone(),
+        Identifier::new("foo").unwrap(),
+        serde_json::Value::Bool(true),
+    );
+    let count = extract_count(
+        db.get(
+            q.properties()
+                .unwrap()
+                .name(Identifier::new("foo").unwrap())
+                .count()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(count >= 1);
 }
 
 pub fn should_not_set_properties_on_count<D: Datastore>(db: &Database<D>) {

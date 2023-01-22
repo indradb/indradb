@@ -1,6 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::util::{extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices};
-use crate::{models, Database, Datastore, QueryExt};
+use crate::{models, CountQueryExt, Database, Datastore, QueryExt};
 
 use uuid::Uuid;
 

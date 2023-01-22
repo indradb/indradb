@@ -1,7 +1,7 @@
 use super::util;
 use crate::{
-    AllVertexQuery, Database, Datastore, Edge, Identifier, IncludeQuery, NamedProperty, PipePropertyQuery, QueryExt,
-    QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
+    AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, IncludeQuery, NamedProperty,
+    PipePropertyQuery, QueryExt, QueryOutputValue, SpecificVertexQuery, Vertex, VertexProperties,
 };
 
 pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
@@ -40,14 +40,7 @@ pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
         Identifier::new("bar").unwrap(),
         serde_json::Value::Bool(true),
     );
-    // When using the "proper" query interface, a `PipePropertyQuery`
-    // actually shouldn't be nested. But the database does support it. We just
-    // need to construct the query "manually" to hit this case.
-    let q = PipePropertyQuery {
-        inner: Box::new(q.include().into()),
-        name: None,
-    };
-    let output = db.get(q).unwrap();
+    let output = db.get(q.include().properties().unwrap()).unwrap();
     assert_eq!(
         output,
         vec![
@@ -59,6 +52,46 @@ pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
                     serde_json::Value::Bool(true)
                 ),],
             )])
+        ]
+    );
+}
+
+pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
+    let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
+    let q = SpecificVertexQuery::single(id);
+    db.index_property(Identifier::new("bar").unwrap()).unwrap();
+    db.set_properties(
+        q.clone(),
+        Identifier::new("bar").unwrap(),
+        serde_json::Value::Bool(true),
+    );
+    let output = db
+        .get(
+            q.clone()
+                .include()
+                .with_property(Identifier::new("bar").unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        output,
+        vec![
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+        ]
+    );
+    let output = db
+        .get(
+            q.include()
+                .with_property_equal_to(Identifier::new("bar").unwrap(), serde_json::Value::Bool(true))
+                .unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        output,
+        vec![
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
         ]
     );
 }

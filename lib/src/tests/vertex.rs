@@ -1,8 +1,10 @@
 use std::collections::HashSet;
 
 use super::util;
+use crate::util::extract_count;
 use crate::{
-    errors, expect_err, models, AllVertexQuery, Database, Datastore, QueryExt, RangeVertexQuery, SpecificVertexQuery,
+    errors, expect_err, models, AllVertexQuery, CountQueryExt, Database, Datastore, QueryExt, RangeVertexQuery,
+    SpecificVertexQuery,
 };
 
 use uuid::Uuid;
@@ -189,6 +191,8 @@ pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {
     let v = models::Vertex::new(vertex_t);
     db.create_vertex(&v).unwrap();
     let count = util::get_vertex_count(db).unwrap();
+    assert!(count >= 1);
+    let count = extract_count(db.get(SpecificVertexQuery::single(v.id).count().unwrap()).unwrap()).unwrap();
     assert!(count >= 1);
 }
 

@@ -15,7 +15,7 @@ full_bench_impl!(MemoryDatastore::new_db());
 mod tests {
     use super::MemoryDatastore;
     use crate::util::{extract_count, extract_vertices};
-    use crate::{AllVertexQuery, Database, Identifier, QueryExt, SpecificVertexQuery};
+    use crate::{AllVertexQuery, CountQueryExt, Database, Identifier, QueryExt, SpecificVertexQuery};
 
     use tempfile::NamedTempFile;
     use uuid::Uuid;

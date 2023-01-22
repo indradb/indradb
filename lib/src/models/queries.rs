@@ -20,6 +20,7 @@ macro_rules! into_query {
 macro_rules! nestable_query {
     ($name:ident, $variant:ident) => {
         impl QueryExt for $name {}
+        impl CountQueryExt for $name {}
         into_query!($name, $variant);
     };
 }
@@ -215,7 +216,9 @@ pub trait QueryExt: Into<Query> {
     fn include(self) -> IncludeQuery {
         IncludeQuery::new(Box::new(self.into()))
     }
+}
 
+pub trait CountQueryExt: Into<Query> {
     /// Gets the count from this query.
     fn count(self) -> errors::ValidationResult<CountQuery> {
         CountQuery::new(Box::new(self.into()))
@@ -227,6 +230,7 @@ pub trait QueryExt: Into<Query> {
 pub struct AllVertexQuery;
 
 impl QueryExt for AllVertexQuery {}
+impl CountQueryExt for AllVertexQuery {}
 
 // we don't want to impl From since the reverse operation isn't allowed
 #[allow(clippy::from_over_into)]
@@ -381,6 +385,7 @@ impl VertexWithPropertyValueQuery {
 pub struct AllEdgeQuery;
 
 impl QueryExt for AllEdgeQuery {}
+impl CountQueryExt for AllEdgeQuery {}
 
 // we don't want to impl From since the reverse operation isn't allowed
 #[allow(clippy::from_over_into)]
@@ -540,6 +545,7 @@ pub struct PipePropertyQuery {
 }
 
 into_query!(PipePropertyQuery, PipeProperty);
+impl CountQueryExt for PipePropertyQuery {}
 
 impl PipePropertyQuery {
     /// Creates a new pipe property query.
@@ -725,8 +731,8 @@ pub enum QueryOutputValue {
 #[cfg(test)]
 mod tests {
     use super::{
-        AllVertexQuery, CountQuery, EdgeDirection, PipePropertyQuery, PipeQuery, PipeWithPropertyPresenceQuery,
-        PipeWithPropertyValueQuery, Query, QueryExt,
+        AllVertexQuery, CountQuery, CountQueryExt, EdgeDirection, PipePropertyQuery, PipeQuery,
+        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query, QueryExt,
     };
     use crate::{Identifier, ValidationError};
     use serde_json::json;

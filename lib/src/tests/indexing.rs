@@ -144,6 +144,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
     let json_false = serde_json::Value::Bool(false);
     let property_name = models::Identifier::new("updateable-vertex-property").unwrap();
 
+    // Ensure errors happen when attempting to query before the property is indexed
     let result = util::get_vertices(
         db,
         models::VertexWithPropertyValueQuery::new(property_name.clone(), json_true.clone()),
