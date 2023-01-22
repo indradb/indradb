@@ -58,7 +58,7 @@ fn required_field<T>(field_name: &str, value: Option<T>) -> Result<T, Conversion
 
 impl From<indradb::Identifier> for crate::Identifier {
     fn from(t: indradb::Identifier) -> Self {
-        crate::Identifier { value: t.into_string() }
+        crate::Identifier { value: t.to_string() }
     }
 }
 
