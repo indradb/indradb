@@ -162,7 +162,7 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
                 }
                 vertex
             } else {
-                let id = client.create_vertex_from_type(vertex_type.clone()).await?;
+                let id = client.create_vertex_from_type(vertex_type).await?;
                 Vertex::new(id, vertex_type)
             };
             println!("{:?}", vertex);

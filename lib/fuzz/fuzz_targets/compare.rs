@@ -547,8 +547,8 @@ fuzz_target!(|ops: Vec<Op>| {
                 let q: indradb::Query = q.into();
                 let name: indradb::Identifier = name.into();
                 let value: serde_json::Value = value.into();
-                let v1 = d1.set_properties(q.clone(), name.clone(), value.clone());
-                let v2 = d2.set_properties(q, name.clone(), value);
+                let v1 = d1.set_properties(q.clone(), name, value.clone());
+                let v2 = d2.set_properties(q, name, value);
                 cmp!(v1, v2);
             }
             Op::IndexProperty(t) => {

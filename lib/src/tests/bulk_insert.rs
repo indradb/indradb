@@ -5,7 +5,7 @@ use crate::{
 
 pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = Vertex::new(1_000_000, vertex_t.clone());
+    let outbound_v = Vertex::new(1_000_000, vertex_t);
     let inbound_v = Vertex::new(1_000_001, vertex_t);
 
     let items = vec![
@@ -16,7 +16,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     db.bulk_insert(items).unwrap();
 
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let edge = Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
 
     let items = vec![
         BulkInsertItem::Edge(edge.clone()),
@@ -85,7 +85,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 // Bulk insert allows for redundant vertex insertion
 pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
     let items = vec![BulkInsertItem::Vertex(Vertex::new(id, vertex_t))];
     assert!(db.bulk_insert(items).is_ok());
 }
@@ -94,12 +94,12 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
 // associated with an inserted edge exist; this verifies that
 pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let v1_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let v1_id = db.create_vertex_from_type(vertex_t).unwrap();
     let v2 = Vertex::new(u64::max_value(), vertex_t);
 
     let edge_t = Identifier::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(Edge::new(v1_id, edge_t.clone(), v2.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v1_id, edge_t, v2.id))];
     assert!(db.bulk_insert(items).is_ok());
     let items = vec![BulkInsertItem::Edge(Edge::new(v2.id, edge_t, v1_id))];
     assert!(db.bulk_insert(items).is_ok());

@@ -42,7 +42,7 @@ pub(crate) fn get_edges<D: Datastore, Q: Into<models::Query>>(db: &Database<D>, 
 pub(crate) fn get_edge_count<D: Datastore>(
     db: &Database<D>,
     id: u64,
-    t: Option<&models::Identifier>,
+    t: Option<models::Identifier>,
     direction: models::EdgeDirection,
 ) -> Result<u64> {
     let q = models::SpecificVertexQuery::single(id);
@@ -53,7 +53,7 @@ pub(crate) fn get_edge_count<D: Datastore>(
     };
 
     let q: models::Query = if let Some(t) = t {
-        q.t(t.clone()).count().unwrap().into()
+        q.t(t).count().unwrap().into()
     } else {
         q.count().unwrap().into()
     };

@@ -94,7 +94,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1);
@@ -107,7 +107,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1)
@@ -121,7 +121,7 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
         .outbound()
         .unwrap()
         .limit(1)
-        .t(edge_t.clone())
+        .t(edge_t)
         .inbound()
         .unwrap()
         .limit(1)
@@ -156,7 +156,7 @@ pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
     let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
-    let count = util::get_edge_count(db, outbound_id, Some(&t), models::EdgeDirection::Outbound).unwrap();
+    let count = util::get_edge_count(db, outbound_id, Some(t), models::EdgeDirection::Outbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -168,7 +168,7 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) {
     let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);
     let t = models::Identifier::new("test_edge_type").unwrap();
-    let count = util::get_edge_count(db, inbound_id, Some(&t), models::EdgeDirection::Inbound).unwrap();
+    let count = util::get_edge_count(db, inbound_id, Some(t), models::EdgeDirection::Inbound).unwrap();
     assert_eq!(count, 0);
 }
 
@@ -221,7 +221,7 @@ fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<u64> {
     let t = models::Identifier::new("test_vertex_type").unwrap();
     let mut ids = Vec::with_capacity(5);
     for _i in 0..5 {
-        let id = db.create_vertex_from_type(t.clone()).unwrap();
+        let id = db.create_vertex_from_type(t).unwrap();
         ids.push(id);
     }
     ids
