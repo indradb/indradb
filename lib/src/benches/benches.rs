@@ -10,17 +10,14 @@ pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) 
     let t = Identifier::new("bench_create_vertex").unwrap();
 
     b.iter(|| {
-        let v = Vertex::new(t.clone());
-        db.create_vertex(&v).unwrap();
+        db.create_vertex_from_type(t.clone()).unwrap();
     });
 }
 
 pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let id = {
         let t = Identifier::new("bench_get_vertices").unwrap();
-        let v = Vertex::new(t);
-        db.create_vertex(&v).unwrap();
-        v.id
+        db.create_vertex_from_type(t).unwrap()
     };
 
     let q: Query = SpecificVertexQuery::single(id).into();
@@ -34,11 +31,9 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("bench_create_edge").unwrap();
 
     let (outbound_id, inbound_id) = {
-        let outbound_v = Vertex::new(t.clone());
-        let inbound_v = Vertex::new(t.clone());
-        db.create_vertex(&outbound_v).unwrap();
-        db.create_vertex(&inbound_v).unwrap();
-        (outbound_v.id, inbound_v.id)
+        let outbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+        let inbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+        (outbound_id, inbound_id)
     };
 
     let edge = Edge::new(outbound_id, t.clone(), inbound_id);
@@ -52,11 +47,9 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("bench_get_edges").unwrap();
 
     let edge = {
-        let outbound_v = Vertex::new(t.clone());
-        let inbound_v = Vertex::new(t.clone());
-        db.create_vertex(&outbound_v).unwrap();
-        db.create_vertex(&inbound_v).unwrap();
-        let edge = Edge::new(outbound_v.id, t.clone(), inbound_v.id);
+        let outbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+        let inbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+        let edge = Edge::new(outbound_id, t.clone(), inbound_id);
         db.create_edge(&edge).unwrap();
         edge
     };
@@ -71,11 +64,9 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
 pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("bench_get_edge_count").unwrap();
 
-    let outbound_v = Vertex::new(t.clone());
-    let inbound_v = Vertex::new(t.clone());
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
-    let edge = Edge::new(outbound_v.id, t.clone(), inbound_v.id);
+    let outbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(t.clone()).unwrap();
+    let edge = Edge::new(outbound_id, t.clone(), inbound_id);
     db.create_edge(&edge).unwrap();
 
     let q: Query = AllEdgeQuery.count().unwrap().into();
@@ -90,24 +81,24 @@ const BULK_INSERT_COUNT: usize = 100;
 pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("bench_bulk_insert").unwrap();
 
-    let mut vertices = Vec::with_capacity(BULK_INSERT_COUNT);
+    let mut vertex_ids = Vec::with_capacity(BULK_INSERT_COUNT);
     for _ in 0..BULK_INSERT_COUNT {
-        vertices.push(Vertex::new(t.clone()));
+        vertex_ids.push(db.create_vertex_from_type(t.clone()).unwrap());
     }
 
     let mut edges = Vec::with_capacity(BULK_INSERT_COUNT * BULK_INSERT_COUNT);
     for i in 0..BULK_INSERT_COUNT {
         for j in 0..BULK_INSERT_COUNT {
-            edges.push(Edge::new(vertices[i].id, t.clone(), vertices[j].id));
+            edges.push(Edge::new(vertex_ids[i], t.clone(), vertex_ids[j]));
         }
     }
 
-    let mut items = Vec::with_capacity(2 * vertices.len() + 2 * edges.len());
+    let mut items = Vec::with_capacity(2 * vertex_ids.len() + 2 * edges.len());
     let t = Identifier::new("is_benchmark").unwrap();
-    for vertex in vertices.into_iter() {
-        items.push(BulkInsertItem::Vertex(vertex.clone()));
+    for vertex_id in vertex_ids.into_iter() {
+        items.push(BulkInsertItem::Vertex(Vertex::new(vertex_id, t.clone())));
         items.push(BulkInsertItem::VertexProperty(
-            vertex.id,
+            vertex_id,
             t.clone(),
             serde_json::Value::Bool(true),
         ));

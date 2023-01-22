@@ -45,6 +45,24 @@ impl<'a> VertexManager<'a> {
         util::build(&[util::Component::U64(id)])
     }
 
+    pub fn max_id(&self) -> Result<u64> {
+        let high_key = self.key(u64::max_value());
+        let mut iter = self
+            .db
+            .iterator_cf(self.cf, IteratorMode::From(&high_key, Direction::Reverse));
+        if let Some(item) = iter.next() {
+            let (k, _) = item?;
+            let id = {
+                debug_assert_eq!(k.len(), 8);
+                let mut cursor = Cursor::new(k);
+                util::read_u64(&mut cursor)
+            };
+            Ok(id)
+        } else {
+            Ok(0)
+        }
+    }
+
     pub fn exists(&self, id: u64) -> Result<bool> {
         Ok(self.db.get_cf(self.cf, self.key(id))?.is_some())
     }
@@ -60,7 +78,7 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn iterate_for_range(&'a self, id: u64) -> impl Iterator<Item = Result<models::Vertex>> + 'a {
-        let low_key = util::build(&[util::Component::U64(id)]);
+        let low_key = self.key(id);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
@@ -75,7 +93,7 @@ impl<'a> VertexManager<'a> {
 
             let mut cursor = Cursor::new(v);
             let t = util::read_identifier(&mut cursor);
-            Ok(models::Vertex::with_id(id, t))
+            Ok(models::Vertex::new(id, t))
         })
     }
 

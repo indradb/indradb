@@ -57,7 +57,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             .internal
             .vertices
             .iter()
-            .map(|(id, t)| Ok(Vertex::with_id(*id, t.clone())));
+            .map(|(id, t)| Ok(Vertex::new(*id, t.clone())));
         Ok(Box::new(iter))
     }
 
@@ -66,7 +66,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             .internal
             .vertices
             .range(offset..)
-            .map(|(id, t)| Ok(Vertex::with_id(*id, t.clone())));
+            .map(|(id, t)| Ok(Vertex::new(*id, t.clone())));
         Ok(Box::new(iter))
     }
 
@@ -75,7 +75,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             self.internal
                 .vertices
                 .get(&id)
-                .map(|value| Ok(Vertex::with_id(id, value.clone())))
+                .map(|value| Ok(Vertex::new(id, value.clone())))
         });
         Ok(Box::new(iter))
     }
@@ -316,6 +316,14 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 .map_err(|err| Error::Datastore(Box::new(err)))?;
         }
         Ok(())
+    }
+
+    fn max_id(&self) -> Result<u64> {
+        if let Some((k, _)) = self.internal.vertices.last_key_value() {
+            Ok(*k)
+        } else {
+            Ok(0)
+        }
     }
 
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {

@@ -19,50 +19,40 @@ pub fn should_get_all_edges<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_a_valid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t.clone(), inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t.clone(), inbound_id);
 
     db.create_edge(&edge).unwrap();
 
     let e = util::get_edges(db, SpecificEdgeQuery::single(edge)).unwrap();
     assert_eq!(e.len(), 1);
-    assert_eq!(e[0].outbound_id, outbound_v.id);
+    assert_eq!(e[0].outbound_id, outbound_id);
     assert_eq!(e[0].t, edge_t);
-    assert_eq!(e[0].inbound_id, inbound_v.id);
+    assert_eq!(e[0].inbound_id, inbound_id);
 }
 
 pub fn should_not_get_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
 
-    let e = util::get_edges(
-        db,
-        SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t.clone(), 0)),
-    )
-    .unwrap();
+    let e = util::get_edges(db, SpecificEdgeQuery::single(Edge::new(outbound_id, edge_t.clone(), 0))).unwrap();
     assert_eq!(e.len(), 0);
-    let e = util::get_edges(db, SpecificEdgeQuery::single(Edge::new(0, edge_t, inbound_v.id))).unwrap();
+    let e = util::get_edges(db, SpecificEdgeQuery::single(Edge::new(0, edge_t, inbound_id))).unwrap();
     assert_eq!(e.len(), 0);
 }
 
 pub fn should_create_a_valid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
 
     // Set the edge and check
-    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
     db.create_edge(&edge).unwrap();
     let e = util::get_edges(db, SpecificEdgeQuery::single(edge.clone())).unwrap();
     assert_eq!(e.len(), 1);
@@ -81,7 +71,7 @@ pub fn should_create_a_valid_edge<D: Datastore>(db: &Database<D>) {
     // single edge
     let e = util::get_edges(
         db,
-        SpecificVertexQuery::single(outbound_v.id).outbound().unwrap().limit(10),
+        SpecificVertexQuery::single(outbound_id).outbound().unwrap().limit(10),
     )
     .unwrap();
     assert_eq!(e.len(), 1);
@@ -90,23 +80,20 @@ pub fn should_create_a_valid_edge<D: Datastore>(db: &Database<D>) {
 
 pub fn should_not_create_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t, 0);
+    let edge = models::Edge::new(outbound_id, edge_t, 0);
     let result = db.create_edge(&edge);
     assert_eq!(result.unwrap(), false);
 }
 
 pub fn should_delete_a_valid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_edge_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
 
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
     db.create_edge(&edge).unwrap();
 
     let q = SpecificEdgeQuery::single(edge);
@@ -123,11 +110,11 @@ pub fn should_delete_a_valid_edge<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_delete_an_invalid_edge<D: Datastore>(db: &Database<D>) {
-    let vertex_t = models::Identifier::new("test_edge_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
+    let outbound_id = db
+        .create_vertex_from_type(models::Identifier::new("test_edge_type").unwrap())
+        .unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    db.delete(SpecificEdgeQuery::single(Edge::new(outbound_v.id, edge_t, 0)))
+    db.delete(SpecificEdgeQuery::single(Edge::new(outbound_id, edge_t, 0)))
         .unwrap();
 }
 
@@ -196,13 +183,12 @@ pub fn should_get_edges<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
-    let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
+    let outbound_id = db
+        .create_vertex_from_type(models::Identifier::new("test_vertex_type").unwrap())
+        .unwrap();
+    let inbound_id = util::create_edge_from(db, outbound_id);
 
-    let inbound_id = util::create_edge_from(db, outbound_v.id);
-
-    let query_1 = SpecificVertexQuery::single(outbound_v.id)
+    let query_1 = SpecificVertexQuery::single(outbound_id)
         .outbound()
         .unwrap()
         .limit(1)
@@ -212,7 +198,7 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         range[0],
         models::Edge::new(
-            outbound_v.id,
+            outbound_id,
             models::Identifier::new("test_edge_type").unwrap(),
             inbound_id
         )
@@ -231,7 +217,7 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         range[0],
         models::Edge::new(
-            outbound_v.id,
+            outbound_id,
             models::Identifier::new("test_edge_type").unwrap(),
             inbound_id
         )

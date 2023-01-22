@@ -3,12 +3,13 @@ use crate::{expect_err, models, Database, Datastore, Error, QueryExt};
 
 fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_name: &models::Identifier) -> u64 {
     db.index_property(property_name.clone()).unwrap();
-    let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
-    db.create_vertex(&v).unwrap();
-    let q = models::SpecificVertexQuery::single(v.id);
+    let id = db
+        .create_vertex_from_type(models::Identifier::new("test_vertex_type").unwrap())
+        .unwrap();
+    let q = models::SpecificVertexQuery::single(id);
     db.set_properties(q, property_name.clone(), serde_json::Value::Bool(true))
         .unwrap();
-    v.id
+    id
 }
 
 fn setup_edge_with_indexed_property<D: Datastore>(
@@ -17,12 +18,10 @@ fn setup_edge_with_indexed_property<D: Datastore>(
 ) -> models::Edge {
     db.index_property(property_name.clone()).unwrap();
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
     let q = models::SpecificEdgeQuery::single(edge.clone());
     db.create_edge(&edge).unwrap();
     db.set_properties(q, property_name.clone(), serde_json::Value::Bool(true))
@@ -50,9 +49,10 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     // Setup
     let property_name = models::Identifier::new("existing-vertex-property").unwrap();
     let other_property_name = models::Identifier::new("some-other-property").unwrap();
-    let v = models::Vertex::new(models::Identifier::new("test_vertex_type").unwrap());
-    db.create_vertex(&v).unwrap();
-    let q = models::SpecificVertexQuery::single(v.id);
+    let id = db
+        .create_vertex_from_type(models::Identifier::new("test_vertex_type").unwrap())
+        .unwrap();
+    let q = models::SpecificVertexQuery::single(id);
     db.set_properties(q.clone(), property_name.clone(), serde_json::Value::Bool(true))
         .unwrap();
 
@@ -62,12 +62,12 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     // Get the vertex
     let result = util::get_vertices(db, models::VertexWithPropertyPresenceQuery::new(property_name.clone())).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, v.id);
+    assert_eq!(result[0].id, id);
 
     // Get the vertex with piped queries
     let result = util::get_vertices(db, q.clone().with_property(property_name.clone()).unwrap()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, v.id);
+    assert_eq!(result[0].id, id);
     let result = util::get_vertices(db, q.clone().without_property(property_name.clone()).unwrap()).unwrap();
     assert!(result.is_empty());
 
@@ -77,7 +77,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
     db.index_property(other_property_name.clone()).unwrap();
     let result = util::get_vertices(db, q.without_property(other_property_name).unwrap()).unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, v.id);
+    assert_eq!(result[0].id, id);
 }
 
 pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
@@ -85,12 +85,10 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
     let property_name = models::Identifier::new("existing-edge-property").unwrap();
     let other_property_name = models::Identifier::new("some-other-property").unwrap();
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(vertex_t.clone());
-    let inbound_v = models::Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
     let q = models::SpecificEdgeQuery::single(edge.clone());
     db.create_edge(&edge).unwrap();
     db.set_properties(q.clone(), property_name.clone(), serde_json::Value::Bool(true))

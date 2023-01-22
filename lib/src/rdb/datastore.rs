@@ -93,7 +93,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
 
     fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>> {
         let iter = ids.into_iter().filter_map(move |id| match self.vertex_manager.get(id) {
-            Ok(Some(t)) => Some(Ok(Vertex::with_id(id, t))),
+            Ok(Some(t)) => Some(Ok(Vertex::new(id, t))),
             Ok(None) => None,
             Err(err) => Some(Err(err)),
         });
@@ -291,6 +291,10 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         self.metadata_manager.compact();
         self.db.flush()?;
         Ok(())
+    }
+
+    fn max_id(&self) -> Result<u64> {
+        self.vertex_manager.max_id()
     }
 
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {

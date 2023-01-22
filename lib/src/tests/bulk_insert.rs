@@ -5,8 +5,8 @@ use crate::{
 
 pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = Vertex::new(vertex_t.clone());
-    let inbound_v = Vertex::new(vertex_t);
+    let outbound_v = Vertex::new(1_000_000, vertex_t.clone());
+    let inbound_v = Vertex::new(1_000_001, vertex_t);
 
     let items = vec![
         BulkInsertItem::Vertex(outbound_v.clone()),
@@ -85,11 +85,8 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 // Bulk insert allows for redundant vertex insertion
 pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let vertex = Vertex::new(vertex_t);
-
-    assert!(db.create_vertex(&vertex).unwrap());
-
-    let items = vec![BulkInsertItem::Vertex(vertex)];
+    let id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let items = vec![BulkInsertItem::Vertex(Vertex::new(id, vertex_t))];
     assert!(db.bulk_insert(items).is_ok());
 }
 
@@ -97,15 +94,13 @@ pub fn should_bulk_insert_a_redundant_vertex<D: Datastore>(db: &Database<D>) {
 // associated with an inserted edge exist; this verifies that
 pub fn should_bulk_insert_an_invalid_edge<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let v1 = Vertex::new(vertex_t.clone());
-    let v2 = Vertex::new(vertex_t);
-
-    assert!(db.create_vertex(&v1).unwrap());
+    let v1_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let v2 = Vertex::new(u64::max_value(), vertex_t);
 
     let edge_t = Identifier::new("test_edge_type").unwrap();
 
-    let items = vec![BulkInsertItem::Edge(Edge::new(v1.id, edge_t.clone(), v2.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v1_id, edge_t.clone(), v2.id))];
     assert!(db.bulk_insert(items).is_ok());
-    let items = vec![BulkInsertItem::Edge(Edge::new(v2.id, edge_t, v1.id))];
+    let items = vec![BulkInsertItem::Edge(Edge::new(v2.id, edge_t, v1_id))];
     assert!(db.bulk_insert(items).is_ok());
 }

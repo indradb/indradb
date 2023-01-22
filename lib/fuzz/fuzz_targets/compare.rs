@@ -49,7 +49,7 @@ pub struct Vertex {
 
 impl Into<indradb::Vertex> for Vertex {
     fn into(self) -> indradb::Vertex {
-        indradb::Vertex::with_id(self.id.into(), self.t.into())
+        indradb::Vertex::new(self.id.into(), self.t.into())
     }
 }
 

@@ -140,6 +140,9 @@ pub trait Transaction<'a> {
         Err(Error::Unsupported)
     }
 
+    /// Returns the max vertex ID in the datastore.
+    fn max_id(&self) -> Result<u64>;
+
     /// Creates a new vertex. Returns whether the vertex was successfully
     /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
@@ -262,12 +265,14 @@ impl<D: Datastore> Database<D> {
     /// # Arguments
     /// * `t`: The type of the vertex to create.
     pub fn create_vertex_from_type(&self, t: Identifier) -> Result<u64> {
-        let v = Vertex::new(t);
+        let mut txn = self.datastore.transaction();
+        let next_id = txn.max_id()?.checked_add(1).ok_or(Error::IdTaken)?;
+        let vertex = Vertex::new(next_id, t);
 
-        if !self.create_vertex(&v)? {
+        if !txn.create_vertex(&vertex)? {
             Err(Error::IdTaken)
         } else {
-            Ok(v.id)
+            Ok(vertex.id)
         }
     }
 

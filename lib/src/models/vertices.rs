@@ -1,16 +1,6 @@
 use crate::Identifier;
 
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-use chrono::Utc;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref INIT_TIMESTAMP: u64 = Utc::now().timestamp_nanos() as u64;
-}
-
-static OFFSET: AtomicU64 = AtomicU64::new(1);
 
 /// A vertex.
 ///
@@ -29,18 +19,9 @@ impl Vertex {
     /// Creates a new vertex.
     ///
     /// # Arguments
-    /// * `t`: The type of the vertex.
-    pub fn new(t: Identifier) -> Self {
-        let id = *INIT_TIMESTAMP + OFFSET.fetch_add(1, Ordering::Relaxed);
-        Self::with_id(id, t)
-    }
-
-    /// Creates a new vertex with a specified id.
-    ///
-    /// # Arguments
     /// * `id`: The id of the vertex.
     /// * `t`: The type of the vertex.
-    pub fn with_id(id: u64, t: Identifier) -> Self {
+    pub fn new(id: u64, t: Identifier) -> Self {
         Vertex { id, t }
     }
 }
@@ -68,8 +49,8 @@ mod tests {
     #[test]
     fn should_hash() {
         assert_eq!(
-            HashSet::from([Vertex::with_id(0, Identifier::new("foo").unwrap())]),
-            HashSet::from([Vertex::with_id(0, Identifier::new("foo").unwrap())])
+            HashSet::from([Vertex::new(0, Identifier::new("foo").unwrap())]),
+            HashSet::from([Vertex::new(0, Identifier::new("foo").unwrap())])
         );
     }
 }

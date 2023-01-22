@@ -121,10 +121,7 @@ impl TryInto<indradb::Vertex> for crate::Vertex {
     type Error = ConversionError;
 
     fn try_into(self) -> Result<indradb::Vertex, Self::Error> {
-        Ok(indradb::Vertex::with_id(
-            self.id,
-            required_field("t", self.t)?.try_into()?,
-        ))
+        Ok(indradb::Vertex::new(self.id, required_field("t", self.t)?.try_into()?))
     }
 }
 

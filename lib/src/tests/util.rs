@@ -4,27 +4,24 @@ use crate::{models, CountQueryExt, Database, Datastore, QueryExt};
 
 pub(crate) fn create_edge_from<D: Datastore>(db: &Database<D>, outbound_id: u64) -> u64 {
     let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
-    let inbound_v = models::Vertex::new(inbound_vertex_t);
-    db.create_vertex(&inbound_v).unwrap();
+    let id = db.create_vertex_from_type(inbound_vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
-    let edge = models::Edge::new(outbound_id, edge_t, inbound_v.id);
+    let edge = models::Edge::new(outbound_id, edge_t, id);
     db.create_edge(&edge).unwrap();
-    inbound_v.id
+    id
 }
 
 pub(crate) fn create_edges<D: Datastore>(db: &Database<D>) -> (u64, [u64; 5]) {
     let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
-    let outbound_v = models::Vertex::new(outbound_vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
+    let id = db.create_vertex_from_type(outbound_vertex_t).unwrap();
     let inbound_ids: [u64; 5] = [
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
+        create_edge_from(db, id),
+        create_edge_from(db, id),
+        create_edge_from(db, id),
+        create_edge_from(db, id),
+        create_edge_from(db, id),
     ];
-
-    (outbound_v.id, inbound_ids)
+    (id, inbound_ids)
 }
 
 pub(crate) fn get_vertices<D: Datastore, Q: Into<models::Query>>(

@@ -17,7 +17,7 @@ pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(
+            QueryOutputValue::Vertices(vec![Vertex::new(
                 outbound_id,
                 Identifier::new("test_outbound_vertex_type").unwrap()
             )]),
@@ -45,9 +45,9 @@ pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
             QueryOutputValue::VertexProperties(vec![VertexProperties::new(
-                Vertex::with_id(id, Identifier::new("foo").unwrap()),
+                Vertex::new(id, Identifier::new("foo").unwrap()),
                 vec![NamedProperty::new(
                     Identifier::new("bar").unwrap(),
                     serde_json::Value::Bool(true)
@@ -78,8 +78,8 @@ pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
         ]
     );
     let output = db
@@ -92,8 +92,8 @@ pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
         ]
     );
 }

@@ -2,14 +2,13 @@ use super::util;
 use crate::util::extract_count;
 use crate::{
     errors, expect_err, AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, PipePropertyQuery,
-    PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+    PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
 };
 
 pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     let t = Identifier::new("test_vertex_type").unwrap();
-    let v = Vertex::new(t);
-    db.create_vertex(&v).unwrap();
-    let q = SpecificVertexQuery::single(v.id);
+    let id = db.create_vertex_from_type(t).unwrap();
+    let q = SpecificVertexQuery::single(id);
 
     // Check to make sure there's no initial value
     let result = util::get_vertex_properties(
@@ -32,7 +31,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     )
     .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, v.id);
+    assert_eq!(result[0].id, id);
     assert_eq!(result[0].value, serde_json::Value::Bool(true));
 
     // Set and get the value as false
@@ -48,7 +47,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     )
     .unwrap();
     assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, v.id);
+    assert_eq!(result[0].id, id);
     assert_eq!(result[0].value, serde_json::Value::Bool(false));
 
     // Delete & check that it's deleted
@@ -61,15 +60,12 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_all_vertex_properties<D: Datastore>(db: &Database<D>) {
     let t = Identifier::new("a_vertex").unwrap();
-    let v1 = &Vertex::new(t.clone());
-    let v2 = &Vertex::new(t.clone());
-    let v3 = &Vertex::new(t);
-    db.create_vertex(v1).unwrap();
-    db.create_vertex(v2).unwrap();
-    db.create_vertex(v3).unwrap();
-    let q1 = SpecificVertexQuery::single(v1.id);
-    let q2 = SpecificVertexQuery::single(v2.id);
-    let q3 = SpecificVertexQuery::single(v3.id);
+    let v1 = db.create_vertex_from_type(t.clone()).unwrap();
+    let v2 = db.create_vertex_from_type(t.clone()).unwrap();
+    let v3 = db.create_vertex_from_type(t.clone()).unwrap();
+    let q1 = SpecificVertexQuery::single(v1);
+    let q2 = SpecificVertexQuery::single(v2);
+    let q3 = SpecificVertexQuery::single(v3);
 
     // Check to make sure there are no initial properties
     let all_result = util::get_all_vertex_properties(db, q2.clone()).unwrap();
@@ -116,10 +112,9 @@ pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(db: &Database<D
         .name(Identifier::new("foo").unwrap());
     db.delete(q).unwrap();
 
-    let v = Vertex::new(Identifier::new("foo").unwrap());
-    db.create_vertex(&v).unwrap();
+    let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
 
-    let q = SpecificVertexQuery::single(v.id)
+    let q = SpecificVertexQuery::single(id)
         .properties()
         .unwrap()
         .name(Identifier::new("foo").unwrap());
@@ -128,12 +123,10 @@ pub fn should_not_delete_invalid_vertex_properties<D: Datastore>(db: &Database<D
 
 pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = Vertex::new(vertex_t.clone());
-    let inbound_v = Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = Edge::new(outbound_id, edge_t, inbound_id);
     let q = SpecificEdgeQuery::single(edge.clone());
 
     db.create_edge(&edge).unwrap();
@@ -199,12 +192,10 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_all_edge_properties<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let outbound_v = Vertex::new(vertex_t.clone());
-    let inbound_v = Vertex::new(vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(vertex_t.clone()).unwrap();
+    let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = Identifier::new("test_edge_type").unwrap();
-    let edge = Edge::new(outbound_v.id, edge_t, inbound_v.id);
+    let edge = Edge::new(outbound_id, edge_t, inbound_id);
     let eq = SpecificEdgeQuery::single(edge.clone());
 
     db.create_edge(&edge).unwrap();
@@ -274,12 +265,10 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
     )
     .unwrap();
 
-    let outbound_v = Vertex::new(Identifier::new("foo").unwrap());
-    let inbound_v = Vertex::new(Identifier::new("foo").unwrap());
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    let outbound_id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
+    let inbound_id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
 
-    let edge = Edge::new(outbound_v.id, Identifier::new("baz").unwrap(), inbound_v.id);
+    let edge = Edge::new(outbound_id, Identifier::new("baz").unwrap(), inbound_id);
     db.create_edge(&edge).unwrap();
     db.delete(
         SpecificEdgeQuery::single(edge)
@@ -292,9 +281,8 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
 
 pub fn should_get_an_edge_properties_count<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let v = Vertex::new(vertex_t);
-    db.create_vertex(&v).unwrap();
-    let q = SpecificVertexQuery::single(v.id);
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
+    let q = SpecificVertexQuery::single(id);
     let count = extract_count(
         db.get(q.outbound().unwrap().properties().unwrap().count().unwrap())
             .unwrap(),
@@ -305,9 +293,8 @@ pub fn should_get_an_edge_properties_count<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_a_vertex_properties_count<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
-    let v = Vertex::new(vertex_t);
-    db.create_vertex(&v).unwrap();
-    let q = SpecificVertexQuery::single(v.id);
+    let id = db.create_vertex_from_type(vertex_t).unwrap();
+    let q = SpecificVertexQuery::single(id);
     db.set_properties(
         q.clone(),
         Identifier::new("foo").unwrap(),
