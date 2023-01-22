@@ -1,4 +1,4 @@
-use crate::{Edge, EdgeKey, Identifier, Vertex};
+use crate::{Edge, Identifier, Vertex};
 
 use uuid::Uuid;
 
@@ -26,7 +26,7 @@ impl VertexProperty {
 /// A property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NamedProperty {
-    /// The name of the property.
+    /// The property name.
     pub name: Identifier,
 
     /// The property value.
@@ -87,8 +87,8 @@ impl EdgeProperties {
 /// Represents an edge property.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EdgeProperty {
-    /// The key to the edge.
-    pub key: EdgeKey,
+    /// The edge.
+    pub edge: Edge,
 
     /// The property value.
     pub value: serde_json::Value,
@@ -98,9 +98,9 @@ impl EdgeProperty {
     /// Creates a new edge property.
     ///
     /// # Arguments
-    /// * `key`: The key to the edge.
+    /// * `edge`: The edge.
     /// * `value`: The property value.
-    pub fn new(key: EdgeKey, value: serde_json::Value) -> Self {
-        Self { key, value }
+    pub fn new(edge: Edge, value: serde_json::Value) -> Self {
+        Self { edge, value }
     }
 }

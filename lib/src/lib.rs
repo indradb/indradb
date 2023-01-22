@@ -8,8 +8,6 @@
 
 #![cfg_attr(feature = "bench-suite", feature(test))]
 
-#[cfg_attr(test, macro_use)]
-extern crate serde_json;
 #[cfg(feature = "bench-suite")]
 extern crate test;
 
@@ -21,16 +19,16 @@ pub mod tests;
 #[macro_use]
 pub mod benches;
 
+mod database;
 mod errors;
 mod memory;
 mod models;
-mod traits;
 pub mod util;
 
+pub use crate::database::*;
 pub use crate::errors::*;
-pub use crate::memory::MemoryDatastore;
+pub use crate::memory::*;
 pub use crate::models::*;
-pub use crate::traits::*;
 
 #[cfg(feature = "rocksdb-datastore")]
 mod rdb;

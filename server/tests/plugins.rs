@@ -75,13 +75,6 @@ pub async fn plugins() {
         client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
         json!(0)
     );
-    assert_eq!(
-        client
-            .execute_plugin("naive_vertex_count", json!({"t_filter": "foo"}))
-            .await
-            .unwrap(),
-        json!(0)
-    );
 
     client
         .bulk_insert(vec![
@@ -102,12 +95,5 @@ pub async fn plugins() {
     assert_eq!(
         client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
         json!(11)
-    );
-    assert_eq!(
-        client
-            .execute_plugin("naive_vertex_count", json!({"t_filter": "foo"}))
-            .await
-            .unwrap(),
-        json!(0)
     );
 }

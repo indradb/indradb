@@ -139,6 +139,10 @@ where
 pub struct Json(pub serde_json::Value);
 
 impl Json {
+    /// Constructs a new JSON type.
+    ///
+    /// # Arguments
+    /// * `value`: The JSON value.
     pub fn new(value: serde_json::Value) -> Self {
         Self(value)
     }

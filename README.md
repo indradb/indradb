@@ -12,7 +12,7 @@ A graph database written in rust.
 
 IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
 
-IndraDB's original design is heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. IndraDB departs from TAO in its support for properties, a queryable mapping of string keys to JSON values tied to nodes and edges.
+IndraDB's original design was heavily inspired by [TAO](https://www.cs.cmu.edu/~pavlo/courses/fall2013/static/papers/11730-atc13-bronson.pdf), facebook's graph datastore. In particular, IndraDB emphasizes simplicity of implementation and query semantics, and is similarly designed with the assumption that it may be representing a graph large enough that full graph processing is not possible. Over time, richer query semantics and other features have been added to IndraDB, so it can no longer be called TAO-like, although we try to stay true to some of those original goals.
 
 For more details, see the [homepage](https://indradb.github.io). See also a [complete demo of IndraDB for browsing the wikipedia article link graph.](https://github.com/indradb/wikipedia-example)
 
@@ -52,13 +52,12 @@ client.create_vertex(out_v)
 client.create_vertex(in_v)
 
 # Add an edge between the vertices
-key = indradb.EdgeKey(out_v.id, "bar", in_v.id)
-client.create_edge(key)
+edge = indradb.Edge(out_v.id, "bar", in_v.id)
+client.create_edge(edge)
 
 # Query for the edge
-results = list(client.get_edges(indradb.SpecificEdgeQuery(key))
-self.assertEqual(len(results), 1)
-self.assertEqual(results[0].key, key)
+results = list(client.get(indradb.SpecificEdgeQuery(edge))
+print(results)
 ```
 
 For further reference, see the [docs](https://indradb.github.io/python-client/indradb/) and [python bindings tests](https://github.com/indradb/python-client/tree/master/tests).
@@ -68,6 +67,7 @@ For further reference, see the [docs](https://indradb.github.io/python-client/in
 The gRPC bindings library is available as [`indradb-proto`](https://crates.io/crates/indradb-proto). An example:
 
 ```rust
+use indradb;
 use indradb_proto as proto;
 
 // Connect to the server and make sure it's up
@@ -81,13 +81,15 @@ client.create_vertex(&out_v).await?;
 client.create_vertex(&in_v).await?;
 
 // Add an edge between the vertices
-let key = indradb::EdgeKey::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
-client.create_edge(&key).await?;
+let edge = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
+client.create_edge(&edge).await?;
 
 // Query for the edge
-let e = client.get_edges(indradb::SpecificEdgeQuery::single(key.clone()).into()).await?;
+let output: Vec<indradb::QueryOutputValue> = client.get(indradb::SpecificEdgeQuery::single(edge.clone())).await?;
+// Convenience function to extract out the edges from the query results
+let e = indradb::util::extract_edges(output).unwrap();
 assert_eq!(e.len(), 1);
-assert_eq!(key, e[0].key);
+assert_eq!(edge, e[0]);
 ```
 
 The rust gRPC bindings library is built to closely mirror the rust library. But if you're using 100% rust, and don't need a server, you can skip all the gRPC rigmarole and just use the rust library directly. For further reference, see the [docs](https://docs.rs/indradb-proto/latest/indradb_proto/) and the [wikipedia indexing example](https://github.com/indradb/wikipedia-example), which heavily relies on `indradb-proto`.
@@ -109,25 +111,27 @@ indradb-lib = { version = "*", features = ["rocksdb-datastore"] }
 Here's a brief example:
 
 ```rust
-use indradb::{EdgeKey, MemoryDatastore, Identifier, Vertex, SpecificEdgeQuery, SpecificVertexQuery};
+use indradb;
 
 // Create an in-memory datastore
-let mut datastore = MemoryDatastore::default();
+let db: indradb::Database<indradb::MemoryDatastore> = indradb::MemoryDatastore::default();
 
 // Create a couple of vertices
-let out_v = Vertex::new(Identifier::new("person")?);
-let in_v = Vertex::new(Identifier::new("movie")?);
-datastore.create_vertex(&out_v)?;
-datastore.create_vertex(&in_v)?;
+let out_v = indradb::Vertex::new(indradb::Identifier::new("person")?);
+let in_v = indradb::Vertex::new(indradb::Identifier::new("movie")?);
+db.create_vertex(&out_v)?;
+db.create_vertex(&in_v)?;
 
 // Add an edge between the vertices
-let key = EdgeKey::new(out_v.id, Identifier::new("likes")?, in_v.id);
-datastore.create_edge(&key)?;
+let edge = indradb::Edge::new(out_v.id, indradb::Identifier::new("likes")?, in_v.id);
+db.create_edge(&edge)?;
 
 // Query for the edge
-let e = datastore.get_edges(SpecificEdgeQuery::single(key.clone()).into())?;
+let output: Vec<indradb::QueryOutputValue> = db.get(indradb::SpecificEdgeQuery::single(edge.clone()))?;
+// Convenience function to extract out the edges from the query results
+let e = indradb::util::extract_edges(output).unwrap();
 assert_eq!(e.len(), 1);
-assert_eq!(key, e[0].key);
+assert_eq!(edge, e[0]);
 ```
 
 For further reference, see the [docs](https://docs.rs/indradb-lib/latest/indradb/) and [library tests](https://github.com/indradb/indradb/tree/master/lib/src/tests).
@@ -210,7 +214,7 @@ indradb-server [options]
 If you want to use the standard datastore but persist to disk:
 
 ```bash
-indradb-server memory --persist-path=[/path/to/memory/image.bincode]
+indradb-server memory --persist-path=[/path/to/memory/image]
 ```
 
 You'll need to explicitly call `Sync()` when you want to save the graph.

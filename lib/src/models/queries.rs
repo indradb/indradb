@@ -1,37 +1,27 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, EdgeKey, Identifier};
+use crate::{errors, Edge, Identifier};
 
-use chrono::offset::Utc;
-use chrono::DateTime;
 use uuid::Uuid;
 
-macro_rules! vertex_query_type {
+macro_rules! into_query {
     ($name:ident, $variant:ident) => {
-        impl VertexQueryExt for $name {}
-
         // we don't want to impl From since the reverse operation isn't allowed
         #[allow(clippy::from_over_into)]
-        impl Into<VertexQuery> for $name {
-            fn into(self) -> VertexQuery {
-                VertexQuery::$variant(self)
+        impl Into<Query> for $name {
+            fn into(self) -> Query {
+                Query::$variant(self)
             }
         }
     };
 }
 
-macro_rules! edge_query_type {
+macro_rules! nestable_query {
     ($name:ident, $variant:ident) => {
-        impl EdgeQueryExt for $name {}
-
-        // we don't want to impl From since the reverse operation isn't allowed
-        #[allow(clippy::from_over_into)]
-        impl Into<EdgeQuery> for $name {
-            fn into(self) -> EdgeQuery {
-                EdgeQuery::$variant(self)
-            }
-        }
+        impl QueryExt for $name {}
+        impl CountQueryExt for $name {}
+        into_query!($name, $variant);
     };
 }
 
@@ -45,7 +35,9 @@ macro_rules! edge_query_type {
 /// items.
 #[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
 pub enum EdgeDirection {
+    /// Outbound direction.
     Outbound,
+    /// Inbound direction.
     Inbound,
 }
 
@@ -70,61 +62,126 @@ impl From<EdgeDirection> for String {
     }
 }
 
-/// A query for vertices.
-///
-/// Generally you shouldn't need to instantiate a `VertexQuery` directly, but
-/// rather one of the vertex query structs, and then call `.into()` on it to
-/// convert it to a `VertexQuery`.
+/// A query to get a set of values from the database.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub enum VertexQuery {
-    Range(RangeVertexQuery),
-    Specific(SpecificVertexQuery),
-    Pipe(PipeVertexQuery),
+pub enum Query {
+    /// Gets all vertices.
+    AllVertex,
+    /// Gets a range of vertices.
+    RangeVertex(RangeVertexQuery),
+    /// Gets a specific set of vertices.
+    SpecificVertex(SpecificVertexQuery),
+    /// Gets vertices with or without a given property.
+    VertexWithPropertyPresence(VertexWithPropertyPresenceQuery),
+    /// Gets vertices with a property equal to a given value.
+    VertexWithPropertyValue(VertexWithPropertyValueQuery),
 
-    PropertyPresence(PropertyPresenceVertexQuery),
-    PropertyValue(PropertyValueVertexQuery),
+    /// Gets all edges.
+    AllEdge,
+    /// Gets a specific set of edges.
+    SpecificEdge(SpecificEdgeQuery),
+    /// Gets edges with or without a given property.
+    EdgeWithPropertyPresence(EdgeWithPropertyPresenceQuery),
+    /// Gets edges with a property equal to a given value.
+    EdgeWithPropertyValue(EdgeWithPropertyValueQuery),
 
-    PipePropertyPresence(PipePropertyPresenceVertexQuery),
-    PipePropertyValue(PipePropertyValueVertexQuery),
+    /// Gets the vertices associated with edges, or edges associated with
+    /// vertices.
+    Pipe(PipeQuery),
+    /// Returns the properties associated with a vertex or edge.
+    PipeProperty(PipePropertyQuery),
+    /// Gets vertices or edges with or without a property.
+    PipeWithPropertyPresence(PipeWithPropertyPresenceQuery),
+    /// Gets vertices or edges with a property equal to a given value.
+    PipeWithPropertyValue(PipeWithPropertyValueQuery),
+
+    /// Includes the results of a query in output.
+    Include(IncludeQuery),
+    /// Counts the number of items returned from a query.
+    Count(CountQuery),
 }
 
-/// Extension trait with methods available in all vertex queries.
-pub trait VertexQueryExt: Into<VertexQuery> {
-    /// Gets the outbound edges associated with the vertices.
-    fn outbound(self) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
+impl Query {
+    /// Determines the number of output values the query will produce without
+    /// running it, so we can allocate a `Vec` with the correct capacity
+    /// ahead-of-time.
+    pub(crate) fn output_len(&self) -> usize {
+        match self {
+            Query::AllVertex
+            | Query::RangeVertex(_)
+            | Query::SpecificVertex(_)
+            | Query::VertexWithPropertyPresence(_)
+            | Query::VertexWithPropertyValue(_)
+            | Query::AllEdge
+            | Query::SpecificEdge(_)
+            | Query::EdgeWithPropertyPresence(_)
+            | Query::EdgeWithPropertyValue(_)
+            | Query::Count(_) => 1,
+            Query::Pipe(q) => q.inner.output_len(),
+            Query::PipeProperty(q) => q.inner.output_len(),
+            Query::PipeWithPropertyPresence(q) => q.inner.output_len(),
+            Query::PipeWithPropertyValue(q) => q.inner.output_len(),
+            Query::Include(q) => 1 + q.inner.output_len(),
+        }
     }
 
-    /// Gets the inbound edges associated with the vertices.
-    fn inbound(self) -> PipeEdgeQuery {
-        PipeEdgeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
+    /// Determines the `QueryOutputValue` variant that will be produced
+    /// without running the query, which can help validate the query
+    /// ahead-of-time.
+    pub(crate) fn output_type(&self) -> errors::ValidationResult<QueryOutputValue> {
+        match self {
+            Query::AllVertex
+            | Query::RangeVertex(_)
+            | Query::SpecificVertex(_)
+            | Query::VertexWithPropertyPresence(_)
+            | Query::VertexWithPropertyValue(_) => Ok(QueryOutputValue::Vertices(Vec::default())),
+            Query::AllEdge
+            | Query::SpecificEdge(_)
+            | Query::EdgeWithPropertyPresence(_)
+            | Query::EdgeWithPropertyValue(_) => Ok(QueryOutputValue::Edges(Vec::default())),
+            Query::Count(_) => Ok(QueryOutputValue::Count(0)),
+            Query::Pipe(q) => q.inner.output_type(),
+            Query::PipeProperty(q) => match q.inner.output_type()? {
+                QueryOutputValue::Vertices(_) => Ok(QueryOutputValue::VertexProperties(Vec::default())),
+                QueryOutputValue::Edges(_) => Ok(QueryOutputValue::EdgeProperties(Vec::default())),
+                _ => Err(errors::ValidationError::InnerQuery),
+            },
+            Query::PipeWithPropertyPresence(q) => q.inner.output_type(),
+            Query::PipeWithPropertyValue(q) => q.inner.output_type(),
+            Query::Include(q) => q.inner.output_type(),
+        }
+    }
+}
+
+/// Extension trait containing common functions for all query structs.
+pub trait QueryExt: Into<Query> {
+    /// Gets the outbound vertices or edges associated with this query.
+    fn outbound(self) -> errors::ValidationResult<PipeQuery> {
+        PipeQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
     }
 
-    /// Gets a property associated with the vertices.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property to get.
-    fn property<T: Into<Identifier>>(self, name: T) -> VertexPropertyQuery {
-        VertexPropertyQuery::new(self.into(), name)
+    /// Gets the inbound vertices or edges associated with this query.
+    fn inbound(self) -> errors::ValidationResult<PipeQuery> {
+        PipeQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
     }
 
-    /// Gets vertices with a property.
+    /// Gets values with a property.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn with_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceVertexQuery {
-        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, true)
+    fn with_property<T: Into<Identifier>>(self, name: T) -> errors::ValidationResult<PipeWithPropertyPresenceQuery> {
+        PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, true)
     }
 
-    /// Gets vertices without a property.
+    /// Gets values without a property.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
-    fn without_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceVertexQuery {
-        PipePropertyPresenceVertexQuery::new(Box::new(self.into()), name, false)
+    fn without_property<T: Into<Identifier>>(self, name: T) -> errors::ValidationResult<PipeWithPropertyPresenceQuery> {
+        PipeWithPropertyPresenceQuery::new(Box::new(self.into()), name, false)
     }
 
-    /// Gets vertices with a property equal to a given value.
+    /// Gets values with a property equal to a given value.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -133,11 +190,11 @@ pub trait VertexQueryExt: Into<VertexQuery> {
         self,
         name: T,
         value: serde_json::Value,
-    ) -> PipePropertyValueVertexQuery {
-        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, true)
+    ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
+        PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
 
-    /// Gets vertices with a property not equal to a given value.
+    /// Gets values with a property not equal to a given value.
     ///
     /// # Arguments
     /// * `name`: The name of the property.
@@ -146,116 +203,40 @@ pub trait VertexQueryExt: Into<VertexQuery> {
         self,
         name: T,
         value: serde_json::Value,
-    ) -> PipePropertyValueVertexQuery {
-        PipePropertyValueVertexQuery::new(Box::new(self.into()), name, value, false)
+    ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
+        PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
+    }
+
+    /// Gets the properties associated with the query results.
+    fn properties(self) -> errors::ValidationResult<PipePropertyQuery> {
+        PipePropertyQuery::new(Box::new(self.into()))
+    }
+
+    /// Include this query's output, even if it is an intermediate result.
+    fn include(self) -> IncludeQuery {
+        IncludeQuery::new(Box::new(self.into()))
     }
 }
 
-/// Gets vertices with a property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyPresenceVertexQuery {
-    /// The name of the property.
-    pub name: Identifier,
-}
-
-vertex_query_type!(PropertyPresenceVertexQuery, PropertyPresence);
-
-impl PropertyPresenceVertexQuery {
-    /// Creates a new vertex query for getting vertices with a property.
-    ///
-    /// Arguments
-    /// * `name`: The name of the property.
-    pub fn new<T: Into<Identifier>>(name: T) -> Self {
-        Self { name: name.into() }
+pub trait CountQueryExt: Into<Query> {
+    /// Gets the count from this query.
+    fn count(self) -> errors::ValidationResult<CountQuery> {
+        CountQuery::new(Box::new(self.into()))
     }
 }
 
-/// Gets vertices with a property equal to a given value.
+/// Gets all vertices.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyValueVertexQuery {
-    /// The name of the property.
-    pub name: Identifier,
-    /// The value of the property.
-    pub value: serde_json::Value,
-}
+pub struct AllVertexQuery;
 
-vertex_query_type!(PropertyValueVertexQuery, PropertyValue);
+impl QueryExt for AllVertexQuery {}
+impl CountQueryExt for AllVertexQuery {}
 
-impl PropertyValueVertexQuery {
-    /// Creates a new vertex query for getting vertices with a property with a
-    /// given value.
-    ///
-    /// Arguments
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
-    }
-}
-
-/// Gets vertices with a property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyPresenceVertexQuery {
-    /// The query to filter.
-    pub inner: Box<VertexQuery>,
-    /// The name of the property.
-    pub name: Identifier,
-    /// Whether we should look for property presence or lack thereof.
-    pub exists: bool,
-}
-
-vertex_query_type!(PipePropertyPresenceVertexQuery, PipePropertyPresence);
-
-impl PipePropertyPresenceVertexQuery {
-    /// Gets vertices with a property.
-    ///
-    /// Arguments
-    /// * `inner`: The query to filter.
-    /// * `name`: The name of the property.
-    /// * `exists`: Whether we should look for property presence or lack thereof.
-    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, exists: bool) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-            exists,
-        }
-    }
-}
-
-/// Gets vertices with a property equal to a given value.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyValueVertexQuery {
-    /// The query to filter.
-    pub inner: Box<VertexQuery>,
-    /// The name of the property.
-    pub name: Identifier,
-    /// The value of the property.
-    pub value: serde_json::Value,
-    /// Whether we should look for property equality or non-equality.
-    pub equal: bool,
-}
-
-vertex_query_type!(PipePropertyValueVertexQuery, PipePropertyValue);
-
-impl PipePropertyValueVertexQuery {
-    /// Creates a new vertex query for getting vertices with a property with a
-    /// given value.
-    ///
-    /// Arguments
-    /// * `inner`: The query to filter.
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
-    /// * `equal`: Whether we should look for property equality or non-equality.
-    pub fn new<T: Into<Identifier>>(inner: Box<VertexQuery>, name: T, value: serde_json::Value, equal: bool) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-            value,
-            equal,
-        }
+// we don't want to impl From since the reverse operation isn't allowed
+#[allow(clippy::from_over_into)]
+impl Into<Query> for AllVertexQuery {
+    fn into(self) -> Query {
+        Query::AllVertex
     }
 }
 
@@ -272,7 +253,7 @@ pub struct RangeVertexQuery {
     pub start_id: Option<Uuid>,
 }
 
-vertex_query_type!(RangeVertexQuery, Range);
+nestable_query!(RangeVertexQuery, RangeVertex);
 
 impl Default for RangeVertexQuery {
     fn default() -> Self {
@@ -334,7 +315,7 @@ pub struct SpecificVertexQuery {
     pub ids: Vec<Uuid>,
 }
 
-vertex_query_type!(SpecificVertexQuery, Specific);
+nestable_query!(SpecificVertexQuery, SpecificVertex);
 
 impl SpecificVertexQuery {
     /// Creates a new vertex query for getting a list of vertices by their
@@ -355,211 +336,42 @@ impl SpecificVertexQuery {
     }
 }
 
-/// Gets the vertices associated with edges.
-///
-/// Generally, you shouldn't need to construct this directly, but rather call
-/// `.outbound()` or `.inbound()` on an edge query.
+/// Gets vertices with or without a given property.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipeVertexQuery {
-    /// The edge query to build off of.
-    pub inner: Box<EdgeQuery>,
-
-    /// Whether to get outbound or inbound vertices on the edges.
-    pub direction: EdgeDirection,
-
-    /// Limits the number of vertices to get.
-    pub limit: u32,
-
-    /// Filters the type of vertices returned.
-    pub t: Option<Identifier>,
-}
-
-vertex_query_type!(PipeVertexQuery, Pipe);
-
-impl PipeVertexQuery {
-    /// Creates a new pipe vertex query.
-    ///
-    /// Arguments
-    /// * `inner`: The edge query to build off of.
-    /// * `direction`: Whether to get outbound or inbound vertices on the
-    ///   edges.
-    pub fn new(inner: Box<EdgeQuery>, direction: EdgeDirection) -> Self {
-        Self {
-            inner,
-            direction,
-            limit: u32::max_value(),
-            t: None,
-        }
-    }
-
-    /// Sets the limit.
-    ///
-    /// # Arguments
-    /// * `limit`: Limits the number of returned results.
-    pub fn limit(self, limit: u32) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit,
-            t: self.t,
-        }
-    }
-
-    /// Filter the type of vertices returned.
-    ///
-    /// # Arguments
-    /// * `t`: Sets the type filter.
-    pub fn t(self, t: Identifier) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: Some(t),
-        }
-    }
-}
-
-/// Gets property values associated with vertices.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct VertexPropertyQuery {
-    /// The vertex query to build off of.
-    pub inner: VertexQuery,
-
-    /// The name of the property to get.
-    pub name: Identifier,
-}
-
-impl VertexPropertyQuery {
-    /// Creates a new vertex property query.
-    ///
-    /// Arguments
-    /// * `inner`: The vertex query to build off of.
-    /// * `name`: The name of the property to get.
-    pub fn new<T: Into<Identifier>>(inner: VertexQuery, name: T) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-        }
-    }
-}
-
-/// A query for edges.
-///
-/// Generally you shouldn't need to instantiate an `EdgeQuery` directly, but
-/// rather one of the edge query structs, and then call `.into()` on it to
-/// convert it to an `EdgeQuery`.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub enum EdgeQuery {
-    Specific(SpecificEdgeQuery),
-    Pipe(PipeEdgeQuery),
-
-    PropertyPresence(PropertyPresenceEdgeQuery),
-    PropertyValue(PropertyValueEdgeQuery),
-
-    PipePropertyPresence(PipePropertyPresenceEdgeQuery),
-    PipePropertyValue(PipePropertyValueEdgeQuery),
-}
-
-/// Extension trait that specifies methods exposed by all edge queries.
-pub trait EdgeQueryExt: Into<EdgeQuery> {
-    /// Gets the vertices associated with the outbound end of the edges.
-    fn outbound(self) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Outbound)
-    }
-
-    /// Gets the vertices associated with the inbound end of the edges.
-    fn inbound(self) -> PipeVertexQuery {
-        PipeVertexQuery::new(Box::new(self.into()), EdgeDirection::Inbound)
-    }
-
-    /// Gets a property associated with the edges.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property to get.
-    fn property<T: Into<Identifier>>(self, name: T) -> EdgePropertyQuery {
-        EdgePropertyQuery::new(self.into(), name)
-    }
-
-    /// Gets edges with a property.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property.
-    fn with_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
-        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, true)
-    }
-
-    /// Gets edges without a property.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property.
-    fn without_property<T: Into<Identifier>>(self, name: T) -> PipePropertyPresenceEdgeQuery {
-        PipePropertyPresenceEdgeQuery::new(Box::new(self.into()), name, false)
-    }
-
-    /// Gets edges with a property equal to a given value.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
-    fn with_property_equal_to<T: Into<Identifier>>(
-        self,
-        name: T,
-        value: serde_json::Value,
-    ) -> PipePropertyValueEdgeQuery {
-        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, true)
-    }
-
-    /// Gets edges with a property not equal to a given value.
-    ///
-    /// # Arguments
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
-    fn with_property_not_equal_to<T: Into<Identifier>>(
-        self,
-        name: T,
-        value: serde_json::Value,
-    ) -> PipePropertyValueEdgeQuery {
-        PipePropertyValueEdgeQuery::new(Box::new(self.into()), name, value, false)
-    }
-}
-
-/// Gets edges with a property.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyPresenceEdgeQuery {
+pub struct VertexWithPropertyPresenceQuery {
     /// The name of the property.
     pub name: Identifier,
 }
 
-edge_query_type!(PropertyPresenceEdgeQuery, PropertyPresence);
+nestable_query!(VertexWithPropertyPresenceQuery, VertexWithPropertyPresence);
 
-impl PropertyPresenceEdgeQuery {
-    /// Creates a new edge query for getting edges with a property.
+impl VertexWithPropertyPresenceQuery {
+    /// Creates a new vertex with property presence query.
     ///
-    /// Arguments
-    /// * `name`: The name of the property.
+    /// # Arguments
+    /// * `name`: The property name.
     pub fn new<T: Into<Identifier>>(name: T) -> Self {
         Self { name: name.into() }
     }
 }
 
-/// Gets edges with a property equal to a given value.
+/// Gets vertices with a property equal to a given value.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PropertyValueEdgeQuery {
+pub struct VertexWithPropertyValueQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
     pub value: serde_json::Value,
 }
 
-edge_query_type!(PropertyValueEdgeQuery, PropertyValue);
+nestable_query!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
 
-impl PropertyValueEdgeQuery {
-    /// Creates a new edge query for getting edges with a property with a
-    /// given value.
+impl VertexWithPropertyValueQuery {
+    /// Creates a new vertex with property value query.
     ///
-    /// Arguments
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
     pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
         Self {
             name: name.into(),
@@ -568,141 +380,132 @@ impl PropertyValueEdgeQuery {
     }
 }
 
-/// Gets edges with a property.
+/// Gets all edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyPresenceEdgeQuery {
-    /// The query to filter.
-    pub inner: Box<EdgeQuery>,
-    /// The name of the property.
-    pub name: Identifier,
-    /// Whether we should look for property presence or lack thereof.
-    pub exists: bool,
-}
+pub struct AllEdgeQuery;
 
-edge_query_type!(PipePropertyPresenceEdgeQuery, PipePropertyPresence);
+impl QueryExt for AllEdgeQuery {}
+impl CountQueryExt for AllEdgeQuery {}
 
-impl PipePropertyPresenceEdgeQuery {
-    /// Gets edges with a property.
-    ///
-    /// Arguments
-    /// * `inner`: The query to filter.
-    /// * `name`: The name of the property.
-    /// * `exists`: Whether we should look for property presence or lack thereof.
-    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, exists: bool) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-            exists,
-        }
-    }
-}
-
-/// Gets edges with a property equal to a given value.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipePropertyValueEdgeQuery {
-    /// The query to filter.
-    pub inner: Box<EdgeQuery>,
-    /// The name of the property.
-    pub name: Identifier,
-    /// The value of the property.
-    pub value: serde_json::Value,
-    /// Whether we should look for property equality or non-equality.
-    pub equal: bool,
-}
-
-edge_query_type!(PipePropertyValueEdgeQuery, PipePropertyValue);
-
-impl PipePropertyValueEdgeQuery {
-    /// Creates a new edge query for getting edges with a property with a
-    /// given value.
-    ///
-    /// Arguments
-    /// * `inner`: The query to filter.
-    /// * `name`: The name of the property.
-    /// * `value`: The value of the property.
-    /// * `equal`: Whether we should look for property equality or non-equality.
-    pub fn new<T: Into<Identifier>>(inner: Box<EdgeQuery>, name: T, value: serde_json::Value, equal: bool) -> Self {
-        Self {
-            inner,
-            name: name.into(),
-            value,
-            equal,
-        }
+// we don't want to impl From since the reverse operation isn't allowed
+#[allow(clippy::from_over_into)]
+impl Into<Query> for AllEdgeQuery {
+    fn into(self) -> Query {
+        Query::AllEdge
     }
 }
 
 /// Gets a specific set of edges.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificEdgeQuery {
-    /// The keys of the edges to get.
-    pub keys: Vec<EdgeKey>,
+    /// The edges to get.
+    pub edges: Vec<Edge>,
 }
 
-edge_query_type!(SpecificEdgeQuery, Specific);
+nestable_query!(SpecificEdgeQuery, SpecificEdge);
 
 impl SpecificEdgeQuery {
-    /// Creates a new edge query for getting a list of edges by their
-    /// keys.
+    /// Creates a new edge query for getting a list of specific edges.
     ///
     /// Arguments
-    /// * `keys`: The keys of the edges to get.
-    pub fn new(keys: Vec<EdgeKey>) -> Self {
-        Self { keys }
+    /// * `edges`: The edges to get.
+    pub fn new(edges: Vec<Edge>) -> Self {
+        Self { edges }
     }
 
     /// Creates a new edge query for getting a single edge.
     ///
     /// Arguments
-    /// * `key`: The key of the edge to get.
-    pub fn single(key: EdgeKey) -> Self {
-        Self { keys: vec![key] }
+    /// * `edge`: The edge to get.
+    pub fn single(edge: Edge) -> Self {
+        Self { edges: vec![edge] }
     }
 }
 
-/// Gets the edges associated with vertices.
-///
-/// Generally, you shouldn't need to construct this directly, but rather call
-/// `.outbound()` or `.inbound()` on a vertex query.
+/// Gets edges with or without a given property.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct PipeEdgeQuery {
-    /// The vertex query to build off of.
-    pub inner: Box<VertexQuery>,
-
-    /// Whether to get outbound or inbound edges on the vertices.
-    pub direction: EdgeDirection,
-
-    /// Limits the number of edges to get.
-    pub limit: u32,
-
-    /// Filters the type of edges returned.
-    pub t: Option<Identifier>,
-
-    /// Specifies the newest update datetime for returned edges.
-    pub high: Option<DateTime<Utc>>,
-
-    /// Specifies the oldest update datetime for returned edges.
-    pub low: Option<DateTime<Utc>>,
+pub struct EdgeWithPropertyPresenceQuery {
+    /// The name of the property.
+    pub name: Identifier,
 }
 
-edge_query_type!(PipeEdgeQuery, Pipe);
+nestable_query!(EdgeWithPropertyPresenceQuery, EdgeWithPropertyPresence);
 
-impl PipeEdgeQuery {
-    /// Creates a new pipe edge query.
+impl EdgeWithPropertyPresenceQuery {
+    /// Creates a new edge with property presence query.
     ///
-    /// Arguments
-    /// * `inner`: The edge query to build off of.
-    /// * `direction`: Whether to get outbound or inbound edges on the
-    ///   vertices.
-    /// * `limit`: Limits the number of edges to get.
-    pub fn new(inner: Box<VertexQuery>, direction: EdgeDirection) -> Self {
+    /// # Arguments
+    /// * `name`: The property name.
+    pub fn new<T: Into<Identifier>>(name: T) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Gets edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EdgeWithPropertyValueQuery {
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: serde_json::Value,
+}
+
+nestable_query!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
+
+impl EdgeWithPropertyValueQuery {
+    /// Creates a new edge with property value query.
+    ///
+    /// # Arguments
+    /// * `name`: The property name.
+    /// * `value`: The property value.
+    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
         Self {
+            name: name.into(),
+            value,
+        }
+    }
+}
+
+/// Gets the vertices associated with edges, or edges associated with
+/// vertices.
+///
+/// Generally, you shouldn't need to construct this directly, but rather call
+/// `.outbound()` or `.inbound()`.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipeQuery {
+    /// The edge query to build off of.
+    pub inner: Box<Query>,
+
+    /// Whether to get outbound or inbound values.
+    pub direction: EdgeDirection,
+
+    /// Limits the number of values to get.
+    pub limit: u32,
+
+    /// Filters the type of values returned.
+    pub t: Option<Identifier>,
+}
+
+nestable_query!(PipeQuery, Pipe);
+
+impl PipeQuery {
+    /// Constructs a new pipe query.
+    ///
+    /// # Arguments
+    /// * `inner`: The inner query.
+    /// * `direction`: Which direction to pipe from.
+    pub fn new(inner: Box<Query>, direction: EdgeDirection) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+
+        Ok(Self {
             inner,
             direction,
             limit: u32::max_value(),
             t: None,
-            high: None,
-            low: None,
-        }
+        })
     }
 
     /// Sets the limit.
@@ -715,12 +518,10 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit,
             t: self.t,
-            high: self.high,
-            low: self.low,
         }
     }
 
-    /// Filter the type of edges returned.
+    /// Filter the type of values returned.
     ///
     /// # Arguments
     /// * `t`: Sets the type filter.
@@ -730,70 +531,219 @@ impl PipeEdgeQuery {
             direction: self.direction,
             limit: self.limit,
             t: Some(t),
-            high: self.high,
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `high`: The newest update datetime for the edges returned.
-    pub fn high(self, high: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: Some(high),
-            low: self.low,
-        }
-    }
-
-    /// Filter the update datetime of the edges returned.
-    ///
-    /// # Arguments
-    /// * `low`: The oldest update datetime for the edges returned.
-    pub fn low(self, low: DateTime<Utc>) -> Self {
-        Self {
-            inner: self.inner,
-            direction: self.direction,
-            limit: self.limit,
-            t: self.t,
-            high: self.high,
-            low: Some(low),
         }
     }
 }
 
-/// Gets property values associated with edges.
+/// Returns the properties associated with a vertex or edge.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct EdgePropertyQuery {
-    /// The edge query to build off of.
-    pub inner: EdgeQuery,
-
-    /// The name of the property to get.
-    pub name: Identifier,
+pub struct PipePropertyQuery {
+    /// The inner query.
+    pub inner: Box<Query>,
+    /// The property name to get. If `None`, all properties will be fetched.
+    pub name: Option<Identifier>,
 }
 
-impl EdgePropertyQuery {
-    /// Creates a new edge property query.
+into_query!(PipePropertyQuery, PipeProperty);
+impl CountQueryExt for PipePropertyQuery {}
+
+impl PipePropertyQuery {
+    /// Creates a new pipe property query.
+    ///
+    /// # Arguments
+    /// * `inner`: The query to pipe.
+    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self { inner, name: None })
+    }
+
+    /// Only include properties with a given name.
+    ///
+    /// # Arguments
+    /// * `name`: The name filter.
+    pub fn name(self, name: Identifier) -> Self {
+        Self {
+            inner: self.inner,
+            name: Some(name),
+        }
+    }
+}
+
+/// Gets vertices or edges with or without a property.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipeWithPropertyPresenceQuery {
+    /// The query to filter.
+    pub inner: Box<Query>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// Whether we should look for property presence or lack thereof.
+    pub exists: bool,
+}
+
+nestable_query!(PipeWithPropertyPresenceQuery, PipeWithPropertyPresence);
+
+impl PipeWithPropertyPresenceQuery {
+    /// Gets vertices with a property.
     ///
     /// Arguments
-    /// * `inner`: The edge query to build off of.
-    /// * `name`: The name of the property to get.
-    pub fn new<T: Into<Identifier>>(inner: EdgeQuery, name: T) -> Self {
-        Self {
+    /// * `inner`: The query to filter.
+    /// * `name`: The name of the property.
+    /// * `exists`: Whether we should look for property presence or lack thereof.
+    pub fn new<T: Into<Identifier>>(inner: Box<Query>, name: T, exists: bool) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
             inner,
             name: name.into(),
-        }
+            exists,
+        })
     }
+}
+
+/// Gets vertices or edges with a property equal to a given value.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct PipeWithPropertyValueQuery {
+    /// The query to filter.
+    pub inner: Box<Query>,
+    /// The name of the property.
+    pub name: Identifier,
+    /// The value of the property.
+    pub value: serde_json::Value,
+    /// Whether we should look for property equality or non-equality.
+    pub equal: bool,
+}
+
+nestable_query!(PipeWithPropertyValueQuery, PipeWithPropertyValue);
+
+impl PipeWithPropertyValueQuery {
+    /// Constructs a new pipe with property value query.
+    ///
+    /// # Arguments
+    /// * `inner`: The inner query.
+    /// * `name`: The property name to filter.
+    /// * `value`: The property value to filter.
+    /// * `equal`: Whether the value should be equal, or not equal.
+    pub fn new<T: Into<Identifier>>(
+        inner: Box<Query>,
+        name: T,
+        value: serde_json::Value,
+        equal: bool,
+    ) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_) | QueryOutputValue::Edges(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self {
+            inner,
+            name: name.into(),
+            value,
+            equal,
+        })
+    }
+}
+
+/// Includes the results of a query in output.
+///
+/// The outermost part of a query will always be explicitly included. This
+/// allows you to also output an intermediate result.
+///
+/// # Examples
+/// ```
+/// use indradb::{AllVertexQuery, QueryExt};
+/// // A query to return all edges in the database, which are implicitly
+/// // included as the outermost results.
+/// let q = AllVertexQuery.outbound();
+/// // A query to return all vertices and all edges in the database, because
+/// // vertices are explicitly included as intermediate results.
+/// let q = AllVertexQuery.include().outbound();
+/// ```
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct IncludeQuery {
+    /// The query to export.
+    pub inner: Box<Query>,
+}
+
+nestable_query!(IncludeQuery, Include);
+
+impl IncludeQuery {
+    /// Marks a query as exported.
+    ///
+    /// Arguments
+    /// * `inner`: The query to export.
+    pub fn new(inner: Box<Query>) -> Self {
+        Self { inner }
+    }
+}
+
+/// Counts the number of items returned from a query.
+///
+/// # Examples
+/// ```
+/// use indradb::{AllVertexQuery, CountQueryExt};
+/// // A query to return the total number of vertices in the database.
+/// let q = AllVertexQuery.count();
+/// ```
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct CountQuery {
+    /// The query to export.
+    pub inner: Box<Query>,
+}
+
+into_query!(CountQuery, Count);
+
+impl CountQuery {
+    /// Marks a query as exported.
+    ///
+    /// Arguments
+    /// * `inner`: The query to export.
+    pub fn new(inner: Box<Query>) -> errors::ValidationResult<Self> {
+        match inner.output_type()? {
+            QueryOutputValue::Vertices(_)
+            | QueryOutputValue::Edges(_)
+            | QueryOutputValue::VertexProperties(_)
+            | QueryOutputValue::EdgeProperties(_) => {}
+            _ => return Err(errors::ValidationError::InnerQuery),
+        }
+        Ok(Self { inner })
+    }
+}
+
+/// Value(s) returned from a query.
+#[derive(Clone, Debug, PartialEq)]
+pub enum QueryOutputValue {
+    /// Vertices.
+    Vertices(Vec<crate::Vertex>),
+    /// Edges.
+    Edges(Vec<crate::Edge>),
+    /// A Count.
+    Count(u64),
+    /// Vertex properties.
+    VertexProperties(Vec<crate::VertexProperties>),
+    /// Edge properties.
+    EdgeProperties(Vec<crate::EdgeProperties>),
 }
 
 #[cfg(test)]
 mod tests {
-    use super::EdgeDirection;
+    use super::{
+        AllVertexQuery, CountQuery, CountQueryExt, EdgeDirection, PipePropertyQuery, PipeQuery,
+        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query,
+    };
+    use crate::{Identifier, ValidationError};
+    use serde_json::json;
     use std::str::FromStr;
+
+    fn expect_inner_query_err<T: core::fmt::Debug>(result: Result<T, ValidationError>) {
+        match result {
+            Err(ValidationError::InnerQuery) => (),
+            _ => assert!(false, "unexpected result: {:?}", result),
+        }
+    }
 
     #[test]
     fn should_convert_str_to_edge_direction() {
@@ -808,5 +758,24 @@ mod tests {
         assert_eq!(s, "outbound".to_string());
         let s: String = EdgeDirection::Inbound.into();
         assert_eq!(s, "inbound".to_string());
+    }
+
+    #[test]
+    fn should_fail_for_nested_count_queries() {
+        let q: Query = AllVertexQuery.count().unwrap().into();
+        expect_inner_query_err(CountQuery::new(Box::new(q.clone())));
+        expect_inner_query_err(PipeQuery::new(Box::new(q.clone()), EdgeDirection::Outbound));
+        expect_inner_query_err(PipePropertyQuery::new(Box::new(q.clone())));
+        expect_inner_query_err(PipeWithPropertyPresenceQuery::new(
+            Box::new(q.clone()),
+            Identifier::new("foo").unwrap(),
+            true,
+        ));
+        expect_inner_query_err(PipeWithPropertyValueQuery::new(
+            Box::new(q.clone()),
+            Identifier::new("foo").unwrap(),
+            json!("bar"),
+            true,
+        ));
     }
 }

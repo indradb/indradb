@@ -5,76 +5,49 @@
 
 mod datastore;
 
-pub use self::datastore::MemoryDatastore;
+pub use datastore::MemoryDatastore;
 
 #[cfg(feature = "bench-suite")]
-full_bench_impl!(MemoryDatastore::default());
+full_bench_impl!(MemoryDatastore::new_db());
 
 #[cfg(feature = "test-suite")]
 #[cfg(test)]
 mod tests {
     use super::MemoryDatastore;
-    use crate::{Datastore, Error, Identifier, SpecificVertexQuery, VertexPropertyQuery};
+    use crate::util::{extract_count, extract_vertices};
+    use crate::{AllVertexQuery, CountQueryExt, Database, Identifier, SpecificVertexQuery};
+
     use tempfile::NamedTempFile;
     use uuid::Uuid;
 
-    full_test_impl!(MemoryDatastore::default());
+    full_test_impl!(MemoryDatastore::new_db());
 
-    fn create_vertex_with_property(datastore: &MemoryDatastore) -> Uuid {
-        let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
-        datastore
-            .set_vertex_properties(
-                VertexPropertyQuery {
-                    inner: SpecificVertexQuery::single(id).into(),
-                    name: Identifier::default(),
-                },
-                serde_json::Value::Bool(true),
-            )
-            .unwrap();
+    fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
+        let id = db.create_vertex_from_type(Identifier::default()).unwrap();
+        db.set_properties(
+            SpecificVertexQuery::single(id),
+            Identifier::default(),
+            serde_json::Value::Bool(true),
+        )
+        .unwrap();
         id
     }
 
-    fn expect_vertex(datastore: &MemoryDatastore, id: Uuid) {
-        assert_eq!(datastore.get_vertex_count().unwrap(), 1);
-        let vertices = datastore
-            .get_vertices(SpecificVertexQuery::new(vec![id]).into())
-            .unwrap();
+    fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
+        assert_eq!(extract_count(db.get(AllVertexQuery.count().unwrap()).unwrap()), Some(1));
+        let vertices = extract_vertices(db.get(SpecificVertexQuery::new(vec![id])).unwrap()).unwrap();
         assert_eq!(vertices.len(), 1);
         assert_eq!(vertices[0].id, id);
         assert_eq!(vertices[0].t, Identifier::default());
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn should_serialize_bincode() {
-        let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create(path.path()).unwrap();
-        let id = datastore.create_vertex_from_type(Identifier::default()).unwrap();
-        datastore.sync().unwrap();
-        let datastore = MemoryDatastore::read(path.path()).unwrap();
-        expect_vertex(&datastore, id);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn should_not_serialize_bincode_properties() {
-        let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create(path.path()).unwrap();
-        create_vertex_with_property(&datastore);
-        let result = datastore.sync();
-        match result {
-            Err(Error::Unsupported) => (),
-            _ => assert!(false, "unexpected result: {:?}", result),
-        }
-    }
-
-    #[test]
     fn should_serialize_msgpack() {
         let path = NamedTempFile::new().unwrap();
-        let datastore = MemoryDatastore::create_msgpack(path.path()).unwrap();
-        let id = create_vertex_with_property(&datastore);
-        datastore.sync().unwrap();
-        let datastore = MemoryDatastore::read_msgpack(path.path()).unwrap();
-        expect_vertex(&datastore, id);
+        let db = MemoryDatastore::create_msgpack_db(path.path());
+        let id = create_vertex_with_property(&db);
+        db.sync().unwrap();
+        let db = MemoryDatastore::read_msgpack_db(path.path()).unwrap();
+        expect_vertex(&db, id);
     }
 }

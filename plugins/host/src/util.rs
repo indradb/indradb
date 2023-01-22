@@ -6,21 +6,12 @@ use crate::errors::Error;
 use threadpool::ThreadPool;
 
 const DEFAULT_NUM_THREADS: usize = 8;
-const DEFAULT_QUERY_LIMIT: u32 = u16::max_value() as u32;
 
 /// Trait for running an operation on all vertices in a datastore.
 pub trait VertexMapper: Send + Sync + 'static {
     /// The number of threads that should execute the map operation.
     fn num_threads(&self) -> usize {
         DEFAULT_NUM_THREADS
-    }
-    /// How many vertices to pull at a time.
-    fn query_limit(&self) -> u32 {
-        DEFAULT_QUERY_LIMIT
-    }
-    /// If specified, only vertices of the specified type will be mapped.
-    fn t_filter(&self) -> Option<indradb::Identifier> {
-        None
     }
     /// The map operation.
     fn map(&self, vertex: indradb::Vertex) -> Result<(), Error>;
@@ -30,61 +21,48 @@ pub trait VertexMapper: Send + Sync + 'static {
 ///
 /// # Arguments
 /// * `mapper`: Specified options and the map operation to run.
-/// * `datastore`: The datastore.
-pub fn map<M: VertexMapper>(
-    mapper: Arc<M>,
-    datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
-) -> Result<(), Error> {
+/// * `database`: The database.
+pub fn map<'a, M: VertexMapper>(txn: &(dyn indradb::Transaction<'a> + 'a), mapper: Arc<M>) -> Result<(), Error> {
+    let first_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
     let pool = ThreadPool::new(max(mapper.num_threads(), 1));
-    let query_limit = max(mapper.query_limit(), 1);
-    let t_filter = mapper.t_filter();
-    let last_err: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
-    let mut last_id: Option<uuid::Uuid> = None;
+    let txn_ptr = txn as *const dyn indradb::Transaction<'a>;
+    let mut i = 0;
 
-    loop {
-        if last_err.lock().unwrap().is_some() {
+    for vertex in unsafe { (*txn_ptr).all_vertices()? } {
+        i += 1;
+        if i % 1000 == 0 && first_err.lock().unwrap().is_some() {
+            // Break on error, but also only check every once in a while since
+            // the error is behind a mutex.
             break;
         }
-
-        let q = indradb::RangeVertexQuery {
-            limit: query_limit,
-            t: t_filter.clone(),
-            start_id: last_id,
-        };
-
-        let vertices = match datastore.get_vertices(q.into()) {
-            Ok(value) => value,
-            Err(err) => {
-                *last_err.lock().unwrap() = Some(err.into());
-                break;
+        match vertex {
+            Ok(vertex) => {
+                let vertex: indradb::Vertex = vertex;
+                let mapper = mapper.clone();
+                let first_err = first_err.clone();
+                pool.execute(move || {
+                    if let Err(err) = mapper.map(vertex) {
+                        let mut first_err = first_err.lock().unwrap();
+                        if first_err.is_none() {
+                            *first_err = Some(err);
+                        }
+                    }
+                });
             }
-        };
-
-        let is_last_query = vertices.len() < query_limit as usize;
-        if let Some(last_vertex) = vertices.last() {
-            last_id = Some(last_vertex.id);
-        }
-
-        for vertex in vertices {
-            let mapper = mapper.clone();
-            let last_err = last_err.clone();
-            pool.execute(move || {
-                if let Err(err) = mapper.map(vertex) {
-                    *last_err.lock().unwrap() = Some(err);
+            Err(err) => {
+                let mut first_err = first_err.lock().unwrap();
+                if first_err.is_none() {
+                    *first_err = Some(Error::IndraDB(err));
                 }
-            });
-        }
-
-        if is_last_query {
-            break;
+            }
         }
     }
 
     pool.join();
 
-    let mut last_err = last_err.lock().unwrap();
-    if last_err.is_some() {
-        Err(last_err.take().unwrap())
+    let mut first_err = first_err.lock().unwrap();
+    if first_err.is_some() {
+        Err(first_err.take().unwrap())
     } else {
         Ok(())
     }

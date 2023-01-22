@@ -12,7 +12,11 @@ use crate::cli::CliDatastoreArgs;
 use indradb_proto as proto;
 use tokio::net::TcpListener;
 
-async fn run_server<D>(datastore: D, listener: TcpListener, plugin_path: &Option<String>) -> Result<(), Box<dyn Error>>
+async fn run_server<D>(
+    datastore: indradb::Database<D>,
+    listener: TcpListener,
+    plugin_path: &Option<String>,
+) -> Result<(), Box<dyn Error>>
 where
     D: indradb::Datastore + Send + Sync + 'static,
 {
@@ -50,30 +54,15 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 return Ok(());
             }
 
-            let datastore = indradb::RocksdbDatastore::new(&path, Some(max_open_files))
+            let datastore = indradb::RocksdbDatastore::new_db(&path, Some(max_open_files))
                 .expect("Expected to be able to create the RocksDB datastore");
             run_server(datastore, listener, &args.plugin_path).await
         }
-        CliDatastoreArgs::Memory {
-            bincode_path,
-            msgpack_path,
-        } => {
-            let datastore = if let Some(path) = msgpack_path {
-                if Path::new(path.as_os_str()).exists() {
-                    indradb::MemoryDatastore::read_msgpack(path)?
-                } else {
-                    indradb::MemoryDatastore::create_msgpack(path)?
-                }
-            } else if let Some(path) = bincode_path {
-                if Path::new(path.as_os_str()).exists() {
-                    #[allow(deprecated)]
-                    indradb::MemoryDatastore::read(path)?
-                } else {
-                    #[allow(deprecated)]
-                    indradb::MemoryDatastore::create(path)?
-                }
-            } else {
-                indradb::MemoryDatastore::default()
+        CliDatastoreArgs::Memory { path } => {
+            let datastore = match path {
+                None => indradb::MemoryDatastore::new_db(),
+                Some(path) if Path::new(path.as_os_str()).exists() => indradb::MemoryDatastore::read_msgpack_db(path)?,
+                Some(path) => indradb::MemoryDatastore::create_msgpack_db(path),
             };
             run_server(datastore, listener, &args.plugin_path).await
         }

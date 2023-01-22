@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
 
 use crate::errors::Error;
 
@@ -29,7 +28,7 @@ impl Default for VersionInfo {
         Self {
             rustc: env!("RUSTC_VERSION").to_string(),
             // If the interface is changed, this value should be incremented.
-            plugin_interface: 0,
+            plugin_interface: 1,
         }
     }
 }
@@ -46,11 +45,11 @@ pub trait Plugin: Send + Sync + 'static {
     /// calling client.
     ///
     /// # Arguments
-    /// * `datastore`: The datastore.
+    /// * `txn`: An IndraDB datastore transaction.
     /// * `arg`: The argument from the calling client.
-    fn call(
+    fn call<'a>(
         &self,
-        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        txn: &mut (dyn indradb::Transaction<'a> + 'a),
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, Error>;
 }
@@ -72,7 +71,7 @@ macro_rules! register_plugins {
             let mut entries = HashMap::new();
             $(
                 {
-                    let t: Box<dyn $crate::Plugin> = $t;
+                    let t: Box<dyn $crate::Plugin> = $t();
                     entries.insert($name.to_string(), t);
                 }
             )*

@@ -1,19 +1,30 @@
 //! Scaffolding for testing and benchmarking. This exposes an implementation
-//! of Datastore, so that the standard testing and benchmarking suite can be
-//! reused. Under the hood, it uses a tokio runtime to call async functions
-//! from non-async functions.
+//! of `Datastore` and `Transaction`. Under the hood, it uses a tokio runtime
+//! to call async functions from non-async functions. This allows us to reuse
+//! the standard testing suite, but it's a huge hack! It's trait
+//! implementations that are simulating low-level functionality (stuff that
+//! runs below the database) via the high-level client (stuff that runs above
+//! the database.)
 
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::rc::Rc;
+use std::result::Result as StdResult;
 use std::time::Duration;
+
+use indradb::{
+    util, AllEdgeQuery, AllVertexQuery, BulkInsertItem, CountQueryExt, Datastore, DynIter, Edge,
+    EdgeWithPropertyPresenceQuery, EdgeWithPropertyValueQuery, Error, Identifier, Query, QueryExt, QueryOutputValue,
+    RangeVertexQuery, Result, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
+    VertexWithPropertyPresenceQuery, VertexWithPropertyValueQuery,
+};
 
 use tokio::runtime::Runtime;
 use tokio::time::sleep;
 use tonic::transport::Endpoint;
 use uuid::Uuid;
 
-fn map_client_result<T>(result: Result<T, crate::ClientError>) -> Result<T, indradb::Error> {
+fn map_client_result<T>(result: StdResult<T, crate::ClientError>) -> Result<T> {
     result.map_err(|err| {
         match err {
             // this is the only error variant we need to handle for testing
@@ -21,7 +32,7 @@ fn map_client_result<T>(result: Result<T, crate::ClientError>) -> Result<T, indr
                 if inner.code() == tonic::Code::Internal
                     && inner.message() == "query attempted on a property that isn't indexed" =>
             {
-                indradb::Error::NotIndexed
+                Error::NotIndexed
             }
             // unexpected error variant
             _ => panic!("{}", err),
@@ -29,14 +40,268 @@ fn map_client_result<T>(result: Result<T, crate::ClientError>) -> Result<T, indr
     })
 }
 
+pub struct ClientTransaction {
+    client: Rc<RefCell<crate::Client>>,
+    exec: Rc<RefCell<Runtime>>,
+}
+
+impl<'a> ClientTransaction {
+    fn get<Q: Into<Query>>(&self, q: Q) -> Result<Vec<QueryOutputValue>> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get(q)))
+    }
+
+    fn delete<Q: Into<Query>>(&self, q: Q) -> Result<()> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().delete(q)))
+    }
+
+    fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: serde_json::Value) -> Result<()> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().set_properties(q, name, value)),
+        )
+    }
+
+    fn get_count<Q: Into<Query>>(&self, q: Q) -> u64 {
+        util::extract_count(self.get(q).unwrap()).unwrap()
+    }
+
+    fn get_vertices<Q: Into<Query>>(&'a self, q: Q) -> Result<DynIter<'a, Vertex>> {
+        let vertices = util::extract_vertices(self.get(q)?).ok_or(Error::Unsupported)?;
+        Ok(Box::new(vertices.into_iter().map(Ok)))
+    }
+
+    fn get_edges<Q: Into<Query>>(&'a self, q: Q) -> Result<DynIter<'a, Edge>> {
+        let edges = util::extract_edges(self.get(q)?).ok_or(Error::Unsupported)?;
+        Ok(Box::new(edges.into_iter().map(Ok)))
+    }
+}
+
+impl<'a> Transaction<'a> for ClientTransaction {
+    fn vertex_count(&self) -> u64 {
+        self.get_count(AllVertexQuery.count().unwrap())
+    }
+
+    fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>> {
+        self.get_vertices(AllVertexQuery)
+    }
+
+    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+        self.get_vertices(RangeVertexQuery::default().start_id(offset))
+    }
+
+    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+        self.get_vertices(SpecificVertexQuery::new(ids))
+    }
+
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+        let q = VertexWithPropertyPresenceQuery::new(name.clone());
+        let vertices = util::extract_vertices(self.get(q)?).unwrap();
+        Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
+    }
+
+    fn vertex_ids_with_property_value(
+        &'a self,
+        name: &Identifier,
+        value: &serde_json::Value,
+    ) -> Result<Option<DynIter<'a, Uuid>>> {
+        let q = VertexWithPropertyValueQuery::new(name.clone(), value.clone());
+        let vertices = util::extract_vertices(self.get(q)?).unwrap();
+        Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
+    }
+
+    fn edge_count(&self) -> u64 {
+        self.get_count(AllEdgeQuery.count().unwrap())
+    }
+
+    fn all_edges(&'a self) -> Result<DynIter<'a, Edge>> {
+        self.get_edges(AllEdgeQuery)
+    }
+
+    fn range_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+        let edges = util::extract_edges(self.get(AllEdgeQuery)?).unwrap();
+        let iter = edges.into_iter().filter(move |e| e >= &offset).map(Ok);
+        Ok(Box::new(iter))
+    }
+
+    fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
+        let edges = util::extract_edges(self.get(AllEdgeQuery)?).unwrap();
+        let iter = edges
+            .into_iter()
+            .map(|e| e.reversed())
+            .filter(move |e| e >= &offset)
+            .map(Ok);
+        Ok(Box::new(iter))
+    }
+
+    fn specific_edges(&'a self, edges: Vec<Edge>) -> Result<DynIter<'a, Edge>> {
+        self.get_edges(SpecificEdgeQuery::new(edges))
+    }
+
+    fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
+        let q = EdgeWithPropertyPresenceQuery::new(name.clone());
+        let edges = util::extract_edges(self.get(q)?).unwrap();
+        Ok(Some(Box::new(edges.into_iter().map(Ok))))
+    }
+
+    fn edges_with_property_value(
+        &'a self,
+        name: &Identifier,
+        value: &serde_json::Value,
+    ) -> Result<Option<DynIter<'a, Edge>>> {
+        let q = EdgeWithPropertyValueQuery::new(name.clone(), value.clone());
+        let edges = util::extract_edges(self.get(q)?).unwrap();
+        Ok(Some(Box::new(edges.into_iter().map(Ok))))
+    }
+
+    fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>> {
+        let q = SpecificVertexQuery::single(vertex.id)
+            .properties()
+            .unwrap()
+            .name(name.clone());
+        let props = util::extract_vertex_properties(self.get(q)?).unwrap();
+        match props.len() {
+            0 => Ok(None),
+            1 => match props[0].props.len() {
+                0 => Ok(None),
+                1 => Ok(Some(props[0].props[0].value.clone())),
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn all_vertex_properties_for_vertex(
+        &'a self,
+        vertex: &Vertex,
+    ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+        let q = SpecificVertexQuery::single(vertex.id).properties().unwrap();
+        let props = util::extract_vertex_properties(self.get(q)?).unwrap();
+        match props.len() {
+            0 => Ok(Box::new(Vec::default().into_iter())),
+            1 => {
+                let props: Vec<Result<(Identifier, serde_json::Value)>> = props[0]
+                    .props
+                    .iter()
+                    .map(|p| Ok((p.name.clone(), p.value.clone())))
+                    .collect();
+                Ok(Box::new(props.into_iter()))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>> {
+        let q = SpecificEdgeQuery::single(edge.clone())
+            .properties()
+            .unwrap()
+            .name(name.clone());
+        let props = util::extract_edge_properties(self.get(q)?).unwrap();
+        match props.len() {
+            0 => Ok(None),
+            1 => match props[0].props.len() {
+                0 => Ok(None),
+                1 => Ok(Some(props[0].props[0].value.clone())),
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+        let q = SpecificEdgeQuery::single(edge.clone()).properties().unwrap();
+        let props = util::extract_edge_properties(self.get(q)?).unwrap();
+        match props.len() {
+            0 => Ok(Box::new(Vec::default().into_iter())),
+            1 => {
+                let props: Vec<Result<(Identifier, serde_json::Value)>> = props[0]
+                    .props
+                    .iter()
+                    .map(|p| Ok((p.name.clone(), p.value.clone())))
+                    .collect();
+                Ok(Box::new(props.into_iter()))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn delete_vertices(&mut self, vertices: Vec<Vertex>) -> Result<()> {
+        self.delete(SpecificVertexQuery::new(vertices.into_iter().map(|v| v.id).collect()))
+    }
+
+    fn delete_edges(&mut self, edges: Vec<Edge>) -> Result<()> {
+        self.delete(SpecificEdgeQuery::new(edges))
+    }
+
+    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()> {
+        for (id, name) in props {
+            self.delete(SpecificVertexQuery::single(id).properties().unwrap().name(name))?;
+        }
+        Ok(())
+    }
+
+    fn delete_edge_properties(&mut self, props: Vec<(Edge, Identifier)>) -> Result<()> {
+        for (edge, name) in props {
+            self.delete(SpecificEdgeQuery::single(edge).properties().unwrap().name(name))?;
+        }
+        Ok(())
+    }
+
+    fn sync(&self) -> Result<()> {
+        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
+    }
+
+    fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().create_vertex(vertex)),
+        )
+    }
+
+    fn create_edge(&mut self, edge: &Edge) -> Result<bool> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().create_edge(edge)),
+        )
+    }
+
+    fn bulk_insert(&mut self, items: Vec<BulkInsertItem>) -> Result<()> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().bulk_insert(items)),
+        )
+    }
+
+    fn index_property(&mut self, name: Identifier) -> Result<()> {
+        map_client_result(
+            self.exec
+                .borrow_mut()
+                .block_on(self.client.borrow_mut().index_property(name)),
+        )
+    }
+
+    fn set_vertex_properties(
+        &mut self,
+        vertex_ids: Vec<Uuid>,
+        name: Identifier,
+        value: serde_json::Value,
+    ) -> Result<()> {
+        self.set_properties(SpecificVertexQuery::new(vertex_ids), name, value)
+    }
+
+    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()> {
+        self.set_properties(SpecificEdgeQuery::new(edges), name, value)
+    }
+}
+
 pub struct ClientDatastore {
     client: Rc<RefCell<crate::Client>>,
     exec: Rc<RefCell<Runtime>>,
 }
 
-// the use of this function inside the full_test_impl macro appears to make
-// the linter think this is dead code, so ignore the warning for now
-#[allow(dead_code)]
 impl ClientDatastore {
     pub fn new(port: u16, exec: Runtime) -> Self {
         let endpoint: Endpoint = format!("http://127.0.0.1:{}", port).try_into().unwrap();
@@ -58,176 +323,18 @@ impl ClientDatastore {
     }
 }
 
-impl indradb::Datastore for ClientDatastore {
-    fn sync(&self) -> Result<(), indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
-    }
-
-    fn create_vertex(&self, v: &indradb::Vertex) -> Result<bool, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().create_vertex(v)),
-        )
-    }
-
-    fn create_vertex_from_type(&self, t: indradb::Identifier) -> Result<Uuid, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().create_vertex_from_type(t)),
-        )
-    }
-
-    fn get_vertices(&self, q: indradb::VertexQuery) -> Result<Vec<indradb::Vertex>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_vertices(q)),
-        )
-    }
-
-    fn delete_vertices(&self, q: indradb::VertexQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete_vertices(q)),
-        )
-    }
-
-    fn get_vertex_count(&self) -> Result<u64, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_vertex_count()),
-        )
-    }
-
-    fn create_edge(&self, e: &indradb::EdgeKey) -> Result<bool, indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().create_edge(e)))
-    }
-
-    fn get_edges(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::Edge>, indradb::Error> {
-        map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().get_edges(q)))
-    }
-
-    fn delete_edges(&self, q: indradb::EdgeQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete_edges(q)),
-        )
-    }
-
-    fn get_edge_count(
-        &self,
-        id: Uuid,
-        t: Option<&indradb::Identifier>,
-        direction: indradb::EdgeDirection,
-    ) -> Result<u64, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_edge_count(id, t, direction)),
-        )
-    }
-
-    fn get_vertex_properties(
-        &self,
-        q: indradb::VertexPropertyQuery,
-    ) -> Result<Vec<indradb::VertexProperty>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_vertex_properties(q)),
-        )
-    }
-
-    fn get_all_vertex_properties(
-        &self,
-        q: indradb::VertexQuery,
-    ) -> Result<Vec<indradb::VertexProperties>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_all_vertex_properties(q)),
-        )
-    }
-
-    fn set_vertex_properties(
-        &self,
-        q: indradb::VertexPropertyQuery,
-        value: serde_json::Value,
-    ) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().set_vertex_properties(q, value)),
-        )
-    }
-
-    fn delete_vertex_properties(&self, q: indradb::VertexPropertyQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete_vertex_properties(q)),
-        )
-    }
-
-    fn get_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<Vec<indradb::EdgeProperty>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_edge_properties(q)),
-        )
-    }
-
-    fn get_all_edge_properties(&self, q: indradb::EdgeQuery) -> Result<Vec<indradb::EdgeProperties>, indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().get_all_edge_properties(q)),
-        )
-    }
-
-    fn set_edge_properties(
-        &self,
-        q: indradb::EdgePropertyQuery,
-        value: serde_json::Value,
-    ) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().set_edge_properties(q, value)),
-        )
-    }
-
-    fn delete_edge_properties(&self, q: indradb::EdgePropertyQuery) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().delete_edge_properties(q)),
-        )
-    }
-
-    fn bulk_insert(&self, items: Vec<indradb::BulkInsertItem>) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().bulk_insert(items)),
-        )
-    }
-
-    fn index_property(&self, name: indradb::Identifier) -> Result<(), indradb::Error> {
-        map_client_result(
-            self.exec
-                .borrow_mut()
-                .block_on(self.client.borrow_mut().index_property(name)),
-        )
+impl Datastore for ClientDatastore {
+    type Transaction<'a> = ClientTransaction;
+    fn transaction(&'_ self) -> Self::Transaction<'_> {
+        ClientTransaction {
+            client: self.client.clone(),
+            exec: self.exec.clone(),
+        }
     }
 }
 
 full_test_impl!({
+    use indradb::Database;
     use std::net::ToSocketAddrs;
     use std::sync::Arc;
     use tokio::net::TcpListener;
@@ -238,9 +345,9 @@ full_test_impl!({
     let listener = rt.block_on(TcpListener::bind(&addr)).unwrap();
     let port = listener.local_addr().unwrap().port();
     rt.spawn(crate::run_server(
-        Arc::new(indradb::MemoryDatastore::default()),
+        Arc::new(indradb::MemoryDatastore::new_db()),
         listener,
     ));
 
-    ClientDatastore::new(port as u16, rt)
+    Database::new(ClientDatastore::new(port as u16, rt))
 });

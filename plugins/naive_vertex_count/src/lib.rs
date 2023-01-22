@@ -10,15 +10,9 @@ use indradb_plugin_host as plugin;
 struct NaiveVertexCountMapper {
     /// The number of vertices.
     count: AtomicU64,
-    /// What type of vertices to count.
-    t_filter: Option<indradb::Identifier>,
 }
 
 impl plugin::util::VertexMapper for NaiveVertexCountMapper {
-    fn t_filter(&self) -> Option<indradb::Identifier> {
-        self.t_filter.clone()
-    }
-
     fn map(&self, _vertex: indradb::Vertex) -> Result<(), plugin::Error> {
         self.count.fetch_add(1, Ordering::Relaxed);
         Ok(())
@@ -28,22 +22,18 @@ impl plugin::util::VertexMapper for NaiveVertexCountMapper {
 pub struct NaiveVertexCountPlugin {}
 
 impl plugin::Plugin for NaiveVertexCountPlugin {
-    fn call(
+    fn call<'a>(
         &self,
-        datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
-        arg: serde_json::Value,
+        txn: &mut (dyn indradb::Transaction<'a> + 'a),
+        _arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let mapper = Arc::new(NaiveVertexCountMapper {
             count: AtomicU64::new(0),
-            t_filter: arg
-                .get("t_filter")
-                .map(|t_filter| indradb::Identifier::new(t_filter.as_str().unwrap()).unwrap()),
         });
-
-        plugin::util::map(mapper.clone(), datastore)?;
+        plugin::util::map(txn, mapper.clone())?;
         let count = mapper.count.load(Ordering::Relaxed);
         Ok(count.into())
     }
 }
 
-plugin::register_plugins!(0, "naive_vertex_count", Box::new(crate::NaiveVertexCountPlugin {}));
+plugin::register_plugins!(1, "naive_vertex_count", || Box::new(crate::NaiveVertexCountPlugin {}));

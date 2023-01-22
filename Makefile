@@ -14,7 +14,6 @@ test-lib-coverage:
 
 bench:
 	cd lib && cargo +nightly bench --features=bench-suite,rocksdb-datastore $(TEST_NAME)
-	cd proto && cargo +nightly bench --features=bench-suite $(TEST_NAME)
 
 fuzz:
 	cd lib && cargo +nightly fuzz run compare

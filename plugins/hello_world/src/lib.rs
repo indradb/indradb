@@ -1,14 +1,13 @@
 //! Demonstrates a basic plugin.
 
 use indradb_plugin_host as plugin;
-use std::sync::Arc;
 
 pub struct HelloWorldPlugin {}
 
 impl plugin::Plugin for HelloWorldPlugin {
-    fn call(
+    fn call<'a>(
         &self,
-        _datastore: Arc<dyn indradb::Datastore + Send + Sync + 'static>,
+        _txn: &mut (dyn indradb::Transaction<'a> + 'a),
         arg: serde_json::Value,
     ) -> Result<serde_json::Value, plugin::Error> {
         let greeting = format!("hello, {}", arg);
@@ -16,4 +15,4 @@ impl plugin::Plugin for HelloWorldPlugin {
     }
 }
 
-plugin::register_plugins!(0, "hello_world", Box::new(crate::HelloWorldPlugin {}));
+plugin::register_plugins!(1, "hello_world", || Box::new(crate::HelloWorldPlugin {}));

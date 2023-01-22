@@ -21,6 +21,5 @@ if [ "$os" == "ubuntu-latest" ]; then
         cargo check --all-features
         # These are here because the above `cargo check` doesn't cover them
         (cd lib/fuzz && cargo check)
-        (cd proto && cargo bench --no-run --features=bench-suite)
     fi
 fi
