@@ -684,7 +684,7 @@ impl IncludeQuery {
 ///
 /// # Examples
 /// ```
-/// use indradb::{AllVertexQuery, QueryExt};
+/// use indradb::{AllVertexQuery, CountQueryExt};
 /// // A query to return the total number of vertices in the database.
 /// let q = AllVertexQuery.count();
 /// ```
