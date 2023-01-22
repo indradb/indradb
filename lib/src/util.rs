@@ -172,7 +172,6 @@ pub fn extract_edge_properties(mut output: Vec<models::QueryOutputValue>) -> Opt
 #[cfg(test)]
 mod tests {
     use super::{extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices};
-    use core::str::FromStr;
 
     #[test]
     fn should_not_extract_vertices_on_empty() {

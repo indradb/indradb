@@ -68,7 +68,7 @@ impl<'a> VertexManager<'a> {
             let (k, v) = item?;
 
             let id = {
-                debug_assert_eq!(k.len(), 16);
+                debug_assert_eq!(k.len(), 8);
                 let mut cursor = Cursor::new(k);
                 util::read_u64(&mut cursor)
             };
