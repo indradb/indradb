@@ -7,8 +7,6 @@ use crate::{
     SpecificVertexQuery,
 };
 
-use uuid::Uuid;
-
 pub fn should_create_vertex_from_type<D: Datastore>(db: &Database<D>) {
     let t = models::Identifier::new("test_vertex_type").unwrap();
     db.create_vertex_from_type(t).unwrap();
@@ -34,11 +32,7 @@ pub fn should_get_no_vertices_with_zero_limit<D: Datastore>(db: &Database<D>) {
 
 pub fn should_get_range_vertices_out_of_range<D: Datastore>(db: &Database<D>) {
     create_vertices(db);
-    let range = util::get_vertices(
-        db,
-        RangeVertexQuery::new().start_id(Uuid::parse_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()),
-    )
-    .unwrap();
+    let range = util::get_vertices(db, RangeVertexQuery::new().start_id(u64::max_value())).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -63,7 +57,7 @@ pub fn should_get_single_vertex_nonexisting<D: Datastore>(db: &Database<D>) {
     let vertex_t = models::Identifier::new("test_vertex_type").unwrap();
     let vertex = models::Vertex::new(vertex_t);
     db.create_vertex(&vertex).unwrap();
-    let range = util::get_vertices(db, SpecificVertexQuery::single(Uuid::default())).unwrap();
+    let range = util::get_vertices(db, SpecificVertexQuery::single(0)).unwrap();
     assert_eq!(range.len(), 0);
 }
 
@@ -72,13 +66,13 @@ pub fn should_get_vertices<D: Datastore>(db: &Database<D>) {
 
     let range = util::get_vertices(
         db,
-        SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], Uuid::default()]),
+        SpecificVertexQuery::new(vec![inserted_ids[0], inserted_ids[1], inserted_ids[2], 0]),
     )
     .unwrap();
 
     assert!(range.len() == 3);
 
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<u64> = HashSet::new();
 
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
@@ -183,7 +177,7 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(db: &Database<D>) {
-    db.delete(SpecificVertexQuery::single(Uuid::default())).unwrap();
+    db.delete(SpecificVertexQuery::single(0)).unwrap();
 }
 
 pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) {
@@ -214,9 +208,9 @@ pub fn should_not_pipe_on_vertex_count<D: Datastore>(db: &Database<D>) {
     expect_err!(result, errors::Error::OperationOnQuery);
 }
 
-fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid>) {
+fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<u64>) {
     assert!(range.len() >= 5);
-    let mut covered_ids: HashSet<Uuid> = HashSet::new();
+    let mut covered_ids: HashSet<u64> = HashSet::new();
     for vertex in &range {
         if let Ok(index) = inserted_ids.binary_search(&vertex.id) {
             assert_eq!(vertex.t, models::Identifier::new("test_vertex_type").unwrap());
@@ -228,7 +222,7 @@ fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid
     }
 }
 
-fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<Uuid> {
+fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<u64> {
     let t = models::Identifier::new("test_vertex_type").unwrap();
 
     let vertices = vec![
@@ -243,7 +237,7 @@ fn create_vertices<D: Datastore>(db: &Database<D>) -> Vec<Uuid> {
         db.create_vertex(vertex).unwrap();
     }
 
-    let mut vertex_ids: Vec<Uuid> = vertices.into_iter().map(|v| v.id).collect();
+    let mut vertex_ids: Vec<u64> = vertices.into_iter().map(|v| v.id).collect();
     vertex_ids.sort();
     vertex_ids
 }

@@ -3,23 +3,19 @@ mod errors;
 use std::convert::TryInto;
 use std::error::Error as StdError;
 
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{value_t, App, AppSettings, Arg, SubCommand};
 use indradb::util::{
     extract_count, extract_edge_properties, extract_edges, extract_vertex_properties, extract_vertices,
-    generate_uuid_v1,
 };
 use indradb::{
     AllEdgeQuery, AllVertexQuery, CountQueryExt, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery,
     SpecificVertexQuery, Vertex,
 };
 use indradb_proto as proto;
-use uuid::Uuid;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
-    let vertex_id_arg = Arg::with_name("uuid")
-        .help("the UUID of the target vertex")
-        .required(true);
+    let vertex_id_arg = Arg::with_name("id").help("the ID of the target vertex").required(true);
     let outbound_id_arg = Arg::with_name("outbound_id")
         .help("the outbound vertex ID")
         .required(true);
@@ -60,10 +56,9 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                         .arg(Arg::with_name("type").help("the vertex type").required(true).index(1))
                         .arg(
                             Arg::with_name("id")
-                                .help("the optional vertex ID, as a UUID string; if not set, an ID will be generated")
+                                .help("the optional vertex ID; if not set, an ID will be generated")
                                 .long("id")
-                                .value_name("uuid")
-                                .takes_value(true),
+                                .value_name("id"),
                         ),
                 )
                 .subcommand(
@@ -160,14 +155,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
     } else if let Some(matches) = matches.subcommand_matches("set") {
         if let Some(matches) = matches.subcommand_matches("vertex") {
             let vertex_type = Identifier::new(matches.value_of("type").unwrap())?;
-            let uuid = match matches.value_of("id") {
-                Some(id) => Uuid::parse_str(id)?,
-                None => generate_uuid_v1(),
+            let vertex = match matches.value_of("id") {
+                Some(id) => Vertex::with_id(id.parse::<u64>()?, vertex_type),
+                None => Vertex::new(vertex_type),
             };
-            let vertex = Vertex::with_id(uuid, vertex_type);
             let res = client.create_vertex(&vertex).await?;
             if !res {
-                return Err(Box::new(Error::UuidTaken));
+                return Err(Box::new(Error::IdTaken));
             }
             println!("{:?}", vertex);
         } else if let Some(matches) = matches.subcommand_matches("edge") {
@@ -255,13 +249,13 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
 }
 
 fn build_vertex_query(matches: &clap::ArgMatches) -> Result<SpecificVertexQuery, Box<dyn StdError>> {
-    let vertex_id = Uuid::parse_str(matches.value_of("uuid").unwrap())?;
+    let vertex_id = value_t!(matches, "id", u64)?;
     Ok(SpecificVertexQuery::single(vertex_id))
 }
 
 fn build_edge(matches: &clap::ArgMatches) -> Result<Edge, Box<dyn StdError>> {
     let edge_type = Identifier::new(matches.value_of("type").unwrap())?;
-    let outbound_id = Uuid::parse_str(matches.value_of("outbound_id").unwrap())?;
-    let inbound_id = Uuid::parse_str(matches.value_of("inbound_id").unwrap())?;
+    let outbound_id = value_t!(matches, "outbound_id", u64)?;
+    let inbound_id = value_t!(matches, "inbound_id", u64)?;
     Ok(Edge::new(outbound_id, edge_type, inbound_id))
 }

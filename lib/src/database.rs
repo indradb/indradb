@@ -5,7 +5,6 @@ use crate::models::{
 };
 use std::collections::HashSet;
 use std::vec::Vec;
-use uuid::Uuid;
 
 /// A dynamic iterator over results, which are commonly employed as
 /// transaction return types.
@@ -31,14 +30,14 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `offset` - Only fetch vertices with an offset greater than or equal
     /// to this value.
-    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>>;
+    fn range_vertices(&'a self, offset: u64) -> Result<DynIter<'a, Vertex>>;
     /// Gets a specific set of vertices with the given IDs.
-    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
+    fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>>;
     /// Get all vertices with a given property.
     ///
     /// # Arguments
     /// * `name` - The property name.
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>>;
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, u64>>>;
     /// Get all vertices with a given property value.
     ///
     /// # Arguments
@@ -48,7 +47,7 @@ pub trait Transaction<'a> {
         &'a self,
         name: &Identifier,
         value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Uuid>>>;
+    ) -> Result<Option<DynIter<'a, u64>>>;
 
     /// Gets the number of edges.
     fn edge_count(&self) -> u64;
@@ -128,7 +127,7 @@ pub trait Transaction<'a> {
     ///
     /// # Arguments
     /// * `props` - The vertex properties to delete.
-    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()>;
+    fn delete_vertex_properties(&mut self, props: Vec<(u64, Identifier)>) -> Result<()>;
     /// Deletes the given edge properties.
     ///
     /// # Arguments
@@ -142,7 +141,7 @@ pub trait Transaction<'a> {
     }
 
     /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
+    /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
     ///
     /// # Arguments
@@ -196,7 +195,7 @@ pub trait Transaction<'a> {
     /// * `vertices`: The vertices to set the properties on.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    fn set_vertex_properties(&mut self, vertices: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()>;
+    fn set_vertex_properties(&mut self, vertices: Vec<u64>, name: Identifier, value: serde_json::Value) -> Result<()>;
     /// Sets edge properties.
     ///
     /// # Arguments
@@ -246,7 +245,7 @@ impl<D: Datastore> Database<D> {
     }
 
     /// Creates a new vertex. Returns whether the vertex was successfully
-    /// created - if this is false, it's because a vertex with the same UUID
+    /// created - if this is false, it's because a vertex with the same ID
     /// already exists.
     ///
     /// # Arguments
@@ -258,15 +257,15 @@ impl<D: Datastore> Database<D> {
 
     /// Creates a new vertex with just a type specification. As opposed to
     /// `create_vertex`, this is used when you do not want to manually specify
-    /// the vertex's UUID. Returns the new vertex's UUID.
+    /// the vertex's ID. Returns the new vertex's ID.
     ///
     /// # Arguments
     /// * `t`: The type of the vertex to create.
-    pub fn create_vertex_from_type(&self, t: Identifier) -> Result<Uuid> {
+    pub fn create_vertex_from_type(&self, t: Identifier) -> Result<u64> {
         let v = Vertex::new(t);
 
         if !self.create_vertex(&v)? {
-            Err(Error::UuidTaken)
+            Err(Error::IdTaken)
         } else {
             Ok(v.id)
         }
@@ -321,7 +320,7 @@ impl<D: Datastore> Database<D> {
                         .into_iter()
                         .flat_map(|vps| {
                             let iter = vps.props.iter().map(move |vp| (vps.vertex.id, vp.name.clone()));
-                            iter.collect::<Vec<(Uuid, Identifier)>>()
+                            iter.collect::<Vec<(u64, Identifier)>>()
                         })
                         .collect(),
                 )?;
@@ -425,7 +424,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
             let values = match piped_values {
                 QueryOutputValue::Edges(ref piped_edges) => {
-                    let iter: Box<dyn Iterator<Item = Uuid>> = match q.direction {
+                    let iter: Box<dyn Iterator<Item = u64>> = match q.direction {
                         EdgeDirection::Outbound => Box::new(piped_edges.iter().map(|e| e.outbound_id)),
                         EdgeDirection::Inbound => Box::new(piped_edges.iter().map(|e| e.inbound_id)),
                     };
@@ -448,8 +447,8 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
 
                     for vertex in piped_vertices {
                         let lower_bound = match &q.t {
-                            Some(t) => Edge::new(vertex.id, t.clone(), Uuid::default()),
-                            None => Edge::new(vertex.id, Identifier::default(), Uuid::default()),
+                            Some(t) => Edge::new(vertex.id, t.clone(), 0),
+                            None => Edge::new(vertex.id, Identifier::default(), 0),
                         };
 
                         let mut iter = if q.direction == EdgeDirection::Outbound {
@@ -560,7 +559,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
         }
         Query::VertexWithPropertyPresence(ref q) => {
             if let Some(iter) = (*txn).vertex_ids_with_property(&q.name)? {
-                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
+                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<u64>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
                 return Err(Error::NotIndexed);
@@ -568,7 +567,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
         }
         Query::VertexWithPropertyValue(ref q) => {
             if let Some(iter) = (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
-                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<Uuid>>>()?)?;
+                let iter = (*txn).specific_vertices(iter.collect::<Result<Vec<u64>>>()?)?;
                 QueryOutputValue::Vertices(iter.collect::<Result<Vec<Vertex>>>()?)
             } else {
                 return Err(Error::NotIndexed);
@@ -606,7 +605,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
                     let vertices_with_property = match (*txn).vertex_ids_with_property(&q.name)? {
-                        Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
+                        Some(iter) => iter.collect::<Result<HashSet<u64>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_vertices.iter().filter(move |v| {
@@ -645,7 +644,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                 }
                 QueryOutputValue::Vertices(ref piped_vertices) => {
                     let vertex_ids = match (*txn).vertex_ids_with_property_value(&q.name, &q.value)? {
-                        Some(iter) => iter.collect::<Result<HashSet<Uuid>>>()?,
+                        Some(iter) => iter.collect::<Result<HashSet<u64>>>()?,
                         None => return Err(Error::NotIndexed),
                     };
                     let iter = piped_vertices.iter().filter(move |v| {

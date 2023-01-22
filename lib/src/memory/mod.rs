@@ -18,11 +18,10 @@ mod tests {
     use crate::{AllVertexQuery, CountQueryExt, Database, Identifier, SpecificVertexQuery};
 
     use tempfile::NamedTempFile;
-    use uuid::Uuid;
 
     full_test_impl!(MemoryDatastore::new_db());
 
-    fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
+    fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> u64 {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();
         db.set_properties(
             SpecificVertexQuery::single(id),
@@ -33,7 +32,7 @@ mod tests {
         id
     }
 
-    fn expect_vertex(db: &Database<MemoryDatastore>, id: Uuid) {
+    fn expect_vertex(db: &Database<MemoryDatastore>, id: u64) {
         assert_eq!(extract_count(db.get(AllVertexQuery.count().unwrap()).unwrap()), Some(1));
         let vertices = extract_vertices(db.get(SpecificVertexQuery::new(vec![id])).unwrap()).unwrap();
         assert_eq!(vertices.len(), 1);

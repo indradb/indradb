@@ -7,14 +7,11 @@ use std::fmt;
 
 use indradb::ValidationError;
 use serde_json::Error as SerdeJsonError;
-use uuid::Error as UuidError;
-use uuid::Uuid;
 
 /// The error returned if a try into operation fails.
 #[derive(Debug)]
 pub enum ConversionError {
     Json { inner: SerdeJsonError },
-    Uuid { inner: UuidError },
     Validation { inner: ValidationError },
     NoneField { name: String },
     UnexpectedResponseType,
@@ -24,7 +21,6 @@ impl StdError for ConversionError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
             ConversionError::Json { ref inner } => Some(inner),
-            ConversionError::Uuid { ref inner } => Some(inner),
             ConversionError::Validation { ref inner } => Some(inner),
             _ => None,
         }
@@ -35,7 +31,6 @@ impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConversionError::Json { ref inner } => write!(f, "json conversion failed: {}", inner),
-            ConversionError::Uuid { ref inner } => write!(f, "uuid conversion failed: {}", inner),
             ConversionError::Validation { ref inner } => write!(f, "validation conversion failed: {}", inner),
             ConversionError::NoneField { ref name } => write!(f, "proto field '{}' should not be none", name),
             ConversionError::UnexpectedResponseType => write!(f, "unexpected response type"),
@@ -49,12 +44,6 @@ impl From<SerdeJsonError> for ConversionError {
     }
 }
 
-impl From<UuidError> for ConversionError {
-    fn from(err: UuidError) -> Self {
-        ConversionError::Uuid { inner: err }
-    }
-}
-
 impl From<ValidationError> for ConversionError {
     fn from(err: ValidationError) -> Self {
         ConversionError::Validation { inner: err }
@@ -65,22 +54,6 @@ fn required_field<T>(field_name: &str, value: Option<T>) -> Result<T, Conversion
     value.ok_or_else(|| ConversionError::NoneField {
         name: field_name.to_string(),
     })
-}
-
-impl From<Uuid> for crate::Uuid {
-    fn from(uuid: Uuid) -> Self {
-        crate::Uuid {
-            value: uuid.as_bytes().to_vec(),
-        }
-    }
-}
-
-impl TryInto<Uuid> for crate::Uuid {
-    type Error = ConversionError;
-
-    fn try_into(self) -> Result<Uuid, Self::Error> {
-        Ok(Uuid::from_slice(&self.value)?)
-    }
 }
 
 impl From<indradb::Identifier> for crate::Identifier {
@@ -116,9 +89,9 @@ impl TryInto<serde_json::Value> for crate::Json {
 impl From<indradb::Edge> for crate::Edge {
     fn from(edge: indradb::Edge) -> Self {
         crate::Edge {
-            outbound_id: Some(edge.outbound_id.into()),
+            outbound_id: edge.outbound_id,
             t: Some(edge.t.into()),
-            inbound_id: Some(edge.inbound_id.into()),
+            inbound_id: edge.inbound_id,
         }
     }
 }
@@ -128,9 +101,9 @@ impl TryInto<indradb::Edge> for crate::Edge {
 
     fn try_into(self) -> Result<indradb::Edge, Self::Error> {
         Ok(indradb::Edge::new(
-            required_field("outbound_id", self.outbound_id)?.try_into()?,
+            self.outbound_id,
             required_field("t", self.t)?.try_into()?,
-            required_field("inbound_id", self.inbound_id)?.try_into()?,
+            self.inbound_id,
         ))
     }
 }
@@ -138,7 +111,7 @@ impl TryInto<indradb::Edge> for crate::Edge {
 impl From<indradb::Vertex> for crate::Vertex {
     fn from(vertex: indradb::Vertex) -> Self {
         crate::Vertex {
-            id: Some(vertex.id.into()),
+            id: vertex.id,
             t: Some(vertex.t.into()),
         }
     }
@@ -149,7 +122,7 @@ impl TryInto<indradb::Vertex> for crate::Vertex {
 
     fn try_into(self) -> Result<indradb::Vertex, Self::Error> {
         Ok(indradb::Vertex::with_id(
-            required_field("id", self.id)?.try_into()?,
+            self.id,
             required_field("t", self.t)?.try_into()?,
         ))
     }
@@ -163,11 +136,11 @@ impl From<indradb::Query> for crate::Query {
                 indradb::Query::RangeVertex(q) => crate::QueryVariant::RangeVertex(crate::RangeVertexQuery {
                     limit: q.limit,
                     t: q.t.map(|t| t.into()),
-                    start_id: q.start_id.map(|start_id| start_id.into()),
+                    start_id: q.start_id.unwrap_or(0),
                 }),
-                indradb::Query::SpecificVertex(q) => crate::QueryVariant::SpecificVertex(crate::SpecificVertexQuery {
-                    ids: q.ids.into_iter().map(|id| id.into()).collect(),
-                }),
+                indradb::Query::SpecificVertex(q) => {
+                    crate::QueryVariant::SpecificVertex(crate::SpecificVertexQuery { ids: q.ids })
+                }
                 indradb::Query::VertexWithPropertyPresence(q) => {
                     crate::QueryVariant::VertexWithPropertyPresence(crate::VertexWithPropertyPresenceQuery {
                         name: Some(q.name.into()),
@@ -182,7 +155,7 @@ impl From<indradb::Query> for crate::Query {
 
                 indradb::Query::AllEdge => crate::QueryVariant::AllEdge(()),
                 indradb::Query::SpecificEdge(q) => crate::QueryVariant::SpecificEdge(crate::SpecificEdgeQuery {
-                    edges: q.edges.into_iter().map(|id| id.into()).collect(),
+                    edges: q.edges.into_iter().map(|e| e.into()).collect(),
                 }),
                 indradb::Query::EdgeWithPropertyPresence(q) => {
                     crate::QueryVariant::EdgeWithPropertyPresence(crate::EdgeWithPropertyPresenceQuery {
@@ -257,11 +230,10 @@ impl TryInto<indradb::Query> for crate::Query {
             crate::QueryVariant::RangeVertex(q) => indradb::Query::RangeVertex(indradb::RangeVertexQuery {
                 limit: q.limit,
                 t: q.t.map(|t| t.try_into()).transpose()?,
-                start_id: q.start_id.map(|start_id| start_id.try_into()).transpose()?,
+                start_id: Some(q.start_id),
             }),
             crate::QueryVariant::SpecificVertex(q) => {
-                let ids: Result<Vec<Uuid>, ConversionError> = q.ids.into_iter().map(|id| id.try_into()).collect();
-                indradb::Query::SpecificVertex(indradb::SpecificVertexQuery { ids: ids? })
+                indradb::Query::SpecificVertex(indradb::SpecificVertexQuery { ids: q.ids })
             }
             crate::QueryVariant::VertexWithPropertyPresence(q) => {
                 let name = required_field("name", q.name)?;
@@ -281,7 +253,7 @@ impl TryInto<indradb::Query> for crate::Query {
             crate::QueryVariant::AllEdge(_q) => indradb::Query::AllEdge,
             crate::QueryVariant::SpecificEdge(q) => {
                 let edges: Result<Vec<indradb::Edge>, ConversionError> =
-                    q.edges.into_iter().map(|id| id.try_into()).collect();
+                    q.edges.into_iter().map(|e| e.try_into()).collect();
                 indradb::Query::SpecificEdge(indradb::SpecificEdgeQuery { edges: edges? })
             }
             crate::QueryVariant::EdgeWithPropertyPresence(q) => {
@@ -361,7 +333,7 @@ impl From<indradb::QueryOutputValue> for crate::QueryOutputValue {
         let variant = match output {
             indradb::QueryOutputValue::Vertices(vertices) => {
                 crate::QueryOutputValueVariant::Vertices(crate::QueryOutputVertices {
-                    vertices: vertices.into_iter().map(|e| e.into()).collect(),
+                    vertices: vertices.into_iter().map(|v| v.into()).collect(),
                 })
             }
             indradb::QueryOutputValue::Edges(edges) => crate::QueryOutputValueVariant::Edges(crate::QueryOutputEdges {
@@ -461,7 +433,7 @@ impl TryInto<indradb::NamedProperty> for crate::NamedProperty {
 impl From<indradb::VertexProperty> for crate::VertexProperty {
     fn from(prop: indradb::VertexProperty) -> Self {
         crate::VertexProperty {
-            id: Some(prop.id.into()),
+            id: prop.id,
             value: Some(prop.value.into()),
         }
     }
@@ -472,7 +444,7 @@ impl TryInto<indradb::VertexProperty> for crate::VertexProperty {
 
     fn try_into(self) -> Result<indradb::VertexProperty, Self::Error> {
         Ok(indradb::VertexProperty::new(
-            required_field("id", self.id)?.try_into()?,
+            self.id,
             required_field("value", self.value)?.try_into()?,
         ))
     }
@@ -550,7 +522,7 @@ impl From<indradb::BulkInsertItem> for crate::BulkInsertItem {
                 indradb::BulkInsertItem::Edge(edge) => crate::BulkInsertItemVariant::Edge(edge.into()),
                 indradb::BulkInsertItem::VertexProperty(id, name, value) => {
                     crate::BulkInsertItemVariant::VertexProperty(crate::VertexPropertyBulkInsertItem {
-                        id: Some(id.into()),
+                        id,
                         name: Some(name.into()),
                         value: Some(value.into()),
                     })
@@ -575,7 +547,7 @@ impl TryInto<indradb::BulkInsertItem> for crate::BulkInsertItem {
             crate::BulkInsertItemVariant::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.try_into()?),
             crate::BulkInsertItemVariant::Edge(edge) => indradb::BulkInsertItem::Edge(edge.try_into()?),
             crate::BulkInsertItemVariant::VertexProperty(item) => indradb::BulkInsertItem::VertexProperty(
-                required_field("id", item.id)?.try_into()?,
+                item.id,
                 required_field("name", item.name)?.try_into()?,
                 required_field("value", item.value)?.try_into()?,
             ),

@@ -1,6 +1,16 @@
-use crate::{util::generate_uuid_v1, Identifier};
+use crate::Identifier;
+
 use std::hash::{Hash, Hasher};
-use uuid::Uuid;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use chrono::Utc;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref INIT_TIMESTAMP: u64 = Utc::now().timestamp_nanos() as u64;
+}
+
+static OFFSET: AtomicU64 = AtomicU64::new(1);
 
 /// A vertex.
 ///
@@ -9,32 +19,28 @@ use uuid::Uuid;
 #[derive(Clone, Debug)]
 pub struct Vertex {
     /// The id of the vertex.
-    pub id: Uuid,
+    pub id: u64,
 
     /// The type of the vertex.
     pub t: Identifier,
 }
 
 impl Vertex {
-    /// Creates a new vertex with an ID generated via UUIDv1. These vertex IDs
-    /// are trivially guessable and consequently less secure, but index
-    /// better. This method is suggested unless you need vertex IDs to not be
-    /// trivially guessable.
+    /// Creates a new vertex.
     ///
     /// # Arguments
-    ///
     /// * `t`: The type of the vertex.
     pub fn new(t: Identifier) -> Self {
-        Self::with_id(generate_uuid_v1(), t)
+        let id = *INIT_TIMESTAMP + OFFSET.fetch_add(1, Ordering::Relaxed);
+        Self::with_id(id, t)
     }
 
     /// Creates a new vertex with a specified id.
     ///
     /// # Arguments
-    ///
     /// * `id`: The id of the vertex.
     /// * `t`: The type of the vertex.
-    pub fn with_id(id: Uuid, t: Identifier) -> Self {
+    pub fn with_id(id: u64, t: Identifier) -> Self {
         Vertex { id, t }
     }
 }
@@ -58,13 +64,12 @@ mod tests {
     use super::Vertex;
     use crate::Identifier;
     use std::collections::HashSet;
-    use uuid::Uuid;
 
     #[test]
     fn should_hash() {
         assert_eq!(
-            HashSet::from([Vertex::with_id(Uuid::default(), Identifier::new("foo").unwrap())]),
-            HashSet::from([Vertex::with_id(Uuid::default(), Identifier::new("foo").unwrap())])
+            HashSet::from([Vertex::with_id(0, Identifier::new("foo").unwrap())]),
+            HashSet::from([Vertex::with_id(0, Identifier::new("foo").unwrap())])
         );
     }
 }

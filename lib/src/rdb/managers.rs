@@ -9,11 +9,10 @@ use crate::models;
 use crate::util;
 
 use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
-use uuid::Uuid;
 
-pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
+pub type OwnedPropertyItem = (u64, models::Identifier, models::Json);
 pub type EdgePropertyItem = (models::Edge, models::Identifier, models::Json);
-pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
+pub type VertexPropertyValueKey = (models::Identifier, u64, u64);
 pub type EdgePropertyValueKey = (models::Identifier, u64, models::Edge);
 
 fn take_with_prefix(
@@ -42,15 +41,15 @@ impl<'a> VertexManager<'a> {
         }
     }
 
-    fn key(&self, id: Uuid) -> Vec<u8> {
-        util::build(&[util::Component::Uuid(id)])
+    fn key(&self, id: u64) -> Vec<u8> {
+        util::build(&[util::Component::U64(id)])
     }
 
-    pub fn exists(&self, id: Uuid) -> Result<bool> {
+    pub fn exists(&self, id: u64) -> Result<bool> {
         Ok(self.db.get_cf(self.cf, self.key(id))?.is_some())
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<models::Identifier>> {
+    pub fn get(&self, id: u64) -> Result<Option<models::Identifier>> {
         match self.db.get_cf(self.cf, self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
@@ -60,8 +59,8 @@ impl<'a> VertexManager<'a> {
         }
     }
 
-    pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<models::Vertex>> + 'a {
-        let low_key = util::build(&[util::Component::Uuid(id)]);
+    pub fn iterate_for_range(&'a self, id: u64) -> impl Iterator<Item = Result<models::Vertex>> + 'a {
+        let low_key = util::build(&[util::Component::U64(id)]);
         let iter = self
             .db
             .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
@@ -71,7 +70,7 @@ impl<'a> VertexManager<'a> {
             let id = {
                 debug_assert_eq!(k.len(), 16);
                 let mut cursor = Cursor::new(k);
-                util::read_uuid(&mut cursor)
+                util::read_u64(&mut cursor)
             };
 
             let mut cursor = Cursor::new(v);
@@ -90,7 +89,7 @@ impl<'a> VertexManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        id: Uuid,
+        id: u64,
     ) -> Result<()> {
         batch.delete_cf(self.cf, self.key(id));
 
@@ -202,9 +201,9 @@ impl<'a> EdgeRangeManager<'a> {
 
     fn key(&self, edge: &models::Edge) -> Vec<u8> {
         util::build(&[
-            util::Component::Uuid(edge.outbound_id),
+            util::Component::U64(edge.outbound_id),
             util::Component::Identifier(&edge.t),
-            util::Component::Uuid(edge.inbound_id),
+            util::Component::U64(edge.inbound_id),
         ])
     }
 
@@ -215,9 +214,9 @@ impl<'a> EdgeRangeManager<'a> {
         iterator.map(move |item| -> Result<models::Edge> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let first_id = util::read_uuid(&mut cursor);
+            let first_id = util::read_u64(&mut cursor);
             let t = util::read_identifier(&mut cursor);
-            let second_id = util::read_uuid(&mut cursor);
+            let second_id = util::read_u64(&mut cursor);
             Ok(models::Edge::new(first_id, t, second_id))
         })
     }
@@ -228,20 +227,20 @@ impl<'a> EdgeRangeManager<'a> {
 
     pub fn iterate_for_root(
         &'a self,
-        id: Uuid,
+        id: u64,
         t: Option<&models::Identifier>,
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         let (prefix, iter) = match t {
             Some(t) => {
-                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
-                let low_key = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
+                let prefix = util::build(&[util::Component::U64(id), util::Component::Identifier(t)]);
+                let low_key = util::build(&[util::Component::U64(id), util::Component::Identifier(t)]);
                 let iter = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 (prefix, iter)
             }
             None => {
-                let prefix = util::build(&[util::Component::Uuid(id)]);
+                let prefix = util::build(&[util::Component::U64(id)]);
                 let iter = self
                     .db
                     .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -255,14 +254,14 @@ impl<'a> EdgeRangeManager<'a> {
 
     pub fn iterate_for_range(
         &'a self,
-        first_id: Uuid,
+        first_id: u64,
         t: &models::Identifier,
-        second_id: Uuid,
+        second_id: u64,
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         let low_key = util::build(&[
-            util::Component::Uuid(first_id),
+            util::Component::U64(first_id),
             util::Component::Identifier(t),
-            util::Component::Uuid(second_id),
+            util::Component::U64(second_id),
         ]);
         let iter = self
             .db
@@ -305,18 +304,15 @@ impl<'a> VertexPropertyManager<'a> {
         }
     }
 
-    fn key(&self, vertex_id: Uuid, name: &models::Identifier) -> Vec<u8> {
+    fn key(&self, vertex_id: u64, name: &models::Identifier) -> Vec<u8> {
         util::build(&[
-            util::Component::Uuid(vertex_id),
+            util::Component::U64(vertex_id),
             util::Component::FixedLengthString(&name.0),
         ])
     }
 
-    pub fn iterate_for_owner(
-        &'a self,
-        vertex_id: Uuid,
-    ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
-        let prefix = util::build(&[util::Component::Uuid(vertex_id)]);
+    pub fn iterate_for_owner(&'a self, vertex_id: u64) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
+        let prefix = util::build(&[util::Component::U64(vertex_id)]);
 
         let iterator = self
             .db
@@ -327,7 +323,7 @@ impl<'a> VertexPropertyManager<'a> {
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
-            let owner_id = util::read_uuid(&mut cursor);
+            let owner_id = util::read_u64(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
             let name_str = util::read_fixed_length_string(&mut cursor);
             let name = unsafe { models::Identifier::new_unchecked(name_str) };
@@ -336,7 +332,7 @@ impl<'a> VertexPropertyManager<'a> {
         }))
     }
 
-    pub fn get(&self, vertex_id: Uuid, name: &models::Identifier) -> Result<Option<models::Json>> {
+    pub fn get(&self, vertex_id: u64, name: &models::Identifier) -> Result<Option<models::Json>> {
         match self.db.get_cf(self.cf, self.key(vertex_id, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
@@ -347,7 +343,7 @@ impl<'a> VertexPropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        vertex_id: Uuid,
+        vertex_id: u64,
         name: &models::Identifier,
         value: &models::Json,
     ) -> Result<()> {
@@ -369,7 +365,7 @@ impl<'a> VertexPropertyManager<'a> {
         &self,
         batch: &mut WriteBatch,
         indexed_properties: &HashSet<models::Identifier>,
-        vertex_id: Uuid,
+        vertex_id: u64,
         name: &models::Identifier,
     ) -> Result<()> {
         if indexed_properties.contains(name) {
@@ -403,9 +399,9 @@ impl<'a> EdgePropertyManager<'a> {
 
     fn key(&self, edge: &models::Edge, name: &models::Identifier) -> Vec<u8> {
         util::build(&[
-            util::Component::Uuid(edge.outbound_id),
+            util::Component::U64(edge.outbound_id),
             util::Component::Identifier(&edge.t),
-            util::Component::Uuid(edge.inbound_id),
+            util::Component::U64(edge.inbound_id),
             util::Component::FixedLengthString(&name.0),
         ])
     }
@@ -415,9 +411,9 @@ impl<'a> EdgePropertyManager<'a> {
         edge: &'a models::Edge,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
         let prefix = util::build(&[
-            util::Component::Uuid(edge.outbound_id),
+            util::Component::U64(edge.outbound_id),
             util::Component::Identifier(&edge.t),
-            util::Component::Uuid(edge.inbound_id),
+            util::Component::U64(edge.inbound_id),
         ]);
 
         let iterator = self
@@ -430,13 +426,13 @@ impl<'a> EdgePropertyManager<'a> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_out_id = util::read_uuid(&mut cursor);
+            let edge_property_out_id = util::read_u64(&mut cursor);
             debug_assert_eq!(edge_property_out_id, edge.outbound_id);
 
             let edge_property_t = util::read_identifier(&mut cursor);
             debug_assert_eq!(edge_property_t, edge.t);
 
-            let edge_property_in_id = util::read_uuid(&mut cursor);
+            let edge_property_in_id = util::read_u64(&mut cursor);
             debug_assert_eq!(edge_property_in_id, edge.inbound_id);
 
             let edge_property_name_str = util::read_fixed_length_string(&mut cursor);
@@ -515,11 +511,11 @@ impl<'a> VertexPropertyValueManager<'a> {
         }
     }
 
-    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
+    fn key(&self, property_name: &models::Identifier, property_value: &models::Json, vertex_id: u64) -> Vec<u8> {
         util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
-            util::Component::Uuid(vertex_id),
+            util::Component::U64(vertex_id),
         ])
     }
 
@@ -535,7 +531,7 @@ impl<'a> VertexPropertyValueManager<'a> {
             let mut cursor = Cursor::new(k);
             let name = util::read_identifier(&mut cursor);
             let value_hash = util::read_u64(&mut cursor);
-            let vertex_id = util::read_uuid(&mut cursor);
+            let vertex_id = util::read_u64(&mut cursor);
             Ok((name, value_hash, vertex_id))
         })
     }
@@ -569,7 +565,7 @@ impl<'a> VertexPropertyValueManager<'a> {
     pub fn set(
         &self,
         batch: &mut WriteBatch,
-        vertex_id: Uuid,
+        vertex_id: u64,
         property_name: &models::Identifier,
         property_value: &models::Json,
     ) {
@@ -580,7 +576,7 @@ impl<'a> VertexPropertyValueManager<'a> {
     pub fn delete(
         &self,
         batch: &mut WriteBatch,
-        vertex_id: Uuid,
+        vertex_id: u64,
         property_name: &models::Identifier,
         property_value: &models::Json,
     ) {
@@ -611,9 +607,9 @@ impl<'a> EdgePropertyValueManager<'a> {
         util::build(&[
             util::Component::Identifier(property_name),
             util::Component::Json(property_value),
-            util::Component::Uuid(edge.outbound_id),
+            util::Component::U64(edge.outbound_id),
             util::Component::Identifier(&edge.t),
-            util::Component::Uuid(edge.inbound_id),
+            util::Component::U64(edge.inbound_id),
         ])
     }
 
@@ -629,9 +625,9 @@ impl<'a> EdgePropertyValueManager<'a> {
             let mut cursor = Cursor::new(k);
             let name = util::read_identifier(&mut cursor);
             let value_hash = util::read_u64(&mut cursor);
-            let out_id = util::read_uuid(&mut cursor);
+            let out_id = util::read_u64(&mut cursor);
             let t = util::read_identifier(&mut cursor);
-            let in_id = util::read_uuid(&mut cursor);
+            let in_id = util::read_u64(&mut cursor);
             Ok((name, value_hash, models::Edge::new(out_id, t, in_id)))
         })
     }

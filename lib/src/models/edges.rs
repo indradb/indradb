@@ -1,7 +1,6 @@
 use super::Identifier;
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 /// An edge.
 ///
@@ -11,13 +10,13 @@ use uuid::Uuid;
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Edge {
     /// The id of the outbound vertex.
-    pub outbound_id: Uuid,
+    pub outbound_id: u64,
 
     /// The type of the edge.
     pub t: Identifier,
 
     /// The id of the inbound vertex.
-    pub inbound_id: Uuid,
+    pub inbound_id: u64,
 }
 
 impl Edge {
@@ -28,7 +27,7 @@ impl Edge {
     /// * `outbound_id`: The id of the outbound vertex.
     /// * `t`: The type of the edge.
     /// * `inbound_id`: The id of the inbound vertex.
-    pub fn new(outbound_id: Uuid, t: Identifier, inbound_id: Uuid) -> Edge {
+    pub fn new(outbound_id: u64, t: Identifier, inbound_id: u64) -> Edge {
         Edge {
             outbound_id,
             t,

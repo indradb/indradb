@@ -9,7 +9,6 @@ use crate::errors::Result;
 use crate::{BulkInsertItem, Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
-use uuid::Uuid;
 
 const CF_NAMES: [&str; 8] = [
     "vertices:v2",
@@ -64,7 +63,7 @@ impl<'a> RocksdbTransaction<'a> {
     fn vertex_ids_from_property_value_iterator(
         &'a self,
         iter: impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a,
-    ) -> impl Iterator<Item = Result<Uuid>> + 'a {
+    ) -> impl Iterator<Item = Result<u64>> + 'a {
         iter.filter_map(|item| match item {
             Ok((_, _, id)) => match self.vertex_manager.exists(id) {
                 Ok(true) => Some(Ok(id)),
@@ -78,21 +77,21 @@ impl<'a> RocksdbTransaction<'a> {
 
 impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     fn vertex_count(&self) -> u64 {
-        let iter = self.vertex_manager.iterate_for_range(Uuid::default());
+        let iter = self.vertex_manager.iterate_for_range(0);
         iter.count() as u64
     }
 
     fn all_vertices(&'a self) -> Result<DynIter<'a, Vertex>> {
-        let iter = self.vertex_manager.iterate_for_range(Uuid::default());
+        let iter = self.vertex_manager.iterate_for_range(0);
         Ok(Box::new(iter))
     }
 
-    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+    fn range_vertices(&'a self, offset: u64) -> Result<DynIter<'a, Vertex>> {
         let iter = self.vertex_manager.iterate_for_range(offset);
         Ok(Box::new(iter))
     }
 
-    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+    fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>> {
         let iter = ids.into_iter().filter_map(move |id| match self.vertex_manager.get(id) {
             Ok(Some(t)) => Some(Ok(Vertex::with_id(id, t))),
             Ok(None) => None,
@@ -102,7 +101,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         Ok(Box::new(iter))
     }
 
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, u64>>> {
         if self.indexed_properties.read().unwrap().contains(name) {
             let iter = self.vertex_property_value_manager.iterate_for_name(name);
             let iter = self.vertex_ids_from_property_value_iterator(iter);
@@ -116,7 +115,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         &'a self,
         name: &Identifier,
         value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Uuid>>> {
+    ) -> Result<Option<DynIter<'a, u64>>> {
         if self.indexed_properties.read().unwrap().contains(name) {
             let iter = self
                 .vertex_property_value_manager
@@ -255,7 +254,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         Ok(())
     }
 
-    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()> {
+    fn delete_vertex_properties(&mut self, props: Vec<(u64, Identifier)>) -> Result<()> {
         let indexed_properties = self.indexed_properties.read().unwrap();
         let mut batch = WriteBatch::default();
 
@@ -365,7 +364,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         self.metadata_manager
             .set_indexed_properties(&mut batch, &indexed_properties)?;
 
-        for item in self.vertex_manager.iterate_for_range(Uuid::default()) {
+        for item in self.vertex_manager.iterate_for_range(0) {
             let vertex = item?;
             if let Some(property_value) = self.vertex_property_manager.get(vertex.id, &name)? {
                 self.vertex_property_value_manager
@@ -385,7 +384,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         Ok(())
     }
 
-    fn set_vertex_properties(&mut self, vertices: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()> {
+    fn set_vertex_properties(&mut self, vertices: Vec<u64>, name: Identifier, value: serde_json::Value) -> Result<()> {
         let indexed_properties = self.indexed_properties.read().unwrap();
         let mut batch = WriteBatch::default();
 

@@ -22,7 +22,7 @@ pub enum Op {
 pub enum BulkInsertItem {
     Vertex(Vertex),
     Edge(Edge),
-    VertexProperty(Uuid, Identifier, Json),
+    VertexProperty(u64, Identifier, Json),
     EdgeProperty(Edge, Identifier, Json),
 }
 
@@ -43,7 +43,7 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct Vertex {
-    pub id: Uuid,
+    pub id: u64,
     pub t: Identifier,
 }
 
@@ -141,7 +141,7 @@ impl Into<indradb::Query> for Query {
 pub struct RangeVertexQuery {
     pub limit: u32,
     pub t: Option<Identifier>,
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<u64>,
 }
 
 impl Into<indradb::RangeVertexQuery> for RangeVertexQuery {
@@ -156,7 +156,7 @@ impl Into<indradb::RangeVertexQuery> for RangeVertexQuery {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct SpecificVertexQuery {
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<u64>,
 }
 
 impl Into<indradb::SpecificVertexQuery> for SpecificVertexQuery {
@@ -334,7 +334,7 @@ impl Into<indradb::CountQuery> for CountQuery {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct VertexProperty {
-    pub id: Uuid,
+    pub id: u64,
     pub value: Json,
 }
 
@@ -409,9 +409,9 @@ impl Into<indradb::EdgeProperty> for EdgeProperty {
 
 #[derive(Arbitrary, Clone, Debug, PartialEq)]
 pub struct Edge {
-    pub outbound_id: Uuid,
+    pub outbound_id: u64,
     pub t: Identifier,
-    pub inbound_id: Uuid,
+    pub inbound_id: u64,
 }
 
 impl Into<indradb::Edge> for Edge {
@@ -421,23 +421,6 @@ impl Into<indradb::Edge> for Edge {
             t: self.t.into(),
             inbound_id: self.inbound_id.into(),
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Uuid(uuid::Uuid);
-
-impl<'a> Arbitrary<'a> for Uuid {
-    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Self {
-            0: uuid::Uuid::from_u128(u.arbitrary()?),
-        })
-    }
-}
-
-impl Into<uuid::Uuid> for Uuid {
-    fn into(self) -> uuid::Uuid {
-        self.0
     }
 }
 

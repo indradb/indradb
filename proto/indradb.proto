@@ -5,11 +5,6 @@ package indradb;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-// A UUID.
-message Uuid {
-    bytes value = 1;
-}
-
 // A string that must be less than 256 characters long, and can only contain
 // letters, numbers, dashes and underscores. This is used for vertex and edge
 // types, as well as property names.
@@ -29,11 +24,11 @@ message Json {
 // directed.
 message Edge {
     // The id of the outbound vertex.
-    Uuid outbound_id = 1;
+    uint64 outbound_id = 1;
     // The type of the edge.
     Identifier t = 2;
     // The id of the inbound vertex.
-    Uuid inbound_id = 3;
+    uint64 inbound_id = 3;
 }
 
 // A vertex.
@@ -42,7 +37,7 @@ message Edge {
 // might be a user, or a movie. All vertices have a unique ID and a type.
 message Vertex {
     // The id of the vertex.
-    Uuid id = 1;
+    uint64 id = 1;
     // The type of the vertex.
     Identifier t = 2;
 }
@@ -94,13 +89,13 @@ message RangeVertexQuery {
     // Filters the type of vertices returned.
     Identifier t = 2;
     // Sets the lowest vertex ID to return.
-    Uuid start_id = 3;
+    uint64 start_id = 3;
 }
 
 // Gets a specific set of vertices.
 message SpecificVertexQuery {
     // The IDs of the vertices to get.
-    repeated Uuid ids = 1;
+    repeated uint64 ids = 1;
 }
 
 // Gets vertices with or without a given property.
@@ -247,7 +242,7 @@ message NamedProperty {
 // Represents a vertex property.
 message VertexProperty {
     // The id of the vertex.
-    Uuid id = 1;
+    uint64 id = 1;
     // The property value.
     Json value = 2;
 }
@@ -289,7 +284,7 @@ message BulkInsertItem {
 // A vertex property to insert.
 message VertexPropertyBulkInsertItem {
     reserved 2;
-    Uuid id = 1;
+    uint64 id = 1;
     Identifier name = 4;
     Json value = 3;
 }
@@ -317,6 +312,10 @@ message CreateResponse {
     bool created = 1;
 }
 
+message CreateVertexFromTypeResponse {
+    uint64 id = 1;
+}
+
 // A request to execute a plugin.
 message ExecutePluginRequest {
     string name = 1;
@@ -341,8 +340,8 @@ service IndraDB {
 
     // Creates a new vertex with just a type specification. As opposed to
     // `CreateVertex`, this is used when you do not want to manually specify
-    // the vertex's UUID. Returns the new vertex's UUID.
-    rpc CreateVertexFromType(Identifier) returns (Uuid);
+    // the vertex's ID. Returns the new vertex's ID.
+    rpc CreateVertexFromType(Identifier) returns (CreateVertexFromTypeResponse);
 
     // Creates a new edge.
     rpc CreateEdge(Edge) returns (CreateResponse);

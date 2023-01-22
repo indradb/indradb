@@ -3,8 +3,6 @@ use std::u32;
 
 use crate::{errors, Edge, Identifier};
 
-use uuid::Uuid;
-
 macro_rules! into_query {
     ($name:ident, $variant:ident) => {
         // we don't want to impl From since the reverse operation isn't allowed
@@ -250,7 +248,7 @@ pub struct RangeVertexQuery {
     pub t: Option<Identifier>,
 
     /// Sets the lowest vertex ID to return.
-    pub start_id: Option<Uuid>,
+    pub start_id: Option<u64>,
 }
 
 nestable_query!(RangeVertexQuery, RangeVertex);
@@ -299,7 +297,7 @@ impl RangeVertexQuery {
     ///
     /// # Arguments
     /// * `start_id`: The lowest vertex ID to return.
-    pub fn start_id(self, start_id: Uuid) -> Self {
+    pub fn start_id(self, start_id: u64) -> Self {
         Self {
             limit: self.limit,
             t: self.t,
@@ -312,7 +310,7 @@ impl RangeVertexQuery {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SpecificVertexQuery {
     /// The IDs of the vertices to get.
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<u64>,
 }
 
 nestable_query!(SpecificVertexQuery, SpecificVertex);
@@ -323,7 +321,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `ids`: The IDs of the vertices to get.
-    pub fn new(ids: Vec<Uuid>) -> Self {
+    pub fn new(ids: Vec<u64>) -> Self {
         Self { ids }
     }
 
@@ -331,7 +329,7 @@ impl SpecificVertexQuery {
     ///
     /// Arguments
     /// * `id`: The ID of the vertex to get.
-    pub fn single(id: Uuid) -> Self {
+    pub fn single(id: u64) -> Self {
         Self { ids: vec![id] }
     }
 }

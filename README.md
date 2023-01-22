@@ -39,15 +39,14 @@ Python bindings are available [here](https://github.com/indradb/python-client) a
 
 ```python
 import indradb
-import uuid
 
 # Connect to the server and make sure it's up
 client = indradb.Client("localhost:27615")
 client.ping()
 
 # Create a couple of vertices
-out_v = indradb.Vertex(uuid.uuid4(), "person")
-in_v = indradb.Vertex(uuid.uuid4(), "movie")
+out_v = indradb.Vertex(1, "person")
+in_v = indradb.Vertex(2, "movie")
 client.create_vertex(out_v)
 client.create_vertex(in_v)
 

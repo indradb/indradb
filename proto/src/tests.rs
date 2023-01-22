@@ -22,7 +22,6 @@ use indradb::{
 use tokio::runtime::Runtime;
 use tokio::time::sleep;
 use tonic::transport::Endpoint;
-use uuid::Uuid;
 
 fn map_client_result<T>(result: StdResult<T, crate::ClientError>) -> Result<T> {
     result.map_err(|err| {
@@ -86,15 +85,15 @@ impl<'a> Transaction<'a> for ClientTransaction {
         self.get_vertices(AllVertexQuery)
     }
 
-    fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>> {
+    fn range_vertices(&'a self, offset: u64) -> Result<DynIter<'a, Vertex>> {
         self.get_vertices(RangeVertexQuery::default().start_id(offset))
     }
 
-    fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>> {
+    fn specific_vertices(&'a self, ids: Vec<u64>) -> Result<DynIter<'a, Vertex>> {
         self.get_vertices(SpecificVertexQuery::new(ids))
     }
 
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, u64>>> {
         let q = VertexWithPropertyPresenceQuery::new(name.clone());
         let vertices = util::extract_vertices(self.get(q)?).unwrap();
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
@@ -104,7 +103,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         &'a self,
         name: &Identifier,
         value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Uuid>>> {
+    ) -> Result<Option<DynIter<'a, u64>>> {
         let q = VertexWithPropertyValueQuery::new(name.clone(), value.clone());
         let vertices = util::extract_vertices(self.get(q)?).unwrap();
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
@@ -233,7 +232,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         self.delete(SpecificEdgeQuery::new(edges))
     }
 
-    fn delete_vertex_properties(&mut self, props: Vec<(Uuid, Identifier)>) -> Result<()> {
+    fn delete_vertex_properties(&mut self, props: Vec<(u64, Identifier)>) -> Result<()> {
         for (id, name) in props {
             self.delete(SpecificVertexQuery::single(id).properties().unwrap().name(name))?;
         }
@@ -285,7 +284,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
 
     fn set_vertex_properties(
         &mut self,
-        vertex_ids: Vec<Uuid>,
+        vertex_ids: Vec<u64>,
         name: Identifier,
         value: serde_json::Value,
     ) -> Result<()> {
