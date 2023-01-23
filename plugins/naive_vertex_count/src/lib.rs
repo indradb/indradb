@@ -25,14 +25,14 @@ impl plugin::Plugin for NaiveVertexCountPlugin {
     fn call<'a>(
         &self,
         txn: &mut (dyn indradb::Transaction<'a> + 'a),
-        _arg: serde_json::Value,
-    ) -> Result<serde_json::Value, plugin::Error> {
+        _arg: indradb::Json,
+    ) -> Result<indradb::Json, plugin::Error> {
         let mapper = Arc::new(NaiveVertexCountMapper {
             count: AtomicU64::new(0),
         });
         plugin::util::map(txn, mapper.clone())?;
         let count = mapper.count.load(Ordering::Relaxed);
-        Ok(count.into())
+        Ok(indradb::Json::new(count.into()))
     }
 }
 

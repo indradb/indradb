@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use indradb::{
     util, AllEdgeQuery, AllVertexQuery, BulkInsertItem, CountQueryExt, Datastore, DynIter, Edge,
-    EdgeWithPropertyPresenceQuery, EdgeWithPropertyValueQuery, Error, Identifier, Query, QueryExt, QueryOutputValue,
-    RangeVertexQuery, Result, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
+    EdgeWithPropertyPresenceQuery, EdgeWithPropertyValueQuery, Error, Identifier, Json, Query, QueryExt,
+    QueryOutputValue, RangeVertexQuery, Result, SpecificEdgeQuery, SpecificVertexQuery, Transaction, Vertex,
     VertexWithPropertyPresenceQuery, VertexWithPropertyValueQuery,
 };
 
@@ -53,7 +53,7 @@ impl<'a> ClientTransaction {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().delete(q)))
     }
 
-    fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: serde_json::Value) -> Result<()> {
+    fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: Json) -> Result<()> {
         map_client_result(
             self.exec
                 .borrow_mut()
@@ -99,11 +99,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
     }
 
-    fn vertex_ids_with_property_value(
-        &'a self,
-        name: Identifier,
-        value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, u64>>> {
+    fn vertex_ids_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, u64>>> {
         let q = VertexWithPropertyValueQuery::new(name, value.clone());
         let vertices = util::extract_vertices(self.get(q)?).unwrap();
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
@@ -143,17 +139,13 @@ impl<'a> Transaction<'a> for ClientTransaction {
         Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
-    fn edges_with_property_value(
-        &'a self,
-        name: Identifier,
-        value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Edge>>> {
+    fn edges_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, Edge>>> {
         let q = EdgeWithPropertyValueQuery::new(name, value.clone());
         let edges = util::extract_edges(self.get(q)?).unwrap();
         Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
-    fn vertex_property(&self, vertex: Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
+    fn vertex_property(&self, vertex: Vertex, name: Identifier) -> Result<Option<Json>> {
         let q = SpecificVertexQuery::single(vertex.id).properties().unwrap().name(name);
         let props = util::extract_vertex_properties(self.get(q)?).unwrap();
         match props.len() {
@@ -167,16 +159,13 @@ impl<'a> Transaction<'a> for ClientTransaction {
         }
     }
 
-    fn all_vertex_properties_for_vertex(
-        &'a self,
-        vertex: Vertex,
-    ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+    fn all_vertex_properties_for_vertex(&'a self, vertex: Vertex) -> Result<DynIter<'a, (Identifier, Json)>> {
         let q = SpecificVertexQuery::single(vertex.id).properties().unwrap();
         let props = util::extract_vertex_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(Box::new(Vec::default().into_iter())),
             1 => {
-                let props: Vec<Result<(Identifier, serde_json::Value)>> =
+                let props: Vec<Result<(Identifier, Json)>> =
                     props[0].props.iter().map(|p| Ok((p.name, p.value.clone()))).collect();
                 Ok(Box::new(props.into_iter()))
             }
@@ -184,7 +173,7 @@ impl<'a> Transaction<'a> for ClientTransaction {
         }
     }
 
-    fn edge_property(&self, edge: Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
+    fn edge_property(&self, edge: Edge, name: Identifier) -> Result<Option<Json>> {
         let q = SpecificEdgeQuery::single(edge).properties().unwrap().name(name);
         let props = util::extract_edge_properties(self.get(q)?).unwrap();
         match props.len() {
@@ -198,13 +187,13 @@ impl<'a> Transaction<'a> for ClientTransaction {
         }
     }
 
-    fn all_edge_properties_for_edge(&'a self, edge: Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>> {
+    fn all_edge_properties_for_edge(&'a self, edge: Edge) -> Result<DynIter<'a, (Identifier, Json)>> {
         let q = SpecificEdgeQuery::single(edge).properties().unwrap();
         let props = util::extract_edge_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(Box::new(Vec::default().into_iter())),
             1 => {
-                let props: Vec<Result<(Identifier, serde_json::Value)>> =
+                let props: Vec<Result<(Identifier, Json)>> =
                     props[0].props.iter().map(|p| Ok((p.name, p.value.clone()))).collect();
                 Ok(Box::new(props.into_iter()))
             }
@@ -275,17 +264,12 @@ impl<'a> Transaction<'a> for ClientTransaction {
         )
     }
 
-    fn set_vertex_properties(
-        &mut self,
-        vertex_ids: Vec<u64>,
-        name: Identifier,
-        value: serde_json::Value,
-    ) -> Result<()> {
-        self.set_properties(SpecificVertexQuery::new(vertex_ids), name, value)
+    fn set_vertex_properties(&mut self, vertex_ids: Vec<u64>, name: Identifier, value: &Json) -> Result<()> {
+        self.set_properties(SpecificVertexQuery::new(vertex_ids), name, value.clone())
     }
 
-    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()> {
-        self.set_properties(SpecificEdgeQuery::new(edges), name, value)
+    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: &Json) -> Result<()> {
+        self.set_properties(SpecificEdgeQuery::new(edges), name, value.clone())
     }
 }
 

@@ -1,6 +1,6 @@
 use super::util;
 use crate::{
-    CountQueryExt, Database, Datastore, Edge, Identifier, NamedProperty, QueryExt, QueryOutputValue,
+    ijson, CountQueryExt, Database, Datastore, Edge, Identifier, NamedProperty, QueryExt, QueryOutputValue,
     SpecificVertexQuery, Vertex, VertexProperties,
 };
 
@@ -35,12 +35,8 @@ pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
 pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
     let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
     let q = SpecificVertexQuery::single(id);
-    db.set_properties(
-        q.clone(),
-        Identifier::new("bar").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), &ijson!(true))
+        .unwrap();
     let output = db.get(q.include().properties().unwrap()).unwrap();
     assert_eq!(
         output,
@@ -48,10 +44,7 @@ pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
             QueryOutputValue::Vertices(vec![Vertex::new(id, Identifier::new("foo").unwrap())]),
             QueryOutputValue::VertexProperties(vec![VertexProperties::new(
                 Vertex::new(id, Identifier::new("foo").unwrap()),
-                vec![NamedProperty::new(
-                    Identifier::new("bar").unwrap(),
-                    serde_json::Value::Bool(true)
-                ),],
+                vec![NamedProperty::new(Identifier::new("bar").unwrap(), ijson!(true)),],
             )])
         ]
     );
@@ -61,12 +54,8 @@ pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
     let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
     let q = SpecificVertexQuery::single(id);
     db.index_property(Identifier::new("bar").unwrap()).unwrap();
-    db.set_properties(
-        q.clone(),
-        Identifier::new("bar").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), &ijson!(true))
+        .unwrap();
     let output = db
         .get(
             q.clone()
@@ -85,7 +74,7 @@ pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
     let output = db
         .get(
             q.include()
-                .with_property_equal_to(Identifier::new("bar").unwrap(), serde_json::Value::Bool(true))
+                .with_property_equal_to(Identifier::new("bar").unwrap(), ijson!(true))
                 .unwrap(),
         )
         .unwrap();

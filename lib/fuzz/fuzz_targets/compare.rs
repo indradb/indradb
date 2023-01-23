@@ -32,10 +32,10 @@ impl Into<indradb::BulkInsertItem> for BulkInsertItem {
             BulkInsertItem::Vertex(vertex) => indradb::BulkInsertItem::Vertex(vertex.into()),
             BulkInsertItem::Edge(edge) => indradb::BulkInsertItem::Edge(edge.into()),
             BulkInsertItem::VertexProperty(id, name, value) => {
-                indradb::BulkInsertItem::VertexProperty(id.into(), name.into(), value.into())
+                indradb::BulkInsertItem::VertexProperty(id.into(), name.into(), indradb::Json::new(value.into()))
             }
             BulkInsertItem::EdgeProperty(edge, name, value) => {
-                indradb::BulkInsertItem::EdgeProperty(edge.into(), name.into(), value.into())
+                indradb::BulkInsertItem::EdgeProperty(edge.into(), name.into(), indradb::Json::new(value.into()))
             }
         }
     }
@@ -190,7 +190,7 @@ impl Into<indradb::VertexWithPropertyValueQuery> for VertexWithPropertyValueQuer
     fn into(self) -> indradb::VertexWithPropertyValueQuery {
         indradb::VertexWithPropertyValueQuery {
             name: self.name.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
         }
     }
 }
@@ -231,7 +231,7 @@ impl Into<indradb::EdgeWithPropertyValueQuery> for EdgeWithPropertyValueQuery {
     fn into(self) -> indradb::EdgeWithPropertyValueQuery {
         indradb::EdgeWithPropertyValueQuery {
             name: self.name.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
         }
     }
 }
@@ -300,7 +300,7 @@ impl Into<indradb::PipeWithPropertyValueQuery> for PipeWithPropertyValueQuery {
         indradb::PipeWithPropertyValueQuery {
             inner: Box::new((*self.inner).into()),
             name: self.name.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
             equal: self.equal,
         }
     }
@@ -342,7 +342,7 @@ impl Into<indradb::VertexProperty> for VertexProperty {
     fn into(self) -> indradb::VertexProperty {
         indradb::VertexProperty {
             id: self.id.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
         }
     }
 }
@@ -357,7 +357,7 @@ impl Into<indradb::NamedProperty> for NamedProperty {
     fn into(self) -> indradb::NamedProperty {
         indradb::NamedProperty {
             name: self.name.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
         }
     }
 }
@@ -402,7 +402,7 @@ impl Into<indradb::EdgeProperty> for EdgeProperty {
     fn into(self) -> indradb::EdgeProperty {
         indradb::EdgeProperty {
             edge: self.edge.into(),
-            value: self.value.into(),
+            value: indradb::Json::new(self.value.into()),
         }
     }
 }
@@ -546,9 +546,9 @@ fuzz_target!(|ops: Vec<Op>| {
             Op::SetProperties(q, name, value) => {
                 let q: indradb::Query = q.into();
                 let name: indradb::Identifier = name.into();
-                let value: serde_json::Value = value.into();
-                let v1 = d1.set_properties(q.clone(), name, value.clone());
-                let v2 = d2.set_properties(q, name, value);
+                let value: indradb::Json = indradb::Json::new(value.into());
+                let v1 = d1.set_properties(q.clone(), name, &value);
+                let v2 = d2.set_properties(q, name, &value);
                 cmp!(v1, v2);
             }
             Op::IndexProperty(t) => {

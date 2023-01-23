@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use super::util;
 use crate::{
-    models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
+    ijson, models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, QueryExt, SpecificEdgeQuery,
+    SpecificVertexQuery,
 };
 
 pub fn should_get_all_edges<D: Datastore>(db: &Database<D>) {
@@ -97,12 +98,8 @@ pub fn should_delete_a_valid_edge<D: Datastore>(db: &Database<D>) {
     db.create_edge(edge).unwrap();
 
     let q = SpecificEdgeQuery::single(edge);
-    db.set_properties(
-        q.clone(),
-        models::Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), models::Identifier::new("foo").unwrap(), &ijson!(true))
+        .unwrap();
 
     db.delete(q.clone()).unwrap();
     let e = util::get_edges(db, q).unwrap();

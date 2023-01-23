@@ -8,10 +8,10 @@ impl plugin::Plugin for HelloWorldPlugin {
     fn call<'a>(
         &self,
         _txn: &mut (dyn indradb::Transaction<'a> + 'a),
-        arg: serde_json::Value,
-    ) -> Result<serde_json::Value, plugin::Error> {
-        let greeting = format!("hello, {}", arg);
-        Ok(serde_json::Value::String(greeting))
+        arg: indradb::Json,
+    ) -> Result<indradb::Json, plugin::Error> {
+        let greeting = format!("hello, {}", *arg);
+        Ok(indradb::Json::new(serde_json::Value::String(greeting)))
     }
 }
 

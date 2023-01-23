@@ -1,6 +1,7 @@
 use super::util;
 use crate::{
-    BulkInsertItem, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery, Vertex,
+    ijson, BulkInsertItem, Database, Datastore, Edge, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
+    Vertex,
 };
 
 pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
@@ -20,12 +21,12 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
         BulkInsertItem::VertexProperty(
             outbound_v.id,
             Identifier::new("vertex_property_name").unwrap(),
-            serde_json::Value::String("vertex_property_value".to_string()),
+            ijson!("vertex_property_value"),
         ),
         BulkInsertItem::EdgeProperty(
             edge,
             Identifier::new("edge_property_name").unwrap(),
-            serde_json::Value::String("edge_property_value".to_string()),
+            ijson!("edge_property_value"),
         ),
     ];
 
@@ -57,10 +58,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 
     assert_eq!(vertex_properties.len(), 1);
     assert_eq!(vertex_properties[0].id, outbound_v.id);
-    assert_eq!(
-        vertex_properties[0].value,
-        serde_json::Value::String("vertex_property_value".to_string())
-    );
+    assert_eq!(vertex_properties[0].value, ijson!("vertex_property_value"));
 
     let edge_properties = util::get_edge_properties(
         db,
@@ -73,10 +71,7 @@ pub fn should_bulk_insert<D: Datastore>(db: &Database<D>) {
 
     assert_eq!(edge_properties.len(), 1);
     assert_eq!(edge_properties[0].edge, edge);
-    assert_eq!(
-        edge_properties[0].value,
-        serde_json::Value::String("edge_property_value".to_string())
-    );
+    assert_eq!(edge_properties[0].value, ijson!("edge_property_value"));
 }
 
 // Bulk insert allows for redundant vertex insertion

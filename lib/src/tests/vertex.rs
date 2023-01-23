@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::util;
 use crate::util::extract_count;
 use crate::{
-    errors, expect_err, models, AllVertexQuery, CountQueryExt, Database, Datastore, QueryExt, RangeVertexQuery,
+    errors, expect_err, ijson, models, AllVertexQuery, CountQueryExt, Database, Datastore, QueryExt, RangeVertexQuery,
     SpecificVertexQuery,
 };
 
@@ -146,12 +146,8 @@ pub fn should_get_vertices_piped<D: Datastore>(db: &Database<D>) {
 pub fn should_delete_a_valid_outbound_vertex<D: Datastore>(db: &Database<D>) {
     let (outbound_id, _) = util::create_edges(db);
     let q = SpecificVertexQuery::single(outbound_id);
-    db.set_properties(
-        q.clone(),
-        models::Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), models::Identifier::new("foo").unwrap(), &ijson!(true))
+        .unwrap();
     db.delete(q.clone()).unwrap();
     let v = util::get_vertices(db, q).unwrap();
     assert_eq!(v.len(), 0);

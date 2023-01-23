@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::process::{Child, Command};
 
-use serde_json::json;
+use indradb::ijson;
 use tokio::time::{sleep, Duration};
 
 #[cfg(target_os = "macos")]
@@ -65,15 +65,15 @@ pub async fn plugins() {
 
     assert_eq!(
         client
-            .execute_plugin("hello_world", json!("plugin tester"))
+            .execute_plugin("hello_world", ijson!("plugin tester"))
             .await
             .unwrap(),
-        json!("hello, \"plugin tester\"")
+        ijson!("hello, \"plugin tester\"")
     );
 
     assert_eq!(
-        client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
-        json!(0)
+        client.execute_plugin("naive_vertex_count", ijson!(null)).await.unwrap(),
+        ijson!(0)
     );
 
     client
@@ -93,7 +93,7 @@ pub async fn plugins() {
         .await
         .unwrap();
     assert_eq!(
-        client.execute_plugin("naive_vertex_count", json!(null)).await.unwrap(),
-        json!(11)
+        client.execute_plugin("naive_vertex_count", ijson!(null)).await.unwrap(),
+        ijson!(11)
     );
 }

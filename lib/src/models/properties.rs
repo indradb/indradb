@@ -1,4 +1,4 @@
-use crate::{Edge, Identifier, Vertex};
+use crate::{Edge, Identifier, Json, Vertex};
 
 /// Represents a vertex property.
 #[derive(Clone, Debug, PartialEq)]
@@ -7,7 +7,7 @@ pub struct VertexProperty {
     pub id: u64,
 
     /// The property value.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 impl VertexProperty {
@@ -16,7 +16,7 @@ impl VertexProperty {
     /// # Arguments
     /// * `id`: The id of the vertex.
     /// * `value`: The property value.
-    pub fn new(id: u64, value: serde_json::Value) -> Self {
+    pub fn new(id: u64, value: Json) -> Self {
         Self { id, value }
     }
 }
@@ -28,7 +28,7 @@ pub struct NamedProperty {
     pub name: Identifier,
 
     /// The property value.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 impl NamedProperty {
@@ -37,7 +37,7 @@ impl NamedProperty {
     /// # Arguments
     /// * `name`: The name of the property.
     /// * `value`: The property value.
-    pub fn new(name: Identifier, value: serde_json::Value) -> Self {
+    pub fn new(name: Identifier, value: Json) -> Self {
         Self { name, value }
     }
 }
@@ -89,7 +89,7 @@ pub struct EdgeProperty {
     pub edge: Edge,
 
     /// The property value.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 impl EdgeProperty {
@@ -98,7 +98,7 @@ impl EdgeProperty {
     /// # Arguments
     /// * `edge`: The edge.
     /// * `value`: The property value.
-    pub fn new(edge: Edge, value: serde_json::Value) -> Self {
+    pub fn new(edge: Edge, value: Json) -> Self {
         Self { edge, value }
     }
 }

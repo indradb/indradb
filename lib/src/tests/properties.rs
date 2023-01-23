@@ -1,7 +1,7 @@
 use super::util;
 use crate::util::extract_count;
 use crate::{
-    errors, expect_err, AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, PipePropertyQuery,
+    errors, expect_err, ijson, AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Identifier, PipePropertyQuery,
     PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
 };
 
@@ -19,12 +19,8 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
-    db.set_properties(
-        q.clone(),
-        Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("foo").unwrap(), &ijson!(true))
+        .unwrap();
     let result = util::get_vertex_properties(
         db,
         q.clone().properties().unwrap().name(Identifier::new("foo").unwrap()),
@@ -32,15 +28,11 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
-    assert_eq!(result[0].value, serde_json::Value::Bool(true));
+    assert_eq!(result[0].value, ijson!(true));
 
     // Set and get the value as false
-    db.set_properties(
-        q.clone(),
-        Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(false),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("foo").unwrap(), &ijson!(false))
+        .unwrap();
     let result = util::get_vertex_properties(
         db,
         q.clone().properties().unwrap().name(Identifier::new("foo").unwrap()),
@@ -48,7 +40,7 @@ pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) {
     .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, id);
-    assert_eq!(result[0].value, serde_json::Value::Bool(false));
+    assert_eq!(result[0].value, ijson!(false));
 
     // Delete & check that it's deleted
     db.delete(q.clone().properties().unwrap().name(Identifier::new("foo").unwrap()))
@@ -72,13 +64,9 @@ pub fn should_get_all_vertex_properties<D: Datastore>(db: &Database<D>) {
     assert_eq!(all_result.len(), 0);
 
     // Set and get some properties for v2
-    db.set_properties(
-        q2.clone(),
-        Identifier::new("a").unwrap(),
-        serde_json::Value::Bool(false),
-    )
-    .unwrap();
-    db.set_properties(q2.clone(), Identifier::new("b").unwrap(), serde_json::Value::Bool(true))
+    db.set_properties(q2.clone(), Identifier::new("a").unwrap(), &ijson!(false))
+        .unwrap();
+    db.set_properties(q2.clone(), Identifier::new("b").unwrap(), &ijson!(true))
         .unwrap();
 
     let result_1 = util::get_all_vertex_properties(db, q1).unwrap();
@@ -88,9 +76,9 @@ pub fn should_get_all_vertex_properties<D: Datastore>(db: &Database<D>) {
     assert_eq!(result_2.len(), 1);
     assert_eq!(result_2[0].props.len(), 2);
     assert_eq!(result_2[0].props[0].name, Identifier::new("a").unwrap());
-    assert_eq!(result_2[0].props[0].value, serde_json::Value::Bool(false));
+    assert_eq!(result_2[0].props[0].value, ijson!(false));
     assert_eq!(result_2[0].props[1].name, Identifier::new("b").unwrap());
-    assert_eq!(result_2[0].props[1].value, serde_json::Value::Bool(true));
+    assert_eq!(result_2[0].props[1].value, ijson!(true));
 
     let result_3 = util::get_all_vertex_properties(db, q3).unwrap();
     assert_eq!(result_3.len(), 0);
@@ -98,7 +86,7 @@ pub fn should_get_all_vertex_properties<D: Datastore>(db: &Database<D>) {
 
 pub fn should_not_set_invalid_vertex_properties<D: Datastore>(db: &Database<D>) {
     let q = SpecificVertexQuery::single(0);
-    db.set_properties(q.clone(), Identifier::new("foo").unwrap(), serde_json::Value::Null)
+    db.set_properties(q.clone(), Identifier::new("foo").unwrap(), &ijson!(null))
         .unwrap();
     let result =
         util::get_vertex_properties(db, q.properties().unwrap().name(Identifier::new("foo").unwrap())).unwrap();
@@ -143,12 +131,8 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
-    db.set_properties(
-        q.clone(),
-        Identifier::new("edge-property").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("edge-property").unwrap(), &ijson!(true))
+        .unwrap();
     let result = util::get_edge_properties(
         db,
         q.clone()
@@ -159,15 +143,11 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
     .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].edge, edge);
-    assert_eq!(result[0].value, serde_json::Value::Bool(true));
+    assert_eq!(result[0].value, ijson!(true));
 
     // Set and get the value as false
-    db.set_properties(
-        q.clone(),
-        Identifier::new("edge-property").unwrap(),
-        serde_json::Value::Bool(false),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("edge-property").unwrap(), &ijson!(false))
+        .unwrap();
     let result = util::get_edge_properties(
         db,
         q.clone()
@@ -178,7 +158,7 @@ pub fn should_handle_edge_properties<D: Datastore>(db: &Database<D>) {
     .unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].edge, edge);
-    assert_eq!(result[0].value, serde_json::Value::Bool(false));
+    assert_eq!(result[0].value, ijson!(false));
 
     // Delete & check that it's deleted
     db.delete(q.clone()).unwrap();
@@ -205,26 +185,18 @@ pub fn should_get_all_edge_properties<D: Datastore>(db: &Database<D>) {
     assert_eq!(result.len(), 0);
 
     // Set and get the value as true
-    db.set_properties(
-        eq.clone(),
-        Identifier::new("edge-prop-1").unwrap(),
-        serde_json::Value::Bool(false),
-    )
-    .unwrap();
-    db.set_properties(
-        eq.clone(),
-        Identifier::new("edge-prop-2").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(eq.clone(), Identifier::new("edge-prop-1").unwrap(), &ijson!(false))
+        .unwrap();
+    db.set_properties(eq.clone(), Identifier::new("edge-prop-2").unwrap(), &ijson!(true))
+        .unwrap();
 
     let result = util::get_all_edge_properties(db, eq.clone()).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].props.len(), 2);
     assert_eq!(result[0].props[0].name, Identifier::new("edge-prop-1").unwrap());
-    assert_eq!(result[0].props[0].value, serde_json::Value::Bool(false));
+    assert_eq!(result[0].props[0].value, ijson!(false));
     assert_eq!(result[0].props[1].name, Identifier::new("edge-prop-2").unwrap());
-    assert_eq!(result[0].props[1].value, serde_json::Value::Bool(true));
+    assert_eq!(result[0].props[1].value, ijson!(true));
 
     // Delete & check that they are deleted
     db.delete(
@@ -249,7 +221,7 @@ pub fn should_get_all_edge_properties<D: Datastore>(db: &Database<D>) {
 pub fn should_not_set_invalid_edge_properties<D: Datastore>(db: &Database<D>) {
     let edge = Edge::new(0, Identifier::new("foo").unwrap(), 0);
     let q = SpecificEdgeQuery::single(edge);
-    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), serde_json::Value::Null)
+    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), &ijson!(null))
         .unwrap();
     let result = util::get_edge_properties(db, q.properties().unwrap().name(Identifier::new("bar").unwrap())).unwrap();
     assert_eq!(result.len(), 0);
@@ -295,12 +267,8 @@ pub fn should_get_a_vertex_properties_count<D: Datastore>(db: &Database<D>) {
     let vertex_t = Identifier::new("test_vertex_type").unwrap();
     let id = db.create_vertex_from_type(vertex_t).unwrap();
     let q = SpecificVertexQuery::single(id);
-    db.set_properties(
-        q.clone(),
-        Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(true),
-    )
-    .unwrap();
+    db.set_properties(q.clone(), Identifier::new("foo").unwrap(), &ijson!(true))
+        .unwrap();
     let count = extract_count(
         db.get(
             q.properties()
@@ -319,7 +287,7 @@ pub fn should_not_set_properties_on_count<D: Datastore>(db: &Database<D>) {
     let result = db.set_properties(
         AllVertexQuery.count().unwrap(),
         Identifier::new("foo").unwrap(),
-        serde_json::Value::Bool(true),
+        &ijson!(true),
     );
     expect_err!(result, errors::Error::OperationOnQuery);
 }

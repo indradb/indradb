@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::u32;
 
-use crate::{errors, Edge, Identifier};
+use crate::{errors, Edge, Identifier, Json};
 
 macro_rules! into_query {
     ($name:ident, $variant:ident) => {
@@ -187,7 +187,7 @@ pub trait QueryExt: Into<Query> {
     fn with_property_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, true)
     }
@@ -200,7 +200,7 @@ pub trait QueryExt: Into<Query> {
     fn with_property_not_equal_to<T: Into<Identifier>>(
         self,
         name: T,
-        value: serde_json::Value,
+        value: Json,
     ) -> errors::ValidationResult<PipeWithPropertyValueQuery> {
         PipeWithPropertyValueQuery::new(Box::new(self.into()), name, value, false)
     }
@@ -359,7 +359,7 @@ pub struct VertexWithPropertyValueQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 nestable_query!(VertexWithPropertyValueQuery, VertexWithPropertyValue);
@@ -370,7 +370,7 @@ impl VertexWithPropertyValueQuery {
     /// # Arguments
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+    pub fn new<T: Into<Identifier>>(name: T, value: Json) -> Self {
         Self {
             name: name.into(),
             value,
@@ -445,7 +445,7 @@ pub struct EdgeWithPropertyValueQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
 }
 
 nestable_query!(EdgeWithPropertyValueQuery, EdgeWithPropertyValue);
@@ -456,7 +456,7 @@ impl EdgeWithPropertyValueQuery {
     /// # Arguments
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub fn new<T: Into<Identifier>>(name: T, value: serde_json::Value) -> Self {
+    pub fn new<T: Into<Identifier>>(name: T, value: Json) -> Self {
         Self {
             name: name.into(),
             value,
@@ -611,7 +611,7 @@ pub struct PipeWithPropertyValueQuery {
     /// The name of the property.
     pub name: Identifier,
     /// The value of the property.
-    pub value: serde_json::Value,
+    pub value: Json,
     /// Whether we should look for property equality or non-equality.
     pub equal: bool,
 }
@@ -629,7 +629,7 @@ impl PipeWithPropertyValueQuery {
     pub fn new<T: Into<Identifier>>(
         inner: Box<Query>,
         name: T,
-        value: serde_json::Value,
+        value: Json,
         equal: bool,
     ) -> errors::ValidationResult<Self> {
         match inner.output_type()? {
@@ -728,12 +728,10 @@ pub enum QueryOutputValue {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        AllVertexQuery, CountQuery, CountQueryExt, EdgeDirection, PipePropertyQuery, PipeQuery,
-        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query,
+    use crate::{
+        ijson, AllVertexQuery, CountQuery, CountQueryExt, EdgeDirection, Identifier, PipePropertyQuery, PipeQuery,
+        PipeWithPropertyPresenceQuery, PipeWithPropertyValueQuery, Query, ValidationError,
     };
-    use crate::{Identifier, ValidationError};
-    use serde_json::json;
     use std::str::FromStr;
 
     fn expect_inner_query_err<T: core::fmt::Debug>(result: Result<T, ValidationError>) {
@@ -772,7 +770,7 @@ mod tests {
         expect_inner_query_err(PipeWithPropertyValueQuery::new(
             Box::new(q.clone()),
             Identifier::new("foo").unwrap(),
-            json!("bar"),
+            ijson!("bar"),
             true,
         ));
     }
