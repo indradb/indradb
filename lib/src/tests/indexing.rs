@@ -1,5 +1,5 @@
 use super::util;
-use crate::{expect_err, models, Database, Datastore, Error, QueryExt};
+use crate::{expect_err, ijson, models, Database, Datastore, Error, QueryExt};
 use uuid::Uuid;
 
 fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_name: models::Identifier) -> Uuid {
@@ -8,8 +8,7 @@ fn setup_vertex_with_indexed_property<D: Datastore>(db: &Database<D>, property_n
         .create_vertex_from_type(models::Identifier::new("test_vertex_type").unwrap())
         .unwrap();
     let q = models::SpecificVertexQuery::single(id);
-    db.set_properties(q, property_name, serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_properties(q, property_name, &ijson!(true)).unwrap();
     id
 }
 
@@ -22,8 +21,7 @@ fn setup_edge_with_indexed_property<D: Datastore>(db: &Database<D>, property_nam
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
     let q = models::SpecificEdgeQuery::single(edge.clone());
     db.create_edge(&edge).unwrap();
-    db.set_properties(q, property_name, serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_properties(q, property_name, &ijson!(true)).unwrap();
     edge
 }
 
@@ -51,8 +49,7 @@ pub fn should_index_existing_vertex_property<D: Datastore>(db: &Database<D>) {
         .create_vertex_from_type(models::Identifier::new("test_vertex_type").unwrap())
         .unwrap();
     let q = models::SpecificVertexQuery::single(id);
-    db.set_properties(q.clone(), property_name, serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_properties(q.clone(), property_name, &ijson!(true)).unwrap();
 
     // Index property
     db.index_property(property_name).unwrap();
@@ -87,10 +84,10 @@ pub fn should_index_existing_edge_property<D: Datastore>(db: &Database<D>) {
     let inbound_id = db.create_vertex_from_type(vertex_t).unwrap();
     let edge_t = models::Identifier::new("test_edge_type").unwrap();
     let edge = models::Edge::new(outbound_id, edge_t, inbound_id);
+
     let q = models::SpecificEdgeQuery::single(edge.clone());
     db.create_edge(&edge).unwrap();
-    db.set_properties(q.clone(), property_name, serde_json::Value::Bool(true))
-        .unwrap();
+    db.set_properties(q.clone(), property_name, &ijson!(true)).unwrap();
 
     // Index property
     db.index_property(property_name).unwrap();
@@ -135,8 +132,8 @@ pub fn should_delete_indexed_edge_property<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
-    let json_true = serde_json::Value::Bool(true);
-    let json_false = serde_json::Value::Bool(false);
+    let json_true = ijson!(true);
+    let json_false = ijson!(false);
     let property_name = models::Identifier::new("updateable-vertex-property").unwrap();
 
     // Ensure errors happen when attempting to query before the property is indexed
@@ -148,7 +145,7 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
 
     let id = setup_vertex_with_indexed_property(db, property_name);
     let q = models::SpecificVertexQuery::single(id);
-    db.set_properties(q.clone(), property_name, json_false.clone()).unwrap();
+    db.set_properties(q.clone(), property_name, &json_false).unwrap();
 
     // property foo should not be the old value
     let result = util::get_vertices(
@@ -201,8 +198,8 @@ pub fn should_update_indexed_vertex_property<D: Datastore>(db: &Database<D>) {
 }
 
 pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
-    let json_true = serde_json::Value::Bool(true);
-    let json_false = serde_json::Value::Bool(false);
+    let json_true = ijson!(true);
+    let json_false = ijson!(false);
     let property_name = models::Identifier::new("updateable-edge-property").unwrap();
 
     let result = util::get_edges(
@@ -213,7 +210,7 @@ pub fn should_update_indexed_edge_property<D: Datastore>(db: &Database<D>) {
 
     let edge = setup_edge_with_indexed_property(db, property_name);
     let q = models::SpecificEdgeQuery::single(edge.clone());
-    db.set_properties(q.clone(), property_name, json_false.clone()).unwrap();
+    db.set_properties(q.clone(), property_name, &json_false).unwrap();
 
     // property foo should not be the old value
     let result = util::get_edges(

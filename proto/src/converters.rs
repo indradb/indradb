@@ -97,18 +97,18 @@ impl TryInto<indradb::Identifier> for crate::Identifier {
     }
 }
 
-impl From<serde_json::Value> for crate::Json {
-    fn from(value: serde_json::Value) -> Self {
+impl From<indradb::Json> for crate::Json {
+    fn from(value: indradb::Json) -> Self {
         crate::Json {
-            value: value.to_string(),
+            value: (*value).to_string(),
         }
     }
 }
 
-impl TryInto<serde_json::Value> for crate::Json {
+impl TryInto<indradb::Json> for crate::Json {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<serde_json::Value, Self::Error> {
+    fn try_into(self) -> Result<indradb::Json, Self::Error> {
         Ok(serde_json::from_str(&self.value)?)
     }
 }
@@ -597,10 +597,10 @@ impl TryInto<indradb::Identifier> for crate::IndexPropertyRequest {
     }
 }
 
-impl TryInto<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::SetPropertiesRequest {
+impl TryInto<(indradb::Query, indradb::Identifier, indradb::Json)> for crate::SetPropertiesRequest {
     type Error = ConversionError;
 
-    fn try_into(self) -> Result<(indradb::Query, indradb::Identifier, serde_json::Value), Self::Error> {
+    fn try_into(self) -> Result<(indradb::Query, indradb::Identifier, indradb::Json), Self::Error> {
         let q = required_field("q", self.q)?.try_into()?;
         let name = required_field("name", self.name)?.try_into()?;
         let value = required_field("value", self.value)?.try_into()?;
@@ -608,8 +608,8 @@ impl TryInto<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate
     }
 }
 
-impl From<(indradb::Query, indradb::Identifier, serde_json::Value)> for crate::SetPropertiesRequest {
-    fn from(value: (indradb::Query, indradb::Identifier, serde_json::Value)) -> Self {
+impl From<(indradb::Query, indradb::Identifier, indradb::Json)> for crate::SetPropertiesRequest {
+    fn from(value: (indradb::Query, indradb::Identifier, indradb::Json)) -> Self {
         crate::SetPropertiesRequest {
             q: Some(value.0.into()),
             name: Some(value.1.into()),

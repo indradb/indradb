@@ -50,8 +50,8 @@ pub trait Plugin: Send + Sync + 'static {
     fn call<'a>(
         &self,
         txn: &mut (dyn indradb::Transaction<'a> + 'a),
-        arg: serde_json::Value,
-    ) -> Result<serde_json::Value, Error>;
+        arg: indradb::Json,
+    ) -> Result<indradb::Json, Error>;
 }
 
 /// A declaration of a plugin.

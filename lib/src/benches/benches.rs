@@ -1,8 +1,7 @@
-use crate::models::{
-    AllEdgeQuery, BulkInsertItem, CountQueryExt, Edge, Identifier, Query, SpecificEdgeQuery, SpecificVertexQuery,
-    Vertex,
+use crate::{
+    ijson, AllEdgeQuery, BulkInsertItem, CountQueryExt, Database, Datastore, Edge, Identifier, Query,
+    SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
-use crate::{Database, Datastore};
 
 use test::Bencher;
 
@@ -106,15 +105,11 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("is_benchmark").unwrap();
     for vertex in vertices.into_iter() {
         items.push(BulkInsertItem::Vertex(vertex.clone()));
-        items.push(BulkInsertItem::VertexProperty(
-            vertex.id,
-            t,
-            serde_json::Value::Bool(true),
-        ));
+        items.push(BulkInsertItem::VertexProperty(vertex.id, t, ijson!(true)));
     }
     for edge in edges.into_iter() {
         items.push(BulkInsertItem::Edge(edge.clone()));
-        items.push(BulkInsertItem::EdgeProperty(edge, t, serde_json::Value::Bool(true)));
+        items.push(BulkInsertItem::EdgeProperty(edge, t, ijson!(true)));
     }
 
     b.iter(|| {
