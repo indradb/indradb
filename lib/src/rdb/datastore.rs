@@ -323,7 +323,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
                 }
                 BulkInsertItem::EdgeProperty(ref edge, ref name, ref value) => {
                     self.edge_property_manager
-                        .set(&mut batch, &indexed_properties, edge, *name, &value)?;
+                        .set(&mut batch, &indexed_properties, edge, *name, value)?;
                 }
             }
         }

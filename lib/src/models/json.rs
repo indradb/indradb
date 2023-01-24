@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -210,6 +211,15 @@ impl<'de> Deserialize<'de> for Json {
     {
         let v: serde_json::Value = Deserialize::deserialize(deserializer)?;
         Ok(Json::new(v))
+    }
+}
+
+impl FromStr for Json {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let sj = serde_json::from_str(s)?;
+        Ok(Self::new(sj))
     }
 }
 

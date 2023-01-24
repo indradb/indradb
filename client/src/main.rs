@@ -2,6 +2,7 @@ mod errors;
 
 use std::convert::TryInto;
 use std::error::Error as StdError;
+use std::str::FromStr;
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use indradb::util::{
@@ -9,7 +10,7 @@ use indradb::util::{
     generate_uuid_v1,
 };
 use indradb::{
-    AllEdgeQuery, AllVertexQuery, CountQueryExt, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery,
+    AllEdgeQuery, AllVertexQuery, CountQueryExt, Edge, Error, Identifier, Json, QueryExt, SpecificEdgeQuery,
     SpecificVertexQuery, Vertex,
 };
 use indradb_proto as proto;
@@ -180,15 +181,17 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let vertex_query = build_vertex_query(matches)?;
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
-            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
+            let property_value = Json::from_str(matches.value_of("value").unwrap())?;
             client
-                .set_properties(vertex_query, property_name, property_value)
+                .set_properties(vertex_query, property_name, &property_value)
                 .await?;
         } else if let Some(matches) = matches.subcommand_matches("edge-property") {
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
-            let property_value = serde_json::from_str(matches.value_of("value").unwrap())?;
+            let property_value = Json::from_str(matches.value_of("value").unwrap())?;
             let edge_query = SpecificEdgeQuery::single(build_edge(matches)?);
-            client.set_properties(edge_query, property_name, property_value).await?;
+            client
+                .set_properties(edge_query, property_name, &property_value)
+                .await?;
         }
     } else if let Some(matches) = matches.subcommand_matches("count") {
         if matches.subcommand_matches("vertex").is_some() {
