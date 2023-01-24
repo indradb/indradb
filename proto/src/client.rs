@@ -176,14 +176,14 @@ impl Client {
         &mut self,
         q: Q,
         name: indradb::Identifier,
-        value: serde_json::Value,
+        value: &indradb::Json,
     ) -> Result<(), ClientError> {
         let name: crate::Identifier = name.into();
-        let value: crate::Json = value.into();
+        let value: crate::Json = value.clone().into();
         let req = Request::new(crate::SetPropertiesRequest {
             q: Some(q.into().into()),
             name: name.into(),
-            value: value.into(),
+            value: value.clone().into(),
         });
         self.0.set_properties(req).await?;
         Ok(())
@@ -236,11 +236,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn execute_plugin(
-        &mut self,
-        name: &str,
-        arg: serde_json::Value,
-    ) -> Result<serde_json::Value, ClientError> {
+    pub async fn execute_plugin(&mut self, name: &str, arg: indradb::Json) -> Result<indradb::Json, ClientError> {
         let req = Request::new(crate::ExecutePluginRequest {
             name: name.to_string(),
             arg: Some(arg.into()),
@@ -248,7 +244,7 @@ impl Client {
         let res = self.0.execute_plugin(req).await?;
         match res.into_inner().value {
             Some(value) => Ok(value.try_into()?),
-            None => Ok(serde_json::Value::Null),
+            None => Ok(indradb::Json::new(serde_json::Value::Null)),
         }
     }
 }

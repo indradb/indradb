@@ -1,7 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::models::{
-    BulkInsertItem, Edge, EdgeDirection, EdgeProperties, Identifier, NamedProperty, Query, QueryOutputValue, Vertex,
-    VertexProperties,
+    BulkInsertItem, Edge, EdgeDirection, EdgeProperties, Identifier, Json, NamedProperty, Query, QueryOutputValue,
+    Vertex, VertexProperties,
 };
 use std::collections::HashSet;
 use std::vec::Vec;
@@ -44,11 +44,7 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `name` - The property name.
     /// * `value` - The property value.
-    fn vertex_ids_with_property_value(
-        &'a self,
-        name: Identifier,
-        value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Uuid>>>;
+    fn vertex_ids_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, Uuid>>>;
 
     /// Gets the number of edges.
     fn edge_count(&self) -> u64;
@@ -81,38 +77,31 @@ pub trait Transaction<'a> {
     /// # Arguments
     /// * `name` - The property name.
     /// * `value` - The property value.
-    fn edges_with_property_value(
-        &'a self,
-        name: Identifier,
-        value: &serde_json::Value,
-    ) -> Result<Option<DynIter<'a, Edge>>>;
+    fn edges_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, Edge>>>;
 
     /// Gets the value of a vertex property if it exists, or `None` otherwise.
     ///
     /// # Arguments
     /// * `vertex` - The vertex.
     /// * `name` - The property name.
-    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>>;
+    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<Json>>;
     /// Gets all vertex properties for a given vertex.
     ///
     /// # Arguments
     /// * `vertex` - The vertex.
-    fn all_vertex_properties_for_vertex(
-        &'a self,
-        vertex: &Vertex,
-    ) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
+    fn all_vertex_properties_for_vertex(&'a self, vertex: &Vertex) -> Result<DynIter<'a, (Identifier, Json)>>;
 
     /// Gets the value of an edge property if it exists, or `None` otherwise.
     ///
     /// # Arguments
     /// * `edge` - The edge.
     /// * `name` - The property name.
-    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>>;
+    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<Json>>;
     /// Gets all edge properties for a given edges.
     ///
     /// # Arguments
     /// * `edge` - The edge.
-    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, serde_json::Value)>>;
+    fn all_edge_properties_for_edge(&'a self, edge: &Edge) -> Result<DynIter<'a, (Identifier, Json)>>;
 
     /// Deletes the given vertices.
     ///
@@ -172,10 +161,10 @@ pub trait Transaction<'a> {
                     self.create_edge(&edge)?;
                 }
                 BulkInsertItem::VertexProperty(id, name, value) => {
-                    self.set_vertex_properties(vec![id], name, value)?;
+                    self.set_vertex_properties(vec![id], name, &value)?;
                 }
                 BulkInsertItem::EdgeProperty(edge, name, value) => {
-                    self.set_edge_properties(vec![edge], name, value)?;
+                    self.set_edge_properties(vec![edge], name, &value)?;
                 }
             }
         }
@@ -196,14 +185,14 @@ pub trait Transaction<'a> {
     /// * `vertices`: The vertices to set the properties on.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    fn set_vertex_properties(&mut self, vertices: Vec<Uuid>, name: Identifier, value: serde_json::Value) -> Result<()>;
+    fn set_vertex_properties(&mut self, vertices: Vec<Uuid>, name: Identifier, value: &Json) -> Result<()>;
     /// Sets edge properties.
     ///
     /// # Arguments
     /// * `edges`: The edges to set the properties on.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: serde_json::Value) -> Result<()>;
+    fn set_edge_properties(&mut self, edges: Vec<Edge>, name: Identifier, value: &Json) -> Result<()>;
 }
 
 /// Specifies a datastore, which provides datastore transaction
@@ -348,7 +337,7 @@ impl<D: Datastore> Database<D> {
     /// * `q`: The query to run.
     /// * `name`: The property name.
     /// * `value`: The property value.
-    pub fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: serde_json::Value) -> Result<()> {
+    pub fn set_properties<Q: Into<Query>>(&self, q: Q, name: Identifier, value: &Json) -> Result<()> {
         let q = q.into();
         let mut txn = self.datastore.transaction();
         let mut output = Vec::with_capacity(q.output_len());

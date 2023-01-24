@@ -254,7 +254,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     async fn set_properties(&self, request: Request<crate::SetPropertiesRequest>) -> Result<Response<()>, Status> {
         let db = self.db.clone();
         let (q, name, value) = map_conversion_result(request.into_inner().try_into())?;
-        map_jh_indra_result(tokio::task::spawn_blocking(move || db.set_properties(q, name, value)).await)?;
+        map_jh_indra_result(tokio::task::spawn_blocking(move || db.set_properties(q, name, &value)).await)?;
         Ok(Response::new(()))
     }
 
@@ -292,7 +292,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         let arg = if let Some(arg) = request.arg {
             map_conversion_result(arg.try_into())?
         } else {
-            serde_json::Value::Null
+            indradb::Json::new(serde_json::Value::Null)
         };
 
         if let Some(plugin) = self.plugins.entries.get(&request.name) {

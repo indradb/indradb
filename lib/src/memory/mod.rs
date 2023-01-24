@@ -15,7 +15,7 @@ full_bench_impl!(MemoryDatastore::new_db());
 mod tests {
     use super::MemoryDatastore;
     use crate::util::{extract_count, extract_vertices};
-    use crate::{AllVertexQuery, CountQueryExt, Database, Identifier, SpecificVertexQuery};
+    use crate::{ijson, AllVertexQuery, CountQueryExt, Database, Identifier, SpecificVertexQuery};
 
     use tempfile::NamedTempFile;
     use uuid::Uuid;
@@ -24,12 +24,8 @@ mod tests {
 
     fn create_vertex_with_property(db: &Database<MemoryDatastore>) -> Uuid {
         let id = db.create_vertex_from_type(Identifier::default()).unwrap();
-        db.set_properties(
-            SpecificVertexQuery::single(id),
-            Identifier::default(),
-            serde_json::Value::Bool(true),
-        )
-        .unwrap();
+        db.set_properties(SpecificVertexQuery::single(id), Identifier::default(), &ijson!(true))
+            .unwrap();
         id
     }
 

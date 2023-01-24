@@ -1,8 +1,20 @@
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
+use std::str::FromStr;
+use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+/// Similar to `serde_json::json!`, this allows you to create JSON literals.
+/// It's called `ijson` to not conflict with `serde_json::json!`.
+#[macro_export]
+macro_rules! ijson {
+    ($($json:tt)+) => {
+        $crate::Json::new(serde_json::json!($($json)+))
+    }
+}
 
 fn hash<H: Hasher>(value: &serde_json::Value, state: &mut H) {
     match value {
@@ -131,12 +143,10 @@ where
     }
 }
 
-/// A [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
-/// that extends `serde_json::Value` with extra traits useful for datastore
-/// storage and querying. Publicly facing APIs do not use these values, so
-/// it's generally only useful for datastore authors.
-#[derive(Clone, Eq, Debug, Serialize, Deserialize)]
-pub struct Json(pub serde_json::Value);
+/// Wraps `serde_json::Value` in an `Arc` to make it more cheaply cloneable, as
+/// well as implements extra traits useful for datastore storage and querying.
+#[derive(Clone, Eq, Debug)]
+pub struct Json(pub Arc<serde_json::Value>);
 
 impl Json {
     /// Constructs a new JSON type.
@@ -144,13 +154,19 @@ impl Json {
     /// # Arguments
     /// * `value`: The JSON value.
     pub fn new(value: serde_json::Value) -> Self {
-        Self(value)
+        Self(Arc::new(value))
     }
 }
 
 impl From<serde_json::Value> for Json {
     fn from(value: serde_json::Value) -> Self {
-        Json(value)
+        Self(Arc::new(value))
+    }
+}
+
+impl From<Arc<serde_json::Value>> for Json {
+    fn from(value: Arc<serde_json::Value>) -> Self {
+        Self(value)
     }
 }
 
@@ -172,15 +188,45 @@ impl PartialOrd for Json {
     }
 }
 
+impl Deref for Json {
+    type Target = serde_json::Value;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Serialize for Json {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (*self.0).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Json {
+    fn deserialize<D>(deserializer: D) -> Result<Json, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: serde_json::Value = Deserialize::deserialize(deserializer)?;
+        Ok(Json::new(v))
+    }
+}
+
+impl FromStr for Json {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let sj = serde_json::from_str(s)?;
+        Ok(Self::new(sj))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Json;
-    use serde_json::json;
     use std::collections::HashSet;
-
-    macro_rules! wrapped_json {
-        ($($json:tt)+) => { Json::new(json!($($json)+)) };
-    }
 
     fn json_u64() -> Json {
         Json::new(serde_json::Value::Number(serde_json::Number::from(u64::max_value())))
@@ -192,55 +238,46 @@ mod tests {
 
     #[test]
     fn should_hash() {
-        assert_eq!(
-            HashSet::from([wrapped_json!(null)]),
-            HashSet::from([wrapped_json!(null)])
-        );
+        assert_eq!(HashSet::from([ijson!(null)]), HashSet::from([ijson!(null)]));
         assert_eq!(HashSet::from([json_i64()]), HashSet::from([json_i64()]));
         assert_eq!(HashSet::from([json_u64()]), HashSet::from([json_u64()]));
-        assert_eq!(HashSet::from([wrapped_json!(3.0)]), HashSet::from([wrapped_json!(3.0)]));
+        assert_eq!(HashSet::from([ijson!(3.0)]), HashSet::from([ijson!(3.0)]));
+        assert_eq!(HashSet::from([ijson!("foo")]), HashSet::from([ijson!("foo")]));
+        assert_eq!(HashSet::from([ijson!(["foo"])]), HashSet::from([ijson!(["foo"])]));
         assert_eq!(
-            HashSet::from([wrapped_json!("foo")]),
-            HashSet::from([wrapped_json!("foo")])
-        );
-        assert_eq!(
-            HashSet::from([wrapped_json!(["foo"])]),
-            HashSet::from([wrapped_json!(["foo"])])
-        );
-        assert_eq!(
-            HashSet::from([wrapped_json!({"foo": true})]),
-            HashSet::from([wrapped_json!({"foo": true})])
+            HashSet::from([ijson!({"foo": true})]),
+            HashSet::from([ijson!({"foo": true})])
         );
     }
 
     #[test]
     fn should_compare() {
-        assert!(wrapped_json!("foo1") < wrapped_json!("foo2"));
-        assert_eq!(wrapped_json!(null), wrapped_json!(null));
-        assert!(wrapped_json!(true) > wrapped_json!(false));
-        assert!(wrapped_json!(3) < wrapped_json!(4));
-        assert!(wrapped_json!(3) < wrapped_json!(4.0));
-        assert_eq!(wrapped_json!(4.0), wrapped_json!(4.0));
-        assert!(wrapped_json!(3.0) < wrapped_json!(4));
-        assert!(wrapped_json!([3.0, 4.0]) < wrapped_json!([4.0, 3.0]));
+        assert!(ijson!("foo1") < ijson!("foo2"));
+        assert_eq!(ijson!(null), ijson!(null));
+        assert!(ijson!(true) > ijson!(false));
+        assert!(ijson!(3) < ijson!(4));
+        assert!(ijson!(3) < ijson!(4.0));
+        assert_eq!(ijson!(4.0), ijson!(4.0));
+        assert!(ijson!(3.0) < ijson!(4));
+        assert!(ijson!([3.0, 4.0]) < ijson!([4.0, 3.0]));
 
         assert_eq!(json_u64(), json_u64());
-        assert!(wrapped_json!(3) < json_u64());
-        assert!(json_u64() > wrapped_json!(3.0));
-        assert!(wrapped_json!(3.0) < json_u64());
+        assert!(ijson!(3) < json_u64());
+        assert!(json_u64() > ijson!(3.0));
+        assert!(ijson!(3.0) < json_u64());
 
         assert!(json_u64() > json_i64());
         assert!(json_i64() < json_u64());
-        assert!(wrapped_json!(3) > json_i64());
-        assert!(json_i64() < wrapped_json!(3.0));
+        assert!(ijson!(3) > json_i64());
+        assert!(json_i64() < ijson!(3.0));
 
-        assert!(wrapped_json!({}) == wrapped_json!({}));
-        assert!(wrapped_json!({"key": "value0"}) < wrapped_json!({"key": "value1"}));
-        assert!(wrapped_json!({"key": "value1"}) > wrapped_json!({"key": "value0"}));
-        assert!(wrapped_json!({"key1": "value0"}) > wrapped_json!({"key0": "value1"}));
-        assert_eq!(wrapped_json!({"key": "value"}), wrapped_json!({"key": "value"}));
-        assert!(wrapped_json!({"key": "value"}) > wrapped_json!({}));
-        assert!(wrapped_json!({}) < wrapped_json!({"key": "value"}));
-        assert!(wrapped_json!({"key": "value"}) > wrapped_json!({}));
+        assert!(ijson!({}) == ijson!({}));
+        assert!(ijson!({"key": "value0"}) < ijson!({"key": "value1"}));
+        assert!(ijson!({"key": "value1"}) > ijson!({"key": "value0"}));
+        assert!(ijson!({"key1": "value0"}) > ijson!({"key0": "value1"}));
+        assert_eq!(ijson!({"key": "value"}), ijson!({"key": "value"}));
+        assert!(ijson!({"key": "value"}) > ijson!({}));
+        assert!(ijson!({}) < ijson!({"key": "value"}));
+        assert!(ijson!({"key": "value"}) > ijson!({}));
     }
 }
