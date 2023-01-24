@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 use std::i32;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use std::u64;
 
 use super::managers::*;
-use crate::errors::Result;
+use crate::errors::{Error, Result};
 use crate::{BulkInsertItem, Database, Datastore, DynIter, Edge, Identifier, Json, Transaction, Vertex};
 
 use rocksdb::{DBCompactionStyle, Options, WriteBatch, DB};
@@ -48,6 +49,7 @@ fn get_options(max_open_files: Option<i32>) -> Options {
 pub struct RocksdbTransaction<'a> {
     db: &'a DB,
     indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
+    next_id: &'a AtomicU64,
     vertex_manager: VertexManager<'a>,
     edge_manager: EdgeManager<'a>,
     edge_range_manager: EdgeRangeManager<'a>,
@@ -293,8 +295,13 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
         Ok(())
     }
 
-    fn max_id(&self) -> Result<u64> {
-        self.vertex_manager.max_id()
+    fn next_id(&self) -> Result<u64> {
+        let next_id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        if next_id == 0 {
+            Err(Error::IdTaken)
+        } else {
+            Ok(next_id)
+        }
     }
 
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
@@ -422,6 +429,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
 pub struct RocksdbDatastore {
     db: Arc<DB>,
     indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
+    next_id: AtomicU64,
 }
 
 impl RocksdbDatastore {
@@ -450,9 +458,12 @@ impl RocksdbDatastore {
 
         let metadata_manager = MetadataManager::new(&db);
         let indexed_properties = metadata_manager.get_indexed_properties()?;
+        let vertex_manager = VertexManager::new(&db);
+        let next_id = AtomicU64::new(vertex_manager.max_id()? + 1);
         Ok(Database::new(RocksdbDatastore {
             db: Arc::new(db),
             indexed_properties: Arc::new(RwLock::new(indexed_properties)),
+            next_id,
         }))
     }
 
@@ -475,6 +486,7 @@ impl Datastore for RocksdbDatastore {
         RocksdbTransaction {
             db: &self.db,
             indexed_properties: self.indexed_properties.clone(),
+            next_id: &self.next_id,
             vertex_manager: VertexManager::new(&self.db),
             edge_manager: EdgeManager::new(&self.db),
             edge_range_manager: EdgeRangeManager::new(&self.db),

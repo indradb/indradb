@@ -318,11 +318,11 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
         Ok(())
     }
 
-    fn max_id(&self) -> Result<u64> {
+    fn next_id(&self) -> Result<u64> {
         if let Some((k, _)) = self.internal.vertices.last_key_value() {
-            Ok(*k)
+            Ok(*k + 1)
         } else {
-            Ok(0)
+            Ok(1)
         }
     }
 

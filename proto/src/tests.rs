@@ -250,9 +250,10 @@ impl<'a> Transaction<'a> for ClientTransaction {
         map_client_result(self.exec.borrow_mut().block_on(self.client.borrow_mut().sync()))
     }
 
-    fn max_id(&self) -> Result<u64> {
+    fn next_id(&self) -> Result<u64> {
         let vertices: Result<Vec<Vertex>> = self.all_vertices()?.collect();
-        Ok(vertices?.into_iter().map(|v| v.id).max().unwrap_or(0))
+        let max_id = vertices?.into_iter().map(|v| v.id).max().unwrap_or(0);
+        Ok(max_id + 1)
     }
 
     fn create_vertex(&mut self, vertex: &Vertex) -> Result<bool> {
