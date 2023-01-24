@@ -28,7 +28,7 @@ pub enum Component<'a> {
     /// A fixed length string.
     FixedLengthString(&'a str),
     /// An identifier.
-    Identifier(&'a models::Identifier),
+    Identifier(models::Identifier),
     /// A JSON value.
     Json(&'a models::Json),
 }

@@ -94,18 +94,18 @@ impl<'a> Transaction<'a> for ClientTransaction {
         self.get_vertices(SpecificVertexQuery::new(ids))
     }
 
-    fn vertex_ids_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
-        let q = VertexWithPropertyPresenceQuery::new(name.clone());
+    fn vertex_ids_with_property(&'a self, name: Identifier) -> Result<Option<DynIter<'a, Uuid>>> {
+        let q = VertexWithPropertyPresenceQuery::new(name);
         let vertices = util::extract_vertices(self.get(q)?).unwrap();
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
     }
 
     fn vertex_ids_with_property_value(
         &'a self,
-        name: &Identifier,
+        name: Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Uuid>>> {
-        let q = VertexWithPropertyValueQuery::new(name.clone(), value.clone());
+        let q = VertexWithPropertyValueQuery::new(name, value.clone());
         let vertices = util::extract_vertices(self.get(q)?).unwrap();
         Ok(Some(Box::new(vertices.into_iter().map(|v| Ok(v.id)))))
     }
@@ -138,27 +138,24 @@ impl<'a> Transaction<'a> for ClientTransaction {
         self.get_edges(SpecificEdgeQuery::new(edges))
     }
 
-    fn edges_with_property(&'a self, name: &Identifier) -> Result<Option<DynIter<'a, Edge>>> {
-        let q = EdgeWithPropertyPresenceQuery::new(name.clone());
+    fn edges_with_property(&'a self, name: Identifier) -> Result<Option<DynIter<'a, Edge>>> {
+        let q = EdgeWithPropertyPresenceQuery::new(name);
         let edges = util::extract_edges(self.get(q)?).unwrap();
         Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
     fn edges_with_property_value(
         &'a self,
-        name: &Identifier,
+        name: Identifier,
         value: &serde_json::Value,
     ) -> Result<Option<DynIter<'a, Edge>>> {
-        let q = EdgeWithPropertyValueQuery::new(name.clone(), value.clone());
+        let q = EdgeWithPropertyValueQuery::new(name, value.clone());
         let edges = util::extract_edges(self.get(q)?).unwrap();
         Ok(Some(Box::new(edges.into_iter().map(Ok))))
     }
 
-    fn vertex_property(&self, vertex: &Vertex, name: &Identifier) -> Result<Option<serde_json::Value>> {
-        let q = SpecificVertexQuery::single(vertex.id)
-            .properties()
-            .unwrap()
-            .name(name.clone());
+    fn vertex_property(&self, vertex: &Vertex, name: Identifier) -> Result<Option<serde_json::Value>> {
+        let q = SpecificVertexQuery::single(vertex.id).properties().unwrap().name(name);
         let props = util::extract_vertex_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(None),
@@ -180,22 +177,16 @@ impl<'a> Transaction<'a> for ClientTransaction {
         match props.len() {
             0 => Ok(Box::new(Vec::default().into_iter())),
             1 => {
-                let props: Vec<Result<(Identifier, serde_json::Value)>> = props[0]
-                    .props
-                    .iter()
-                    .map(|p| Ok((p.name.clone(), p.value.clone())))
-                    .collect();
+                let props: Vec<Result<(Identifier, serde_json::Value)>> =
+                    props[0].props.iter().map(|p| Ok((p.name, p.value.clone()))).collect();
                 Ok(Box::new(props.into_iter()))
             }
             _ => unreachable!(),
         }
     }
 
-    fn edge_property(&self, edge: &Edge, name: &Identifier) -> Result<Option<serde_json::Value>> {
-        let q = SpecificEdgeQuery::single(edge.clone())
-            .properties()
-            .unwrap()
-            .name(name.clone());
+    fn edge_property(&self, edge: &Edge, name: Identifier) -> Result<Option<serde_json::Value>> {
+        let q = SpecificEdgeQuery::single(edge.clone()).properties().unwrap().name(name);
         let props = util::extract_edge_properties(self.get(q)?).unwrap();
         match props.len() {
             0 => Ok(None),
@@ -214,11 +205,8 @@ impl<'a> Transaction<'a> for ClientTransaction {
         match props.len() {
             0 => Ok(Box::new(Vec::default().into_iter())),
             1 => {
-                let props: Vec<Result<(Identifier, serde_json::Value)>> = props[0]
-                    .props
-                    .iter()
-                    .map(|p| Ok((p.name.clone(), p.value.clone())))
-                    .collect();
+                let props: Vec<Result<(Identifier, serde_json::Value)>> =
+                    props[0].props.iter().map(|p| Ok((p.name, p.value.clone()))).collect();
                 Ok(Box::new(props.into_iter()))
             }
             _ => unreachable!(),
