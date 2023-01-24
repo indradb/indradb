@@ -7,6 +7,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// Similar to `serde_json::json!`, this allows you to create JSON literals.
+/// It's called `ijson` to not conflict with `serde_json::json!`.
 #[macro_export]
 macro_rules! ijson {
     ($($json:tt)+) => {
@@ -141,10 +143,8 @@ where
     }
 }
 
-/// A [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
-/// that extends `serde_json::Value` with extra traits useful for datastore
-/// storage and querying. Publicly facing APIs do not use these values, so
-/// it's generally only useful for datastore authors.
+/// Wraps `serde_json::Value` in an `Arc` to make it more cheaply cloneable, as
+/// well as implements extra traits useful for datastore storage and querying.
 #[derive(Clone, Eq, Debug)]
 pub struct Json(pub Arc<serde_json::Value>);
 
