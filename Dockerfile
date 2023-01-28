@@ -8,13 +8,13 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/rust/target \
     cargo build --release
 
-FROM debian:stretch-slim as server
+FROM debian:bookworm-slim as server
 WORKDIR /root
 COPY --from=builder /usr/app/src/target/release/indradb-server .
 EXPOSE 27615
 ENTRYPOINT ["./indradb-server"]
 
-FROM debian:stretch-slim as client
+FROM debian:bookworm-slim as client
 WORKDIR /root
 COPY --from=builder /usr/app/src/target/release/indradb-client .
 ENTRYPOINT ["./indradb-client"]
