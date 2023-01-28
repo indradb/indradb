@@ -1,7 +1,7 @@
 FROM rust:latest as builder
 WORKDIR /usr/app/src
 COPY ./ /usr/app/src
-RUN apt-get update && apt-get -y install clang && \
+RUN apt-get update && apt-get -y install clang protobuf-compiler && \
     rm -rf /var/lib/apt/lists/* && \
     rustup component add rustfmt 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
