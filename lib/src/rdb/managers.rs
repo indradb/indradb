@@ -2,13 +2,15 @@ use std::collections::HashSet;
 use std::io::Cursor;
 use std::ops::Deref;
 use std::result::Result as StdResult;
+use std::sync::Arc;
 use std::u8;
 
 use crate::errors::Result;
 use crate::models;
 use crate::util;
 
-use rocksdb::{ColumnFamily, DBIterator, Direction, IteratorMode, WriteBatch, DB};
+use rocksdb::BoundColumnFamily;
+use rocksdb::{DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
@@ -31,7 +33,7 @@ fn take_with_prefix(
 
 pub(crate) struct VertexManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> VertexManager<'a> {
@@ -47,11 +49,11 @@ impl<'a> VertexManager<'a> {
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
-        Ok(self.db.get_cf(self.cf, self.key(id))?.is_some())
+        Ok(self.db.get_cf(&self.cf, self.key(id))?.is_some())
     }
 
     pub fn get(&self, id: Uuid) -> Result<Option<models::Identifier>> {
-        match self.db.get_cf(self.cf, self.key(id))? {
+        match self.db.get_cf(&self.cf, self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
                 Ok(Some(util::read_identifier(&mut cursor)))
@@ -64,7 +66,7 @@ impl<'a> VertexManager<'a> {
         let low_key = util::build(&[util::Component::Uuid(id)]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&low_key, Direction::Forward));
         iter.map(|item| -> Result<models::Vertex> {
             let (k, v) = item?;
 
@@ -82,7 +84,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
+        batch.put_cf(&self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
         Ok(())
     }
 
@@ -92,7 +94,7 @@ impl<'a> VertexManager<'a> {
         indexed_properties: &HashSet<models::Identifier>,
         id: Uuid,
     ) -> Result<()> {
-        batch.delete_cf(self.cf, self.key(id));
+        batch.delete_cf(&self.cf, self.key(id));
 
         let vertex_property_manager = VertexPropertyManager::new(self.db);
         for item in vertex_property_manager.iterate_for_owner(id)? {
@@ -130,7 +132,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
@@ -182,7 +184,7 @@ impl<'a> EdgeManager<'a> {
 
 pub(crate) struct EdgeRangeManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> EdgeRangeManager<'a> {
@@ -223,7 +225,7 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     pub fn contains(&self, edge: &models::Edge) -> Result<bool> {
-        Ok(self.db.get_cf(self.cf, self.key(edge))?.is_some())
+        Ok(self.db.get_cf(&self.cf, self.key(edge))?.is_some())
     }
 
     pub fn iterate_for_root(
@@ -237,14 +239,14 @@ impl<'a> EdgeRangeManager<'a> {
                 let low_key = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
                 let iter = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
+                    .iterator_cf(&self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 (prefix, iter)
             }
             None => {
                 let prefix = util::build(&[util::Component::Uuid(id)]);
                 let iter = self
                     .db
-                    .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+                    .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
                 (prefix, iter)
             }
         };
@@ -266,35 +268,35 @@ impl<'a> EdgeRangeManager<'a> {
         ]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&low_key, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&low_key, Direction::Forward));
         Ok(Box::new(self.iterate(iter)))
     }
 
     pub fn iterate_for_all(&'a self) -> impl Iterator<Item = Result<models::Edge>> + 'a {
-        let iterator = self.db.iterator_cf(self.cf, IteratorMode::Start);
+        let iterator = self.db.iterator_cf(&self.cf, IteratorMode::Start);
         self.iterate(iterator)
     }
 
     pub fn set(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
         let key = self.key(edge);
-        batch.put_cf(self.cf, &key, []);
+        batch.put_cf(&self.cf, &key, []);
         Ok(())
     }
 
     pub fn delete(&self, batch: &mut WriteBatch, edge: &models::Edge) -> Result<()> {
-        batch.delete_cf(self.cf, self.key(edge));
+        batch.delete_cf(&self.cf, self.key(edge));
         Ok(())
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
 pub(crate) struct VertexPropertyManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> VertexPropertyManager<'a> {
@@ -320,7 +322,7 @@ impl<'a> VertexPropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = take_with_prefix(iterator, prefix);
 
@@ -337,7 +339,7 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     pub fn get(&self, vertex_id: Uuid, name: models::Identifier) -> Result<Option<models::Json>> {
-        match self.db.get_cf(self.cf, self.key(vertex_id, name))? {
+        match self.db.get_cf(&self.cf, self.key(vertex_id, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
         }
@@ -357,7 +359,7 @@ impl<'a> VertexPropertyManager<'a> {
             self.delete(batch, indexed_properties, vertex_id, name)?;
         }
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json);
+        batch.put_cf(&self.cf, &key, &value_json);
         if is_indexed {
             let vertex_property_value_manager = VertexPropertyValueManager::new(self.db);
             vertex_property_value_manager.set(batch, vertex_id, name, value);
@@ -378,19 +380,19 @@ impl<'a> VertexPropertyManager<'a> {
                 vertex_property_value_manager.delete(batch, vertex_id, name, &value);
             }
         }
-        batch.delete_cf(self.cf, self.key(vertex_id, name));
+        batch.delete_cf(&self.cf, self.key(vertex_id, name));
         Ok(())
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
 pub(crate) struct EdgePropertyManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> EdgePropertyManager<'a> {
@@ -422,7 +424,7 @@ impl<'a> EdgePropertyManager<'a> {
 
         let iterator = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
 
         let filtered = take_with_prefix(iterator, prefix);
 
@@ -451,7 +453,7 @@ impl<'a> EdgePropertyManager<'a> {
     }
 
     pub fn get(&self, edge: &models::Edge, name: models::Identifier) -> Result<Option<models::Json>> {
-        match self.db.get_cf(self.cf, self.key(edge, name))? {
+        match self.db.get_cf(&self.cf, self.key(edge, name))? {
             Some(value_bytes) => Ok(Some(serde_json::from_slice(&value_bytes)?)),
             None => Ok(None),
         }
@@ -471,7 +473,7 @@ impl<'a> EdgePropertyManager<'a> {
             self.delete(batch, indexed_properties, edge, name)?;
         }
         let value_json = serde_json::to_vec(value)?;
-        batch.put_cf(self.cf, &key, &value_json);
+        batch.put_cf(&self.cf, &key, &value_json);
         if is_indexed {
             let edge_property_value_manager = EdgePropertyValueManager::new(self.db);
             edge_property_value_manager.set(batch, edge, name, value);
@@ -492,19 +494,19 @@ impl<'a> EdgePropertyManager<'a> {
                 edge_property_value_manager.delete(batch, edge, name, &value);
             }
         }
-        batch.delete_cf(self.cf, self.key(edge, name));
+        batch.delete_cf(&self.cf, self.key(edge, name));
         Ok(())
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
 pub(crate) struct VertexPropertyValueManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> VertexPropertyValueManager<'a> {
@@ -547,7 +549,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
 
@@ -562,7 +564,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         ]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
 
@@ -574,7 +576,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
-        batch.put_cf(self.cf, key, []);
+        batch.put_cf(&self.cf, key, []);
     }
 
     pub fn delete(
@@ -585,18 +587,18 @@ impl<'a> VertexPropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, vertex_id);
-        batch.delete_cf(self.cf, key);
+        batch.delete_cf(&self.cf, key);
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
 pub(crate) struct EdgePropertyValueManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> EdgePropertyValueManager<'a> {
@@ -643,7 +645,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         let prefix = util::build(&[util::Component::Identifier(property_name)]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
 
@@ -658,7 +660,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         ]);
         let iter = self
             .db
-            .iterator_cf(self.cf, IteratorMode::From(&prefix, Direction::Forward));
+            .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
         self.iterate(iter, prefix)
     }
 
@@ -670,7 +672,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, edge);
-        batch.put_cf(self.cf, key, []);
+        batch.put_cf(&self.cf, key, []);
     }
 
     pub fn delete(
@@ -681,18 +683,18 @@ impl<'a> EdgePropertyValueManager<'a> {
         property_value: &models::Json,
     ) {
         let key = self.key(property_name, property_value, edge);
-        batch.delete_cf(self.cf, key);
+        batch.delete_cf(&self.cf, key);
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }
 
 pub(crate) struct MetadataManager<'a> {
     db: &'a DB,
-    cf: &'a ColumnFamily,
+    cf: Arc<BoundColumnFamily<'a>>,
 }
 
 impl<'a> MetadataManager<'a> {
@@ -704,7 +706,7 @@ impl<'a> MetadataManager<'a> {
     }
 
     pub fn get_indexed_properties(&self) -> Result<HashSet<models::Identifier>> {
-        match self.db.get_cf(self.cf, "indexed_properties")? {
+        match self.db.get_cf(&self.cf, "indexed_properties")? {
             Some(value_bytes) => Ok(bincode::deserialize(&value_bytes)?),
             None => Ok(HashSet::default()),
         }
@@ -712,12 +714,12 @@ impl<'a> MetadataManager<'a> {
 
     pub fn set_indexed_properties(&self, batch: &mut WriteBatch, indices: &HashSet<models::Identifier>) -> Result<()> {
         let value_bytes = bincode::serialize(&indices)?;
-        batch.put_cf(self.cf, "indexed_properties", &value_bytes);
+        batch.put_cf(&self.cf, "indexed_properties", &value_bytes);
         Ok(())
     }
 
     pub fn compact(&self) {
         self.db
-            .compact_range_cf(self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
+            .compact_range_cf(&self.cf, Option::<&[u8]>::None, Option::<&[u8]>::None);
     }
 }

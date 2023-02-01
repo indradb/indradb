@@ -406,7 +406,7 @@ impl RocksdbDatastore {
         let db = match DB::open_cf(&opts, path, CF_NAMES) {
             Ok(db) => db,
             Err(_) => {
-                let mut db = DB::open(&opts, path)?;
+                let db = DB::open(&opts, path)?;
 
                 for cf_name in &CF_NAMES {
                     db.create_cf(cf_name, &opts)?;
@@ -418,6 +418,8 @@ impl RocksdbDatastore {
 
         let metadata_manager = MetadataManager::new(&db);
         let indexed_properties = metadata_manager.get_indexed_properties()?;
+        drop(metadata_manager);
+        
         Ok(Database::new(RocksdbDatastore {
             db: Arc::new(db),
             indexed_properties: Arc::new(RwLock::new(indexed_properties)),
