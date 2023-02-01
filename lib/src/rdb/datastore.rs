@@ -419,7 +419,7 @@ impl RocksdbDatastore {
         let metadata_manager = MetadataManager::new(&db);
         let indexed_properties = metadata_manager.get_indexed_properties()?;
         drop(metadata_manager);
-        
+
         Ok(Database::new(RocksdbDatastore {
             db: Arc::new(db),
             indexed_properties: Arc::new(RwLock::new(indexed_properties)),
