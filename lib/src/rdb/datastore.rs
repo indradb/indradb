@@ -426,6 +426,37 @@ impl RocksdbDatastore {
         }))
     }
 
+    /// Creates a new rocksdb datastore with user-tuned rocksdb Option.
+    ///
+    /// # Arguments
+    /// * `path`: The file path to the rocksdb database.
+    /// * `opts`: The user-tuned rocksdb option
+    pub fn new_db_with_options<P: AsRef<Path>>(path: P, opts: Options) -> Result<Database<RocksdbDatastore>> {
+        let path = path.as_ref();
+
+        let db = match DB::open_cf(&opts, path, CF_NAMES) {
+            Ok(db) => db,
+            Err(_) => {
+                let db = DB::open(&opts, path)?;
+
+                for cf_name in &CF_NAMES {
+                    db.create_cf(cf_name, &opts)?;
+                }
+
+                db
+            }
+        };
+
+        let metadata_manager = MetadataManager::new(&db);
+        let indexed_properties = metadata_manager.get_indexed_properties()?;
+        drop(metadata_manager);
+
+        Ok(Database::new(RocksdbDatastore {
+            db: Arc::new(db),
+            indexed_properties: Arc::new(RwLock::new(indexed_properties)),
+        }))
+    }
+
     /// Runs a repair operation on the rocksdb database.
     ///
     /// # Arguments
