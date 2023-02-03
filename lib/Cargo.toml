@@ -20,6 +20,7 @@ default = []
 rocksdb-datastore = ["rocksdb", "bincode"]
 test-suite = []
 bench-suite = []
+multi-threaded-rocksdb-datastore = ["rocksdb", "bincode", "rocksdb/multi-threaded-cf"]
 
 [dependencies]
 byteorder = "^1.4.2"
@@ -32,5 +33,5 @@ tempfile = "^3.2.0"
 uuid = { version = "^1.2.2", features = ["v1", "serde"] }
 
 # Rocksdb dependencies
-rocksdb = { version = "0.19.0", optional = true, features=["multi-threaded-cf"] }
+rocksdb = { version = "0.19.0", optional = true }
 bincode = { version = "^1.3.3", optional = true }
