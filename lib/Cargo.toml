@@ -20,7 +20,7 @@ default = []
 rocksdb-datastore = ["rocksdb", "bincode"]
 test-suite = []
 bench-suite = []
-multi-threaded-rocksdb-datastore = ["rocksdb", "bincode", "rocksdb/multi-threaded-cf"]
+rocksdb-multi-threaded = ["rocksdb/multi-threaded-cf"]
 
 [dependencies]
 byteorder = "^1.4.2"
