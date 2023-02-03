@@ -2,15 +2,13 @@ use std::collections::HashSet;
 use std::io::Cursor;
 use std::ops::Deref;
 use std::result::Result as StdResult;
-use std::sync::Arc;
 use std::u8;
 
 use crate::errors::Result;
 use crate::models;
 use crate::util;
 
-use rocksdb::BoundColumnFamily;
-use rocksdb::{DBIterator, Direction, IteratorMode, WriteBatch, DB};
+use rocksdb::{ColumnFamilyRef, DB, DBIterator, Direction, IteratorMode, WriteBatch};
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
@@ -33,7 +31,7 @@ fn take_with_prefix(
 
 pub(crate) struct VertexManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> VertexManager<'a> {
@@ -184,7 +182,7 @@ impl<'a> EdgeManager<'a> {
 
 pub(crate) struct EdgeRangeManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> EdgeRangeManager<'a> {
@@ -296,7 +294,7 @@ impl<'a> EdgeRangeManager<'a> {
 
 pub(crate) struct VertexPropertyManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> VertexPropertyManager<'a> {
@@ -392,7 +390,7 @@ impl<'a> VertexPropertyManager<'a> {
 
 pub(crate) struct EdgePropertyManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> EdgePropertyManager<'a> {
@@ -506,7 +504,7 @@ impl<'a> EdgePropertyManager<'a> {
 
 pub(crate) struct VertexPropertyValueManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> VertexPropertyValueManager<'a> {
@@ -598,7 +596,7 @@ impl<'a> VertexPropertyValueManager<'a> {
 
 pub(crate) struct EdgePropertyValueManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> EdgePropertyValueManager<'a> {
@@ -694,7 +692,7 @@ impl<'a> EdgePropertyValueManager<'a> {
 
 pub(crate) struct MetadataManager<'a> {
     db: &'a DB,
-    cf: Arc<BoundColumnFamily<'a>>,
+    cf: ColumnFamilyRef<'a>,
 }
 
 impl<'a> MetadataManager<'a> {
