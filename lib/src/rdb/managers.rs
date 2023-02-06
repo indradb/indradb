@@ -8,7 +8,7 @@ use crate::errors::Result;
 use crate::models;
 use crate::util;
 
-use rocksdb::{ColumnFamilyRef, DB, DBIterator, Direction, IteratorMode, WriteBatch};
+use rocksdb::{ColumnFamilyRef, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
 pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
