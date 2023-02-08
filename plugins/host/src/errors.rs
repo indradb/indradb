@@ -33,10 +33,10 @@ impl StdError for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Json(ref err) => write!(f, "json error: {}", err),
-            Error::IndraDB(ref err) => write!(f, "IndraDB error: {}", err),
-            Error::InvalidArgument(ref msg) => write!(f, "{}", msg),
-            Error::Other(ref err) => write!(f, "{}", err),
+            Error::Json(ref err) => write!(f, "json error: {err}"),
+            Error::IndraDB(ref err) => write!(f, "IndraDB error: {err}"),
+            Error::InvalidArgument(ref msg) => write!(f, "{msg}"),
+            Error::Other(ref err) => write!(f, "{err}"),
         }
     }
 }

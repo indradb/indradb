@@ -47,10 +47,10 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::UuidTaken => write!(f, "UUID already taken"),
-            Error::Datastore(ref err) => write!(f, "error in the underlying datastore: {}", err),
+            Error::Datastore(ref err) => write!(f, "error in the underlying datastore: {err}"),
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
             Error::Unsupported => write!(f, "functionality not supported"),
-            Error::Invalid(ref err) => write!(f, "{}", err),
+            Error::Invalid(ref err) => write!(f, "{err}"),
             Error::OperationOnQuery => write!(f, "the operation cannot work with the given query"),
         }
     }

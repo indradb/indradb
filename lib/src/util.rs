@@ -74,7 +74,7 @@ pub fn build(components: &[Component]) -> Vec<u8> {
 
     for component in components {
         if let Err(err) = component.write(&mut cursor) {
-            panic!("Could not write bytes: {}", err);
+            panic!("Could not write bytes: {err}");
         }
     }
 
