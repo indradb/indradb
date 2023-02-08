@@ -18,7 +18,7 @@ const CHANNEL_CAPACITY: usize = 100;
 
 fn send(tx: &mpsc::Sender<Result<crate::QueryOutputValue, Status>>, result: Result<crate::QueryOutputValue, Status>) {
     if let Err(err) = tx.blocking_send(result) {
-        eprintln!("could not send message to client: {}", err);
+        eprintln!("could not send message to client: {err}");
     }
 }
 
@@ -27,11 +27,11 @@ fn map_indradb_result<T>(res: Result<T, indradb::Error>) -> Result<T, Status> {
 }
 
 fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T, Status> {
-    res.map_err(|err| Status::invalid_argument(format!("{}", err)))
+    res.map_err(|err| Status::invalid_argument(format!("{err}")))
 }
 
 fn map_jh_indra_result<T>(res: Result<Result<T, indradb::Error>, tokio::task::JoinError>) -> Result<T, Status> {
-    let jh_res = res.map_err(|err| Status::internal(format!("{}", err)))?;
+    let jh_res = res.map_err(|err| Status::internal(format!("{err}")))?;
     map_indradb_result(jh_res)
 }
 
