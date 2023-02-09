@@ -23,7 +23,7 @@ fn send(tx: &mpsc::Sender<Result<crate::QueryOutputValue, Status>>, result: Resu
 }
 
 fn map_indradb_result<T>(res: Result<T, indradb::Error>) -> Result<T, Status> {
-    res.map_err(|err| Status::internal(format!("{}", err)))
+    res.map_err(|err| Status::internal(format!("{err}")))
 }
 
 fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T, Status> {
