@@ -21,7 +21,7 @@ where
     D: indradb::Datastore + Send + Sync + 'static,
 {
     let binding = listener.local_addr()?;
-    println!("grpc://{}", binding);
+    println!("grpc://{binding}");
 
     if let Some(plugin_path) = plugin_path {
         unsafe {

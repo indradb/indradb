@@ -70,10 +70,10 @@ impl StdError for InitError {
 impl fmt::Display for InitError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InitError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
-            InitError::Transport(ref err) => write!(f, "transport error: {}", err),
-            InitError::Pattern(ref err) => write!(f, "pattern error: {}", err),
-            InitError::Glob(ref err) => write!(f, "glob error: {}", err),
+            InitError::LibLoading(ref err) => write!(f, "failed to load library: {err}"),
+            InitError::Transport(ref err) => write!(f, "transport error: {err}"),
+            InitError::Pattern(ref err) => write!(f, "pattern error: {err}"),
+            InitError::Glob(ref err) => write!(f, "glob error: {err}"),
             InitError::VersionMismatch {
                 ref library_path,
                 ref indradb_version_info,
@@ -301,7 +301,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
             let response = {
                 plugin
                     .call(&mut txn, arg)
-                    .map_err(|err| Status::internal(format!("{}", err)))?
+                    .map_err(|err| Status::internal(format!("{err}")))?
             };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),

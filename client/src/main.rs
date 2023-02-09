@@ -170,14 +170,14 @@ async fn run(matches: clap::ArgMatches<'_>) -> Result<(), Box<dyn StdError>> {
             if !res {
                 return Err(Box::new(Error::UuidTaken));
             }
-            println!("{:?}", vertex);
+            println!("{vertex:?}");
         } else if let Some(matches) = matches.subcommand_matches("edge") {
             let edge = build_edge(matches)?;
             let res = client.create_edge(&edge).await?;
             if !res {
                 return Err(Box::new(errors::VertexInvalidError));
             }
-            println!("{:?}", edge);
+            println!("{edge:?}");
         } else if let Some(matches) = matches.subcommand_matches("vertex-property") {
             let vertex_query = build_vertex_query(matches)?;
             let property_name = Identifier::new(matches.value_of("name").unwrap())?;
