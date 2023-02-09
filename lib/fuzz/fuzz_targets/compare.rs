@@ -517,7 +517,7 @@ macro_rules! cmp {
                 assert_eq!(v1, v2);
             }
             (v1, v2) => {
-                assert_eq!(format!("{:?}", v1), format!("{:?}", v2));
+                assert_eq!(format!("{v1:?}"), format!("{v2:?}"));
             }
         }
     };

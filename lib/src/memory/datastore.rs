@@ -215,7 +215,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 .vertex_properties
                 .range((vertex.id, Identifier::default())..)
             {
-                let &(ref property_vertex_id, _) = property_key;
+                let (property_vertex_id, _) = property_key;
 
                 if &vertex.id != property_vertex_id {
                     break;
@@ -247,7 +247,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 .edge_properties
                 .range((edge.clone(), Identifier::default())..)
             {
-                let &(ref property_edge, _) = property_key;
+                let (property_edge, _) = property_key;
 
                 if &edge != property_edge {
                     break;

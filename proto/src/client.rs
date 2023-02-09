@@ -42,8 +42,8 @@ impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ClientError::Conversion { ref inner } => inner.fmt(f),
-            ClientError::Grpc { ref inner } => write!(f, "grpc error: {}", inner),
-            ClientError::Transport { ref inner } => write!(f, "transport error: {}", inner),
+            ClientError::Grpc { ref inner } => write!(f, "grpc error: {inner}"),
+            ClientError::Transport { ref inner } => write!(f, "transport error: {inner}"),
             ClientError::ChannelClosed => write!(f, "failed to send request: channel closed"),
         }
     }

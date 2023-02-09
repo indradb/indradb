@@ -18,20 +18,20 @@ const CHANNEL_CAPACITY: usize = 100;
 
 fn send(tx: &mpsc::Sender<Result<crate::QueryOutputValue, Status>>, result: Result<crate::QueryOutputValue, Status>) {
     if let Err(err) = tx.blocking_send(result) {
-        eprintln!("could not send message to client: {}", err);
+        eprintln!("could not send message to client: {err}");
     }
 }
 
 fn map_indradb_result<T>(res: Result<T, indradb::Error>) -> Result<T, Status> {
-    res.map_err(|err| Status::internal(format!("{}", err)))
+    res.map_err(|err| Status::internal(format!("{err}")))
 }
 
 fn map_conversion_result<T>(res: Result<T, crate::ConversionError>) -> Result<T, Status> {
-    res.map_err(|err| Status::invalid_argument(format!("{}", err)))
+    res.map_err(|err| Status::invalid_argument(format!("{err}")))
 }
 
 fn map_jh_indra_result<T>(res: Result<Result<T, indradb::Error>, tokio::task::JoinError>) -> Result<T, Status> {
-    let jh_res = res.map_err(|err| Status::internal(format!("{}", err)))?;
+    let jh_res = res.map_err(|err| Status::internal(format!("{err}")))?;
     map_indradb_result(jh_res)
 }
 
@@ -70,10 +70,10 @@ impl StdError for InitError {
 impl fmt::Display for InitError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InitError::LibLoading(ref err) => write!(f, "failed to load library: {}", err),
-            InitError::Transport(ref err) => write!(f, "transport error: {}", err),
-            InitError::Pattern(ref err) => write!(f, "pattern error: {}", err),
-            InitError::Glob(ref err) => write!(f, "glob error: {}", err),
+            InitError::LibLoading(ref err) => write!(f, "failed to load library: {err}"),
+            InitError::Transport(ref err) => write!(f, "transport error: {err}"),
+            InitError::Pattern(ref err) => write!(f, "pattern error: {err}"),
+            InitError::Glob(ref err) => write!(f, "glob error: {err}"),
             InitError::VersionMismatch {
                 ref library_path,
                 ref indradb_version_info,
@@ -301,7 +301,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
             let response = {
                 plugin
                     .call(&mut txn, arg)
-                    .map_err(|err| Status::internal(format!("{}", err)))?
+                    .map_err(|err| Status::internal(format!("{err}")))?
             };
             Ok(Response::new(crate::ExecutePluginResponse {
                 value: Some(response.into()),
