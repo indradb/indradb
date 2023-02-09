@@ -276,7 +276,7 @@ pub struct ClientDatastore {
 
 impl ClientDatastore {
     pub fn new(port: u16, exec: Runtime) -> Self {
-        let endpoint: Endpoint = format!("http://127.0.0.1:{}", port).try_into().unwrap();
+        let endpoint: Endpoint = format!("http://127.0.0.1:{port}").try_into().unwrap();
 
         for _ in 0..5 {
             if let Ok(mut client) = exec.block_on(crate::Client::new(endpoint.clone())) {
