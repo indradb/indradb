@@ -22,6 +22,12 @@ const CF_NAMES: [&str; 8] = [
     "metadata:v2",
 ];
 
+/// Creates a new rocksdb options with indra's default values.
+/// The returned value can serve as the `options` argument in `RocksdbDatastore::new_db_with_options`.
+///
+/// # Arguments
+/// * `max_open_files`: The maximum number of open files to have. If
+///   `None`, the default will be used.
 pub fn get_options(max_open_files: Option<i32>) -> Options {
     // Current tuning based off of the total ordered example, flash
     // storage example on
@@ -397,8 +403,6 @@ impl RocksdbDatastore {
     ///
     /// # Arguments
     /// * `path`: The file path to the rocksdb database.
-    /// * `max_open_files`: The maximum number of open files to have. If
-    ///   `None`, the default will be used.
     pub fn new_db<P: AsRef<Path>>(path: P) -> Result<Database<RocksdbDatastore>> {
         let opts = get_options(None);
         let path = path.as_ref();
@@ -430,7 +434,7 @@ impl RocksdbDatastore {
     ///
     /// # Arguments
     /// * `path`: The file path to the rocksdb database.
-    /// * `opts`: The user-tuned rocksdb option
+    /// * `opts`: The user-tuned rocksdb options.
     pub fn new_db_with_options<P: AsRef<Path>>(path: P, opts: Options) -> Result<Database<RocksdbDatastore>> {
         let path = path.as_ref();
 
