@@ -399,8 +399,8 @@ impl RocksdbDatastore {
     /// * `path`: The file path to the rocksdb database.
     /// * `max_open_files`: The maximum number of open files to have. If
     ///   `None`, the default will be used.
-    pub fn new_db<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<Database<RocksdbDatastore>> {
-        let opts = get_options(max_open_files);
+    pub fn new_db<P: AsRef<Path>>(path: P) -> Result<Database<RocksdbDatastore>> {
+        let opts = get_options(None);
         let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, CF_NAMES) {
