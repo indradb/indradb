@@ -4,6 +4,7 @@ mod datastore;
 mod managers;
 
 pub use self::datastore::RocksdbDatastore;
+pub use self::datastore::get_options;
 
 #[cfg(feature = "bench-suite")]
 full_bench_impl!({
