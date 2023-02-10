@@ -34,10 +34,10 @@ impl StdError for ConversionError {
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConversionError::Json { ref inner } => write!(f, "json conversion failed: {}", inner),
-            ConversionError::Uuid { ref inner } => write!(f, "uuid conversion failed: {}", inner),
-            ConversionError::Validation { ref inner } => write!(f, "validation conversion failed: {}", inner),
-            ConversionError::NoneField { ref name } => write!(f, "proto field '{}' should not be none", name),
+            ConversionError::Json { ref inner } => write!(f, "json conversion failed: {inner}"),
+            ConversionError::Uuid { ref inner } => write!(f, "uuid conversion failed: {inner}"),
+            ConversionError::Validation { ref inner } => write!(f, "validation conversion failed: {inner}"),
+            ConversionError::NoneField { ref name } => write!(f, "proto field '{name}' should not be none"),
             ConversionError::UnexpectedResponseType => write!(f, "unexpected response type"),
         }
     }
