@@ -22,36 +22,6 @@ const CF_NAMES: [&str; 8] = [
     "metadata:v2",
 ];
 
-/// Creates a new rocksdb options with indra's default values.
-/// The returned value can serve as the `options` argument in `RocksdbDatastore::new_db_with_options`.
-///
-/// # Arguments
-/// * `max_open_files`: The maximum number of open files to have. If
-///   `None`, the default will be used.
-pub fn get_options(max_open_files: Option<i32>) -> Options {
-    // Current tuning based off of the total ordered example, flash
-    // storage example on
-    // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
-    let mut opts = Options::default();
-    opts.create_if_missing(true);
-    opts.set_compaction_style(DBCompactionStyle::Level);
-    opts.set_write_buffer_size(67_108_864); // 64mb
-    opts.set_max_write_buffer_number(3);
-    opts.set_target_file_size_base(67_108_864); // 64mb
-    opts.set_level_zero_file_num_compaction_trigger(8);
-    opts.set_level_zero_slowdown_writes_trigger(17);
-    opts.set_level_zero_stop_writes_trigger(24);
-    opts.set_num_levels(4);
-    opts.set_max_bytes_for_level_base(536_870_912); // 512mb
-    opts.set_max_bytes_for_level_multiplier(8.0);
-
-    if let Some(max_open_files) = max_open_files {
-        opts.set_max_open_files(max_open_files);
-    }
-
-    opts
-}
-
 pub struct RocksdbTransaction<'a> {
     db: &'a DB,
     indexed_properties: Arc<RwLock<HashSet<Identifier>>>,
@@ -404,7 +374,7 @@ impl RocksdbDatastore {
     /// # Arguments
     /// * `path`: The file path to the rocksdb database.
     pub fn new_db<P: AsRef<Path>>(path: P) -> Result<Database<RocksdbDatastore>> {
-        let opts = get_options(None);
+        let opts = RocksdbDatastore::get_options(None);
         let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, CF_NAMES) {
@@ -435,7 +405,7 @@ impl RocksdbDatastore {
     /// # Arguments
     /// * `path`: The file path to the rocksdb database.
     /// * `opts`: The user-tuned rocksdb options.
-    pub fn new_db_with_options<P: AsRef<Path>>(path: P, opts: Options) -> Result<Database<RocksdbDatastore>> {
+    pub fn new_db_with_options<P: AsRef<Path>>(path: P, opts: &Options) -> Result<Database<RocksdbDatastore>> {
         let path = path.as_ref();
 
         let db = match DB::open_cf(&opts, path, CF_NAMES) {
@@ -464,12 +434,40 @@ impl RocksdbDatastore {
     ///
     /// # Arguments
     /// * `path`: The file path to the rocksdb database.
-    /// * `max_open_files`: The maximum number of open files to have. If
-    ///   `None`, the default will be used.
-    pub fn repair<P: AsRef<Path>>(path: P, max_open_files: Option<i32>) -> Result<()> {
-        let opts = get_options(max_open_files);
+    /// * `opts`: The rocksdb options used on datastore.
+    pub fn repair<P: AsRef<Path>>(path: P, opts: &Options) -> Result<()> {
         DB::repair(&opts, path)?;
         Ok(())
+    }
+
+    /// Creates a new rocksdb options with indra's default values.
+    /// The returned value can serve as the `options` argument in `RocksdbDatastore::new_db_with_options`.
+    ///
+    /// # Arguments
+    /// * `max_open_files`: The maximum number of open files to have. If
+    ///   `None`, the default will be used.
+    pub fn get_options(max_open_files: Option<i32>) -> Options {
+        // Current tuning based off of the total ordered example, flash
+        // storage example on
+        // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
+        let mut opts = Options::default();
+        opts.create_if_missing(true);
+        opts.set_compaction_style(DBCompactionStyle::Level);
+        opts.set_write_buffer_size(67_108_864); // 64mb
+        opts.set_max_write_buffer_number(3);
+        opts.set_target_file_size_base(67_108_864); // 64mb
+        opts.set_level_zero_file_num_compaction_trigger(8);
+        opts.set_level_zero_slowdown_writes_trigger(17);
+        opts.set_level_zero_stop_writes_trigger(24);
+        opts.set_num_levels(4);
+        opts.set_max_bytes_for_level_base(536_870_912); // 512mb
+        opts.set_max_bytes_for_level_multiplier(8.0);
+
+        if let Some(max_open_files) = max_open_files {
+            opts.set_max_open_files(max_open_files);
+        }
+
+        opts
     }
 }
 

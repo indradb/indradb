@@ -35,4 +35,3 @@ mod rdb;
 
 #[cfg(feature = "rocksdb-datastore")]
 pub use crate::rdb::RocksdbDatastore;
-pub use crate::rdb::get_options;
