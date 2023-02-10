@@ -54,8 +54,9 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 return Ok(());
             }
 
-            let datastore = indradb::RocksdbDatastore::new_db(&path, Some(max_open_files))
-                .expect("Expected to be able to create the RocksDB datastore");
+            let datastore =
+                indradb::RocksdbDatastore::new_db_with_options(&path, indradb::get_options(Some(max_open_files)))
+                    .expect("Expected to be able to create the RocksDB datastore");
             run_server(datastore, listener, &args.plugin_path).await
         }
         CliDatastoreArgs::Memory { path } => {
