@@ -407,13 +407,13 @@ impl RocksdbDatastore {
     pub fn new_db_with_options<P: AsRef<Path>>(path: P, opts: &Options) -> Result<Database<RocksdbDatastore>> {
         let path = path.as_ref();
 
-        let db = match DB::open_cf(&opts, path, CF_NAMES) {
+        let db = match DB::open_cf(opts, path, CF_NAMES) {
             Ok(db) => db,
             Err(_) => {
-                let mut db = DB::open(&opts, path)?;
+                let mut db = DB::open(opts, path)?;
 
                 for cf_name in &CF_NAMES {
-                    db.create_cf(cf_name, &opts)?;
+                    db.create_cf(cf_name, opts)?;
                 }
 
                 db
