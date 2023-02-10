@@ -22,7 +22,7 @@ const CF_NAMES: [&str; 8] = [
     "metadata:v2",
 ];
 
-fn get_options(max_open_files: Option<i32>) -> Options {
+pub fn get_options(max_open_files: Option<i32>) -> Options {
     // Current tuning based off of the total ordered example, flash
     // storage example on
     // https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
