@@ -10,7 +10,7 @@ full_bench_impl!({
     use super::RocksdbDatastore;
     use tempfile::tempdir;
     let path = tempdir().unwrap().into_path();
-    RocksdbDatastore::new_db(path, Some(1)).unwrap()
+    RocksdbDatastore::new_db_with_options(path, &RocksdbDatastore::get_options(Some(1))).unwrap()
 });
 
 #[cfg(feature = "test-suite")]
