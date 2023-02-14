@@ -435,7 +435,7 @@ impl RocksdbDatastore {
     /// * `path`: The file path to the rocksdb database.
     /// * `opts`: The rocksdb options used on datastore.
     pub fn repair<P: AsRef<Path>>(path: P, opts: &Options) -> Result<()> {
-        DB::repair(&opts, path)?;
+        DB::repair(opts, path)?;
         Ok(())
     }
 
