@@ -275,6 +275,10 @@ pub fn should_query_indexed_edge_property_empty<D: Datastore>(db: &Database<D>) 
 pub fn should_get_vertex_with_property_value_empty<D: Datastore>(db: &Database<D>) {
     let property_name = models::Identifier::new("II").unwrap();
     db.index_property(property_name).unwrap();
-    let results = util::get_vertices(db, models::VertexWithPropertyValueQuery::new(property_name, ijson!(null))).unwrap();
+    let results = util::get_vertices(
+        db,
+        models::VertexWithPropertyValueQuery::new(property_name, ijson!(null)),
+    )
+    .unwrap();
     assert_eq!(results.len(), 0);
 }

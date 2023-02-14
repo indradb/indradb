@@ -39,16 +39,6 @@ pub struct MemoryTransaction<'a> {
     path: Option<PathBuf>,
 }
 
-impl<'a> MemoryTransaction<'a> {
-    fn get_property_values(&self, name: Identifier) -> Result<&HashMap<Json, HashSet<IndexedPropertyMember>>> {
-        if let Some(container) = self.internal.property_values.get(&name) {
-            Ok(container)
-        } else {
-            Err(Error::NotIndexed)
-        }
-    }
-}
-
 impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     fn vertex_count(&self) -> u64 {
         self.internal.vertices.len() as u64
@@ -99,13 +89,17 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn vertex_ids_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, Uuid>>> {
-        let container = self.get_property_values(name)?;
-        if let Some(sub_container) = container.get(value) {
-            let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                IndexedPropertyMember::Vertex(id) => Some(Ok(*id)),
-                _ => None,
-            }));
-            Ok(Some(Box::new(iter)))
+        if let Some(container) = self.internal.property_values.get(&name) {
+            if let Some(sub_container) = container.get(value) {
+                let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                    IndexedPropertyMember::Vertex(id) => Some(Ok(*id)),
+                    _ => None,
+                }));
+                Ok(Some(Box::new(iter)))
+            } else {
+                let iter = Vec::default().into_iter();
+                Ok(Some(Box::new(iter)))
+            }
         } else {
             Ok(None)
         }
@@ -155,15 +149,18 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
     }
 
     fn edges_with_property_value(&'a self, name: Identifier, value: &Json) -> Result<Option<DynIter<'a, Edge>>> {
-        let container = self.get_property_values(name)?;
-        if let Some(sub_container) = container.get(value) {
-            let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
-                IndexedPropertyMember::Edge(edge) if self.internal.edges.contains(edge) => Some(edge),
-                _ => None,
-            }));
-            Ok(Some(Box::new(iter.map(|e| Ok(e.clone())))))
+        if let Some(container) = self.internal.property_values.get(&name) {
+            if let Some(sub_container) = container.get(value) {
+                let iter = Box::new(sub_container.iter().filter_map(move |member| match member {
+                    IndexedPropertyMember::Edge(edge) if self.internal.edges.contains(edge) => Some(edge),
+                    _ => None,
+                }));
+                Ok(Some(Box::new(iter.map(|e| Ok(e.clone())))))
+            } else {
+                Ok(None)
+            }
         } else {
-            Ok(None)
+            Err(Error::NotIndexed)
         }
     }
 
