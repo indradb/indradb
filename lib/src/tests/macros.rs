@@ -84,6 +84,7 @@ macro_rules! full_test_impl {
         define_test!(should_update_indexed_edge_property, $code);
         define_test!(should_query_indexed_vertex_property_empty, $code);
         define_test!(should_query_indexed_edge_property_empty, $code);
+        define_test!(should_get_vertex_with_property_value_empty, $code);
 
         // Properties
         define_test!(should_handle_vertex_properties, $code);
