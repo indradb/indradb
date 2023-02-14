@@ -48,14 +48,17 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             repair,
         } => {
             if repair {
-                indradb::RocksdbDatastore::repair(&path, Some(max_open_files))
+                indradb::RocksdbDatastore::repair(&path, &indradb::RocksdbDatastore::get_options(Some(max_open_files)))
                     .expect("Expected to be able to repair the RocksDB datastore");
                 println!("repair successful");
                 return Ok(());
             }
 
-            let datastore = indradb::RocksdbDatastore::new_db(&path, Some(max_open_files))
-                .expect("Expected to be able to create the RocksDB datastore");
+            let datastore = indradb::RocksdbDatastore::new_db_with_options(
+                &path,
+                &indradb::RocksdbDatastore::get_options(Some(max_open_files)),
+            )
+            .expect("Expected to be able to create the RocksDB datastore");
             run_server(datastore, listener, &args.plugin_path).await
         }
         CliDatastoreArgs::Memory { path } => {

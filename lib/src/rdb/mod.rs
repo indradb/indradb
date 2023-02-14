@@ -10,7 +10,7 @@ full_bench_impl!({
     use super::RocksdbDatastore;
     use tempfile::tempdir;
     let path = tempdir().unwrap().into_path();
-    RocksdbDatastore::new_db(path, Some(1)).unwrap()
+    RocksdbDatastore::new_db_with_options(path, &RocksdbDatastore::get_options(Some(1))).unwrap()
 });
 
 #[cfg(feature = "test-suite")]
@@ -20,8 +20,9 @@ mod tests {
     full_test_impl!({
         use super::RocksdbDatastore;
         use tempfile::tempdir;
+
         let path = tempdir().unwrap().into_path();
-        RocksdbDatastore::new_db(path, Some(1)).unwrap()
+        RocksdbDatastore::new_db_with_options(path, &RocksdbDatastore::get_options(Some(1))).unwrap()
     });
 
     #[test]
@@ -32,9 +33,9 @@ mod tests {
         let dir = tempdir().unwrap();
 
         // // Make sure we just initialize the database
-        RocksdbDatastore::new_db(dir.path(), Some(1)).unwrap();
+        RocksdbDatastore::new_db_with_options(dir.path(), &RocksdbDatastore::get_options(Some(1))).unwrap();
 
         // Now try to repair
-        RocksdbDatastore::repair(dir.path(), Some(1)).unwrap();
+        RocksdbDatastore::repair(dir.path(), &RocksdbDatastore::get_options(Some(1))).unwrap();
     }
 }

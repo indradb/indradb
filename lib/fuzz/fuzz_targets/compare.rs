@@ -526,7 +526,7 @@ macro_rules! cmp {
 fuzz_target!(|ops: Vec<Op>| {
     let d1 = MemoryDatastore::new_db();
     let rocksdb_dir = tempdir().unwrap();
-    let d2 = RocksdbDatastore::new_db(rocksdb_dir.path(), Some(1)).unwrap();
+    let d2 = RocksdbDatastore::new_db_with_options(rocksdb_dir.path(), &RocksdbDatastore::get_options(Some(1))).unwrap();
 
     for op in ops {
         match op {
