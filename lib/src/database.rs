@@ -444,7 +444,7 @@ unsafe fn query<'a, T: Transaction<'a> + 'a>(
                         let mut iter = if q.direction == EdgeDirection::Outbound {
                             (*txn).range_edges(lower_bound)?
                         } else {
-                            (*txn).range_reversed_edges(lower_bound)?
+                            (*txn).range_reversed_edges(lower_bound.reversed())?
                         };
 
                         iter = Box::new(iter.take_while(move |r| match r {
