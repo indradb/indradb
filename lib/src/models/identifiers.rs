@@ -11,7 +11,29 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
-pub struct Identifier(pub(crate) Intern<String>);
+pub struct Identifier(pub(crate) MayStatic);
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
+pub(crate) enum MayStatic {
+    Static(&'static str),
+    Interned(Intern<String>),
+}
+
+impl MayStatic {
+    pub(crate) fn len(&self) -> usize {
+        self.deref().len()
+    }
+}
+
+impl Deref for MayStatic {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            MayStatic::Static(s) => s,
+            MayStatic::Interned(i) => i,
+        }
+    }
+}
 
 impl Identifier {
     /// Constructs a new identifier.
@@ -30,7 +52,7 @@ impl Identifier {
         } else if !s.chars().all(|c| c == '-' || c == '_' || c.is_alphanumeric()) {
             Err(ValidationError::InvalidValue)
         } else {
-            Ok(Self(Intern::new(s)))
+            Ok(Self(MayStatic::Interned(Intern::new(s))))
         }
     }
 
@@ -43,7 +65,19 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
-        Self(Intern::new(s.into()))
+        Self(MayStatic::Interned(Intern::new(s.into())))
+    }
+
+    /// Constructs a new identifier constantly, without any checks that it is valid.
+    ///
+    /// # Arguments
+    /// * `s`: The identifier value.
+    ///
+    /// # Safety
+    /// This function is marked unsafe because there's no verification that
+    /// the identifier is valid.
+    pub const unsafe fn const_new_unchecked(s: &'static str) -> Self {
+        Self(MayStatic::Static(s))
     }
 
     /// Gets a reference to the identifier value.
@@ -54,12 +88,13 @@ impl Identifier {
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self(Intern::new("".to_string()))
+        Self(MayStatic::Static(""))
     }
 }
 
 impl Deref for Identifier {
-    type Target = String;
+    type Target = str;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -119,6 +154,8 @@ mod tests {
         unsafe {
             assert_eq!(Identifier::new_unchecked("foo").as_str(), "foo");
             assert_eq!(Identifier::new_unchecked("$").as_str(), "$");
+            assert_eq!(Identifier::const_new_unchecked("foo").as_str(), "foo");
+            assert_eq!(Identifier::const_new_unchecked("$").as_str(), "$");
         }
     }
 
