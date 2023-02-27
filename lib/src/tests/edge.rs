@@ -249,3 +249,38 @@ fn check_edge_range(range: &[models::Edge], expected_outbound_id: Uuid, expected
         covered_ids.insert(edge.inbound_id);
     }
 }
+
+pub fn should_get_correct_inbounds_and_outbounds_edges<D: Datastore>(db: &Database<D>) {
+    // Create a couple of vertices
+    let out_v = crate::Vertex::new(crate::Identifier::new("person").unwrap());
+    let in_v = crate::Vertex::new(crate::Identifier::new("movie").unwrap());
+    db.create_vertex(&out_v).unwrap();
+    db.create_vertex(&in_v).unwrap();
+
+    // Add an edge between the vertices
+    let edge = crate::Edge::new(out_v.id, crate::Identifier::new("likes").unwrap(), in_v.id);
+    db.create_edge(&edge).unwrap();
+
+    // Query for the edge, by outbound of the out_v
+    let output = db
+        .get(crate::SpecificVertexQuery::new(vec![out_v.id]).outbound().unwrap())
+        .unwrap();
+
+    let e = crate::util::extract_edges(output).unwrap();
+    assert_eq!(e.len(), 1);
+    assert_eq!(edge, e[0]);
+    assert_eq!(edge.inbound_id, in_v.id);
+    assert_eq!(edge.outbound_id, out_v.id);
+    // all works fine
+
+    // Query for the edge, by inbound of the in_v
+    let output_failed = db
+        .get(crate::SpecificVertexQuery::new(vec![in_v.id]).inbound().unwrap())
+        .unwrap();
+
+    let e_failed = crate::util::extract_edges(output_failed).unwrap();
+    assert_eq!(e_failed.len(), 1);
+    assert_eq!(edge, e_failed[0]);
+    assert_eq!(edge.inbound_id, in_v.id);
+    assert_eq!(edge.outbound_id, out_v.id);
+}
