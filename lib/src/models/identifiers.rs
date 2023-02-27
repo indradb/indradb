@@ -1,36 +1,55 @@
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::str::FromStr;
 
 use crate::errors::{ValidationError, ValidationResult};
 
-use internment::Intern;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A string that must be less than 256 characters long, and can only contain
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
-pub struct Identifier(pub(crate) MayStatic);
+pub struct Identifier(pub(crate) Intern);
+
+static INTERNAL_CONTAINERS: Lazy<Mutex<HashSet<&'static str>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
-pub(crate) enum MayStatic {
-    Static(&'static str),
-    Interned(Intern<String>),
+pub(crate) struct Intern {
+    pointer: &'static str,
 }
 
-impl MayStatic {
+impl Intern {
+    pub(crate) const fn new(pointer: &'static str) -> Self {
+        Intern { pointer }
+    }
+
     pub(crate) fn len(&self) -> usize {
-        self.deref().len()
+        self.pointer.len()
     }
 }
 
-impl Deref for MayStatic {
+impl Deref for Intern {
     type Target = str;
     fn deref(&self) -> &Self::Target {
-        match self {
-            MayStatic::Static(s) => s,
-            MayStatic::Interned(i) => i,
+        self.pointer
+    }
+}
+
+impl<S: Into<String>> From<S> for Intern {
+    fn from(s: S) -> Self {
+        let s = s.into();
+
+        let mut guard = INTERNAL_CONTAINERS.lock();
+        if let Some(&p) = guard.get(s.as_str()) {
+            Intern { pointer: p }
+        } else {
+            let p = Box::leak(Box::from(s));
+            guard.insert(p);
+            Intern { pointer: p }
         }
     }
 }
@@ -52,7 +71,7 @@ impl Identifier {
         } else if !s.chars().all(|c| c == '-' || c == '_' || c.is_alphanumeric()) {
             Err(ValidationError::InvalidValue)
         } else {
-            Ok(Self(MayStatic::Interned(Intern::new(s))))
+            Ok(Self(s.into()))
         }
     }
 
@@ -65,7 +84,7 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
-        Self(MayStatic::Interned(Intern::new(s.into())))
+        Self(Intern::from(s))
     }
 
     /// Constructs a new identifier constantly, without any checks that it is valid.
@@ -77,18 +96,18 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub const unsafe fn const_new_unchecked(s: &'static str) -> Self {
-        Self(MayStatic::Static(s))
+        Self(Intern::new(s))
     }
 
     /// Gets a reference to the identifier value.
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.deref()
     }
 }
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self(MayStatic::Static(""))
+        Self(Intern::new(""))
     }
 }
 
@@ -96,7 +115,7 @@ impl Deref for Identifier {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0.deref()
     }
 }
 
