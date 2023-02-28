@@ -13,18 +13,20 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// letters, numbers, dashes and underscores. This is used for vertex and edge
 /// types, as well as property names.
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
-pub struct Identifier(pub(crate) Intern);
+pub struct Identifier(pub(crate) InternedString);
 
-static INTERNAL_CONTAINERS: Lazy<Mutex<HashSet<&'static str>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static INTERNED_STRINGS: Lazy<Mutex<HashSet<&'static str>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+// Optimize empty intern construction
+static EMPTY_INTERN: Lazy<InternedString> = Lazy::new(|| InternedString::from(""));
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
-pub(crate) struct Intern {
+pub(crate) struct InternedString {
     pointer: &'static str,
 }
 
-impl Intern {
+impl InternedString {
     pub(crate) const fn new(pointer: &'static str) -> Self {
-        Intern { pointer }
+        InternedString { pointer }
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -32,24 +34,24 @@ impl Intern {
     }
 }
 
-impl Deref for Intern {
+impl Deref for InternedString {
     type Target = str;
     fn deref(&self) -> &Self::Target {
         self.pointer
     }
 }
 
-impl<S: Into<String>> From<S> for Intern {
+impl<S: Into<String>> From<S> for InternedString {
     fn from(s: S) -> Self {
         let s = s.into();
 
-        let mut guard = INTERNAL_CONTAINERS.lock();
+        let mut guard = INTERNED_STRINGS.lock();
         if let Some(&p) = guard.get(s.as_str()) {
-            Intern { pointer: p }
+            InternedString { pointer: p }
         } else {
             let p = Box::leak(Box::from(s));
             guard.insert(p);
-            Intern { pointer: p }
+            InternedString { pointer: p }
         }
     }
 }
@@ -84,7 +86,7 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub unsafe fn new_unchecked<S: Into<String>>(s: S) -> Self {
-        Self(Intern::from(s))
+        Self(InternedString::from(s))
     }
 
     /// Constructs a new identifier constantly, without any checks that it is valid.
@@ -96,7 +98,7 @@ impl Identifier {
     /// This function is marked unsafe because there's no verification that
     /// the identifier is valid.
     pub const unsafe fn const_new_unchecked(s: &'static str) -> Self {
-        Self(Intern::new(s))
+        Self(InternedString::new(s))
     }
 
     /// Gets a reference to the identifier value.
@@ -107,7 +109,7 @@ impl Identifier {
 
 impl Default for Identifier {
     fn default() -> Self {
-        Self(Intern::new(""))
+        Self(*EMPTY_INTERN)
     }
 }
 
