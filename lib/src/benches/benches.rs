@@ -5,6 +5,48 @@ use crate::{
 
 use test::Bencher;
 
+#[bench]
+fn bench_ident_new(b: &mut crate::benches::Bencher) {
+    b.iter(|| {
+        Identifier::new("foo").unwrap();
+        Identifier::new("bar").unwrap();
+        Identifier::new("baz").unwrap();
+    });
+
+}
+
+#[bench]
+fn bench_ident_new_unchecked(b: &mut crate::benches::Bencher) {
+    b.iter(|| {
+        unsafe {
+            Identifier::new_unchecked("foo");
+            Identifier::new_unchecked("bar");
+            Identifier::new_unchecked("baz");
+        }
+    });
+}
+
+#[bench]
+fn bench_ident_comparison(b: &mut crate::benches::Bencher) {
+    let i1 = Identifier::new("foo").unwrap();
+    let i2 = Identifier::new("bar").unwrap();
+    let i3 = Identifier::new("baz").unwrap();
+
+    b.iter(|| {
+        assert!(i1 > i2);
+        assert!(i1 > i3);
+        assert!(i2 < i3);
+
+        assert_eq!(i1, i1);
+        assert_eq!(i2, i2);
+        assert_eq!(i3, i3);
+
+        assert_ne!(i1, i2);
+        assert_ne!(i1, i3);
+        assert_ne!(i2, i3);
+    });
+}
+
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     let t = Identifier::new("bench_create_vertex").unwrap();
 
