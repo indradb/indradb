@@ -12,17 +12,14 @@ fn bench_ident_new(b: &mut crate::benches::Bencher) {
         Identifier::new("bar").unwrap();
         Identifier::new("baz").unwrap();
     });
-
 }
 
 #[bench]
 fn bench_ident_new_unchecked(b: &mut crate::benches::Bencher) {
-    b.iter(|| {
-        unsafe {
-            Identifier::new_unchecked("foo");
-            Identifier::new_unchecked("bar");
-            Identifier::new_unchecked("baz");
-        }
+    b.iter(|| unsafe {
+        Identifier::new_unchecked("foo");
+        Identifier::new_unchecked("bar");
+        Identifier::new_unchecked("baz");
     });
 }
 
