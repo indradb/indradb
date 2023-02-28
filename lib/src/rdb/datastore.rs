@@ -118,7 +118,7 @@ impl<'a> Transaction<'a> for RocksdbTransaction<'a> {
     fn range_reversed_edges(&'a self, offset: Edge) -> Result<DynIter<'a, Edge>> {
         let iter =
             self.reversed_edge_range_manager
-                .iterate_for_range(offset.inbound_id, offset.t, offset.outbound_id)?;
+                .iterate_for_range(offset.outbound_id, offset.t, offset.inbound_id)?;
         Ok(Box::new(iter))
     }
 
