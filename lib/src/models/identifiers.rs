@@ -15,7 +15,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Eq, PartialEq, Copy, Clone, Debug, Hash, Ord, PartialOrd)]
 pub struct Identifier(pub(crate) InternedString);
 
-static INTERNED_STRINGS: Lazy<Mutex<HashSet<&'static str>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+const INTERN_CONTAINER_COUNT: usize = 32;
+static INTERNED_STRINGS: Lazy<[Mutex<HashSet<&'static str>>; INTERN_CONTAINER_COUNT]> = Lazy::new(|| {
+    let mut sets = Vec::with_capacity(INTERN_CONTAINER_COUNT);
+    for _ in 0..INTERN_CONTAINER_COUNT {
+        sets.push(Mutex::new(HashSet::new()));
+    }
+    sets.try_into().unwrap()
+});
 // Optimize empty intern construction
 static EMPTY_INTERN: Lazy<InternedString> = Lazy::new(|| InternedString::from(""));
 
@@ -45,7 +52,11 @@ impl<S: Into<String>> From<S> for InternedString {
     fn from(s: S) -> Self {
         let s = s.into();
 
-        let mut guard = INTERNED_STRINGS.lock();
+        let hash = blake3::hash(s.as_bytes());
+        let slot = u64::from_le_bytes(hash.as_bytes()[..8].try_into().unwrap());
+        let slot = slot % (INTERN_CONTAINER_COUNT as u64);
+
+        let mut guard = INTERNED_STRINGS[slot as usize].lock();
         if let Some(&p) = guard.get(s.as_str()) {
             InternedString { pointer: p }
         } else {
