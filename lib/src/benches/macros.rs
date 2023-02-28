@@ -7,7 +7,7 @@ macro_rules! define_bench {
         #[bench]
         fn $name(b: &mut $crate::benches::Bencher) {
             let mut datastore = $datastore_constructor;
-            $crate::benches::$name(b, &mut datastore);
+            $crate::benches::$name(b, &mut datastore).unwrap();
         }
     };
 }

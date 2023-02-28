@@ -16,7 +16,7 @@ macro_rules! define_test {
         #[test]
         fn $name() {
             let db = $db_constructor;
-            $crate::tests::$name(&db);
+            $crate::tests::$name(&db).unwrap();
         }
     };
 }
