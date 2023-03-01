@@ -3,7 +3,80 @@ use crate::{
     SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
+use rand::{distributions::Alphanumeric, Rng};
 use test::Bencher;
+
+fn generate_rand_ident_value(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
+
+// The following two benchmarks check the construction of a new identifier that
+// hasn't been previously interned. A random value needs to be generated within
+// benchmark iterations to ensure the value hasn't been previously interned, so
+// these benchmarks will also include the overhead of random string
+// construction.
+#[bench]
+fn bench_ident_new(b: &mut crate::benches::Bencher) {
+    b.iter(|| {
+        let value = generate_rand_ident_value(255);
+        Identifier::new(value).unwrap();
+    });
+}
+
+#[bench]
+fn bench_ident_new_unchecked(b: &mut crate::benches::Bencher) {
+    b.iter(|| unsafe {
+        let value = generate_rand_ident_value(255);
+        Identifier::new_unchecked(value);
+    });
+}
+
+// The following two benchmarks check the construction of a new identifier that
+// has been previously interned.
+#[bench]
+fn bench_ident_renew(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| {
+        Identifier::new(&value).unwrap();
+    });
+}
+
+#[bench]
+fn bench_ident_renew_unchecked(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| unsafe {
+        Identifier::new_unchecked(&value);
+    });
+}
+
+#[bench]
+fn bench_ident_comparison(b: &mut crate::benches::Bencher) {
+    let i1 = Identifier::new("foo").unwrap();
+    let i2 = Identifier::new("bar").unwrap();
+    let i3 = Identifier::new("baz").unwrap();
+
+    b.iter(|| {
+        assert!(i1 > i2);
+        assert!(i1 > i3);
+        assert!(i2 < i3);
+
+        assert_eq!(i1, i1);
+        assert_eq!(i2, i2);
+        assert_eq!(i3, i3);
+
+        assert_ne!(i1, i2);
+        assert_ne!(i1, i3);
+        assert_ne!(i2, i3);
+    });
+}
 
 pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
     let t = Identifier::new("bench_create_vertex")?;

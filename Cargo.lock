@@ -487,6 +487,7 @@ dependencies = [
  "byteorder",
  "internment",
  "lazy_static",
+ "rand",
  "rmp-serde",
  "rocksdb",
  "serde",
