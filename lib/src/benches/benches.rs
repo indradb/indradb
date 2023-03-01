@@ -3,23 +3,57 @@ use crate::{
     SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
+use rand::{distributions::Alphanumeric, Rng};
 use test::Bencher;
 
+fn generate_rand_ident_value(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
+
+// The following two benchmarks check the construction of a new identifier that
+// hasn't been previously interned. A random value needs to be generated within
+// benchmark iterations to ensure the value hasn't been previously interned, so
+// these benchmarks will also include the overhead of random string
+// construction.
 #[bench]
 fn bench_ident_new(b: &mut crate::benches::Bencher) {
     b.iter(|| {
-        Identifier::new("foo").unwrap();
-        Identifier::new("bar").unwrap();
-        Identifier::new("baz").unwrap();
+        let value = generate_rand_ident_value(255);
+        Identifier::new(value).unwrap();
     });
 }
 
 #[bench]
 fn bench_ident_new_unchecked(b: &mut crate::benches::Bencher) {
     b.iter(|| unsafe {
-        Identifier::new_unchecked("foo");
-        Identifier::new_unchecked("bar");
-        Identifier::new_unchecked("baz");
+        let value = generate_rand_ident_value(255);
+        Identifier::new_unchecked(value);
+    });
+}
+
+// The following two benchmarks check the construction of a new identifier that
+// has been previously interned.
+#[bench]
+fn bench_ident_renew(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| {
+        Identifier::new(&value).unwrap();
+    });
+}
+
+#[bench]
+fn bench_ident_renew_unchecked(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| unsafe {
+        Identifier::new_unchecked(&value);
     });
 }
 
