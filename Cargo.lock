@@ -486,7 +486,7 @@ dependencies = [
  "bincode",
  "byteorder",
  "internment",
- "lazy_static",
+ "once_cell",
  "rand",
  "rmp-serde",
  "rocksdb",
