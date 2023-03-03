@@ -10,15 +10,13 @@ use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
-lazy_static! {
-    static ref CONTEXT: Context = Context::new(0);
-}
+static CONTEXT: Lazy<Context> = Lazy::new(|| Context::new(0));
 
 /// A byte-serializable value, frequently employed in the keys of key/value
 /// store.
