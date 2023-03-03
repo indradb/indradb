@@ -1,25 +1,23 @@
 use super::util;
 use crate::{
-    ijson, CountQueryExt, Database, Datastore, Edge, Identifier, NamedProperty, QueryExt, QueryOutputValue,
+    ijson, CountQueryExt, Database, Datastore, Edge, Error, Identifier, NamedProperty, QueryExt, QueryOutputValue,
     SpecificVertexQuery, Vertex, VertexProperties,
 };
 
-pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
-    let (outbound_id, inbound_ids) = util::create_edges(db);
+pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
+    let (outbound_id, inbound_ids) = util::create_edges(db)?;
     let q = SpecificVertexQuery::single(outbound_id)
         .include()
-        .outbound()
-        .unwrap()
+        .outbound()?
         .include()
-        .count()
-        .unwrap();
-    let output = db.get(q).unwrap();
+        .count()?;
+    let output = db.get(q)?;
     assert_eq!(
         output,
         vec![
             QueryOutputValue::Vertices(vec![Vertex::with_id(
                 outbound_id,
-                Identifier::new("test_outbound_vertex_type").unwrap()
+                Identifier::new("test_outbound_vertex_type")?
             )]),
             QueryOutputValue::Edges(
                 inbound_ids
@@ -30,59 +28,50 @@ pub fn should_get_nested_include_query<D: Datastore>(db: &Database<D>) {
             QueryOutputValue::Count(5),
         ]
     );
+    Ok(())
 }
 
-pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) {
-    let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
+pub fn should_get_unnested_include_query<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
+    let id = db.create_vertex_from_type(Identifier::new("foo")?)?;
     let q = SpecificVertexQuery::single(id);
-    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), &ijson!(true))
-        .unwrap();
-    let output = db.get(q.include().properties().unwrap()).unwrap();
+    db.set_properties(q.clone(), Identifier::new("bar")?, &ijson!(true))?;
+    let output = db.get(q.include().properties()?)?;
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo")?)]),
             QueryOutputValue::VertexProperties(vec![VertexProperties::new(
-                Vertex::with_id(id, Identifier::new("foo").unwrap()),
-                vec![NamedProperty::new(Identifier::new("bar").unwrap(), ijson!(true)),],
+                Vertex::with_id(id, Identifier::new("foo")?),
+                vec![NamedProperty::new(Identifier::new("bar")?, ijson!(true)),],
             )])
         ]
     );
+    Ok(())
 }
 
-pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) {
-    let id = db.create_vertex_from_type(Identifier::new("foo").unwrap()).unwrap();
+pub fn should_include_with_property_presence<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
+    let id = db.create_vertex_from_type(Identifier::new("foo")?)?;
     let q = SpecificVertexQuery::single(id);
-    db.index_property(Identifier::new("bar").unwrap()).unwrap();
-    db.set_properties(q.clone(), Identifier::new("bar").unwrap(), &ijson!(true))
-        .unwrap();
-    let output = db
-        .get(
-            q.clone()
-                .include()
-                .with_property(Identifier::new("bar").unwrap())
-                .unwrap(),
-        )
-        .unwrap();
+    db.index_property(Identifier::new("bar")?)?;
+    db.set_properties(q.clone(), Identifier::new("bar")?, &ijson!(true))?;
+    let output = db.get(q.clone().include().with_property(Identifier::new("bar")?)?)?;
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo")?)]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo")?)]),
         ]
     );
-    let output = db
-        .get(
-            q.include()
-                .with_property_equal_to(Identifier::new("bar").unwrap(), ijson!(true))
-                .unwrap(),
-        )
-        .unwrap();
+    let output = db.get(
+        q.include()
+            .with_property_equal_to(Identifier::new("bar")?, ijson!(true))?,
+    )?;
     assert_eq!(
         output,
         vec![
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
-            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo").unwrap())]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo")?)]),
+            QueryOutputValue::Vertices(vec![Vertex::with_id(id, Identifier::new("foo")?)]),
         ]
     );
+    Ok(())
 }

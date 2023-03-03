@@ -4,29 +4,29 @@ use crate::{models, CountQueryExt, Database, Datastore, QueryExt};
 
 use uuid::Uuid;
 
-pub(crate) fn create_edge_from<D: Datastore>(db: &Database<D>, outbound_id: Uuid) -> Uuid {
-    let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type").unwrap();
+pub(crate) fn create_edge_from<D: Datastore>(db: &Database<D>, outbound_id: Uuid) -> Result<Uuid> {
+    let inbound_vertex_t = models::Identifier::new("test_inbound_vertex_type")?;
     let inbound_v = models::Vertex::new(inbound_vertex_t);
-    db.create_vertex(&inbound_v).unwrap();
-    let edge_t = models::Identifier::new("test_edge_type").unwrap();
+    db.create_vertex(&inbound_v)?;
+    let edge_t = models::Identifier::new("test_edge_type")?;
     let edge = models::Edge::new(outbound_id, edge_t, inbound_v.id);
-    db.create_edge(&edge).unwrap();
-    inbound_v.id
+    db.create_edge(&edge)?;
+    Ok(inbound_v.id)
 }
 
-pub(crate) fn create_edges<D: Datastore>(db: &Database<D>) -> (Uuid, [Uuid; 5]) {
-    let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type").unwrap();
+pub(crate) fn create_edges<D: Datastore>(db: &Database<D>) -> Result<(Uuid, [Uuid; 5])> {
+    let outbound_vertex_t = models::Identifier::new("test_outbound_vertex_type")?;
     let outbound_v = models::Vertex::new(outbound_vertex_t);
-    db.create_vertex(&outbound_v).unwrap();
+    db.create_vertex(&outbound_v)?;
     let inbound_ids: [Uuid; 5] = [
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
-        create_edge_from(db, outbound_v.id),
+        create_edge_from(db, outbound_v.id)?,
+        create_edge_from(db, outbound_v.id)?,
+        create_edge_from(db, outbound_v.id)?,
+        create_edge_from(db, outbound_v.id)?,
+        create_edge_from(db, outbound_v.id)?,
     ];
 
-    (outbound_v.id, inbound_ids)
+    Ok((outbound_v.id, inbound_ids))
 }
 
 pub(crate) fn get_vertices<D: Datastore, Q: Into<models::Query>>(

@@ -1,24 +1,97 @@
 use crate::{
-    ijson, AllEdgeQuery, BulkInsertItem, CountQueryExt, Database, Datastore, Edge, Identifier, Query,
+    ijson, AllEdgeQuery, BulkInsertItem, CountQueryExt, Database, Datastore, Edge, Error, Identifier, Query,
     SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
+use rand::{distributions::Alphanumeric, Rng};
 use test::Bencher;
 
-pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
-    let t = Identifier::new("bench_create_vertex").unwrap();
+fn generate_rand_ident_value(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
 
+// The following two benchmarks check the construction of a new identifier that
+// hasn't been previously interned. A random value needs to be generated within
+// benchmark iterations to ensure the value hasn't been previously interned, so
+// these benchmarks will also include the overhead of random string
+// construction.
+#[bench]
+fn bench_ident_new(b: &mut crate::benches::Bencher) {
+    b.iter(|| {
+        let value = generate_rand_ident_value(255);
+        Identifier::new(value).unwrap();
+    });
+}
+
+#[bench]
+fn bench_ident_new_unchecked(b: &mut crate::benches::Bencher) {
+    b.iter(|| unsafe {
+        let value = generate_rand_ident_value(255);
+        Identifier::new_unchecked(value);
+    });
+}
+
+// The following two benchmarks check the construction of a new identifier that
+// has been previously interned.
+#[bench]
+fn bench_ident_renew(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| {
+        Identifier::new(&value).unwrap();
+    });
+}
+
+#[bench]
+fn bench_ident_renew_unchecked(b: &mut crate::benches::Bencher) {
+    let value = generate_rand_ident_value(255);
+    Identifier::new(&value).unwrap();
+
+    b.iter(|| unsafe {
+        Identifier::new_unchecked(&value);
+    });
+}
+
+#[bench]
+fn bench_ident_comparison(b: &mut crate::benches::Bencher) {
+    let i1 = Identifier::new("foo").unwrap();
+    let i2 = Identifier::new("bar").unwrap();
+    let i3 = Identifier::new("baz").unwrap();
+
+    b.iter(|| {
+        assert!(i1 > i2);
+        assert!(i1 > i3);
+        assert!(i2 < i3);
+
+        assert_eq!(i1, i1);
+        assert_eq!(i2, i2);
+        assert_eq!(i3, i3);
+
+        assert_ne!(i1, i2);
+        assert_ne!(i1, i3);
+        assert_ne!(i2, i3);
+    });
+}
+
+pub fn bench_create_vertex<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
+    let t = Identifier::new("bench_create_vertex")?;
     b.iter(|| {
         let v = Vertex::new(t);
         db.create_vertex(&v).unwrap();
     });
+    Ok(())
 }
 
-pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
+pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
     let id = {
-        let t = Identifier::new("bench_get_vertices").unwrap();
+        let t = Identifier::new("bench_get_vertices")?;
         let v = Vertex::new(t);
-        db.create_vertex(&v).unwrap();
+        db.create_vertex(&v)?;
         v.id
     };
 
@@ -27,16 +100,18 @@ pub fn bench_get_vertices<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     b.iter(|| {
         db.get(q.clone()).unwrap();
     });
+
+    Ok(())
 }
 
-pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
-    let t = Identifier::new("bench_create_edge").unwrap();
+pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
+    let t = Identifier::new("bench_create_edge")?;
 
     let (outbound_id, inbound_id) = {
         let outbound_v = Vertex::new(t);
         let inbound_v = Vertex::new(t);
-        db.create_vertex(&outbound_v).unwrap();
-        db.create_vertex(&inbound_v).unwrap();
+        db.create_vertex(&outbound_v)?;
+        db.create_vertex(&inbound_v)?;
         (outbound_v.id, inbound_v.id)
     };
 
@@ -45,18 +120,20 @@ pub fn bench_create_edge<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     b.iter(|| {
         db.create_edge(&edge).unwrap();
     });
+
+    Ok(())
 }
 
-pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
-    let t = Identifier::new("bench_get_edges").unwrap();
+pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
+    let t = Identifier::new("bench_get_edges")?;
 
     let edge = {
         let outbound_v = Vertex::new(t);
         let inbound_v = Vertex::new(t);
-        db.create_vertex(&outbound_v).unwrap();
-        db.create_vertex(&inbound_v).unwrap();
+        db.create_vertex(&outbound_v)?;
+        db.create_vertex(&inbound_v)?;
         let edge = Edge::new(outbound_v.id, t, inbound_v.id);
-        db.create_edge(&edge).unwrap();
+        db.create_edge(&edge)?;
         edge
     };
 
@@ -65,29 +142,33 @@ pub fn bench_get_edges<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     b.iter(|| {
         db.get(q.clone()).unwrap();
     });
+
+    Ok(())
 }
 
-pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
-    let t = Identifier::new("bench_get_edge_count").unwrap();
+pub fn bench_get_edge_count<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
+    let t = Identifier::new("bench_get_edge_count")?;
 
     let outbound_v = Vertex::new(t);
     let inbound_v = Vertex::new(t);
-    db.create_vertex(&outbound_v).unwrap();
-    db.create_vertex(&inbound_v).unwrap();
+    db.create_vertex(&outbound_v)?;
+    db.create_vertex(&inbound_v)?;
     let edge = Edge::new(outbound_v.id, t, inbound_v.id);
-    db.create_edge(&edge).unwrap();
+    db.create_edge(&edge)?;
 
-    let q: Query = AllEdgeQuery.count().unwrap().into();
+    let q: Query = AllEdgeQuery.count()?.into();
 
     b.iter(|| {
         db.get(q.clone()).unwrap();
     });
+
+    Ok(())
 }
 
 const BULK_INSERT_COUNT: usize = 100;
 
-pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
-    let t = Identifier::new("bench_bulk_insert").unwrap();
+pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) -> Result<(), Error> {
+    let t = Identifier::new("bench_bulk_insert")?;
 
     let mut vertices = Vec::with_capacity(BULK_INSERT_COUNT);
     for _ in 0..BULK_INSERT_COUNT {
@@ -102,7 +183,7 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     }
 
     let mut items = Vec::with_capacity(2 * vertices.len() + 2 * edges.len());
-    let t = Identifier::new("is_benchmark").unwrap();
+    let t = Identifier::new("is_benchmark")?;
     for vertex in vertices.into_iter() {
         items.push(BulkInsertItem::Vertex(vertex.clone()));
         items.push(BulkInsertItem::VertexProperty(vertex.id, t, ijson!(true)));
@@ -115,4 +196,6 @@ pub fn bench_bulk_insert<D: Datastore>(b: &mut Bencher, db: &mut Database<D>) {
     b.iter(|| {
         db.bulk_insert(items.clone()).unwrap();
     });
+
+    Ok(())
 }
