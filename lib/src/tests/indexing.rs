@@ -257,3 +257,20 @@ pub fn should_get_vertex_with_property_value_empty<D: Datastore>(db: &Database<D
     assert_eq!(results.len(), 0);
     Ok(())
 }
+
+/// Tests for a regression:
+/// https://github.com/indradb/indradb/issues/236
+pub fn should_pipe_not_indexed_errors<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
+    let q = models::VertexWithPropertyValueQuery::new(models::Identifier::new("Name")?, ijson!("John"));
+    let result = db.get(q);
+    expect_err!(result, Error::NotIndexed);
+
+    let q = models::RangeVertexQuery::new()
+        .t(models::Identifier::new("pipe-not-indexed-error-vertex-property")?)
+        .limit(5)
+        .with_property_equal_to(models::Identifier::new("Name")?, ijson!("John"))?;
+    let result = db.get(q);
+    expect_err!(result, Error::NotIndexed);
+
+    Ok(())
+}
