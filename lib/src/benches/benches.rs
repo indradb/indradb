@@ -3,10 +3,11 @@ use crate::{
     SpecificEdgeQuery, SpecificVertexQuery, Vertex,
 };
 
-use rand::{distributions::Alphanumeric, Rng};
 use test::Bencher;
 
+#[cfg(test)]
 fn generate_rand_ident_value(len: usize) -> String {
+    use rand::{distributions::Alphanumeric, Rng};
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(len)
