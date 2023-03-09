@@ -43,12 +43,15 @@ def update_version(path, new_version, categories):
 def update_package_version(path, new_version):
     update_version(path, new_version, {"[package]"})
 
-def update_dependency_versions(path, new_version):
+def update_main_dependency_versions(path, new_version):
     update_version(path, new_version, {"[dependencies.indradb-lib]", "[dependencies.indradb-proto]"})
+
+def update_plugin_dependency_versions(path, new_version):
+    update_version(path, new_version, {"[dependencies.indradb-plugin-host]"})
 
 def update_all_versions(path, new_version):
     update_package_version(path, new_version)
-    update_dependency_versions(path, new_version)
+    update_main_dependency_versions(path, new_version)
 
 def main():
     if len(sys.argv) < 3:
@@ -63,7 +66,8 @@ def main():
     update_all_versions("client/Cargo.toml", main_new_version)
 
     update_package_version("plugins/host/Cargo.toml", plugin_host_new_version)
-    update_dependency_versions("plugins/host/Cargo.toml", main_new_version)
+    update_plugin_dependency_versions("proto/Cargo.toml", plugin_host_new_version)
+    update_main_dependency_versions("plugins/host/Cargo.toml", main_new_version)
 
     run(["make", "check", "test"])
 
