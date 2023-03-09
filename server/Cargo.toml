@@ -1,6 +1,6 @@
 [package]
 name = "indradb"
-version = "3.0.4"
+version = "4.0.0"
 authors = ["Yusuf Simonson <simonson@gmail.com>"]
 description = "A graph database server"
 homepage = "https://indradb.github.io"
@@ -25,10 +25,10 @@ serde_json = "1.0.91"
 
 [dependencies.indradb-lib]
 path = "../lib"
-version = "3.0.4"
+version = "4.0.0"
 features = ["rocksdb-datastore"]
 
 [dependencies.indradb-proto]
 path = "../proto"
-version = "3.0.4"
+version = "4.0.0"
 features = ["server"]
