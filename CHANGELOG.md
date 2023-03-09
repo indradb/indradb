@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.0.0 (3/8/2023)
+
+* Rewrote the interface to support nested queries and generally improve ergonomics (PR #266)
+* Removed support for serializing memory databases to bincode, in favor of msgpack (PR #267)
+* Made copying `Identifier` cheap (PR #271)
+* Made cloning JSON values cheap (PR #272)
+* Fixed docker support (PR #275)
+* Support for customizing the underlying rocksdb options (PR #276)
+* More tests and benchmarks (PR #269, #284, #289)
+* Allow tests and benchmarks to return errors (PR #285)
+* Replaced `lazy_static` with `once_cell` (PR #287)
+
 ## 3.0.4 (12/27/2022)
 
 * Add functions for serializing in-memory datastore results with properties, and deprecated broken variants (PR #260, #267)
