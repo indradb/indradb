@@ -8,8 +8,6 @@
 [![crates.io](https://img.shields.io/crates/v/indradb-lib.svg)](https://crates.io/crates/indradb-lib)
 [![Released API docs](https://docs.rs/indradb-lib/badge.svg)](https://docs.rs/indradb-lib)
 
-**Version 4 in progress!** This branch contains the unreleased, breaking changes in version 4. If you'd like to use the stable version, see the [`v3` branch](https://github.com/indradb/indradb/tree/v3).
-
 A graph database written in rust.
 
 IndraDB consists of a server and an underlying library. Most users would use the server, which is available via releases as pre-compiled binaries. But if you're a rust developer that wants to embed a graph database directly in your application, you can use the [library](https://github.com/indradb/indradb/tree/master/lib).
