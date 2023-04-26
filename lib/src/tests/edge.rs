@@ -2,8 +2,7 @@ use std::collections::HashSet;
 
 use super::util;
 use crate::{
-    ijson, models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, Error, QueryExt, SpecificEdgeQuery,
-    SpecificVertexQuery,
+    ijson, models, AllEdgeQuery, Database, Datastore, Edge, Error, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
 };
 
 use uuid::Uuid;
@@ -126,35 +125,6 @@ pub fn should_not_delete_an_invalid_edge<D: Datastore>(db: &Database<D>) -> Resu
         edge_t,
         Uuid::default(),
     )))?;
-    Ok(())
-}
-
-pub fn should_get_an_edge_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let (outbound_id, _) = util::create_edges(db)?;
-    let t = models::Identifier::new("test_edge_type")?;
-    let count = util::get_edge_count(db, outbound_id, Some(t), EdgeDirection::Outbound)?;
-    assert_eq!(count, 5);
-    Ok(())
-}
-
-pub fn should_get_an_edge_count_with_no_type<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let (outbound_id, _) = util::create_edges(db)?;
-    let count = util::get_edge_count(db, outbound_id, None, EdgeDirection::Outbound)?;
-    assert_eq!(count, 5);
-    Ok(())
-}
-
-pub fn should_get_an_edge_count_for_an_invalid_edge<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let t = models::Identifier::new("test_edge_type")?;
-    let count = util::get_edge_count(db, Uuid::default(), Some(t), EdgeDirection::Outbound)?;
-    assert_eq!(count, 0);
-    Ok(())
-}
-
-pub fn should_get_an_inbound_edge_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let (_, inbound_ids) = util::create_edges(db)?;
-    let count = util::get_edge_count(db, inbound_ids[0], None, EdgeDirection::Inbound)?;
-    assert_eq!(count, 1);
     Ok(())
 }
 

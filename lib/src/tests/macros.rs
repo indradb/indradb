@@ -44,12 +44,9 @@ macro_rules! full_test_impl {
         define_test!(should_get_single_vertex_nonexisting, $code);
         define_test!(should_get_vertices, $code);
         define_test!(should_get_vertices_piped, $code);
-        define_test!(should_get_a_vertex_count, $code);
         define_test!(should_delete_a_valid_outbound_vertex, $code);
         define_test!(should_delete_a_valid_inbound_vertex, $code);
         define_test!(should_not_delete_an_invalid_vertex, $code);
-        define_test!(should_not_delete_on_vertex_count, $code);
-        define_test!(should_not_pipe_on_vertex_count, $code);
 
         // Edges
         define_test!(should_get_all_edges, $code);
@@ -59,10 +56,6 @@ macro_rules! full_test_impl {
         define_test!(should_not_create_an_invalid_edge, $code);
         define_test!(should_delete_a_valid_edge, $code);
         define_test!(should_not_delete_an_invalid_edge, $code);
-        define_test!(should_get_an_edge_count, $code);
-        define_test!(should_get_an_edge_count_with_no_type, $code);
-        define_test!(should_get_an_edge_count_for_an_invalid_edge, $code);
-        define_test!(should_get_an_inbound_edge_count, $code);
         define_test!(should_get_edges_with_no_type, $code);
         define_test!(should_get_edge_range, $code);
         define_test!(should_get_edges, $code);
@@ -96,10 +89,20 @@ macro_rules! full_test_impl {
         define_test!(should_not_set_invalid_edge_properties, $code);
         define_test!(should_not_delete_invalid_edge_properties, $code);
         define_test!(should_get_all_edge_properties, $code);
+
+        // Count
+        define_test!(should_get_a_vertex_count, $code);
+        define_test!(should_not_delete_on_vertex_count, $code);
+        define_test!(should_not_pipe_on_vertex_count, $code);
+        define_test!(should_get_an_edge_count, $code);
+        define_test!(should_get_an_edge_count_with_no_type, $code);
+        define_test!(should_get_an_edge_count_for_an_invalid_edge, $code);
+        define_test!(should_get_an_inbound_edge_count, $code);
         define_test!(should_get_an_edge_properties_count, $code);
         define_test!(should_get_a_vertex_properties_count, $code);
         define_test!(should_not_set_properties_on_count, $code);
         define_test!(should_not_pipe_properties_on_vertex_count, $code);
         define_test!(should_not_pipe_property_presence_on_vertex_count, $code);
+        define_test!(should_not_run_nested_count_query, $code);
     };
 }

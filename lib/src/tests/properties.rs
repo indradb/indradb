@@ -1,9 +1,5 @@
 use super::util;
-use crate::util::extract_count;
-use crate::{
-    errors, expect_err, ijson, AllVertexQuery, CountQueryExt, Database, Datastore, Edge, Error, Identifier,
-    PipePropertyQuery, PipeWithPropertyPresenceQuery, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
-};
+use crate::{ijson, Database, Datastore, Edge, Error, Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery};
 use uuid::Uuid;
 
 pub fn should_handle_vertex_properties<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
@@ -195,55 +191,5 @@ pub fn should_not_delete_invalid_edge_properties<D: Datastore>(db: &Database<D>)
             .name(Identifier::new("bleh")?),
     )?;
 
-    Ok(())
-}
-
-pub fn should_get_an_edge_properties_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let vertex_t = Identifier::new("test_vertex_type")?;
-    let id = db.create_vertex_from_type(vertex_t)?;
-    let q = SpecificVertexQuery::single(id);
-    let count = extract_count(db.get(q.outbound()?.properties()?.count()?)?).unwrap();
-    assert!(count == 0);
-    Ok(())
-}
-
-pub fn should_get_a_vertex_properties_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let vertex_t = Identifier::new("test_vertex_type")?;
-    let id = db.create_vertex_from_type(vertex_t)?;
-    let q = SpecificVertexQuery::single(id);
-    db.set_properties(q.clone(), Identifier::new("foo")?, &ijson!(true))?;
-    let count = extract_count(db.get(q.properties()?.name(Identifier::new("foo")?).count()?)?).unwrap();
-    assert!(count >= 1);
-    Ok(())
-}
-
-pub fn should_not_set_properties_on_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let result = db.set_properties(AllVertexQuery.count()?, Identifier::new("foo")?, &ijson!(true));
-    expect_err!(result, errors::Error::OperationOnQuery);
-    Ok(())
-}
-
-pub fn should_not_pipe_properties_on_vertex_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    // We have to build the query without it's constructor because the
-    // constructor will catch this issue and trigger a `ValidationError`.
-    let q = PipePropertyQuery {
-        inner: Box::new(AllVertexQuery.count()?.into()),
-        name: None,
-    };
-    let result = db.get(q);
-    expect_err!(result, errors::Error::OperationOnQuery);
-    Ok(())
-}
-
-pub fn should_not_pipe_property_presence_on_vertex_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    // We have to build the query without it's constructor because the
-    // constructor will catch this issue and trigger a `ValidationError`.
-    let q = PipeWithPropertyPresenceQuery {
-        inner: Box::new(AllVertexQuery.count()?.into()),
-        name: Identifier::new("foo")?,
-        exists: true,
-    };
-    let result = db.get(q);
-    expect_err!(result, errors::Error::OperationOnQuery);
     Ok(())
 }

@@ -2,10 +2,8 @@ use std::collections::HashSet;
 use std::error::Error as StdError;
 
 use super::util;
-use crate::util::extract_count;
 use crate::{
-    errors, expect_err, ijson, models, AllVertexQuery, CountQueryExt, Database, Datastore, Error, QueryExt,
-    RangeVertexQuery, SpecificVertexQuery,
+    ijson, models, AllVertexQuery, Database, Datastore, Error, QueryExt, RangeVertexQuery, SpecificVertexQuery,
 };
 
 use uuid::Uuid;
@@ -175,36 +173,6 @@ pub fn should_delete_a_valid_inbound_vertex<D: Datastore>(db: &Database<D>) -> R
 
 pub fn should_not_delete_an_invalid_vertex<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
     db.delete(SpecificVertexQuery::single(Uuid::default()))
-}
-
-pub fn should_get_a_vertex_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let vertex_t = models::Identifier::new("test_vertex_type")?;
-    let id = db.create_vertex_from_type(vertex_t)?;
-    let count = util::get_vertex_count(db)?;
-    assert!(count >= 1);
-    let count = extract_count(db.get(SpecificVertexQuery::single(id).count()?)?).unwrap();
-    assert!(count >= 1);
-    Ok(())
-}
-
-pub fn should_not_delete_on_vertex_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    let result = db.delete(AllVertexQuery.count()?);
-    expect_err!(result, errors::Error::OperationOnQuery);
-    Ok(())
-}
-
-pub fn should_not_pipe_on_vertex_count<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
-    // We have to build the query without it's constructor because the
-    // constructor will catch this issue and trigger a `ValidationError`.
-    let q = models::PipeQuery {
-        inner: Box::new(AllVertexQuery.count()?.into()),
-        direction: models::EdgeDirection::Outbound,
-        limit: 1,
-        t: None,
-    };
-    let result = db.get(q);
-    expect_err!(result, errors::Error::OperationOnQuery);
-    Ok(())
 }
 
 fn check_has_all_vertices(range: Vec<models::Vertex>, mut inserted_ids: Vec<Uuid>) {

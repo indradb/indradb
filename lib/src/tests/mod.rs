@@ -5,6 +5,7 @@
 //! `full_test_impl`.
 
 mod bulk_insert;
+mod count;
 mod edge;
 mod include_query;
 mod indexing;
@@ -16,6 +17,7 @@ mod util;
 mod vertex;
 
 pub use self::bulk_insert::*;
+pub use self::count::*;
 pub use self::edge::*;
 pub use self::include_query::*;
 pub use self::indexing::*;
