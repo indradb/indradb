@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::util;
 use crate::{
     ijson, models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, Error, QueryExt, SpecificEdgeQuery,
-    SpecificVertexQuery,
+    SpecificVertexQuery, Identifier, EdgeWithPropertyValueQuery,
 };
 
 use uuid::Uuid;
@@ -218,6 +218,14 @@ pub fn should_get_edges_piped<D: Datastore>(db: &Database<D>) -> Result<(), Erro
         range[0],
         models::Edge::new(outbound_v.id, models::Identifier::new("test_edge_type")?, inbound_id)
     );
+    Ok(())
+}
+
+/// Test for a regression, see
+/// https://github.com/indradb/indradb/issues/278#issuecomment-1515797381
+pub fn should_delete_indexed_edge_with_property_value<D: Datastore>(db: &Database<D>) -> Result<(), Error> {
+    db.index_property(Identifier::new("k")?)?;
+    db.delete(EdgeWithPropertyValueQuery::new(Identifier::new("k")?, ijson!(null)))?;
     Ok(())
 }
 

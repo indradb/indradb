@@ -67,6 +67,7 @@ macro_rules! full_test_impl {
         define_test!(should_get_edge_range, $code);
         define_test!(should_get_edges, $code);
         define_test!(should_get_edges_piped, $code);
+        define_test!(should_delete_indexed_edge_with_property_value, $code);
 
         // Include queries
         define_test!(should_get_nested_include_query, $code);
