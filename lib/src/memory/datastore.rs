@@ -157,10 +157,11 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
                 }));
                 Ok(Some(Box::new(iter.map(|e| Ok(e.clone())))))
             } else {
-                Ok(None)
+                let iter = Vec::default().into_iter();
+                Ok(Some(Box::new(iter)))
             }
         } else {
-            Err(Error::NotIndexed)
+            Ok(None)
         }
     }
 
