@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use super::util;
 use crate::{
-    ijson, models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, Error, QueryExt, SpecificEdgeQuery,
-    SpecificVertexQuery, Identifier, EdgeWithPropertyValueQuery,
+    ijson, models, AllEdgeQuery, Database, Datastore, Edge, EdgeDirection, EdgeWithPropertyValueQuery, Error,
+    Identifier, QueryExt, SpecificEdgeQuery, SpecificVertexQuery,
 };
 
 use uuid::Uuid;
