@@ -14,6 +14,8 @@ use tokio_stream::{Stream, StreamExt};
 use tonic::transport::{Error as TonicTransportError, Server as TonicServer};
 use tonic::{Request, Response, Status, Streaming};
 
+use log::{info};
+
 const CHANNEL_CAPACITY: usize = 100;
 
 fn send(tx: &mpsc::Sender<Result<crate::QueryOutputValue, Status>>, result: Result<crate::QueryOutputValue, Status>) {
@@ -194,16 +196,19 @@ impl<D: indradb::Datastore + Send + Sync + 'static> Server<D> {
 #[tonic::async_trait]
 impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::IndraDb for Server<D> {
     async fn ping(&self, _: Request<()>) -> Result<Response<()>, Status> {
+        info!("Call ping");
         Ok(Response::new(()))
     }
 
     async fn sync(&self, _: Request<()>) -> Result<Response<()>, Status> {
+        info!("Call sync");
         let db = self.db.clone();
         map_jh_indra_result(tokio::task::spawn_blocking(move || db.sync()).await)?;
         Ok(Response::new(()))
     }
 
     async fn create_vertex(&self, request: Request<crate::Vertex>) -> Result<Response<crate::CreateResponse>, Status> {
+        info!("Call create_vertex");
         let db = self.db.clone();
         let vertex = map_conversion_result(request.into_inner().try_into())?;
         let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex(&vertex)).await)?;
@@ -214,6 +219,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         &self,
         request: Request<crate::Identifier>,
     ) -> Result<Response<crate::Uuid>, Status> {
+        info!("Call create_vertex_from_type");
         let db = self.db.clone();
         let t = map_conversion_result(request.into_inner().try_into())?;
         let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_vertex_from_type(t)).await)?;
@@ -221,6 +227,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn create_edge(&self, request: Request<crate::Edge>) -> Result<Response<crate::CreateResponse>, Status> {
+        info!("Call create_edge");
         let db = self.db.clone();
         let edge = map_conversion_result(request.into_inner().try_into())?;
         let res = map_jh_indra_result(tokio::task::spawn_blocking(move || db.create_edge(&edge)).await)?;
@@ -229,6 +236,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
 
     type GetStream = Pin<Box<dyn Stream<Item = Result<crate::QueryOutputValue, Status>> + Send + Sync + 'static>>;
     async fn get(&self, request: Request<crate::Query>) -> Result<Response<Self::GetStream>, Status> {
+        info!("Call get");
         let db = self.db.clone();
         let q: indradb::Query = map_conversion_result(request.into_inner().try_into())?;
         let (tx, rx) = mpsc::channel(CHANNEL_CAPACITY);
@@ -245,6 +253,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn delete(&self, request: Request<crate::Query>) -> Result<Response<()>, Status> {
+        info!("Call delete");
         let db = self.db.clone();
         let q: indradb::Query = map_conversion_result(request.into_inner().try_into())?;
         map_jh_indra_result(tokio::task::spawn_blocking(move || db.delete(q)).await)?;
@@ -252,6 +261,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn set_properties(&self, request: Request<crate::SetPropertiesRequest>) -> Result<Response<()>, Status> {
+        info!("Call set_properties");
         let db = self.db.clone();
         let (q, name, value) = map_conversion_result(request.into_inner().try_into())?;
         map_jh_indra_result(tokio::task::spawn_blocking(move || db.set_properties(q, name, &value)).await)?;
@@ -259,6 +269,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn bulk_insert(&self, request: Request<Streaming<crate::BulkInsertItem>>) -> Result<Response<()>, Status> {
+        info!("Call bulk_insert");
         let db = self.db.clone();
 
         let items = {
@@ -277,6 +288,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
     }
 
     async fn index_property(&self, request: Request<crate::IndexPropertyRequest>) -> Result<Response<()>, Status> {
+        info!("Call index_property");
         let db = self.db.clone();
 
         let name: indradb::Identifier = map_conversion_result(request.into_inner().try_into())?;
@@ -288,6 +300,7 @@ impl<D: indradb::Datastore + Send + Sync + 'static> crate::indra_db_server::Indr
         &self,
         request: Request<crate::ExecutePluginRequest>,
     ) -> Result<Response<crate::ExecutePluginResponse>, Status> {
+        info!("Call execute_plugin");
         let request = request.into_inner();
         let arg = if let Some(arg) = request.arg {
             map_conversion_result(arg.try_into())?
