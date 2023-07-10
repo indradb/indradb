@@ -28,7 +28,7 @@ uuid = "^1.2.2"
 prost = "0.11.3"
 prost-derive = "0.11.2"
 prost-types = "0.11.2"
-tonic = "0.8.3"
+tonic = "0.9.2"
 tokio = { version = "^1.24.2", features = ["rt-multi-thread"], optional = true }
 tokio-stream = { version = "0.1.11", features = ["net"], optional = true }
 libloading = { version = "0.7.4", optional = true }
@@ -44,4 +44,4 @@ version = "0.3.0"
 optional = true
 
 [build-dependencies]
-tonic-build = "0.8.0"
+tonic-build = "0.9.2"
