@@ -17,8 +17,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2.34.0"
-tonic = "0.8.3"
-tokio = { version = "1.24.2", features = ["macros", "rt-multi-thread"] }
+tonic = "0.9.2"
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1.0.91"
 uuid = { version = "1.2.2", features = ["serde"] }
 
