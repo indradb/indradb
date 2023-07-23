@@ -12,6 +12,9 @@ use crate::cli::CliDatastoreArgs;
 use indradb_proto as proto;
 use tokio::net::TcpListener;
 
+use log::{info};
+use env_logger::{Builder,Env};
+
 async fn run_server<D>(
     datastore: indradb::Database<D>,
     listener: TcpListener,
@@ -20,8 +23,10 @@ async fn run_server<D>(
 where
     D: indradb::Datastore + Send + Sync + 'static,
 {
+    Builder::from_env(Env::default().default_filter_or("info")).init();
+    
     let binding = listener.local_addr()?;
-    println!("grpc://{binding}");
+    info!("grpc://{binding}");
 
     if let Some(plugin_path) = plugin_path {
         unsafe {
