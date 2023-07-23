@@ -114,7 +114,7 @@ Here's a brief example:
 use indradb;
 
 // Create an in-memory datastore
-let db: indradb::Database<indradb::MemoryDatastore> = indradb::MemoryDatastore::default();
+let db: indradb::Database<indradb::MemoryDatastore> = indradb::MemoryDatastore::new_db();
 
 // Create a couple of vertices
 let out_v = indradb::Vertex::new(indradb::Identifier::new("person")?);
