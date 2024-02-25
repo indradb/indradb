@@ -4,19 +4,19 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{Cursor, Error as IoError, Read, Write};
+use std::sync::OnceLock;
 use std::{str, u8};
 
 use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use once_cell::sync::Lazy;
 use uuid::v1::{Context, Timestamp};
 use uuid::Uuid;
 
 const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
 
-static CONTEXT: Lazy<Context> = Lazy::new(|| Context::new(0));
+static CONTEXT: OnceLock<Context> = OnceLock::new();
 
 /// A byte-serializable value, frequently employed in the keys of key/value
 /// store.
@@ -130,7 +130,7 @@ pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
 /// Generates a UUID v1. This utility method uses a shared context and node ID
 /// to help ensure generated UUIDs are unique.
 pub fn generate_uuid_v1() -> Uuid {
-    Uuid::new_v1(Timestamp::now(&*CONTEXT), &NODE_ID)
+    Uuid::new_v1(Timestamp::now(CONTEXT.get_or_init(|| Context::new(0))), &NODE_ID)
 }
 
 /// Gets the next UUID that would occur after the given one.
