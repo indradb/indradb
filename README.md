@@ -56,7 +56,7 @@ edge = indradb.Edge(out_v.id, "bar", in_v.id)
 client.create_edge(edge)
 
 # Query for the edge
-results = list(client.get(indradb.SpecificEdgeQuery(edge))
+results = list(client.get(indradb.SpecificEdgeQuery(edge)))
 print(results)
 ```
 
