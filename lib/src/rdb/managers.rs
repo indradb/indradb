@@ -1,13 +1,15 @@
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::io::Cursor;
+use std::hash::{Hash, Hasher};
+use std::io::{Cursor, Read, Result as IoResult, Write};
 use std::ops::Deref;
 use std::result::Result as StdResult;
-use std::u8;
+use std::{str, u8};
 
 use crate::errors::Result;
 use crate::models;
-use crate::util;
 
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use rocksdb::{ColumnFamilyRef, DBIterator, Direction, IteratorMode, WriteBatch, DB};
 use uuid::Uuid;
 
@@ -29,6 +31,115 @@ fn take_with_prefix(
     })
 }
 
+/// A byte-serializable value, frequently employed in the keys of key/value
+/// store.
+enum Component<'a> {
+    /// A UUID.
+    Uuid(Uuid),
+    /// A fixed length string.
+    FixedLengthString(&'a str),
+    /// An identifier.
+    Identifier(models::Identifier),
+    /// A JSON value.
+    Json(&'a models::Json),
+}
+
+impl<'a> Component<'a> {
+    /// Gets the length of the component. This isn't called `len` to avoid a
+    /// clippy warning.
+    fn byte_len(&self) -> usize {
+        match *self {
+            Component::Uuid(_) => 16,
+            Component::FixedLengthString(s) => s.len(),
+            Component::Identifier(t) => t.0.len() + 1,
+            Component::Json(_) => 8,
+        }
+    }
+
+    /// Writes a component into a cursor of bytes.
+    fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> IoResult<()> {
+        match *self {
+            Component::Uuid(uuid) => cursor.write_all(uuid.as_bytes()),
+            Component::FixedLengthString(s) => cursor.write_all(s.as_bytes()),
+            Component::Identifier(i) => {
+                cursor.write_all(&[i.0.len() as u8])?;
+                cursor.write_all(i.0.as_bytes())
+            }
+            Component::Json(json) => {
+                let mut hasher = DefaultHasher::new();
+                json.hash(&mut hasher);
+                let hash = hasher.finish();
+                cursor.write_u64::<BigEndian>(hash)
+            }
+        }
+    }
+}
+
+// Serializes component(s) into bytes.
+///
+/// # Arguments
+/// * `components`: The components to serialize to bytes.
+fn build(components: &[Component]) -> Vec<u8> {
+    let len = components.iter().fold(0, |len, component| len + component.byte_len());
+    let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
+
+    for component in components {
+        if let Err(err) = component.write(&mut cursor) {
+            panic!("Could not write bytes: {err}");
+        }
+    }
+
+    cursor.into_inner()
+}
+
+/// Reads a UUID from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
+fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
+    let mut buf: [u8; 16] = [0; 16];
+    cursor.read_exact(&mut buf).unwrap();
+    Uuid::from_slice(&buf).unwrap()
+}
+
+/// Reads a fixed-length string from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
+fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
+    let mut buf = String::new();
+    cursor.read_to_string(&mut buf).unwrap();
+    buf
+}
+
+/// Reads a `u64` from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
+fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
+    cursor.read_u64::<BigEndian>().unwrap()
+}
+
+/// Reads an identifier from bytes.
+///
+/// # Arguments
+/// * `cursor`: The bytes to read from.
+fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
+    let t_len = {
+        let mut buf: [u8; 1] = [0; 1];
+        cursor.read_exact(&mut buf).unwrap();
+        buf[0] as usize
+    };
+
+    let mut buf = vec![0u8; t_len];
+    cursor.read_exact(&mut buf).unwrap();
+
+    unsafe {
+        let s = str::from_utf8_unchecked(&buf).to_string();
+        models::Identifier::new_unchecked(s)
+    }
+}
+
 pub(crate) struct VertexManager<'a> {
     db: &'a DB,
     cf: ColumnFamilyRef<'a>,
@@ -43,7 +154,7 @@ impl<'a> VertexManager<'a> {
     }
 
     fn key(&self, id: Uuid) -> Vec<u8> {
-        util::build(&[util::Component::Uuid(id)])
+        build(&[Component::Uuid(id)])
     }
 
     pub fn exists(&self, id: Uuid) -> Result<bool> {
@@ -54,14 +165,14 @@ impl<'a> VertexManager<'a> {
         match self.db.get_cf(&self.cf, self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(util::read_identifier(&mut cursor)))
+                Ok(Some(read_identifier(&mut cursor)))
             }
             None => Ok(None),
         }
     }
 
     pub fn iterate_for_range(&'a self, id: Uuid) -> impl Iterator<Item = Result<models::Vertex>> + 'a {
-        let low_key = util::build(&[util::Component::Uuid(id)]);
+        let low_key = build(&[Component::Uuid(id)]);
         let iter = self
             .db
             .iterator_cf(&self.cf, IteratorMode::From(&low_key, Direction::Forward));
@@ -71,18 +182,18 @@ impl<'a> VertexManager<'a> {
             let id = {
                 debug_assert_eq!(k.len(), 16);
                 let mut cursor = Cursor::new(k);
-                util::read_uuid(&mut cursor)
+                read_uuid(&mut cursor)
             };
 
             let mut cursor = Cursor::new(v);
-            let t = util::read_identifier(&mut cursor);
+            let t = read_identifier(&mut cursor);
             Ok(models::Vertex::with_id(id, t))
         })
     }
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(&self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
+        batch.put_cf(&self.cf, &key, &build(&[Component::Identifier(vertex.t)]));
         Ok(())
     }
 
@@ -201,10 +312,10 @@ impl<'a> EdgeRangeManager<'a> {
     }
 
     fn key(&self, edge: &models::Edge) -> Vec<u8> {
-        util::build(&[
-            util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(edge.t),
-            util::Component::Uuid(edge.inbound_id),
+        build(&[
+            Component::Uuid(edge.outbound_id),
+            Component::Identifier(edge.t),
+            Component::Uuid(edge.inbound_id),
         ])
     }
 
@@ -215,9 +326,9 @@ impl<'a> EdgeRangeManager<'a> {
         iterator.map(move |item| -> Result<models::Edge> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let first_id = util::read_uuid(&mut cursor);
-            let t = util::read_identifier(&mut cursor);
-            let second_id = util::read_uuid(&mut cursor);
+            let first_id = read_uuid(&mut cursor);
+            let t = read_identifier(&mut cursor);
+            let second_id = read_uuid(&mut cursor);
             Ok(models::Edge::new(first_id, t, second_id))
         })
     }
@@ -233,15 +344,15 @@ impl<'a> EdgeRangeManager<'a> {
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
         let (prefix, iter) = match t {
             Some(t) => {
-                let prefix = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
-                let low_key = util::build(&[util::Component::Uuid(id), util::Component::Identifier(t)]);
+                let prefix = build(&[Component::Uuid(id), Component::Identifier(t)]);
+                let low_key = build(&[Component::Uuid(id), Component::Identifier(t)]);
                 let iter = self
                     .db
                     .iterator_cf(&self.cf, IteratorMode::From(&low_key, Direction::Forward));
                 (prefix, iter)
             }
             None => {
-                let prefix = util::build(&[util::Component::Uuid(id)]);
+                let prefix = build(&[Component::Uuid(id)]);
                 let iter = self
                     .db
                     .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -259,10 +370,10 @@ impl<'a> EdgeRangeManager<'a> {
         t: models::Identifier,
         second_id: Uuid,
     ) -> Result<Box<dyn Iterator<Item = Result<models::Edge>> + 'a>> {
-        let low_key = util::build(&[
-            util::Component::Uuid(first_id),
-            util::Component::Identifier(t),
-            util::Component::Uuid(second_id),
+        let low_key = build(&[
+            Component::Uuid(first_id),
+            Component::Identifier(t),
+            Component::Uuid(second_id),
         ]);
         let iter = self
             .db
@@ -306,17 +417,14 @@ impl<'a> VertexPropertyManager<'a> {
     }
 
     fn key(&self, vertex_id: Uuid, name: models::Identifier) -> Vec<u8> {
-        util::build(&[
-            util::Component::Uuid(vertex_id),
-            util::Component::FixedLengthString(&name.0),
-        ])
+        build(&[Component::Uuid(vertex_id), Component::FixedLengthString(&name.0)])
     }
 
     pub fn iterate_for_owner(
         &'a self,
         vertex_id: Uuid,
     ) -> Result<impl Iterator<Item = Result<OwnedPropertyItem>> + 'a> {
-        let prefix = util::build(&[util::Component::Uuid(vertex_id)]);
+        let prefix = build(&[Component::Uuid(vertex_id)]);
 
         let iterator = self
             .db
@@ -327,9 +435,9 @@ impl<'a> VertexPropertyManager<'a> {
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
-            let owner_id = util::read_uuid(&mut cursor);
+            let owner_id = read_uuid(&mut cursor);
             debug_assert_eq!(vertex_id, owner_id);
-            let name_str = util::read_fixed_length_string(&mut cursor);
+            let name_str = read_fixed_length_string(&mut cursor);
             let name = unsafe { models::Identifier::new_unchecked(name_str) };
             let value = serde_json::from_slice(&v)?;
             Ok((owner_id, name, value))
@@ -402,11 +510,11 @@ impl<'a> EdgePropertyManager<'a> {
     }
 
     fn key(&self, edge: &models::Edge, name: models::Identifier) -> Vec<u8> {
-        util::build(&[
-            util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(edge.t),
-            util::Component::Uuid(edge.inbound_id),
-            util::Component::FixedLengthString(&name.0),
+        build(&[
+            Component::Uuid(edge.outbound_id),
+            Component::Identifier(edge.t),
+            Component::Uuid(edge.inbound_id),
+            Component::FixedLengthString(&name.0),
         ])
     }
 
@@ -414,10 +522,10 @@ impl<'a> EdgePropertyManager<'a> {
         &'a self,
         edge: &'a models::Edge,
     ) -> Result<Box<dyn Iterator<Item = Result<EdgePropertyItem>> + 'a>> {
-        let prefix = util::build(&[
-            util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(edge.t),
-            util::Component::Uuid(edge.inbound_id),
+        let prefix = build(&[
+            Component::Uuid(edge.outbound_id),
+            Component::Identifier(edge.t),
+            Component::Uuid(edge.inbound_id),
         ]);
 
         let iterator = self
@@ -430,16 +538,16 @@ impl<'a> EdgePropertyManager<'a> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_out_id = util::read_uuid(&mut cursor);
+            let edge_property_out_id = read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_out_id, edge.outbound_id);
 
-            let edge_property_t = util::read_identifier(&mut cursor);
+            let edge_property_t = read_identifier(&mut cursor);
             debug_assert_eq!(edge_property_t, edge.t);
 
-            let edge_property_in_id = util::read_uuid(&mut cursor);
+            let edge_property_in_id = read_uuid(&mut cursor);
             debug_assert_eq!(edge_property_in_id, edge.inbound_id);
 
-            let edge_property_name_str = util::read_fixed_length_string(&mut cursor);
+            let edge_property_name_str = read_fixed_length_string(&mut cursor);
             let edge_property_name = unsafe { models::Identifier::new_unchecked(edge_property_name_str) };
 
             let value = serde_json::from_slice(&v)?;
@@ -516,10 +624,10 @@ impl<'a> VertexPropertyValueManager<'a> {
     }
 
     fn key(&self, property_name: models::Identifier, property_value: &models::Json, vertex_id: Uuid) -> Vec<u8> {
-        util::build(&[
-            util::Component::Identifier(property_name),
-            util::Component::Json(property_value),
-            util::Component::Uuid(vertex_id),
+        build(&[
+            Component::Identifier(property_name),
+            Component::Json(property_value),
+            Component::Uuid(vertex_id),
         ])
     }
 
@@ -533,9 +641,9 @@ impl<'a> VertexPropertyValueManager<'a> {
         filtered.map(move |item| -> Result<VertexPropertyValueKey> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let name = util::read_identifier(&mut cursor);
-            let value_hash = util::read_u64(&mut cursor);
-            let vertex_id = util::read_uuid(&mut cursor);
+            let name = read_identifier(&mut cursor);
+            let value_hash = read_u64(&mut cursor);
+            let vertex_id = read_uuid(&mut cursor);
             Ok((name, value_hash, vertex_id))
         })
     }
@@ -544,7 +652,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         &'a self,
         property_name: models::Identifier,
     ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
-        let prefix = util::build(&[util::Component::Identifier(property_name)]);
+        let prefix = build(&[Component::Identifier(property_name)]);
         let iter = self
             .db
             .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -556,10 +664,7 @@ impl<'a> VertexPropertyValueManager<'a> {
         property_name: models::Identifier,
         property_value: &models::Json,
     ) -> impl Iterator<Item = Result<VertexPropertyValueKey>> + 'a {
-        let prefix = util::build(&[
-            util::Component::Identifier(property_name),
-            util::Component::Json(property_value),
-        ]);
+        let prefix = build(&[Component::Identifier(property_name), Component::Json(property_value)]);
         let iter = self
             .db
             .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -608,12 +713,12 @@ impl<'a> EdgePropertyValueManager<'a> {
     }
 
     fn key(&self, property_name: models::Identifier, property_value: &models::Json, edge: &models::Edge) -> Vec<u8> {
-        util::build(&[
-            util::Component::Identifier(property_name),
-            util::Component::Json(property_value),
-            util::Component::Uuid(edge.outbound_id),
-            util::Component::Identifier(edge.t),
-            util::Component::Uuid(edge.inbound_id),
+        build(&[
+            Component::Identifier(property_name),
+            Component::Json(property_value),
+            Component::Uuid(edge.outbound_id),
+            Component::Identifier(edge.t),
+            Component::Uuid(edge.inbound_id),
         ])
     }
 
@@ -627,11 +732,11 @@ impl<'a> EdgePropertyValueManager<'a> {
         filtered.map(move |item| -> Result<EdgePropertyValueKey> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let name = util::read_identifier(&mut cursor);
-            let value_hash = util::read_u64(&mut cursor);
-            let out_id = util::read_uuid(&mut cursor);
-            let t = util::read_identifier(&mut cursor);
-            let in_id = util::read_uuid(&mut cursor);
+            let name = read_identifier(&mut cursor);
+            let value_hash = read_u64(&mut cursor);
+            let out_id = read_uuid(&mut cursor);
+            let t = read_identifier(&mut cursor);
+            let in_id = read_uuid(&mut cursor);
             Ok((name, value_hash, models::Edge::new(out_id, t, in_id)))
         })
     }
@@ -640,7 +745,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         &'a self,
         property_name: models::Identifier,
     ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
-        let prefix = util::build(&[util::Component::Identifier(property_name)]);
+        let prefix = build(&[Component::Identifier(property_name)]);
         let iter = self
             .db
             .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
@@ -652,10 +757,7 @@ impl<'a> EdgePropertyValueManager<'a> {
         property_name: models::Identifier,
         property_value: &models::Json,
     ) -> impl Iterator<Item = Result<EdgePropertyValueKey>> + 'a {
-        let prefix = util::build(&[
-            util::Component::Identifier(property_name),
-            util::Component::Json(property_value),
-        ]);
+        let prefix = build(&[Component::Identifier(property_name), Component::Json(property_value)]);
         let iter = self
             .db
             .iterator_cf(&self.cf, IteratorMode::From(&prefix, Direction::Forward));
