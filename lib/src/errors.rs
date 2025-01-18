@@ -1,5 +1,6 @@
 use std::error::Error as StdError;
 use std::fmt;
+use std::io::Error as IoError;
 use std::result::Result as StdResult;
 
 #[cfg(feature = "rocksdb-datastore")]
@@ -19,6 +20,9 @@ pub enum Error {
     /// An error occurred in the underlying datastore.
     Datastore(Box<dyn StdError + Send + Sync>),
 
+    /// A generic I/O error occurred.
+    Io(IoError),
+
     /// A query occurred on a property that isn't indexed.
     NotIndexed,
 
@@ -37,6 +41,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self {
             Error::Datastore(ref err) => Some(&**err),
+            Error::Io(ref err) => Some(err),
             Error::Invalid(ref err) => Some(err),
             _ => None,
         }
@@ -48,6 +53,7 @@ impl fmt::Display for Error {
         match *self {
             Error::UuidTaken => write!(f, "UUID already taken"),
             Error::Datastore(ref err) => write!(f, "error in the underlying datastore: {err}"),
+            Error::Io(ref err) => write!(f, "I/O error: {err}"),
             Error::NotIndexed => write!(f, "query attempted on a property that isn't indexed"),
             Error::Unsupported => write!(f, "functionality not supported"),
             Error::Invalid(ref err) => write!(f, "{err}"),
@@ -59,6 +65,12 @@ impl fmt::Display for Error {
 impl From<JsonError> for Error {
     fn from(err: JsonError) -> Self {
         Error::Datastore(Box::new(err))
+    }
+}
+
+impl From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Error::Io(err)
     }
 }
 
