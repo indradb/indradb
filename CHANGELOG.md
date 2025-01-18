@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.0.0 (unreleased)
+
+* Update reader util functions to propagate errors, and mark unsafe (PR #318)
+* Update dependencies (PR #319)
+* Re-enable support for nightly (PR #320)
+
 ## 4.0.0 (3/8/2023)
 
 * Rewrote the interface to support nested queries and generally improve ergonomics (PR #266)
