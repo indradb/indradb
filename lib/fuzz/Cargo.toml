@@ -9,8 +9,8 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "^1.2.0", features = ["derive"] }
-libfuzzer-sys = "0.4.7"
+arbitrary = { version = "^1.4.1", features = ["derive"] }
+libfuzzer-sys = "0.4.8"
 serde_json = "^1.0.57"
 tempfile = "^3.2.0"
 uuid = { version = "^1.2.2", features = ["v1"] }
