@@ -3,10 +3,10 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::io::{Cursor, Error as IoError, Read, Write};
+use std::io::{Cursor, Read, Result as IoResult, Write};
 use std::str;
 
-use crate::errors::{ValidationError, ValidationResult};
+use crate::errors::{Result, ValidationError, ValidationResult};
 use crate::models;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -44,7 +44,7 @@ impl Component<'_> {
     }
 
     /// Writes a component into a cursor of bytes.
-    pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> Result<(), IoError> {
+    pub fn write(&self, cursor: &mut Cursor<Vec<u8>>) -> IoResult<()> {
         match *self {
             Component::Uuid(uuid) => cursor.write_all(uuid.as_bytes()),
             Component::FixedLengthString(s) => cursor.write_all(s.as_bytes()),
@@ -69,11 +69,10 @@ impl Component<'_> {
 pub fn build(components: &[Component]) -> Vec<u8> {
     let len = components.iter().fold(0, |len, component| len + component.byte_len());
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(Vec::with_capacity(len));
-
     for component in components {
-        if let Err(err) = component.write(&mut cursor) {
-            panic!("Could not write bytes: {err}");
-        }
+        component
+            .write(&mut cursor)
+            .expect("failed to write bytes to in-memory buffer");
     }
 
     cursor.into_inner()
@@ -83,48 +82,52 @@ pub fn build(components: &[Component]) -> Vec<u8> {
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
+pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Result<Uuid> {
     let mut buf: [u8; 16] = [0; 16];
-    cursor.read_exact(&mut buf).unwrap();
-    Uuid::from_slice(&buf).unwrap()
+    cursor.read_exact(&mut buf)?;
+    let uuid = Uuid::from_slice(&buf).unwrap();
+    Ok(uuid)
 }
 
 /// Reads an identifier from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
+///
+/// # Safety
+/// This is used for reading in datastores that already checked the validity
+/// of the data at write-time. Re-validation is skipped in the interest of
+/// performance.
+pub unsafe fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Result<models::Identifier> {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
-        cursor.read_exact(&mut buf).unwrap();
+        cursor.read_exact(&mut buf)?;
         buf[0] as usize
     };
 
     let mut buf = vec![0u8; t_len];
-    cursor.read_exact(&mut buf).unwrap();
-
-    unsafe {
-        let s = str::from_utf8_unchecked(&buf).to_string();
-        models::Identifier::new_unchecked(s)
-    }
+    cursor.read_exact(&mut buf)?;
+    let s = str::from_utf8_unchecked(&buf).to_string();
+    Ok(models::Identifier::new_unchecked(s))
 }
 
 /// Reads a fixed-length string from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
+pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Result<String> {
     let mut buf = String::new();
-    cursor.read_to_string(&mut buf).unwrap();
-    buf
+    cursor.read_to_string(&mut buf)?;
+    Ok(buf)
 }
 
 /// Reads a `u64` from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
-    cursor.read_u64::<BigEndian>().unwrap()
+pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Result<u64> {
+    let i = cursor.read_u64::<BigEndian>()?;
+    Ok(i)
 }
 
 /// Generates a UUID v1. This utility method uses a shared context and node ID
