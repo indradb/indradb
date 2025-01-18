@@ -29,8 +29,7 @@ jobs:
         include:
         - { rust: stable, os: macOS-latest }
         - { rust: stable, os: ubuntu-latest }
-        # TODO: re-enable once transitive dependencies are unbroken on nightly
-        # - { rust: nightly, os: ubuntu-latest }
+        - { rust: nightly, os: ubuntu-latest }
     steps:
       - uses: actions/checkout@v2
 
