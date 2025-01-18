@@ -331,7 +331,7 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             if let Some(value) = self.internal.vertex_properties.get(&(*id, name)) {
                 property_container
                     .entry(value.clone())
-                    .or_insert_with(HashSet::new)
+                    .or_default()
                     .insert(IndexedPropertyMember::Vertex(*id));
             }
         }
@@ -339,14 +339,14 @@ impl<'a> Transaction<'a> for MemoryTransaction<'a> {
             if let Some(value) = self.internal.edge_properties.get(&(edge.clone(), name)) {
                 property_container
                     .entry(value.clone())
-                    .or_insert_with(HashSet::new)
+                    .or_default()
                     .insert(IndexedPropertyMember::Edge(edge.clone()));
             }
         }
 
-        let existing_property_container = self.internal.property_values.entry(name).or_insert_with(HashMap::new);
+        let existing_property_container = self.internal.property_values.entry(name).or_default();
         for (value, members) in property_container.into_iter() {
-            let existing_members = existing_property_container.entry(value).or_insert_with(HashSet::new);
+            let existing_members = existing_property_container.entry(value).or_default();
             for member in members {
                 existing_members.insert(member);
             }

@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::u32;
 
 use crate::{errors, Edge, Identifier, Json};
 
@@ -265,7 +264,7 @@ impl RangeVertexQuery {
     /// Creates a new vertex range query.
     pub fn new() -> Self {
         Self {
-            limit: u32::max_value(),
+            limit: u32::MAX,
             t: None,
             start_id: None,
         }
@@ -503,7 +502,7 @@ impl PipeQuery {
         Ok(Self {
             inner,
             direction,
-            limit: u32::max_value(),
+            limit: u32::MAX,
             t: None,
         })
     }

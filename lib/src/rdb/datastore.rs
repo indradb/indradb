@@ -1,8 +1,6 @@
 use std::collections::HashSet;
-use std::i32;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
-use std::u64;
 
 use super::managers::*;
 use crate::errors::Result;
@@ -471,7 +469,10 @@ impl RocksdbDatastore {
 }
 
 impl Datastore for RocksdbDatastore {
-    type Transaction<'a> = RocksdbTransaction<'a> where Self: 'a;
+    type Transaction<'a>
+        = RocksdbTransaction<'a>
+    where
+        Self: 'a;
     fn transaction(&'_ self) -> Self::Transaction<'_> {
         RocksdbTransaction {
             db: &self.db,

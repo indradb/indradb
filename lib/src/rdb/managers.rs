@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::io::Cursor;
 use std::ops::Deref;
 use std::result::Result as StdResult;
-use std::u8;
 
 use crate::errors::Result;
 use crate::models;
@@ -15,11 +14,9 @@ pub type OwnedPropertyItem = (Uuid, models::Identifier, models::Json);
 pub type EdgePropertyItem = (models::Edge, models::Identifier, models::Json);
 pub type VertexPropertyValueKey = (models::Identifier, u64, Uuid);
 pub type EdgePropertyValueKey = (models::Identifier, u64, models::Edge);
+type RocksReadResult = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>;
 
-fn take_with_prefix(
-    iterator: DBIterator<'_>,
-    prefix: Vec<u8>,
-) -> impl Iterator<Item = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + '_ {
+fn take_with_prefix(iterator: DBIterator<'_>, prefix: Vec<u8>) -> impl Iterator<Item = RocksReadResult> + '_ {
     iterator.take_while(move |item| -> bool {
         if let Ok((ref k, _)) = *item {
             k.starts_with(&prefix)
@@ -82,7 +79,7 @@ impl<'a> VertexManager<'a> {
 
     pub fn create(&self, batch: &mut WriteBatch, vertex: &models::Vertex) -> Result<()> {
         let key = self.key(vertex.id);
-        batch.put_cf(&self.cf, &key, &util::build(&[util::Component::Identifier(vertex.t)]));
+        batch.put_cf(&self.cf, &key, util::build(&[util::Component::Identifier(vertex.t)]));
         Ok(())
     }
 
@@ -210,7 +207,7 @@ impl<'a> EdgeRangeManager<'a> {
 
     fn iterate<I>(&'a self, iterator: I) -> impl Iterator<Item = Result<models::Edge>> + 'a
     where
-        I: Iterator<Item = StdResult<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a,
+        I: Iterator<Item = RocksReadResult> + 'a,
     {
         iterator.map(move |item| -> Result<models::Edge> {
             let (k, _) = item?;
