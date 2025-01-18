@@ -83,7 +83,12 @@ pub fn build(components: &[Component]) -> Vec<u8> {
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
+///
+/// # Safety
+/// This is used for reading in datastores that already checked the validity
+/// of the data at write-time. Further verification is not done, and errors
+/// are not propagated.
+pub unsafe fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
     let mut buf: [u8; 16] = [0; 16];
     cursor.read_exact(&mut buf).unwrap();
     Uuid::from_slice(&buf).unwrap()
@@ -93,7 +98,12 @@ pub fn read_uuid<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Uuid {
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
+///
+/// # Safety
+/// This is used for reading in datastores that already checked the validity
+/// of the data at write-time. Further verification is not done, and errors
+/// are not propagated.
+pub unsafe fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identifier {
     let t_len = {
         let mut buf: [u8; 1] = [0; 1];
         cursor.read_exact(&mut buf).unwrap();
@@ -102,18 +112,20 @@ pub fn read_identifier<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> models::Identi
 
     let mut buf = vec![0u8; t_len];
     cursor.read_exact(&mut buf).unwrap();
-
-    unsafe {
-        let s = str::from_utf8_unchecked(&buf).to_string();
-        models::Identifier::new_unchecked(s)
-    }
+    let s = str::from_utf8_unchecked(&buf).to_string();
+    models::Identifier::new_unchecked(s)
 }
 
 /// Reads a fixed-length string from bytes.
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
+///
+/// # Safety
+/// This is used for reading in datastores that already checked the validity
+/// of the data at write-time. Further verification is not done, and errors
+/// are not propagated.
+pub unsafe fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> String {
     let mut buf = String::new();
     cursor.read_to_string(&mut buf).unwrap();
     buf
@@ -123,7 +135,12 @@ pub fn read_fixed_length_string<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> Strin
 ///
 /// # Arguments
 /// * `cursor`: The bytes to read from.
-pub fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
+///
+/// # Safety
+/// This is used for reading in datastores that already checked the validity
+/// of the data at write-time. Further verification is not done, and errors
+/// are not propagated.
+pub unsafe fn read_u64<T: AsRef<[u8]>>(cursor: &mut Cursor<T>) -> u64 {
     cursor.read_u64::<BigEndian>().unwrap()
 }
 

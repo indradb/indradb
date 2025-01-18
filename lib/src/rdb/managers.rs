@@ -54,7 +54,7 @@ impl<'a> VertexManager<'a> {
         match self.db.get_cf(&self.cf, self.key(id))? {
             Some(value_bytes) => {
                 let mut cursor = Cursor::new(value_bytes.deref());
-                Ok(Some(util::read_identifier(&mut cursor)))
+                unsafe { Ok(Some(util::read_identifier(&mut cursor))) }
             }
             None => Ok(None),
         }
@@ -71,11 +71,11 @@ impl<'a> VertexManager<'a> {
             let id = {
                 debug_assert_eq!(k.len(), 16);
                 let mut cursor = Cursor::new(k);
-                util::read_uuid(&mut cursor)
+                unsafe { util::read_uuid(&mut cursor) }
             };
 
             let mut cursor = Cursor::new(v);
-            let t = util::read_identifier(&mut cursor);
+            let t = unsafe { util::read_identifier(&mut cursor) };
             Ok(models::Vertex::with_id(id, t))
         })
     }
@@ -215,9 +215,12 @@ impl<'a> EdgeRangeManager<'a> {
         iterator.map(move |item| -> Result<models::Edge> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let first_id = util::read_uuid(&mut cursor);
-            let t = util::read_identifier(&mut cursor);
-            let second_id = util::read_uuid(&mut cursor);
+            let (first_id, t, second_id) = unsafe {
+                let first_id = util::read_uuid(&mut cursor);
+                let t = util::read_identifier(&mut cursor);
+                let second_id = util::read_uuid(&mut cursor);
+                (first_id, t, second_id)
+            };
             Ok(models::Edge::new(first_id, t, second_id))
         })
     }
@@ -327,10 +330,13 @@ impl<'a> VertexPropertyManager<'a> {
         Ok(filtered.map(move |item| -> Result<OwnedPropertyItem> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
-            let owner_id = util::read_uuid(&mut cursor);
-            debug_assert_eq!(vertex_id, owner_id);
-            let name_str = util::read_fixed_length_string(&mut cursor);
-            let name = unsafe { models::Identifier::new_unchecked(name_str) };
+            let (owner_id, name) = unsafe {
+                let owner_id = util::read_uuid(&mut cursor);
+                debug_assert_eq!(vertex_id, owner_id);
+                let name_str = util::read_fixed_length_string(&mut cursor);
+                let name = models::Identifier::new_unchecked(name_str);
+                (owner_id, name)
+            };
             let value = serde_json::from_slice(&v)?;
             Ok((owner_id, name, value))
         }))
@@ -430,17 +436,26 @@ impl<'a> EdgePropertyManager<'a> {
             let (k, v) = item?;
             let mut cursor = Cursor::new(k);
 
-            let edge_property_out_id = util::read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_out_id, edge.outbound_id);
+            let (edge_property_out_id, edge_property_t, edge_property_in_id, edge_property_name) = unsafe {
+                let edge_property_out_id = util::read_uuid(&mut cursor);
+                debug_assert_eq!(edge_property_out_id, edge.outbound_id);
 
-            let edge_property_t = util::read_identifier(&mut cursor);
-            debug_assert_eq!(edge_property_t, edge.t);
+                let edge_property_t = util::read_identifier(&mut cursor);
+                debug_assert_eq!(edge_property_t, edge.t);
 
-            let edge_property_in_id = util::read_uuid(&mut cursor);
-            debug_assert_eq!(edge_property_in_id, edge.inbound_id);
+                let edge_property_in_id = util::read_uuid(&mut cursor);
+                debug_assert_eq!(edge_property_in_id, edge.inbound_id);
 
-            let edge_property_name_str = util::read_fixed_length_string(&mut cursor);
-            let edge_property_name = unsafe { models::Identifier::new_unchecked(edge_property_name_str) };
+                let edge_property_name_str = util::read_fixed_length_string(&mut cursor);
+                let edge_property_name = models::Identifier::new_unchecked(edge_property_name_str);
+
+                (
+                    edge_property_out_id,
+                    edge_property_t,
+                    edge_property_in_id,
+                    edge_property_name,
+                )
+            };
 
             let value = serde_json::from_slice(&v)?;
             let edge_property_edge = models::Edge::new(edge_property_out_id, edge_property_t, edge_property_in_id);
@@ -533,9 +548,12 @@ impl<'a> VertexPropertyValueManager<'a> {
         filtered.map(move |item| -> Result<VertexPropertyValueKey> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let name = util::read_identifier(&mut cursor);
-            let value_hash = util::read_u64(&mut cursor);
-            let vertex_id = util::read_uuid(&mut cursor);
+            let (name, value_hash, vertex_id) = unsafe {
+                let name = util::read_identifier(&mut cursor);
+                let value_hash = util::read_u64(&mut cursor);
+                let vertex_id = util::read_uuid(&mut cursor);
+                (name, value_hash, vertex_id)
+            };
             Ok((name, value_hash, vertex_id))
         })
     }
@@ -627,11 +645,14 @@ impl<'a> EdgePropertyValueManager<'a> {
         filtered.map(move |item| -> Result<EdgePropertyValueKey> {
             let (k, _) = item?;
             let mut cursor = Cursor::new(k);
-            let name = util::read_identifier(&mut cursor);
-            let value_hash = util::read_u64(&mut cursor);
-            let out_id = util::read_uuid(&mut cursor);
-            let t = util::read_identifier(&mut cursor);
-            let in_id = util::read_uuid(&mut cursor);
+            let (name, value_hash, out_id, t, in_id) = unsafe {
+                let name = util::read_identifier(&mut cursor);
+                let value_hash = util::read_u64(&mut cursor);
+                let out_id = util::read_uuid(&mut cursor);
+                let t = util::read_identifier(&mut cursor);
+                let in_id = util::read_uuid(&mut cursor);
+                (name, value_hash, out_id, t, in_id)
+            };
             Ok((name, value_hash, models::Edge::new(out_id, t, in_id)))
         })
     }
