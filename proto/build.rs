@@ -4,7 +4,7 @@ use std::process::exit;
 fn run() -> Result<(), Box<dyn Error>> {
     tonic_build::configure()
         // .format(false) // disable code formatting since docs.rs will otherwise break
-        .compile(&["indradb.proto"], &["."])?;
+        .compile_protos(&["indradb.proto"], &["."])?;
     Ok(())
 }
 

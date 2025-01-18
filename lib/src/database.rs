@@ -30,7 +30,7 @@ pub trait Transaction<'a> {
     ///
     /// # Arguments
     /// * `offset` - Only fetch vertices with an offset greater than or equal
-    /// to this value.
+    ///   to this value.
     fn range_vertices(&'a self, offset: Uuid) -> Result<DynIter<'a, Vertex>>;
     /// Gets a specific set of vertices with the given IDs.
     fn specific_vertices(&'a self, ids: Vec<Uuid>) -> Result<DynIter<'a, Vertex>>;
