@@ -4,7 +4,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{Cursor, Error as IoError, Read, Write};
-use std::{str, u8};
+use std::str;
 
 use crate::errors::{ValidationError, ValidationResult};
 use crate::models;
@@ -31,7 +31,7 @@ pub enum Component<'a> {
     Json(&'a models::Json),
 }
 
-impl<'a> Component<'a> {
+impl Component<'_> {
     /// Gets the length of the component. This isn't called `len` to avoid a
     /// clippy warning.
     pub fn byte_len(&self) -> usize {
