@@ -19,7 +19,7 @@ threadpool = "1.8.1"
 uuid = "^1.2.2"
 
 [build-dependencies]
-rustc_version = "0.4.0"
+rustc_version = "0.4.1"
 
 [dependencies.indradb-lib]
 path = "../../lib"
